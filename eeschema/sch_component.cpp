@@ -354,7 +354,9 @@ void SCH_COMPONENT::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOff
         // Draw pin targets if part is being dragged
         bool dragging = aPanel->GetScreen()->GetCurItem() == this && aPanel->IsMouseCaptured();
 
-        part->Draw( aPanel, aDC, m_Pos + aOffset, m_unit, m_convert, aDrawMode, aColor,
+        EDA_COLOR_T color = GetState( BRIGHTENED ) ? GetLayerColor( LAYER_BRIGHTENED ) : aColor;
+
+        part->Draw( aPanel, aDC, m_Pos + aOffset, m_unit, m_convert, aDrawMode, color,
                     m_transform, aDrawPinText, false, false, dragging ? NULL : &m_isDangling );
     }
     else    // Use dummy() part if the actual cannot be found.
@@ -367,6 +369,7 @@ void SCH_COMPONENT::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOff
 
     if( field->IsVisible() && !field->IsMoving() )
     {
+        field->SetState( BRIGHTENED, GetState( BRIGHTENED ) || field->GetState( BRIGHTENED ) );
         field->Draw( aPanel, aDC, aOffset, aDrawMode );
     }
 
@@ -377,6 +380,9 @@ void SCH_COMPONENT::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOff
         if( field->IsMoving() )
             continue;
 
+        // Highlight fields when component is selected, but also allow individual fields to be
+        // selected and highlighted
+        field->SetState( BRIGHTENED, GetState( BRIGHTENED ) || field->GetState( BRIGHTENED ) );
         field->Draw( aPanel, aDC, aOffset, aDrawMode );
     }
 

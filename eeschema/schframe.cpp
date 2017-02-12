@@ -313,6 +313,9 @@ BEGIN_EVENT_TABLE( SCH_EDIT_FRAME, EDA_DRAW_FRAME )
     // Multple item selection context menu commands.
     EVT_MENU_RANGE( ID_SELECT_ITEM_START, ID_SELECT_ITEM_END, SCH_EDIT_FRAME::OnSelectItem )
 
+    // Selection clarification
+    EVT_MENU_RANGE( ID_NEXT_SELECTION, ID_PREV_SELECTION, SCH_EDIT_FRAME::OnSelectionClarification )
+
     /* Handle user interface update events. */
     EVT_UPDATE_UI( wxID_CUT, SCH_EDIT_FRAME::OnUpdateBlockSelected )
     EVT_UPDATE_UI( wxID_COPY, SCH_EDIT_FRAME::OnUpdateBlockSelected )
@@ -1248,6 +1251,46 @@ void SCH_EDIT_FRAME::OnSelectItem( wxCommandEvent& aEvent )
 }
 
 
+void SCH_EDIT_FRAME::OnSelectionClarification( wxCommandEvent& aEvent )
+{
+    int id = aEvent.GetId();
+
+    if( id == ID_NEXT_SELECTION )
+    {
+        m_collectedItemIndex = ( m_collectedItemIndex >= m_collectedItems.GetCount() - 1 )
+                               ? 0 : m_collectedItemIndex + 1;
+    }
+    else
+    {
+        m_collectedItemIndex = ( m_collectedItemIndex <= 0 )
+                               ? m_collectedItems.GetCount() - 1  : m_collectedItemIndex - 1;
+    }
+
+    SCH_ITEM* item = m_collectedItems[m_collectedItemIndex];
+    GetScreen()->SetCurItem( item );
+
+    if( item )
+    {
+        if( item->Type() == SCH_COMPONENT_T )
+            ( (SCH_COMPONENT*) item )->SetCurrentSheetPath( &GetCurrentSheet() );
+
+        MSG_PANEL_ITEMS items;
+        item->GetMsgPanelInfo( items );
+        SetMsgPanel( items );
+    }
+    else
+    {
+        ClearMsgPanel();
+    }
+
+    GetCanvas()->Refresh();
+
+    std::cout << "Collection count: " << m_collectedItems.GetCount()
+              << " New index " << m_collectedItemIndex
+              << " Item " << ( item ? item->GetSelectMenuText() : "NULL" ) << std::endl;
+}
+
+
 bool SCH_EDIT_FRAME::isAutoSaveRequired() const
 {
     // In case this event happens before g_RootSheet is initialized which does happen
@@ -1346,6 +1389,8 @@ void SCH_EDIT_FRAME::addCurrentItemToList( bool aRedraw )
     {
         SaveUndoItemInUndoList( undoItem );
     }
+
+    std::cout << "addCurrentItemToList: deselecting" << std::endl;
 
     item->ClearFlags();
     screen->SetModify();

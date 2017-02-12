@@ -138,6 +138,30 @@ void SCH_SCREEN::DecRefCount()
 }
 
 
+void SCH_SCREEN::SetCurItem( SCH_ITEM* aItem )
+{
+    SCH_ITEM* curItem = GetCurItem();
+    if( aItem )
+    {
+        if( curItem && aItem != curItem )
+        {
+            curItem->ClearSelected();
+            UnHighlightAllItems();
+        }
+        aItem->SetState( BRIGHTENED, true );
+        //aItem->SetSelected();
+    }
+    else
+    {
+        if( curItem )
+            curItem->ClearSelected();
+        UnHighlightAllItems();
+    }
+
+    BASE_SCREEN::SetCurItem( (EDA_ITEM*) aItem );
+}
+
+
 void SCH_SCREEN::Clear()
 {
     FreeDrawList();
@@ -1539,3 +1563,28 @@ void SCH_SCREEN::Show( int nestLevel, std::ostream& os ) const
     NestedSpace( nestLevel, os ) << "</" << GetClass().Lower().mb_str() << ">\n";
 }
 #endif
+
+
+void SCH_SCREEN::UnHighlightAllItems()
+{
+    // Disable highlight flag on all items in the current screen
+    for( SCH_ITEM* ptr = GetDrawItems(); ptr; ptr = ptr->Next() )
+    {
+        ptr->SetState( BRIGHTENED, false );
+
+        if( ptr->Type() == SCH_SHEET_T )
+        {
+            for( SCH_SHEET_PIN& pin : static_cast<SCH_SHEET*>( ptr )->GetPins() )
+                pin.SetState( BRIGHTENED, false );
+        }
+
+        if( ptr->Type() == SCH_COMPONENT_T )
+        {
+            SCH_COMPONENT* comp = static_cast<SCH_COMPONENT*>( ptr );
+            for( int i = 0; i < comp->GetFieldCount(); i++ )
+            {
+                comp->GetField( i )->SetState( BRIGHTENED, false );
+            }
+        }
+    }
+}

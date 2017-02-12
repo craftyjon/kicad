@@ -140,6 +140,8 @@ private:
     SCH_ITEM*               m_item_to_repeat;     ///< Last item to insert by the repeat command.
     int                     m_repeatLabelDelta;   ///< Repeat label number increment step.
     SCH_COLLECTOR           m_collectedItems;     ///< List of collected items.
+    int                     m_collectedItemIndex; ///< Currently selected item in the collection.
+    wxPoint                 m_lastSelectLocation; ///< The location of the last mouse selection.
     SCH_FIND_COLLECTOR      m_foundItems;         ///< List of find/replace items.
     SCH_ITEM*               m_undoItem;           ///< Copy of the current item being edited.
     wxString                m_simulatorCommand;   ///< Command line used to call the circuit
@@ -867,6 +869,8 @@ private:
     void OnCancelCurrentCommand( wxCommandEvent& aEvent );
 
     void OnSelectItem( wxCommandEvent& aEvent );
+
+    void OnSelectionClarification( wxCommandEvent& aEvent );
 
     /**
      * Function OnCopySchematicItemRequest

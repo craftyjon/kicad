@@ -169,6 +169,8 @@ void SCH_EDIT_FRAME::HandleBlockPlace( wxDC* DC )
 
     OnModify();
 
+    m_collectedItems.Empty();
+
     // clear dome flags and pointers
     GetScreen()->ClearDrawingState();
     GetScreen()->ClearBlockCommand();

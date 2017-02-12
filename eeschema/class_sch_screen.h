@@ -167,7 +167,7 @@ public:
      * sets the currently selected object, m_CurrentItem.
      * @param aItem Any object derived from SCH_ITEM
      */
-    void SetCurItem( SCH_ITEM* aItem ) { BASE_SCREEN::SetCurItem( (EDA_ITEM*) aItem ); }
+    void SetCurItem( SCH_ITEM* aItem );
 
     /**
      * Function Clear
@@ -523,6 +523,11 @@ public:
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override;
 #endif
+
+    /**
+     * Clears the brightened flag on all items on screen (upon deselection generally)
+     */
+    void UnHighlightAllItems();
 };
 
 

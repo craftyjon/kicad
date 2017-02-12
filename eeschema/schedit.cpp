@@ -1078,6 +1078,8 @@ void SCH_EDIT_FRAME::OnDragItem( wxCommandEvent& aEvent )
 
     if( item == NULL )
     {
+        std::cout << "ondragitem item is null" << std::endl;
+
         // If we didn't get here by a hot key, then something has gone wrong.
         if( aEvent.GetInt() == 0 )
             return;
@@ -1116,7 +1118,7 @@ void SCH_EDIT_FRAME::OnDragItem( wxCommandEvent& aEvent )
         {
             INSTALL_UNBUFFERED_DC( dc, m_canvas );
 
-            if( !HandleBlockBegin( &dc, dragType, GetCrossHairPosition() ) )
+            if( !HandleBlockBegin( &dc, dragType, m_lastSelectLocation ) )
                 break;
 
             // Give a non null size to the search block:

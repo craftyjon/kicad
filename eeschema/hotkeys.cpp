@@ -131,6 +131,12 @@ static EDA_HOTKEY HkRedo( _HKI( "Redo" ), HK_REDO, GR_KB_SHIFT + GR_KB_CTRL + 'Z
                           (int) wxID_REDO );
 #endif
 
+// Selection clarification
+static EDA_HOTKEY HkNextSelection( _HKI( "Next Selection" ), HK_NEXT_SELECTION,
+                                   WXK_PAGEDOWN, ID_NEXT_SELECTION );
+static EDA_HOTKEY HkPrevSelection( _HKI( "Previous Selection" ), HK_NEXT_SELECTION,
+                                   WXK_PAGEUP, ID_PREV_SELECTION );
+
 // mouse click command:
 static EDA_HOTKEY HkMouseLeftClick( _HKI( "Mouse Left Click" ), HK_LEFT_CLICK, WXK_RETURN, 0 );
 static EDA_HOTKEY HkMouseLeftDClick( _HKI( "Mouse Left Double Click" ), HK_LEFT_DCLICK, WXK_END, 0 );
@@ -249,6 +255,8 @@ static EDA_HOTKEY* common_Hotkey_List[] =
     &HkDrag,
     &HkUndo,
     &HkRedo,
+    &HkNextSelection,
+    &HkPrevSelection,
     &HkMouseLeftClick,
     &HkMouseLeftDClick,
     NULL
@@ -502,6 +510,8 @@ bool SCH_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     case HK_FIND_REPLACE:
     case HK_DELETE_NODE:
     case HK_LEAVE_SHEET:
+    case HK_NEXT_SELECTION:
+    case HK_PREV_SELECTION:
         if( notBusy )
         {
             cmd.SetId( hotKey->m_IdMenuEvent );
@@ -611,8 +621,8 @@ bool SCH_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
             // force a new item search on hot keys at current position,
             // if there is no currently edited item,
             // to avoid using a previously selected item
-            if( ! itemInEdit )
-                screen->SetCurItem( NULL );
+            //if( ! itemInEdit )
+            //    screen->SetCurItem( NULL );
             EDA_HOTKEY_CLIENT_DATA data( aPosition );
             cmd.SetInt( hotKey->m_Idcommand );
             cmd.SetClientObject( &data );

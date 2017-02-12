@@ -131,17 +131,20 @@ bool SCH_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
         return true;
     }
 
+    std::cout << "onrightclick item is "
+              << (( item == NULL ) ? "NULL" : item->GetSelectMenuText())
+              << (( item == NULL ) ? -1 : item->GetFlags()) << std::endl;
+
     // Try to locate items at cursor position.
-    if( (item == NULL) || (item->GetFlags() == 0) )
+    if( item == NULL || !item->HitTest( aPosition ) )
     {
         item = LocateAndShowItem( aPosition, SCH_COLLECTOR::AllItemsButPins );
+    }
 
-        // If the clarify item selection context menu is aborted, don't show the context menu.
-        if( item == NULL && m_canvas->GetAbortRequest() )
-        {
-            m_canvas->SetAbortRequest( false );
-            return false;
-        }
+    if( m_collectedItems.GetCount() > 1 )
+    {
+        AddMenuItem( PopMenu, ID_NEXT_SELECTION, _( "Next Selection" ),
+                     KiBitmap( gl_change_xpm ) );
     }
 
     // If a command is in progress: add "cancel" and "end tool" menu

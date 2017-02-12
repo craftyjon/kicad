@@ -246,6 +246,8 @@ enum common_hotkey_id_commnand {
     HK_ZOOM_SELECTION,
     HK_UNDO,
     HK_REDO,
+    HK_NEXT_SELECTION,
+    HK_PREV_SELECTION,
     HK_COMMON_END
 };
 

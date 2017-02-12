@@ -64,6 +64,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
 {
     SCH_ITEM*   item = GetScreen()->GetCurItem();
     wxPoint     gridPosition = GetGridPosition( aPosition );
+    GetCanvas()->Refresh();
 
     if( ( GetToolId() == ID_NO_TOOL_SELECTED ) || ( item && item->GetFlags() ) )
     {
@@ -87,22 +88,36 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
             case SCH_FIELD_T:
             case SCH_BITMAP_T:
             case SCH_NO_CONNECT_T:
-                addCurrentItemToList();
-                return;
+                // If item is being interacted with, end the interaction appropriately.
+                // Otherwise, the user just single-clicked on an item.
+                if( item->GetFlags() && ( IS_CHANGED | IN_EDIT | IS_MOVED |
+                                          IS_NEW | IS_RESIZED | IS_DRAGGED ) )
+                {
+                    addCurrentItemToList();
+                    return;
+                }
 
             case SCH_LINE_T:    // May already be drawing segment.
                 break;
 
             default:
+                break;
+                /*
                 wxFAIL_MSG( wxT( "SCH_EDIT_FRAME::OnLeftClick error.  Item type <" ) +
                             item->GetClass() + wxT( "> is already being edited." ) );
                 item->ClearFlags();
                 break;
+                */
             }
         }
         else
         {
-            item = LocateAndShowItem( aPosition );
+            // If we get multiple clicks in the same location, do nothing so that the
+            // double-click handler will work
+            if( m_collectedItemIndex == 0 || m_lastSelectLocation != gridPosition )
+            {
+                item = LocateAndShowItem( aPosition, SCH_COLLECTOR::AllItemsButPins );
+            }
         }
     }
 
@@ -404,7 +419,7 @@ void SCH_EDIT_FRAME::OnLeftDClick( wxDC* aDC, const wxPoint& aPosition )
     switch( GetToolId() )
     {
     case ID_NO_TOOL_SELECTED:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( ( item == NULL ) || ( item->GetFlags() == 0 && m_collectedItems.GetCount() <= 1 ) )
         {
             item = LocateAndShowItem( aPosition );
         }

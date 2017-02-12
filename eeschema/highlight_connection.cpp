@@ -31,6 +31,7 @@
 #include <fctsys.h>
 #include <class_drawpanel.h>
 #include <schframe.h>
+#include <sch_component.h>
 #include <erc.h>
 
 #include <class_netlist_object.h>
@@ -77,18 +78,7 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
 bool SCH_EDIT_FRAME::SetCurrentSheetHighlightFlags()
 {
     SCH_SCREEN* screen = m_CurrentSheet->LastScreen();
-
-    // Disable highlight flag on all items in the current screen
-    for( SCH_ITEM* ptr = screen->GetDrawItems(); ptr; ptr = ptr->Next() )
-    {
-        ptr->SetState( BRIGHTENED, false );
-
-        if( ptr->Type() == SCH_SHEET_T )
-        {
-            for( SCH_SHEET_PIN& pin : static_cast<SCH_SHEET*>( ptr )->GetPins() )
-                pin.SetState( BRIGHTENED, false );
-        }
-    }
+    screen->UnHighlightAllItems();
 
     if( m_SelectedNetName == "" )
         return true;

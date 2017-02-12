@@ -43,6 +43,7 @@
 #include <macros.h>
 #include <schframe.h>
 #include <plot_common.h>
+#include <msgpanel.h>
 
 #include <general.h>
 #include <class_library.h>
@@ -177,6 +178,8 @@ void SCH_FIELD::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOffset,
         else
             color = GetLayerColor( LAYER_FIELDS );
     }
+
+    color = GetState( BRIGHTENED ) ? GetLayerColor( LAYER_BRIGHTENED ) : color;
 
     EDA_RECT* clipbox = aPanel ? aPanel->GetClipBox() : NULL;
     DrawGraphicText( clipbox, aDC, textpos, color, GetFullyQualifiedText(), orient, GetTextSize(),
@@ -599,4 +602,11 @@ wxPoint SCH_FIELD::GetPosition() const
     wxPoint pos = GetTextPos() - component->GetPosition();
 
     return component->GetTransform().TransformCoordinate( pos ) + component->GetPosition();
+}
+
+
+void SCH_FIELD::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
+{
+    aList.push_back( MSG_PANEL_ITEM( _( "Component Field" ), GetName(), DARKCYAN ) );
+    aList.push_back( MSG_PANEL_ITEM( _( "Value" ), GetFullyQualifiedText(), BROWN ) );
 }
