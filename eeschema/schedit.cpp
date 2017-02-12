@@ -1078,8 +1078,6 @@ void SCH_EDIT_FRAME::OnDragItem( wxCommandEvent& aEvent )
 
     if( item == NULL )
     {
-        std::cout << "ondragitem item is null" << std::endl;
-
         // If we didn't get here by a hot key, then something has gone wrong.
         if( aEvent.GetInt() == 0 )
             return;
@@ -1094,12 +1092,12 @@ void SCH_EDIT_FRAME::OnDragItem( wxCommandEvent& aEvent )
         // Exit if no item found at the current location or the item is already being edited.
         if( (item == NULL) || (item->GetFlags() != 0) )
             return;
-
-        // When a junction or a node is found, a BLOCK_DRAG is better
-        if( m_collectedItems.IsCorner() || m_collectedItems.IsNode( false )
-            || m_collectedItems.IsDraggableJunction() )
-            dragType = BLOCK_DRAG;
     }
+
+    // When a junction or a node is found, a BLOCK_DRAG is better
+    if( m_collectedItems.IsCorner() || m_collectedItems.IsNode( false )
+        || m_collectedItems.IsDraggableJunction() )
+        dragType = BLOCK_DRAG;
 
     switch( item->Type() )
     {

@@ -315,6 +315,7 @@ BEGIN_EVENT_TABLE( SCH_EDIT_FRAME, EDA_DRAW_FRAME )
 
     // Selection clarification
     EVT_MENU_RANGE( ID_NEXT_SELECTION, ID_PREV_SELECTION, SCH_EDIT_FRAME::OnSelectionClarification )
+    EVT_MENU( ID_DESELECT_ALL, SCH_EDIT_FRAME::OnDeselectAll )
 
     /* Handle user interface update events. */
     EVT_UPDATE_UI( wxID_CUT, SCH_EDIT_FRAME::OnUpdateBlockSelected )
@@ -1288,6 +1289,17 @@ void SCH_EDIT_FRAME::OnSelectionClarification( wxCommandEvent& aEvent )
     std::cout << "Collection count: " << m_collectedItems.GetCount()
               << " New index " << m_collectedItemIndex
               << " Item " << ( item ? item->GetSelectMenuText() : "NULL" ) << std::endl;
+}
+
+
+void SCH_EDIT_FRAME::OnDeselectAll( wxCommandEvent& aEvent )
+{
+    std::cout<<"OnDeselectAll CurItem = "<<GetScreen()->GetCurItem()<<std::endl;
+    if( GetScreen()->GetCurItem() )
+    {
+        GetScreen()->SetCurItem( NULL );
+        GetCanvas()->Refresh();
+    }
 }
 
 

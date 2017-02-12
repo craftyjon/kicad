@@ -112,12 +112,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         }
         else
         {
-            // If we get multiple clicks in the same location, do nothing so that the
-            // double-click handler will work
-            if( m_collectedItemIndex == 0 || m_lastSelectLocation != gridPosition )
-            {
-                item = LocateAndShowItem( aPosition, SCH_COLLECTOR::AllItemsButPins );
-            }
+            item = LocateAndShowItem( aPosition, SCH_COLLECTOR::AllItemsButPins );
         }
     }
 

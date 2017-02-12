@@ -292,7 +292,7 @@ void SCH_EDIT_FRAME::EndSegment( wxDC* DC )
     // Get the last non-null wire (this is the last created segment).
     SetRepeatItem( segment = (SCH_LINE*) s_wires.GetLast() );
 
-    screen->SetCurItem( NULL );
+    //screen->SetCurItem( NULL );
     m_canvas->EndMouseCapture( -1, -1, wxEmptyString, false );
 
     // store the terminal point of this last segment: a junction could be needed
@@ -335,6 +335,7 @@ void SCH_EDIT_FRAME::EndSegment( wxDC* DC )
     if( screen->IsJunctionNeeded( startPoint ) )
         screen->Append( AddJunction( DC, startPoint ) );
 
+    screen->SetCurItem( NULL );
     m_canvas->Refresh();
 
     OnModify();

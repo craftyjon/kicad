@@ -121,6 +121,16 @@ SCH_ITEM* SCH_EDIT_FRAME::LocateItem( const wxPoint& aPosition, const KICAD_T aF
                                       int aHotKeyCommandId )
 {
     SCH_ITEM* item = NULL;
+    SCH_ITEM* curItem = GetScreen()->GetCurItem();
+
+    // This shortcut enables "click" -> "next selection" -> "doubleclick" to work.
+    // Without it, the first click of "doubleclick" would reset the collection and
+    // undo the user's choice of another selection from the collection.
+    if( ( m_lastSelectLocation == aPosition ) && curItem
+        && curItem== m_collectedItems[m_collectedItemIndex] )
+    {
+        return m_collectedItems[m_collectedItemIndex];
+    }
 
     m_collectedItems.Collect( GetScreen()->GetDrawItems(), aFilterList, aPosition );
 
@@ -134,6 +144,7 @@ SCH_ITEM* SCH_EDIT_FRAME::LocateItem( const wxPoint& aPosition, const KICAD_T aF
     }
     else
     {
+        std::cout << "in hotkey branch" <<std::endl;
         // There are certain combinations of items that do not need clarification such as
         // a corner were two lines meet or all the items form a junction.
         if( aHotKeyCommandId )

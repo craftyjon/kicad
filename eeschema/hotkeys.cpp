@@ -131,11 +131,13 @@ static EDA_HOTKEY HkRedo( _HKI( "Redo" ), HK_REDO, GR_KB_SHIFT + GR_KB_CTRL + 'Z
                           (int) wxID_REDO );
 #endif
 
-// Selection clarification
+// Item selection
 static EDA_HOTKEY HkNextSelection( _HKI( "Next Selection" ), HK_NEXT_SELECTION,
                                    WXK_PAGEDOWN, ID_NEXT_SELECTION );
 static EDA_HOTKEY HkPrevSelection( _HKI( "Previous Selection" ), HK_NEXT_SELECTION,
                                    WXK_PAGEUP, ID_PREV_SELECTION );
+static EDA_HOTKEY HkDeselectAll( _HKI( "Deselect All Items" ), HK_DESELECT_ALL,
+                                 WXK_ESCAPE, ID_DESELECT_ALL );
 
 // mouse click command:
 static EDA_HOTKEY HkMouseLeftClick( _HKI( "Mouse Left Click" ), HK_LEFT_CLICK, WXK_RETURN, 0 );
@@ -257,6 +259,7 @@ static EDA_HOTKEY* common_Hotkey_List[] =
     &HkRedo,
     &HkNextSelection,
     &HkPrevSelection,
+    &HkDeselectAll,
     &HkMouseLeftClick,
     &HkMouseLeftDClick,
     NULL
@@ -512,6 +515,7 @@ bool SCH_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     case HK_LEAVE_SHEET:
     case HK_NEXT_SELECTION:
     case HK_PREV_SELECTION:
+    case HK_DESELECT_ALL:
         if( notBusy )
         {
             cmd.SetId( hotKey->m_IdMenuEvent );

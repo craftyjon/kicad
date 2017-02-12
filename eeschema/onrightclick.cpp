@@ -136,7 +136,7 @@ bool SCH_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
               << (( item == NULL ) ? -1 : item->GetFlags()) << std::endl;
 
     // Try to locate items at cursor position.
-    if( item == NULL || !item->HitTest( aPosition ) )
+    if( item == NULL || ( !item->HitTest( aPosition ) && !item->IsNew() ) )
     {
         item = LocateAndShowItem( aPosition, SCH_COLLECTOR::AllItemsButPins );
     }

@@ -143,19 +143,22 @@ void SCH_SCREEN::SetCurItem( SCH_ITEM* aItem )
     SCH_ITEM* curItem = GetCurItem();
     if( aItem )
     {
+        std::cout<<"setcuritem "<<aItem->GetSelectMenuText()<<std::endl;
         if( curItem && aItem != curItem )
         {
             curItem->ClearSelected();
             UnHighlightAllItems();
         }
         aItem->SetState( BRIGHTENED, true );
-        //aItem->SetSelected();
     }
     else
     {
         if( curItem )
+        {
             curItem->ClearSelected();
-        UnHighlightAllItems();
+            UnHighlightAllItems();
+            std::cout<<"deselected all"<<std::endl;
+        }
     }
 
     BASE_SCREEN::SetCurItem( (EDA_ITEM*) aItem );

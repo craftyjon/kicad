@@ -260,6 +260,7 @@ enum main_id
     ID_HELP_GET_INVOLVED,
     ID_NEXT_SELECTION,
     ID_PREV_SELECTION,
+    ID_DESELECT_ALL,
 
     // Common to Pcbnew and CvPcb
     ID_TB_OPTIONS_SHOW_MODULE_TEXT_SKETCH,

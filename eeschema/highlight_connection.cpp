@@ -42,6 +42,8 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
     m_SelectedNetName = "";
     bool buildNetlistOk = false;
 
+    std::cout<<"HighlightConnectionAtPosition"<<std::endl;
+
     // find which connected item is selected
     EDA_ITEMS nodeList;
     wxPoint   gridPosition = GetGridPosition( aPosition );

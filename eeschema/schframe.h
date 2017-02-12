@@ -871,6 +871,7 @@ private:
     void OnSelectItem( wxCommandEvent& aEvent );
 
     void OnSelectionClarification( wxCommandEvent& aEvent );
+    void OnDeselectAll( wxCommandEvent& aEvent );
 
     /**
      * Function OnCopySchematicItemRequest
