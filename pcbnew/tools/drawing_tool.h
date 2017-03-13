@@ -275,7 +275,7 @@ private:
     int getSegmentWidth( unsigned int aLayer ) const;
 
     ///> Selects a non-copper layer for drawing
-    LAYER_ID getDrawingLayer() const;
+    PCB_LAYER_ID getDrawingLayer() const;
 
     KIGFX::VIEW* m_view;
     KIGFX::VIEW_CONTROLS* m_controls;

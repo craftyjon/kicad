@@ -435,8 +435,8 @@ int ROUTER_TOOL::onViaCommand( const TOOL_EVENT& aEvent )
 
     const int layerCount = bds.GetCopperLayerCount();
     int currentLayer = m_router->GetCurrentLayer();
-    LAYER_ID pairTop = m_frame->GetScreen()->m_Route_Layer_TOP;
-    LAYER_ID pairBottom = m_frame->GetScreen()->m_Route_Layer_BOTTOM;
+    PCB_LAYER_ID pairTop = m_frame->GetScreen()->m_Route_Layer_TOP;
+    PCB_LAYER_ID pairBottom = m_frame->GetScreen()->m_Route_Layer_BOTTOM;
 
     PNS::SIZES_SETTINGS sizes = m_router->Sizes();
 

@@ -142,7 +142,7 @@ void DIALOG_DISPLAY_OPTIONS::init()
     m_OptDisplayModOutlines->SetValue( displ_opts->m_DisplayModEdgeFill == SKETCH );
     m_OptDisplayPadClearence->SetValue( displ_opts->m_DisplayPadIsol );
     m_OptDisplayPadNumber->SetValue( displ_opts->m_DisplayPadNum );
-    m_OptDisplayPadNoConn->SetValue( m_Parent->IsElementVisible( PCB_VISIBLE( NO_CONNECTS_VISIBLE ) ) );
+    m_OptDisplayPadNoConn->SetValue( m_Parent->IsElementVisible( LAYER_NO_CONNECTS ) );
     m_OptDisplayDrawings->SetValue( displ_opts->m_DisplayDrawItemsFill == SKETCH );
     m_ShowNetNamesOption->SetSelection( displ_opts->m_DisplayNetNamesMode );
 
@@ -189,7 +189,7 @@ void DIALOG_DISPLAY_OPTIONS::OnOkClick( wxCommandEvent& event )
 
     displ_opts->m_DisplayPadNum = m_OptDisplayPadNumber->GetValue();
 
-    m_Parent->SetElementVisibility( PCB_VISIBLE( NO_CONNECTS_VISIBLE ),
+    m_Parent->SetElementVisibility( LAYER_NO_CONNECTS,
                                     m_OptDisplayPadNoConn->GetValue() );
 
     displ_opts->m_DisplayDrawItemsFill = not m_OptDisplayDrawings->GetValue();

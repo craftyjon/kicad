@@ -363,7 +363,7 @@ int DRAWING_TOOL::PlaceText( const TOOL_EVENT& aEvent )
                     // TODO we have to set IS_NEW, otherwise InstallTextPCB.. creates an undo entry :| LEGACY_CLEANUP
                     textPcb->SetFlags( IS_NEW );
 
-                    LAYER_ID layer = m_frame->GetActiveLayer();
+                    PCB_LAYER_ID layer = m_frame->GetActiveLayer();
                     textPcb->SetLayer( layer );
 
                     // Set the mirrored option for layers on the BACK side of the board
@@ -507,7 +507,7 @@ int DRAWING_TOOL::DrawDimension( const TOOL_EVENT& aEvent )
             {
             case SET_ORIGIN:
                 {
-                    LAYER_ID layer = getDrawingLayer();
+                    PCB_LAYER_ID layer = getDrawingLayer();
 
                     if( layer == Edge_Cuts )    // dimensions are not allowed on EdgeCuts
                         layer = Dwgs_User;
@@ -1092,7 +1092,7 @@ bool DRAWING_TOOL::drawArc( DRAWSEGMENT*& aGraphic )
             {
             case SET_ORIGIN:
             {
-                LAYER_ID layer = getDrawingLayer();
+                PCB_LAYER_ID layer = getDrawingLayer();
 
                 // Init the new item attributes
                 aGraphic->SetShape( S_ARC );
@@ -1570,9 +1570,9 @@ int DRAWING_TOOL::getSegmentWidth( unsigned int aLayer ) const
 }
 
 
-LAYER_ID DRAWING_TOOL::getDrawingLayer() const
+PCB_LAYER_ID DRAWING_TOOL::getDrawingLayer() const
 {
-    LAYER_ID layer = m_frame->GetActiveLayer();
+    PCB_LAYER_ID layer = m_frame->GetActiveLayer();
 
     if( IsCopperLayer( layer ) )
     {
