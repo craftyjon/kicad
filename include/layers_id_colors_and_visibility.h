@@ -38,6 +38,8 @@
 
 class BOARD;
 
+/// Number of draw layers in Gerbview
+#define GERBER_DRAWLAYERS_COUNT 32
 
 /**
  * Type LAYER_NUM
@@ -287,6 +289,8 @@ enum GERBVIEW_LAYER_ID
 /// Must update this if you add any enums after GerbView!
 #define LAYER_ID_COUNT GERBVIEW_LAYER_ID_END
 
+/// Used to map an integer layer in GerbView
+#define GERBVIEW_DRAW_LAYER( x ) ( GERBVIEW_LAYER_ID( int( GERBVIEW_LAYER_ID_START ) + x ) )
 
 // Some elements do not have yet a visibility control
 // from a dialog, but have a visibility control flag.
