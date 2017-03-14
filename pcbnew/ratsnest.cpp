@@ -31,7 +31,6 @@
 #include <gr_basic.h>
 #include <common.h>
 #include <class_drawpanel.h>
-#include <colors_selection.h>
 #include <wxBasePcbFrame.h>
 #include <macros.h>
 
@@ -756,7 +755,7 @@ void PCB_BASE_FRAME::TraceModuleRatsNest( wxDC* DC )
     if( ( m_Pcb->m_Status_Pcb & RATSNEST_ITEM_LOCAL_OK ) == 0 )
         return;
 
-    COLOR4D tmpcolor = g_ColorsSettings.GetItemColor( LAYER_RATSNEST );
+    COLOR4D tmpcolor = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_RATSNEST );
 
     for( unsigned ii = 0; ii < m_Pcb->m_LocalRatsnest.size(); ii++ )
     {
@@ -764,12 +763,12 @@ void PCB_BASE_FRAME::TraceModuleRatsNest( wxDC* DC )
 
         if( rats->m_Status & LOCAL_RATSNEST_ITEM )
         {
-            g_ColorsSettings.SetItemColor( LAYER_RATSNEST, YELLOW );
+            COLOR_THEME_MANAGER::Instance().SetLayerColor( LAYER_RATSNEST, YELLOW );
             rats->Draw( m_canvas, DC, GR_XOR, g_Offset_Module );
         }
         else
         {
-            g_ColorsSettings.SetItemColor( LAYER_RATSNEST, tmpcolor );
+            COLOR_THEME_MANAGER::Instance().SetLayerColor( LAYER_RATSNEST, tmpcolor );
 
             wxPoint tmp = rats->m_PadStart->GetPosition();
 
@@ -780,7 +779,7 @@ void PCB_BASE_FRAME::TraceModuleRatsNest( wxDC* DC )
         }
     }
 
-    g_ColorsSettings.SetItemColor( LAYER_RATSNEST, tmpcolor );
+    COLOR_THEME_MANAGER::Instance().SetLayerColor( LAYER_RATSNEST, tmpcolor );
 }
 
 

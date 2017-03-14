@@ -32,7 +32,6 @@
 #include <class_drawpanel.h>
 #include <trigo.h>
 #include <wxPcbStruct.h>
-#include <colors_selection.h>
 
 #include <pcbnew.h>
 #include <drc_stuff.h>
@@ -706,7 +705,8 @@ void ShowNewTrackWhenMovingCursor( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPo
 
         if( showTrackClearanceMode >= SHOW_CLEARANCE_NEW_TRACKS_AND_VIA_AREAS )
         {
-            COLOR4D color = g_ColorsSettings.GetLayerColor( g_CurrentTrackSegment->GetLayer() );
+            COLOR4D color = COLOR_THEME_MANAGER::Instance().GetLayerColor(
+                                                                g_CurrentTrackSegment->GetLayer() );
             DrawViaCirclesWhenEditingNewTrack( panelClipBox, aDC, g_CurrentTrackSegment->GetEnd(),
                                                boardViaRadius, viaRadiusWithClearence, color);
         }
@@ -773,7 +773,7 @@ void ShowNewTrackWhenMovingCursor( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPo
 
     if( showTrackClearanceMode >= SHOW_CLEARANCE_NEW_TRACKS_AND_VIA_AREAS )
     {
-        COLOR4D color = g_ColorsSettings.GetLayerColor(g_CurrentTrackSegment->GetLayer());
+        COLOR4D color = COLOR_THEME_MANAGER::Instance().GetLayerColor(g_CurrentTrackSegment->GetLayer());
 
         //Via diameter must have taken what we are using, rather than netclass value.
         DrawViaCirclesWhenEditingNewTrack( panelClipBox, aDC, g_CurrentTrackSegment->GetEnd(),

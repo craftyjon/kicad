@@ -190,7 +190,7 @@ void SCH_BUS_ENTRY_BASE::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint&
     if( aColor != COLOR4D::UNSPECIFIED )
         color = aColor;
     else
-        color = GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
+        color = COLOR_THEME_MANAGER::Instance().GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
 
     GRSetDrawMode( aDC, aDrawMode );
 
@@ -369,7 +369,7 @@ bool SCH_BUS_ENTRY_BASE::HitTest( const EDA_RECT& aRect, bool aContained, int aA
 void SCH_BUS_ENTRY_BASE::Plot( PLOTTER* aPlotter )
 {
     aPlotter->SetCurrentLineWidth( GetPenSize() );
-    aPlotter->SetColor( GetLayerColor( GetLayer() ) );
+    aPlotter->SetColorByLayer( GetLayer() );
     aPlotter->MoveTo( m_pos );
     aPlotter->FinishTo( m_End() );
 }

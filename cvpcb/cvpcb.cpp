@@ -38,15 +38,11 @@
 #include <cvpcb.h>
 #include <zones.h>
 #include <cvpcb_mainframe.h>
-#include <colors_selection.h>
 #include <cvpcb_id.h>
 
 #include <build_version.h>
 
 #include <wx/snglinst.h>
-
-// Colors for layers and items
-COLORS_DESIGN_SETTINGS g_ColorsSettings;
 
 // Constant string definitions for CvPcb
 const wxString EquFileExtension( wxT( "equ" ) );

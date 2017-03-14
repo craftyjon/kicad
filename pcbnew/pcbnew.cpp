@@ -42,7 +42,6 @@
 #include <class_drawpanel.h>
 #include <wxPcbStruct.h>
 #include <eda_dde.h>
-#include <colors_selection.h>
 #include <wx/stdpaths.h>
 
 #include <wx/file.h>
@@ -63,9 +62,6 @@
 #include <footprint_info_impl.h>
 #include <gl_context_mgr.h>
 extern bool IsWxPythonLoaded();
-
-// Colors for layers and items
-COLORS_DESIGN_SETTINGS g_ColorsSettings;
 
 bool         g_Drc_On = true;
 bool         g_AutoDeleteOldTrack = true;

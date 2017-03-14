@@ -35,7 +35,6 @@
 #include <class_drawpanel.h>
 #include <drawtxt.h>
 #include <kicad_string.h>
-#include <colors_selection.h>
 #include <richio.h>
 #include <macros.h>
 #include <wxBasePcbFrame.h>
@@ -238,7 +237,7 @@ void TEXTE_MODULE::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, GR_DRAWMODE aDrawMod
         if( !brd->IsElementVisible( LAYER_MOD_TEXT_INVISIBLE ) )
             return;
 
-        color = brd->GetVisibleElementColor( LAYER_MOD_TEXT_INVISIBLE );
+        color = brd->GetLayerColor( LAYER_MOD_TEXT_INVISIBLE );
     }
 
     DISPLAY_OPTIONS* displ_opts = (DISPLAY_OPTIONS*)aPanel->GetDisplayOptions();
@@ -264,7 +263,7 @@ void TEXTE_MODULE::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, GR_DRAWMODE aDrawMod
     // Draw the text anchor point
     if( brd->IsElementVisible( LAYER_ANCHOR ) )
     {
-        COLOR4D anchor_color = brd->GetVisibleElementColor( LAYER_ANCHOR );
+        COLOR4D anchor_color = brd->GetLayerColor( LAYER_ANCHOR );
         GRDrawAnchor( aPanel->GetClipBox(), aDC, pos.x, pos.y, DIM_ANCRE_TEXTE, anchor_color );
     }
 

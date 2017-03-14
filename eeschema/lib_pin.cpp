@@ -991,7 +991,7 @@ void LIB_PIN::DrawPinSymbol( EDA_DRAW_PANEL* aPanel,
     int       posX    = aPinPos.x, posY = aPinPos.y, len = m_length;
     EDA_RECT* clipbox = aPanel ? aPanel->GetClipBox() : NULL;
 
-    COLOR4D color = GetLayerColor( LAYER_PIN );
+    COLOR4D color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_PIN );
 
     if( aColor == COLOR4D::UNSPECIFIED )       // Used normal color or selected color
     {
@@ -1214,9 +1214,9 @@ void LIB_PIN::DrawPinTexts( EDA_DRAW_PANEL* panel,
         Color = GetItemSelectedColor();
 
     COLOR4D NameColor = Color == COLOR4D::UNSPECIFIED ?
-                            GetLayerColor( LAYER_PINNAM ) : Color;
+            COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_PINNAM ) : Color;
     COLOR4D NumColor  = Color == COLOR4D::UNSPECIFIED ?
-                            GetLayerColor( LAYER_PINNUM ) : Color;
+            COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_PINNUM ) : Color;
 
     /* Create the pin num string */
     PinStringNum( StringPinNum );
@@ -1416,7 +1416,7 @@ void LIB_PIN::DrawPinElectricalTypeName( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
     else if( !IsVisible() )
         aColor = GetInvisibleItemColor();
     else
-        aColor = GetLayerColor( LAYER_NOTES );
+        aColor = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_NOTES );
 
     wxPoint txtpos = aPosition;
     int offset = Millimeter2iu( 0.4 );
@@ -1459,7 +1459,7 @@ void LIB_PIN::DrawPinElectricalTypeName( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
 void LIB_PIN::PlotSymbol( PLOTTER* aPlotter, const wxPoint& aPosition, int aOrientation )
 {
     int         MapX1, MapY1, x1, y1;
-    COLOR4D     color = GetLayerColor( LAYER_PIN );
+    COLOR4D     color = aPlotter->themeManager->GetLayerColor( LAYER_PIN );
 
     aPlotter->SetColor( color );
     aPlotter->SetCurrentLineWidth( GetPenSize() );
@@ -1639,8 +1639,8 @@ void LIB_PIN::PlotPinTexts( PLOTTER* plotter, wxPoint& pin_pos, int  orient,
                          ( numLineWidth + GetDefaultLineThickness() ) / 2;
 
     /* Get the num and name colors */
-    COLOR4D NameColor = GetLayerColor( LAYER_PINNAM );
-    COLOR4D NumColor  = GetLayerColor( LAYER_PINNUM );
+    COLOR4D NameColor = plotter->themeManager->GetLayerColor( LAYER_PINNAM );
+    COLOR4D NumColor  = plotter->themeManager->GetLayerColor( LAYER_PINNUM );
 
     int x1 = pin_pos.x;
     int y1 = pin_pos.y;

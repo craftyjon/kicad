@@ -35,7 +35,6 @@
 #include <drawtxt.h>
 #include <kicad_string.h>
 #include <trigo.h>
-#include <colors_selection.h>
 #include <richio.h>
 #include <class_drawpanel.h>
 #include <macros.h>
@@ -96,7 +95,7 @@ void TEXTE_PCB::Draw( EDA_DRAW_PANEL* panel, wxDC* DC,
     COLOR4D anchor_color = COLOR4D::UNSPECIFIED;
 
     if( brd->IsElementVisible( LAYER_ANCHOR ) )
-        anchor_color = brd->GetVisibleElementColor( LAYER_ANCHOR );
+        anchor_color = brd->GetLayerColor( LAYER_ANCHOR );
 
     EDA_RECT* clipbox = panel? panel->GetClipBox() : NULL;
     EDA_TEXT::Draw( clipbox, DC, offset, color,

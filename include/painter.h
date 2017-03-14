@@ -33,6 +33,7 @@
 #include <gal/color4d.h>
 #include <worksheet_shape_builder.h>
 #include <layers_id_colors_and_visibility.h>
+#include <color_theme.h>
 #include <memory>
 
 class EDA_ITEM;
@@ -60,11 +61,14 @@ public:
     virtual ~RENDER_SETTINGS();
 
     /**
-     * Function ImportLegacyColors
-     * Loads a list of color settings for layers.
-     * @param aSettings is a list of color settings.
+     * Updates the internal color settings from the active color theme
+     *
+     * May be used to generate additional colors based on theme settings
+     * (for example, automatically picking net name color based on copper layer color)
+     *
+     * @param aThemeManager is the color theme manager for the application
      */
-    virtual void ImportLegacyColors( const COLORS_DESIGN_SETTINGS* aSettings ) = 0;
+    virtual void LoadColorSettings( const COLOR_THEME_MANAGER& aThemeManager ) = 0;
 
     /**
      * Function SetActiveLayer

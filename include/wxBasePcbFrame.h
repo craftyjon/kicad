@@ -138,6 +138,18 @@ public:
     const wxPoint& GetGridOrigin() const override;
     void SetGridOrigin( const wxPoint& aPoint ) override;
 
+    /// @copydoc EDA_DRAW_FRAME::GetGridColor()
+    COLOR4D GetGridColor() const override
+    {
+        return m_themeManager->GetLayerColor( LAYER_GRID );
+    }
+
+    /// @copydoc EDA_DRAW_FRAME::SetGridColor()
+    void SetGridColor( COLOR4D aColor ) override
+    {
+        m_themeManager->SetLayerColor( LAYER_GRID, aColor );
+    }
+
     const TITLE_BLOCK& GetTitleBlock() const override;
     void SetTitleBlock( const TITLE_BLOCK& aTitleBlock ) override;
 

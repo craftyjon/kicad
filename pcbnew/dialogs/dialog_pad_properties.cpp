@@ -131,7 +131,7 @@ DIALOG_PAD_PROPERTIES::DIALOG_PAD_PROPERTIES( PCB_BASE_FRAME* aParent, D_PAD* aP
 
     if( m_parent->IsGalCanvasActive() )
     {
-        m_panelShowPadGal->UseColorScheme( m_board->GetColorsSettings() );
+        m_panelShowPadGal->UseColorScheme( COLOR_THEME_MANAGER::Instance() );
         m_panelShowPadGal->SwitchBackend( m_parent->GetGalCanvas()->GetBackend() );
         m_panelShowPadGal->Show();
         m_panelShowPad->Hide();
@@ -171,12 +171,12 @@ void DIALOG_PAD_PROPERTIES::OnPaintShowPanel( wxPaintEvent& event )
 
     if( m_dummyPad->GetLayerSet()[F_Cu] )
     {
-        color = m_board->GetVisibleElementColor( LAYER_PAD_FR );
+        color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_PAD_FR );
     }
 
     if( m_dummyPad->GetLayerSet()[B_Cu] )
     {
-        color = color.LegacyMix( m_board->GetVisibleElementColor( LAYER_PAD_BK ) );
+        color = color.LegacyMix( COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_PAD_BK ) );
     }
 
     // What could happen: the pad color is *actually* black, or no

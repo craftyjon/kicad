@@ -38,7 +38,6 @@
 #include <confirm.h>
 #include <kicad_string.h>
 #include <pcbnew.h>
-#include <colors_selection.h>
 #include <richio.h>
 #include <filter_reader.h>
 #include <macros.h>
@@ -243,7 +242,7 @@ void MODULE::DrawAncre( EDA_DRAW_PANEL* panel, wxDC* DC, const wxPoint& offset,
     {
         GRDrawAnchor( panel->GetClipBox(), DC, m_Pos.x, m_Pos.y,
                       dim_ancre,
-                      g_ColorsSettings.GetItemColor( LAYER_ANCHOR ) );
+                      COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_ANCHOR ) );
     }
 }
 

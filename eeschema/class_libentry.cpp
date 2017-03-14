@@ -455,11 +455,11 @@ void LIB_PART::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDc, const wxPoint& aOffset,
 
 
 void LIB_PART::Plot( PLOTTER* aPlotter, int aUnit, int aConvert,
-                          const wxPoint& aOffset, const TRANSFORM& aTransform )
+                     const wxPoint& aOffset, const TRANSFORM& aTransform )
 {
     wxASSERT( aPlotter != NULL );
 
-    aPlotter->SetColor( GetLayerColor( LAYER_DEVICE ) );
+    aPlotter->SetColor( aPlotter->themeManager->GetLayerColor( LAYER_DEVICE ) );
     bool fill = aPlotter->GetColorMode();
 
     // draw background for filled items using background option
@@ -500,11 +500,11 @@ void LIB_PART::Plot( PLOTTER* aPlotter, int aUnit, int aConvert,
 }
 
 void LIB_PART::PlotLibFields( PLOTTER* aPlotter, int aUnit, int aConvert,
-                                  const wxPoint& aOffset, const TRANSFORM& aTransform )
+                              const wxPoint& aOffset, const TRANSFORM& aTransform )
 {
     wxASSERT( aPlotter != NULL );
 
-    aPlotter->SetColor( GetLayerColor( LAYER_FIELDS ) );
+    aPlotter->SetColor( aPlotter->themeManager->GetLayerColor( LAYER_FIELDS ) );
     bool fill = aPlotter->GetColorMode();
 
     for( LIB_ITEM& item : drawings )

@@ -34,7 +34,6 @@
 #include <common.h>
 #include <kicad_string.h>
 #include <pcbnew.h>
-#include <colors_selection.h>
 #include <richio.h>
 #include <macros.h>
 #include <msgpanel.h>
@@ -174,7 +173,7 @@ void RATSNEST_ITEM::Draw( EDA_DRAW_PANEL* panel,
 {
     GRSetDrawMode( DC, aDrawMode );
 
-    COLOR4D color = g_ColorsSettings.GetItemColor( LAYER_RATSNEST );
+    COLOR4D color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_RATSNEST );
 
     GRLine( panel->GetClipBox(), DC,
             m_PadStart->GetPosition() - aOffset,

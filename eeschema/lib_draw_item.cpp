@@ -32,6 +32,7 @@
 #include <class_drawpanel.h>
 #include <wxstruct.h>
 #include <msgpanel.h>
+#include <color_theme.h>
 
 #include <general.h>
 #include <lib_draw_item.h>
@@ -156,5 +157,5 @@ void LIB_ITEM::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
 
 COLOR4D LIB_ITEM::GetDefaultColor()
 {
-    return GetLayerColor( LAYER_DEVICE );
+    return COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_DEVICE );
 }

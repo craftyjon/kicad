@@ -90,8 +90,8 @@ public:
 
     PCB_RENDER_SETTINGS();
 
-    /// @copydoc RENDER_SETTINGS::ImportLegacyColors()
-    void ImportLegacyColors( const COLORS_DESIGN_SETTINGS* aSettings ) override;
+    /// @copydoc RENDER_SETTINGS::LoadColorSettings()
+    void LoadColorSettings( const COLOR_THEME_MANAGER& aThemeManager ) override;
 
     /**
      * Function LoadDisplayOptions

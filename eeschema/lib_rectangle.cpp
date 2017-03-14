@@ -179,12 +179,12 @@ void LIB_RECTANGLE::Plot( PLOTTER* aPlotter, const wxPoint& aOffset, bool aFill,
 
     if( aFill && m_Fill == FILLED_WITH_BG_BODYCOLOR )
     {
-        aPlotter->SetColor( GetLayerColor( LAYER_DEVICE_BACKGROUND ) );
+        aPlotter->SetColor( aPlotter->themeManager->GetLayerColor( LAYER_DEVICE_BACKGROUND ) );
         aPlotter->Rect( pos, end, FILLED_WITH_BG_BODYCOLOR, 0 );
     }
 
     bool already_filled = m_Fill == FILLED_WITH_BG_BODYCOLOR;
-    aPlotter->SetColor( GetLayerColor( LAYER_DEVICE ) );
+    aPlotter->SetColor( aPlotter->themeManager->GetLayerColor( LAYER_DEVICE ) );
     aPlotter->Rect( pos, end, already_filled ? NO_FILL : m_Fill, GetPenSize() );
 }
 
@@ -201,7 +201,7 @@ void LIB_RECTANGLE::drawGraphic( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
 {
     wxPoint pos1, pos2;
 
-    COLOR4D color = GetLayerColor( LAYER_DEVICE );
+    COLOR4D color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_DEVICE );
 
     if( aColor == COLOR4D::UNSPECIFIED )       // Used normal color or selected color
     {
@@ -224,10 +224,11 @@ void LIB_RECTANGLE::drawGraphic( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
     GRSetDrawMode( aDC, aDrawMode );
 
     EDA_RECT* const clipbox  = aPanel? aPanel->GetClipBox() : NULL;
+    COLOR4D bgcolor = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_DEVICE_BACKGROUND );
     if( fill == FILLED_WITH_BG_BODYCOLOR && !aData )
         GRFilledRect( clipbox, aDC, pos1.x, pos1.y, pos2.x, pos2.y, GetPenSize( ),
-                      (m_Flags & IS_MOVED) ? color : GetLayerColor( LAYER_DEVICE_BACKGROUND ),
-                      GetLayerColor( LAYER_DEVICE_BACKGROUND ) );
+                      (m_Flags & IS_MOVED) ? color : bgcolor,
+                      bgcolor );
     else if( m_Fill == FILLED_SHAPE  && !aData )
         GRFilledRect( clipbox, aDC, pos1.x, pos1.y, pos2.x, pos2.y,
                       GetPenSize(), color, color );

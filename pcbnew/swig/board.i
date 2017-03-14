@@ -62,14 +62,6 @@ HANDLE_EXCEPTIONS(BOARD::TracksInNetBetweenPoints)
 %include netinfo.i
 %include netclass.i
 
-%ignore operator++(SCH_LAYER_ID&);
-
-%ignore operator++(GAL_LAYER_ID&);
-
-%ignore operator+(const GAL_LAYER_ID&, int);
-
-%include layers_id_colors_and_visibility.h
-
 // Extend LSET by 2 methods to add or remove layers from the layer list
 // Mainly used to add or remove layers of a pad layer list
 %extend LSET
@@ -94,14 +86,16 @@ HANDLE_EXCEPTIONS(BOARD::TracksInNetBetweenPoints)
         return self.removeLayerSet( layers )
     %}
 }
-%{
-#include <layers_id_colors_and_visibility.h>
-%}
-
 
 // std::vector templates
 %template(VIA_DIMENSION_Vector) std::vector<VIA_DIMENSION>;
 %template(RATSNEST_Vector)      std::vector<RATSNEST_ITEM>;
+
+%ignore BOARD::SetLayerColor(PCB_LAYER_ID, COLOR4D);
+%ignore BOARD::GetLayerColor(PCB_LAYER_ID) const;
+%ignore BOARD::SetLayerColor(GAL_LAYER_ID, COLOR4D);
+%ignore BOARD::GetLayerColor(GAL_LAYER_ID) const;
+
 %include class_board.h
 %{
 #include <class_board.h>

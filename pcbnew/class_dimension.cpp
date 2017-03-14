@@ -34,7 +34,6 @@
 #include <trigo.h>
 #include <wxstruct.h>
 #include <class_drawpanel.h>
-#include <colors_selection.h>
 #include <kicad_string.h>
 #include <richio.h>
 #include <bitmaps.h>

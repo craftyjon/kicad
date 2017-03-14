@@ -34,7 +34,6 @@
 #include <help_common_strings.h>
 #include <dialog_helpers.h>
 #include <class_layer_box_selector.h>
-#include <colors_selection.h>
 #include <wxPcbStruct.h>
 #include <class_drawpanel.h>
 #include <confirm.h>
@@ -111,7 +110,7 @@ void PCB_EDIT_FRAME::PrepareLayerIndicator()
     }
 
     Route_Layer_TOP_color =
-        g_ColorsSettings.GetLayerColor( GetScreen()->m_Route_Layer_TOP );
+        COLOR_THEME_MANAGER::Instance().GetLayerColor( GetScreen()->m_Route_Layer_TOP );
 
     if( previous_Route_Layer_TOP_color != Route_Layer_TOP_color )
     {
@@ -120,7 +119,7 @@ void PCB_EDIT_FRAME::PrepareLayerIndicator()
     }
 
     Route_Layer_BOTTOM_color =
-        g_ColorsSettings.GetLayerColor( GetScreen()->m_Route_Layer_BOTTOM );
+        COLOR_THEME_MANAGER::Instance().GetLayerColor( GetScreen()->m_Route_Layer_BOTTOM );
 
     if( previous_Route_Layer_BOTTOM_color != Route_Layer_BOTTOM_color )
     {
@@ -129,7 +128,7 @@ void PCB_EDIT_FRAME::PrepareLayerIndicator()
     }
 
     int via_type = GetDesignSettings().m_CurrentViaType;
-    via_color = GetBoard()->GetVisibleElementColor( LAYER_VIAS + via_type );
+    via_color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_VIAS + via_type );
 
     if( previous_via_color != via_color )
     {

@@ -595,7 +595,7 @@ void SCH_SHEET::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
     if( aColor != COLOR4D::UNSPECIFIED )
         color = aColor;
     else
-        color = GetLayerColor( m_Layer );
+        color = COLOR_THEME_MANAGER::Instance().GetLayerColor( m_Layer );
 
     GRSetDrawMode( aDC, aDrawMode );
 
@@ -614,7 +614,7 @@ void SCH_SHEET::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
     if( aColor != COLOR4D::UNSPECIFIED )
         txtcolor = aColor;
     else
-        txtcolor = GetLayerColor( LAYER_SHEETNAME );
+        txtcolor = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_SHEETNAME );
 
     Text = wxT( "Sheet: " ) + m_name;
     DrawGraphicText( clipbox, aDC, pos_sheetname,
@@ -627,7 +627,7 @@ void SCH_SHEET::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
     if( aColor != COLOR4D::UNSPECIFIED )
         txtcolor = aColor;
     else
-        txtcolor = GetLayerColor( LAYER_SHEETFILENAME );
+        txtcolor = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_SHEETFILENAME );
 
     Text = wxT( "File: " ) + m_fileName;
     DrawGraphicText( clipbox, aDC, pos_filename,
@@ -1145,7 +1145,7 @@ void SCH_SHEET::Plot( PLOTTER* aPlotter )
     wxPoint     pos_sheetname, pos_filename;
     wxPoint     pos;
 
-    aPlotter->SetColor( GetLayerColor( GetLayer() ) );
+    aPlotter->SetColorByLayer( GetLayer() );
 
     int thickness = GetPenSize();
     aPlotter->SetCurrentLineWidth( thickness );
@@ -1185,7 +1185,7 @@ void SCH_SHEET::Plot( PLOTTER* aPlotter )
     thickness = GetDefaultLineThickness();
     thickness = Clamp_Text_PenSize( thickness, size, false );
 
-    aPlotter->SetColor( GetLayerColor( LAYER_SHEETNAME ) );
+    aPlotter->SetColorByLayer( LAYER_SHEETNAME );
 
     bool italic = false;
     aPlotter->Text( pos_sheetname, txtcolor, Text, name_orientation, size,
@@ -1198,13 +1198,13 @@ void SCH_SHEET::Plot( PLOTTER* aPlotter )
     thickness = GetDefaultLineThickness();
     thickness = Clamp_Text_PenSize( thickness, size, false );
 
-    aPlotter->SetColor( GetLayerColor( LAYER_SHEETFILENAME ) );
+    aPlotter->SetColorByLayer( LAYER_SHEETFILENAME );
 
     aPlotter->Text( pos_filename, txtcolor, Text, name_orientation, size,
                     GR_TEXT_HJUSTIFY_LEFT, GR_TEXT_VJUSTIFY_TOP,
                     thickness, italic, false );
 
-    aPlotter->SetColor( GetLayerColor( GetLayer() ) );
+    aPlotter->SetColorByLayer( GetLayer() );
 
     /* Draw texts : SheetLabel */
     for( size_t i = 0; i < m_pins.size(); i++ )

@@ -172,11 +172,11 @@ void SCH_FIELD::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOffset,
     else
     {
         if( m_id == REFERENCE )
-            color = GetLayerColor( LAYER_REFERENCEPART );
+            color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_REFERENCEPART );
         else if( m_id == VALUE )
-            color = GetLayerColor( LAYER_VALUEPART );
+            color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_VALUEPART );
         else
-            color = GetLayerColor( LAYER_FIELDS );
+            color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_FIELDS );
     }
 
     EDA_RECT* clipbox = aPanel ? aPanel->GetClipBox() : NULL;
@@ -534,7 +534,7 @@ void SCH_FIELD::Plot( PLOTTER* aPlotter )
     wxCHECK_RET( parent != NULL && parent->Type() == SCH_COMPONENT_T,
                  wxT( "Cannot plot field with invalid parent." ) );
 
-    COLOR4D color = GetLayerColor( GetLayer() );
+    COLOR4D color = COLOR_THEME_MANAGER::Instance().GetLayerColor( GetLayer() );
 
     if( !IsVisible() )
         return;

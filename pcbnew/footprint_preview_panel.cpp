@@ -259,7 +259,7 @@ FOOTPRINT_PREVIEW_PANEL::FOOTPRINT_PREVIEW_PANEL(
 
     m_dummyBoard = std::make_unique<BOARD>();
 
-    UseColorScheme( m_dummyBoard->GetColorsSettings() );
+    UseColorScheme( COLOR_THEME_MANAGER::Instance() );
     SyncLayersVisibility( &*m_dummyBoard );
 
     Raise();

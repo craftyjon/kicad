@@ -411,10 +411,10 @@ void PlotStandardLayer( BOARD *aBoard, PLOTTER* aPlotter,
             COLOR4D color = COLOR4D::BLACK;
 
             if( pad->GetLayerSet()[B_Cu] )
-               color = aBoard->GetVisibleElementColor( LAYER_PAD_BK );
+               color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_PAD_BK );
 
             if( pad->GetLayerSet()[F_Cu] )
-                color = color.LegacyMix( aBoard->GetVisibleElementColor( LAYER_PAD_FR ) );
+                color = color.LegacyMix( COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_PAD_FR ) );
 
             // Temporary set the pad size to the required plot size:
             wxSize tmppadsize = pad->GetSize();
@@ -507,7 +507,7 @@ void PlotStandardLayer( BOARD *aBoard, PLOTTER* aPlotter,
 
         gbr_metadata.SetNetName( Via->GetNetname() );
 
-        COLOR4D color = aBoard->GetVisibleElementColor( LAYER_VIAS + Via->GetViaType() );
+        COLOR4D color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_VIAS + Via->GetViaType() );
         // Set plot color (change WHITE to LIGHTGRAY because
         // the white items are not seen on a white paper or screen
         aPlotter->SetColor( color != WHITE ? color : LIGHTGRAY);

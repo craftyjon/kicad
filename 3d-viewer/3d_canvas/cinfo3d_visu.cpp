@@ -33,7 +33,6 @@
 #include <class_board.h>
 #include <3d_math.h>
 #include "3d_fastmath.h"
-#include <colors_selection.h>
 
 /**
  *  Trace mask used to enable or disable the trace output of this class.
@@ -530,15 +529,13 @@ SFVEC3F CINFO3D_VISU::GetLayerColor( PCB_LAYER_ID aLayerId ) const
 {
     wxASSERT( aLayerId < PCB_LAYER_ID_COUNT );
 
-    const COLOR4D color = g_ColorsSettings.GetLayerColor( aLayerId );
-
-    return SFVEC3F( color.r, color.g, color.b );
+    return GetColor( COLOR_THEME_MANAGER::Instance().GetLayerColor( aLayerId ) );
 }
 
 
-SFVEC3F CINFO3D_VISU::GetItemColor( int aItemId ) const
+SFVEC3F CINFO3D_VISU::GetItemColor( GAL_LAYER_ID aItemId ) const
 {
-    return GetColor( g_ColorsSettings.GetItemColor( aItemId ) );
+    return GetColor( COLOR_THEME_MANAGER::Instance().GetLayerColor( aItemId ) );
 }
 
 

@@ -220,7 +220,7 @@ void SCH_LINE::Draw( EDA_DRAW_PANEL* panel, wxDC* DC, const wxPoint& offset,
     if( Color != COLOR4D::UNSPECIFIED )
         color = Color;
     else
-        color = GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
+        color = COLOR_THEME_MANAGER::Instance().GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
 
     GRSetDrawMode( DC, DrawMode );
 
@@ -579,7 +579,7 @@ bool SCH_LINE::doIsConnected( const wxPoint& aPosition ) const
 
 void SCH_LINE::Plot( PLOTTER* aPlotter )
 {
-    aPlotter->SetColor( GetLayerColor( GetLayer() ) );
+    aPlotter->SetColorByLayer( GetLayer() );
     aPlotter->SetCurrentLineWidth( GetPenSize() );
 
     if( m_Layer == LAYER_NOTES )

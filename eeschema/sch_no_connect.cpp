@@ -142,7 +142,7 @@ void SCH_NO_CONNECT::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOf
     if( aColor != COLOR4D::UNSPECIFIED )
         color = aColor;
     else
-        color = GetLayerColor( LAYER_NOCONNECT );
+        color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_NOCONNECT );
 
     GRSetDrawMode( aDC, aDrawMode );
 
@@ -245,7 +245,7 @@ void SCH_NO_CONNECT::Plot( PLOTTER* aPlotter )
     pY = m_pos.y;
 
     aPlotter->SetCurrentLineWidth( GetPenSize() );
-    aPlotter->SetColor( GetLayerColor( GetLayer() ) );
+    aPlotter->SetColorByLayer( GetLayer() );
     aPlotter->MoveTo( wxPoint( pX - delta, pY - delta ) );
     aPlotter->FinishTo( wxPoint( pX + delta, pY + delta ) );
     aPlotter->MoveTo( wxPoint( pX + delta, pY - delta ) );

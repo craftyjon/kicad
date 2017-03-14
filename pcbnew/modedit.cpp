@@ -62,7 +62,6 @@
 #include <wildcards_and_files_ext.h>
 #include <menus_helpers.h>
 #include <footprint_wizard_frame.h>
-#include <pcbnew_config.h>
 
 #include <functional>
 using namespace std::placeholders;
@@ -976,7 +975,7 @@ void FOOTPRINT_EDIT_FRAME::OnVerticalToolbar( wxCommandEvent& aEvent )
 
 COLOR4D FOOTPRINT_EDIT_FRAME::GetGridColor() const
 {
-    return g_ColorsSettings.GetItemColor( LAYER_GRID );
+    return COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_GRID );
 }
 
 

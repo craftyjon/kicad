@@ -268,12 +268,12 @@ void LIB_BEZIER::Plot( PLOTTER* aPlotter, const wxPoint& aOffset, bool aFill,
 
     if( aFill && m_Fill == FILLED_WITH_BG_BODYCOLOR )
     {
-        aPlotter->SetColor( GetLayerColor( LAYER_DEVICE_BACKGROUND ) );
+        aPlotter->SetColorByLayer( LAYER_DEVICE_BACKGROUND );
         aPlotter->PlotPoly( cornerList, FILLED_WITH_BG_BODYCOLOR, 0 );
     }
 
     bool already_filled = m_Fill == FILLED_WITH_BG_BODYCOLOR;
-    aPlotter->SetColor( GetLayerColor( LAYER_DEVICE ) );
+    aPlotter->SetColor( aPlotter->themeManager->GetLayerColor( LAYER_DEVICE ) );
     aPlotter->PlotPoly( cornerList, already_filled ? NO_FILL : m_Fill, GetPenSize() );
 }
 
@@ -290,7 +290,7 @@ void LIB_BEZIER::drawGraphic( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& 
 {
     std::vector<wxPoint> PolyPointsTraslated;
 
-    COLOR4D color = GetLayerColor( LAYER_DEVICE );
+    COLOR4D color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_DEVICE );
 
     m_PolyPoints = Bezier2Poly( m_BezierPoints[0],
                                 m_BezierPoints[1],
@@ -320,11 +320,12 @@ void LIB_BEZIER::drawGraphic( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& 
 
     GRSetDrawMode( aDC, aDrawMode );
 
+    COLOR4D bg = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_DEVICE_BACKGROUND );
+
     if( fill == FILLED_WITH_BG_BODYCOLOR )
         GRPoly( aPanel->GetClipBox(), aDC, m_PolyPoints.size(),
                 &PolyPointsTraslated[0], 1, GetPenSize(),
-                (m_Flags & IS_MOVED) ? color : GetLayerColor( LAYER_DEVICE_BACKGROUND ),
-                GetLayerColor( LAYER_DEVICE_BACKGROUND ) );
+                (m_Flags & IS_MOVED) ? color : bg, bg );
     else if( fill == FILLED_SHAPE  )
         GRPoly( aPanel->GetClipBox(), aDC, m_PolyPoints.size(),
                 &PolyPointsTraslated[0], 1, GetPenSize(), color, color );

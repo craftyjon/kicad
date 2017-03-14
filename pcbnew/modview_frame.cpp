@@ -51,7 +51,6 @@
 
 #include <hotkeys.h>
 #include <wildcards_and_files_ext.h>
-#include <pcbnew_config.h>
 
 #include <tool/tool_manager.h>
 #include <tool/tool_dispatcher.h>
@@ -685,7 +684,7 @@ void FOOTPRINT_VIEWER_FRAME::Update3D_Frame( bool aForceReloadFootprint )
 
 COLOR4D FOOTPRINT_VIEWER_FRAME::GetGridColor() const
 {
-    return g_ColorsSettings.GetItemColor( LAYER_GRID );
+    return COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_GRID );
 }
 
 

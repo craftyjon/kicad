@@ -27,6 +27,7 @@
 
 #include <class_draw_panel_gal.h>
 #include <layers_id_colors_and_visibility.h>
+#include <color_theme.h>
 
 namespace KIGFX
 {
@@ -62,9 +63,9 @@ public:
     /**
      * Function UseColorScheme
      * Applies layer color settings.
-     * @param aSettings are the new settings.
+     * @param aThemeManager is the active color theme manager
      */
-    void UseColorScheme( const COLORS_DESIGN_SETTINGS* aSettings );
+    void UseColorScheme( const COLOR_THEME_MANAGER& aThemeManager );
 
     ///> @copydoc EDA_DRAW_PANEL_GAL::SetHighContrastLayer()
     virtual void SetHighContrastLayer( int aLayer ) override

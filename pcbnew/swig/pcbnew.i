@@ -50,11 +50,6 @@
 %ignore BOARD_ITEM::ZeroOffset;
 %ignore D_PAD::m_PadSketchModePenSize;
 
-class BASE_SET {};
-%ignore BASE_SET;
-
-
-
 // this is what it must be included in the wrapper .cxx code to compile
 
 %{

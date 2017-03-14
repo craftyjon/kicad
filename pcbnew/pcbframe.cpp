@@ -50,7 +50,6 @@
 #include <dialog_design_rules.h>
 #include <class_pcb_layer_widget.h>
 #include <hotkeys.h>
-#include <pcbnew_config.h>
 #include <module_editor_frame.h>
 #include <dialog_helpers.h>
 #include <dialog_plot.h>
@@ -719,30 +718,14 @@ void PCB_EDIT_FRAME::UseGalCanvas( bool aEnable )
 
     enableGALSpecificMenus();
 
-    // Force colors to be legacy-compatible in case they were changed in GAL
+    // Force colors to be legacy-compatible
+    COLOR_THEME_MANAGER::Instance().SetLegacyMode( !aEnable );
     if( !aEnable )
-    {
-        forceColorsToLegacy();
         Refresh();
-    }
 
     // Re-create the layer manager to allow arbitrary colors when GAL is enabled
     ReFillLayerWidget();
     m_Layers->ReFillRender();
-}
-
-
-void PCB_EDIT_FRAME::forceColorsToLegacy()
-{
-    COLORS_DESIGN_SETTINGS* cds = GetBoard()->GetColorsSettings();
-
-    for( unsigned i = 0; i < DIM( cds->m_LayersColors ); i++ )
-    {
-        COLOR4D c = cds->GetLayerColor( i );
-        c.SetToNearestLegacyColor();
-        c.a = 0.8;
-        cds->SetLayerColor( i, c );
-    }
 }
 
 
@@ -845,14 +828,14 @@ void PCB_EDIT_FRAME::SetGridVisibility(bool aVisible)
 
 COLOR4D PCB_EDIT_FRAME::GetGridColor() const
 {
-    return GetBoard()->GetVisibleElementColor( LAYER_GRID );
+    return COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_GRID );
 }
 
 
 void PCB_EDIT_FRAME::SetGridColor( COLOR4D aColor )
 {
 
-    GetBoard()->SetVisibleElementColor( LAYER_GRID, aColor );
+    COLOR_THEME_MANAGER::Instance().SetLayerColor( LAYER_GRID, aColor );
 
     if( IsGalCanvasActive() )
     {

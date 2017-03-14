@@ -134,12 +134,12 @@ void D_PAD::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, GR_DRAWMODE aDraw_mode,
 
     if( m_layerMask[F_Cu] )
     {
-        color = brd->GetVisibleElementColor( LAYER_PAD_FR );
+        color = brd->GetLayerColor( LAYER_PAD_FR );
     }
 
     if( m_layerMask[B_Cu] )
     {
-        color = color.LegacyMix( brd->GetVisibleElementColor( LAYER_PAD_BK ) );
+        color = color.LegacyMix( brd->GetLayerColor( LAYER_PAD_BK ) );
     }
 
     if( color == BLACK ) // Not on a visible copper layer (i.e. still nothing to show)
@@ -276,7 +276,7 @@ void D_PAD::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, GR_DRAWMODE aDraw_mode,
         brd->IsElementVisible( LAYER_NON_PLATED ) )
     {
         drawInfo.m_ShowNotPlatedHole = true;
-        drawInfo.m_NPHoleColor = brd->GetVisibleElementColor( LAYER_NON_PLATED );
+        drawInfo.m_NPHoleColor = brd->GetLayerColor( LAYER_NON_PLATED );
     }
 
     drawInfo.m_DrawMode    = aDraw_mode;

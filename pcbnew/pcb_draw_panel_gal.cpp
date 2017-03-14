@@ -30,7 +30,6 @@
 #include <ratsnest_viewitem.h>
 #include <ratsnest_data.h>
 
-#include <class_colors_design_settings.h>
 #include <class_board.h>
 #include <class_module.h>
 #include <class_track.h>
@@ -158,7 +157,7 @@ void PCB_DRAW_PANEL_GAL::DisplayBoard( const BOARD* aBoard )
     m_view->Add( m_ratsnest.get() );
 
     // Display settings
-    UseColorScheme( aBoard->GetColorsSettings() );
+    UseColorScheme( COLOR_THEME_MANAGER::Instance() );
 }
 
 
@@ -169,11 +168,11 @@ void PCB_DRAW_PANEL_GAL::SetWorksheet( KIGFX::WORKSHEET_VIEWITEM* aWorksheet )
 }
 
 
-void PCB_DRAW_PANEL_GAL::UseColorScheme( const COLORS_DESIGN_SETTINGS* aSettings )
+void PCB_DRAW_PANEL_GAL::UseColorScheme( const COLOR_THEME_MANAGER& aThemeManager )
 {
     KIGFX::PCB_RENDER_SETTINGS* rs;
     rs = static_cast<KIGFX::PCB_RENDER_SETTINGS*>( m_view->GetPainter()->GetSettings() );
-    rs->ImportLegacyColors( aSettings );
+    rs->LoadColorSettings( aThemeManager );
 }
 
 

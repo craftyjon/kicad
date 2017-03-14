@@ -301,8 +301,8 @@ void PCB_LAYER_WIDGET::ReFillRender()
 
         if( renderRow.color != COLOR4D::UNSPECIFIED )       // does this row show a color?
         {
-            // this window frame must have an established BOARD, i.e. after SetBoard()
-            renderRow.color = board->GetVisibleElementColor( static_cast<GAL_LAYER_ID>( renderRow.id ) );
+            renderRow.color = COLOR_THEME_MANAGER::Instance().GetLayerColor(
+                    static_cast<GAL_LAYER_ID>( renderRow.id ) );
         }
 
         renderRow.state = board->IsElementVisible( static_cast<GAL_LAYER_ID>( renderRow.id ) );
@@ -450,7 +450,7 @@ void PCB_LAYER_WIDGET::OnLayerColorChange( int aLayer, COLOR4D aColor )
     if( myframe->IsGalCanvasActive() )
     {
         KIGFX::VIEW* view = myframe->GetGalCanvas()->GetView();
-        view->GetPainter()->GetSettings()->ImportLegacyColors( myframe->GetBoard()->GetColorsSettings() );
+        view->GetPainter()->GetSettings()->LoadColorSettings( COLOR_THEME_MANAGER::Instance() );
         view->UpdateLayerColor( aLayer );
         view->UpdateLayerColor( GetNetnameLayer( aLayer ) );
     }
@@ -518,12 +518,12 @@ void PCB_LAYER_WIDGET::OnLayerVisible( int aLayer, bool isVisible, bool isFinal 
 void PCB_LAYER_WIDGET::OnRenderColorChange( int aId, COLOR4D aColor )
 {
     wxASSERT( aId > GAL_LAYER_ID_START && aId < GAL_LAYER_ID_END );
-    myframe->GetBoard()->SetVisibleElementColor( static_cast<GAL_LAYER_ID>( aId ), aColor );
+    COLOR_THEME_MANAGER::Instance().SetLayerColor( static_cast<GAL_LAYER_ID>( aId ), aColor );
 
     if( myframe->GetGalCanvas() )
     {
         KIGFX::VIEW* view = myframe->GetGalCanvas()->GetView();
-        view->GetPainter()->GetSettings()->ImportLegacyColors( myframe->GetBoard()->GetColorsSettings() );
+        view->GetPainter()->GetSettings()->LoadColorSettings( COLOR_THEME_MANAGER::Instance() );
         view->UpdateLayerColor( aId );
     }
 

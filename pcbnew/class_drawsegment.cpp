@@ -36,7 +36,6 @@
 #include <bezier_curves.h>
 #include <class_drawpanel.h>
 #include <class_pcb_screen.h>
-#include <colors_selection.h>
 #include <trigo.h>
 #include <msgpanel.h>
 #include <bitmaps.h>

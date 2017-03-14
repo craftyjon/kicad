@@ -52,7 +52,6 @@
 #include <pcbnew.h>
 #include <pcbnew_id.h>
 #include <hotkeys.h>
-#include <pcbnew_config.h>
 #include <module_editor_frame.h>
 #include <modview_frame.h>
 
@@ -328,8 +327,6 @@ PARAM_CFG_ARRAY& PCB_EDIT_FRAME::GetConfigurationSettings()
 
     if( m_configSettings.empty() )
     {
-        COLORS_DESIGN_SETTINGS cds;         // constructor fills this with sensible colors
-
         // Units used in dialogs and toolbars
         m_configSettings.push_back( new PARAM_CFG_INT( true, wxT( "Units" ),
                                                        (int*)&g_UserUnit, MILLIMETRES ) );
@@ -361,6 +358,8 @@ PARAM_CFG_ARRAY& PCB_EDIT_FRAME::GetConfigurationSettings()
         m_configSettings.push_back( new PARAM_CFG_INT( true, wxT( "PcbShowZonesMode" ),
                                                        &displ_opts->m_DisplayZonesMode, 0, 0, 2 ) );
 
+        // TODO(JE) Remove
+        /*
         // layer colors:
         wxASSERT( DIM( cds.m_LayersColors ) >= PCB_LAYER_ID_COUNT );
         for( int i = 0;  i<PCB_LAYER_ID_COUNT;  ++i )
@@ -402,7 +401,7 @@ PARAM_CFG_ARRAY& PCB_EDIT_FRAME::GetConfigurationSettings()
         m_configSettings.push_back( new PARAM_CFG_SETCOLOR( true, wxT( "ColorRatsEx" ),
                                                             ITEM_COLOR( LAYER_RATSNEST ),
                                                             WHITE ) );
-
+        */
         // Miscellaneous:
         m_configSettings.push_back( new PARAM_CFG_INT( true, wxT( "RotationAngle" ), &m_rotationAngle,
                                                        900, 1, 900 ) );

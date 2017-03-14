@@ -161,23 +161,6 @@ PGM_BASE& Pgm()
 }
 
 
-static COLOR4D s_layerColor[SCH_LAYER_ID_COUNT];
-
-COLOR4D GetLayerColor( SCH_LAYER_ID aLayer )
-{
-    unsigned layer = SCH_LAYER_INDEX( aLayer );
-    wxASSERT( layer < DIM( s_layerColor ) );
-    return s_layerColor[layer];
-}
-
-void SetLayerColor( COLOR4D aColor, SCH_LAYER_ID aLayer )
-{
-    unsigned layer = SCH_LAYER_INDEX( aLayer );
-    wxASSERT( layer < DIM( s_layerColor ) );
-    s_layerColor[layer] = aColor;
-}
-
-
 static PARAM_CFG_ARRAY& cfg_params()
 {
     static PARAM_CFG_ARRAY ca;
@@ -186,7 +169,7 @@ static PARAM_CFG_ARRAY& cfg_params()
     {
         // These are KIFACE specific, they need to be loaded once when the
         // eeschema KIFACE comes in.
-
+/*
 #define CLR(x, y, z)\
     ca.push_back( new PARAM_CFG_SETCOLOR( true, wxT( x ),\
                                           &s_layerColor[SCH_LAYER_INDEX( y )], z ) );
@@ -217,6 +200,7 @@ static PARAM_CFG_ARRAY& cfg_params()
         CLR( "ColorGridEx",             LAYER_SCHEMATIC_GRID,       COLOR4D( DARKGRAY ) )
         CLR( "ColorBgCanvasEx",         LAYER_SCHEMATIC_BACKGROUND, COLOR4D( WHITE ) )
         CLR( "ColorBrighenedEx",        LAYER_BRIGHTENED,           COLOR4D( PUREMAGENTA ) )
+*/
     }
 
     return ca;
@@ -231,13 +215,14 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits )
 
     start_common( aCtlBits );
 
+/*
     // Give a default colour for all layers
     // (actual color will be initialized by config)
     for( SCH_LAYER_ID ii = SCH_LAYER_ID_START; ii < SCH_LAYER_ID_END; ++ii )
         SetLayerColor( COLOR4D( DARKGRAY ), ii );
 
     SetLayerColor( COLOR4D::WHITE, LAYER_SCHEMATIC_BACKGROUND );
-
+*/
     // Must be called before creating the main frame in order to
     // display the real hotkeys in menus or tool tips
     ReadHotkeyConfig( SCH_EDIT_FRAME_NAME, g_Eeschema_Hokeys_Descr );

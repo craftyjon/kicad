@@ -112,10 +112,29 @@ public:
     }
     void SetGridOrigin( const wxPoint& aPoint ) override {}
 
-    // Virtual from EDA_DRAW_FRAME
-    // the background color of the draw canvas:
-    COLOR4D GetDrawBgColor() const override;
-    void SetDrawBgColor( COLOR4D aColor) override;
+    /// @copydoc EDA_DRAW_FRAME::GetGridColor()
+    COLOR4D GetGridColor() const override
+    {
+        return m_themeManager->GetLayerColor( LAYER_SCHEMATIC_GRID );
+    }
+
+    /// @copydoc EDA_DRAW_FRAME::SetGridColor()
+    void SetGridColor( COLOR4D aColor ) override
+    {
+        m_themeManager->SetLayerColor( LAYER_SCHEMATIC_GRID, aColor );
+    }
+
+    /// @copydoc EDA_DRAW_FRAME::GetDrawBgColor()
+    COLOR4D GetDrawBgColor() const override
+    {
+        return m_themeManager->GetLayerColor( LAYER_SCHEMATIC_BACKGROUND );
+    }
+
+    /// @copydoc EDA_DRAW_FRAME::SetDrawBgColor()
+    void SetDrawBgColor( COLOR4D aColor ) override
+    {
+        m_themeManager->SetLayerColor( LAYER_SCHEMATIC_BACKGROUND, aColor );
+    }
 
     const TITLE_BLOCK& GetTitleBlock() const override;
     void SetTitleBlock( const TITLE_BLOCK& aTitleBlock ) override;
@@ -139,6 +158,24 @@ public:
     };
 
     typedef std::vector<COMPONENT_SELECTION> HISTORY_LIST;
+
+    /**
+     * Function GetLayerColor
+     * gets a layer color for any valid layer.
+     */
+    COLOR4D GetLayerColor( SCH_LAYER_ID aLayer ) const
+    {
+        return m_themeManager->GetLayerColor( aLayer );
+    }
+
+    /**
+     * Function SetLayerColor
+     * changes a layer color for any valid layer.
+     */
+    void SetLayerColor( SCH_LAYER_ID aLayer, COLOR4D aColor )
+    {
+        m_themeManager->SetLayerColor( aLayer, aColor );
+    }
 
     /**
      * Function SelectComponentFromLib

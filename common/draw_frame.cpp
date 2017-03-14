@@ -153,10 +153,7 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
     m_showOriginAxis      = false;      // true to draw the grid origin
     m_LastGridSizeId      = 0;
     m_drawGrid            = true;       // hide/Show grid. default = show
-    m_gridColor           = COLOR4D( DARKGRAY );   // Default grid color
     m_showPageLimits      = false;
-    m_drawBgColor         = COLOR4D( BLACK );   // the background color of the draw canvas:
-                                                // BLACK for Pcbnew, BLACK or WHITE for eeschema
     m_snapToGrid          = true;
     m_MsgFrameHeight      = EDA_MSG_PANEL::GetRequiredHeight();
     m_movingCursorWithKeyboard = false;
@@ -207,6 +204,8 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
                                          wxSize( m_FrameSize.x, m_MsgFrameHeight ) );
 
     m_messagePanel->SetBackgroundColour( COLOR4D( LIGHTGRAY ).ToColour() );
+
+    m_themeManager = &COLOR_THEME_MANAGER::Instance();
 }
 
 

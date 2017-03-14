@@ -37,6 +37,7 @@
 #include <drawtxt.h>
 #include <class_page_info.h>
 #include <eda_text.h>       // FILL_T
+#include <color_theme.h>
 
 class SHAPE_POLY_SET;
 class GBR_NETLIST_METADATA;
@@ -123,6 +124,11 @@ public:
         return colorMode;
     }
 
+    void SetColorThemeManager( COLOR_THEME_MANAGER* aManager )
+    {
+        themeManager = aManager;
+    }
+
     virtual void SetPageSettings( const PAGE_INFO& aPageSettings );
 
     /**
@@ -145,6 +151,14 @@ public:
     }
 
     virtual void SetColor( COLOR4D color ) = 0;
+
+    /**
+     * Shortcut to set the plot color from the color theme manager
+     */
+    void SetColorByLayer( SCH_LAYER_ID aLayer )
+    {
+        SetColor( themeManager->GetLayerColor( aLayer ) );
+    }
 
     virtual void SetDash( bool dashed ) = 0;
 
@@ -550,6 +564,10 @@ protected:      // variables used in most of plotters:
     wxSize        paperSize;
 
     wxArrayString m_headerExtraLines;  /// a set of string to print in header file
+
+public:
+    /// Used to retrieve layer colors for items in their ::Plot() methods
+    COLOR_THEME_MANAGER* themeManager;
 };
 
 

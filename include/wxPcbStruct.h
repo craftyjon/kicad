@@ -118,12 +118,6 @@ protected:
      */
     void enableGALSpecificMenus();
 
-    /**
-     * Helper function to coerce all colors to legacy-compatible when
-     * switching from GAL to legacy canvas
-     */
-    void forceColorsToLegacy();
-
 #if defined(KICAD_SCRIPTING) && defined(KICAD_SCRIPTING_ACTION_MENU)
     /**
      * Function RebuildActionPluginMenus

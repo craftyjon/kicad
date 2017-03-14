@@ -34,7 +34,6 @@
 #include <class_pcb_screen.h>
 #include <class_drawpanel.h>
 #include <kicad_string.h>
-#include <colors_selection.h>
 #include <richio.h>
 #include <macros.h>
 #include <wxBasePcbFrame.h>

@@ -214,12 +214,12 @@ set( COMMON_SRCS
     block_commande.cpp
     build_version.cpp
     class_bitmap_base.cpp
-    class_colors_design_settings.cpp
     class_layer_box_selector.cpp
     class_marker_base.cpp
     class_plotter.cpp
     class_undoredo_container.cpp
     colors.cpp
+    color_theme.cpp
     commit.cpp
     common.cpp
     common_plot_functions.cpp

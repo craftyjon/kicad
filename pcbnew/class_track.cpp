@@ -37,7 +37,6 @@
 #include <class_drawpanel.h>
 #include <class_pcb_screen.h>
 #include <drawtxt.h>
-#include <colors_selection.h>
 #include <wxstruct.h>
 #include <wxBasePcbFrame.h>
 #include <class_board.h>
@@ -795,8 +794,8 @@ void VIA::Draw( EDA_DRAW_PANEL* panel, wxDC* aDC, GR_DRAWMODE aDrawMode, const w
 
     GRSetDrawMode( aDC, aDrawMode );
 
-    BOARD * brd =  GetBoard();
-    COLOR4D color = brd->GetVisibleElementColor( LAYER_VIAS + GetViaType() );
+    BOARD* brd = GetBoard();
+    COLOR4D color = brd->GetLayerColor( LAYER_VIAS + GetViaType() );
 
     if( brd->IsElementVisible( LAYER_VIAS + GetViaType() ) == false
         && !( aDrawMode & GR_HIGHLIGHT ) )

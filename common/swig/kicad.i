@@ -76,6 +76,13 @@ principle should be easily implemented by adapting the current STL containers.
 
 %include dlist.i
 
+%ignore operator++(SCH_LAYER_ID&);
+%ignore operator++(GAL_LAYER_ID&);
+%ignore operator+(const GAL_LAYER_ID&, int);
+
+class BASE_SET {};
+%ignore BASE_SET;
+
 // headers/imports that must be included in the _wrapper.cpp at top
 
 %{
@@ -90,14 +97,17 @@ principle should be easily implemented by adapting the current STL containers.
     #include <bitset>
 
     #include <class_title_block.h>
-    #include <class_colors_design_settings.h>
     #include <class_marker_base.h>
     #include <eda_text.h>
     #include <convert_to_biu.h>
+    #include <layers_id_colors_and_visibility.h>
 %}
 
 // all the wx wrappers for wxString, wxPoint, wxRect, wxChar ..
 %include wx.i
+
+// wrapper of BASE_SEQ (see typedef std::vector<PCB_LAYER_ID> BASE_SEQ;)
+%template(base_seqVect) std::vector<enum PCB_LAYER_ID>;
 
 // header files that must be wrapped
 
@@ -108,17 +118,14 @@ principle should be easily implemented by adapting the current STL containers.
 %include common.h
 %include class_title_block.h
 %include gal/color4d.h
-%include class_colors_design_settings.h
 %include class_marker_base.h
 %include eda_text.h
+%include layers_id_colors_and_visibility.h
 
 
 // std template mappings
 %template(intVector) std::vector<int>;
 %template(str_utf8_Map) std::map< std::string,UTF8 >;
-
-// wrapper of BASE_SEQ (see typedef std::vector<PCB_LAYER_ID> BASE_SEQ;)
-%template(base_seqVect) std::vector<enum PCB_LAYER_ID>;
 
 // TODO: wrapper of BASE_SET (see std::bitset<PCB_LAYER_ID_COUNT> BASE_SET;)
 

@@ -30,6 +30,7 @@
 #include <gr_basic.h>
 #include <macros.h>
 #include <class_drawpanel.h>
+#include <sch_base_frame.h>
 #include <plot_common.h>
 #include <trigo.h>
 #include <wxstruct.h>
@@ -373,12 +374,12 @@ void LIB_ARC::Plot( PLOTTER* aPlotter, const wxPoint& aOffset, bool aFill,
 
     if( aFill && m_Fill == FILLED_WITH_BG_BODYCOLOR )
     {
-        aPlotter->SetColor( GetLayerColor( LAYER_DEVICE_BACKGROUND ) );
+        aPlotter->SetColor( aPlotter->themeManager->GetLayerColor( LAYER_DEVICE_BACKGROUND ) );
         aPlotter->Arc( pos, -t2, -t1, m_Radius, FILLED_SHAPE, 0 );
     }
 
     bool already_filled = m_Fill == FILLED_WITH_BG_BODYCOLOR;
-    aPlotter->SetColor( GetLayerColor( LAYER_DEVICE ) );
+    aPlotter->SetColor( aPlotter->themeManager->GetLayerColor( LAYER_DEVICE ) );
     aPlotter->Arc( pos, -t2, -t1, m_Radius, already_filled ? NO_FILL : m_Fill, GetPenSize() );
 }
 
@@ -419,7 +420,7 @@ void LIB_ARC::drawGraphic( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOf
         return;
 
     wxPoint pos1, pos2, posc;
-    COLOR4D color = GetLayerColor( LAYER_DEVICE );
+    COLOR4D color = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_DEVICE );
 
     if( aColor == COLOR4D::UNSPECIFIED )       // Used normal color or selected color
     {
@@ -452,13 +453,14 @@ void LIB_ARC::drawGraphic( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOf
         fill = NO_FILL;
 
     EDA_RECT* const clipbox  = aPanel? aPanel->GetClipBox() : NULL;
+    COLOR4D bgcolor = COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_DEVICE_BACKGROUND );
 
     if( fill == FILLED_WITH_BG_BODYCOLOR )
     {
         GRFilledArc( clipbox, aDC, posc.x, posc.y, pt1, pt2,
                      m_Radius, GetPenSize( ),
-                     (m_Flags & IS_MOVED) ? color : GetLayerColor( LAYER_DEVICE_BACKGROUND ),
-                     GetLayerColor( LAYER_DEVICE_BACKGROUND ) );
+                     (m_Flags & IS_MOVED) ? color : bgcolor,
+                     bgcolor );
     }
     else if( fill == FILLED_SHAPE && !aData )
     {

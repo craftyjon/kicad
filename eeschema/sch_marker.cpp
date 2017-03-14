@@ -93,7 +93,8 @@ void SCH_MARKER::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
     if( GetMarkerType() == MARKER_BASE::MARKER_ERC )
     {
         color = ( GetErrorLevel() == MARKER_BASE::MARKER_SEVERITY_ERROR ) ?
-                  GetLayerColor( LAYER_ERC_ERR ) : GetLayerColor( LAYER_ERC_WARN );
+                  COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_ERC_ERR ) :
+                  COLOR_THEME_MANAGER::Instance().GetLayerColor( LAYER_ERC_WARN );
     }
 
     if( aColor == COLOR4D::UNSPECIFIED )

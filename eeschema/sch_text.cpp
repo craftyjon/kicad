@@ -353,7 +353,7 @@ void SCH_TEXT::Draw( EDA_DRAW_PANEL* panel, wxDC* DC, const wxPoint& aOffset,
     if( Color != COLOR4D::UNSPECIFIED )
         color = Color;
     else
-        color = GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
+        color = COLOR_THEME_MANAGER::Instance().GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
 
     GRSetDrawMode( DC, DrawMode );
 
@@ -676,7 +676,7 @@ bool SCH_TEXT::HitTest( const EDA_RECT& aRect, bool aContained, int aAccuracy ) 
 void SCH_TEXT::Plot( PLOTTER* aPlotter )
 {
     static std::vector <wxPoint> Poly;
-    COLOR4D  color = GetLayerColor( GetLayer() );
+    COLOR4D  color = COLOR_THEME_MANAGER::Instance().GetLayerColor( GetLayer() );
     int      thickness = GetPenSize();
 
     aPlotter->SetCurrentLineWidth( thickness );
@@ -1278,7 +1278,7 @@ void SCH_GLOBALLABEL::Draw( EDA_DRAW_PANEL* panel,
     if( Color != COLOR4D::UNSPECIFIED )
         color = Color;
     else
-        color = GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
+        color = COLOR_THEME_MANAGER::Instance().GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
 
     GRSetDrawMode( DC, DrawMode );
 
@@ -1648,7 +1648,7 @@ void SCH_HIERLABEL::Draw( EDA_DRAW_PANEL* panel,
     if( Color != COLOR4D::UNSPECIFIED )
         color = Color;
     else
-        color = GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
+        color = COLOR_THEME_MANAGER::Instance().GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
 
     GRSetDrawMode( DC, DrawMode );
 

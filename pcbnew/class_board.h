@@ -37,7 +37,6 @@
 #include <layers_id_colors_and_visibility.h>
 #include <class_netinfo.h>
 #include <class_pad.h>
-#include <class_colors_design_settings.h>
 #include <class_board_design_settings.h>
 #include <class_title_block.h>
 #include <class_zone_settings.h>
@@ -190,7 +189,6 @@ private:
 
     BOARD_DESIGN_SETTINGS   m_designSettings;
     ZONE_SETTINGS           m_zoneSettings;
-    COLORS_DESIGN_SETTINGS* m_colorsSettings;
     PAGE_INFO               m_paper;
     TITLE_BLOCK             m_titles;               ///< text in lower right of screen and plots
     PCB_PLOT_PARAMS         m_plotOptions;
@@ -515,15 +513,6 @@ public:
     bool IsModuleLayerVisible( PCB_LAYER_ID layer );
 
     /**
-     * Function GetVisibleElementColor
-     * returns the color of a pcb visible element.
-     * @see enum GAL_LAYER_ID
-     */
-    COLOR4D GetVisibleElementColor( GAL_LAYER_ID LAYER_aPCB );
-
-    void SetVisibleElementColor( GAL_LAYER_ID LAYER_aPCB, COLOR4D aColor );
-
-    /**
      * Function GetDesignSettings
      * @return the BOARD_DESIGN_SETTINGS for this BOARD
      */
@@ -553,21 +542,6 @@ public:
 
     const ZONE_SETTINGS& GetZoneSettings() const            { return m_zoneSettings; }
     void SetZoneSettings( const ZONE_SETTINGS& aSettings )  { m_zoneSettings = aSettings; }
-
-    /**
-     * Function GetColorSettings
-     * @return the current COLORS_DESIGN_SETTINGS in use
-     */
-    COLORS_DESIGN_SETTINGS* GetColorsSettings() const { return m_colorsSettings; }
-
-    /**
-     * Function SetColorsSettings
-     * @param aColorsSettings = the new COLORS_DESIGN_SETTINGS to use
-     */
-    void SetColorsSettings( COLORS_DESIGN_SETTINGS* aColorsSettings )
-    {
-        m_colorsSettings = aColorsSettings;
-    }
 
     /**
      * Function GetBoardPolygonOutlines
@@ -679,17 +653,29 @@ public:
      */
     bool SetLayerType( PCB_LAYER_ID aLayer, LAYER_T aLayerType );
 
-    /**
-     * Function SetLayerColor
-     * changes a layer color for any valid layer, including non-copper ones.
-     */
-    void SetLayerColor( PCB_LAYER_ID aLayer, COLOR4D aColor );
+    // TODO(JE) This probably shouldn't be in BOARD
+    void SetLayerColor( PCB_LAYER_ID aLayer, COLOR4D aColor )
+    {
+        COLOR_THEME_MANAGER::Instance().SetLayerColor( aLayer, aColor );
+    }
 
-    /**
-     * Function GetLayerColor
-     * gets a layer color for any valid layer, including non-copper ones.
-     */
-    COLOR4D GetLayerColor( PCB_LAYER_ID aLayer ) const;
+    // TODO(JE) This probably shouldn't be in BOARD
+    COLOR4D GetLayerColor( PCB_LAYER_ID aLayer ) const
+    {
+        return COLOR_THEME_MANAGER::Instance().GetLayerColor( aLayer );
+    }
+
+    // TODO(JE) This probably shouldn't be in BOARD
+    void SetLayerColor( GAL_LAYER_ID aLayer, COLOR4D aColor )
+    {
+        COLOR_THEME_MANAGER::Instance().SetLayerColor( aLayer, aColor );
+    }
+
+    // TODO(JE) This probably shouldn't be in BOARD
+    COLOR4D GetLayerColor( GAL_LAYER_ID aLayer ) const
+    {
+        return COLOR_THEME_MANAGER::Instance().GetLayerColor( aLayer );
+    }
 
     /** Functions to get some items count */
     int GetNumSegmTrack() const;

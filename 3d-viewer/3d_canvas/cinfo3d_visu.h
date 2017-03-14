@@ -263,7 +263,7 @@ class CINFO3D_VISU
      * @param aItemId: the item id to get the color information
      * @return the color in SFVEC3F format
      */
-    SFVEC3F GetItemColor( int aItemId ) const;
+    SFVEC3F GetItemColor( GAL_LAYER_ID aItemId ) const;
 
     /**
      * @brief GetColor

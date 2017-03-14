@@ -116,7 +116,7 @@ void GERBER_LAYER_WIDGET::ReFillRender()
     {
         if( renderRows[row].color != COLOR4D::UNSPECIFIED )       // does this row show a color?
         {
-            renderRows[row].color = myframe->GetVisibleElementColor(
+            renderRows[row].color = myframe->GetLayerColor(
                                     ( GERBVIEW_LAYER_ID )renderRows[row].id );
         }
         renderRows[row].state = myframe->IsElementVisible(
@@ -242,7 +242,8 @@ void GERBER_LAYER_WIDGET::ReFill()
         wxString msg = GetImagesList()->GetDisplayName( layer );
 
         AppendLayerRow( LAYER_WIDGET::ROW( msg, layer,
-                        myframe->GetLayerColor( layer ), wxEmptyString, true ) );
+                        myframe->GetLayerColor( GERBVIEW_DRAW_LAYER( layer ) ),
+                        wxEmptyString, true ) );
     }
 
     Thaw();
@@ -254,7 +255,8 @@ void GERBER_LAYER_WIDGET::ReFill()
 
 void GERBER_LAYER_WIDGET::OnLayerColorChange( int aLayer, COLOR4D aColor )
 {
-    myframe->SetLayerColor( aLayer, aColor );
+    wxASSERT( aLayer < GERBER_DRAWLAYERS_COUNT );
+    myframe->SetLayerColor( GERBVIEW_DRAW_LAYER( aLayer ), aColor );
     myframe->m_SelLayerBox->ResyncBitmapOnly();
     myframe->GetCanvas()->Refresh();
 }
@@ -291,9 +293,10 @@ void GERBER_LAYER_WIDGET::OnLayerVisible( int aLayer, bool isVisible, bool isFin
         myframe->GetCanvas()->Refresh();
 }
 
-void GERBER_LAYER_WIDGET::OnRenderColorChange( int aId, COLOR4D aColor )
+void GERBER_LAYER_WIDGET::OnRenderColorChange( int aLayer, COLOR4D aColor )
 {
-    myframe->SetVisibleElementColor( (GERBVIEW_LAYER_ID) aId, aColor );
+    wxASSERT( aLayer >= GERBVIEW_LAYER_ID_START && aLayer < GERBVIEW_LAYER_ID_END );
+    myframe->SetLayerColor( (GERBVIEW_LAYER_ID) aLayer, aColor );
     myframe->GetCanvas()->Refresh();
 }
 

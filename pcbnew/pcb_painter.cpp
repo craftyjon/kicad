@@ -30,7 +30,6 @@
 #include <class_drawsegment.h>
 #include <class_zone.h>
 #include <class_pcb_text.h>
-#include <class_colors_design_settings.h>
 #include <class_marker_pcb.h>
 #include <class_dimension.h>
 #include <class_mire.h>
@@ -63,34 +62,19 @@ PCB_RENDER_SETTINGS::PCB_RENDER_SETTINGS()
 }
 
 
-void PCB_RENDER_SETTINGS::ImportLegacyColors( const COLORS_DESIGN_SETTINGS* aSettings )
+void PCB_RENDER_SETTINGS::LoadColorSettings( const COLOR_THEME_MANAGER& aThemeManager )
 {
     for( int i = 0; i < PCB_LAYER_ID_COUNT; i++ )
     {
-        m_layerColors[i] = aSettings->GetLayerColor( i );
+        m_layerColors[i] = aThemeManager.GetLayerColor( (PCB_LAYER_ID) i );
         m_layerColors[i].a = 0.8;   // slightly transparent
     }
 
     for( int i = GAL_LAYER_ID_START; i < GAL_LAYER_ID_END; i++ )
-        m_layerColors[i] = aSettings->GetItemColor( i );
+        m_layerColors[i] = aThemeManager.GetLayerColor( (GAL_LAYER_ID) i );
 
     m_layerColors[LAYER_MOD_TEXT_FR]            = m_layerColors[F_SilkS];
     m_layerColors[LAYER_MOD_TEXT_BK]            = m_layerColors[B_SilkS];
-
-    // Default colors for specific layers
-    m_layerColors[LAYER_VIAS_HOLES]             = COLOR4D( 0.5, 0.4, 0.0, 0.8 );
-    m_layerColors[LAYER_PADS_HOLES]             = COLOR4D( 0.0, 0.5, 0.5, 0.8 );
-    m_layerColors[LAYER_VIA_THROUGH]            = COLOR4D( 0.6, 0.6, 0.6, 0.8 );
-    m_layerColors[LAYER_VIA_BBLIND]             = COLOR4D( 0.6, 0.6, 0.6, 0.8 );
-    m_layerColors[LAYER_VIA_MICROVIA]           = COLOR4D( 0.4, 0.4, 0.8, 0.8 );
-    m_layerColors[LAYER_PADS]                   = COLOR4D( 0.6, 0.6, 0.6, 0.8 );
-    m_layerColors[LAYER_PADS_NETNAMES]          = COLOR4D( 1.0, 1.0, 1.0, 0.9 );
-    m_layerColors[LAYER_PAD_FR_NETNAMES]        = COLOR4D( 1.0, 1.0, 1.0, 0.9 );
-    m_layerColors[LAYER_PAD_BK_NETNAMES]        = COLOR4D( 1.0, 1.0, 1.0, 0.9 );
-    m_layerColors[LAYER_ANCHOR]                 = COLOR4D( 0.3, 0.3, 1.0, 0.9 );
-    m_layerColors[LAYER_RATSNEST]               = COLOR4D( 0.4, 0.4, 0.4, 0.8 );
-    m_layerColors[LAYER_WORKSHEET]              = COLOR4D( 0.5, 0.0, 0.0, 0.8 );
-    m_layerColors[LAYER_DRC]                    = COLOR4D( 1.0, 0.0, 0.0, 0.8 );
 
     // Make ratsnest lines slightly transparent
     m_layerColors[LAYER_RATSNEST].a = 0.8;
