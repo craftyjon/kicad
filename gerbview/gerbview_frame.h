@@ -180,7 +180,6 @@ private:
 
     // list of PARAM_CFG_xxx to read/write parameters saved in config
     PARAM_CFG_ARRAY         m_configSettings;
-    COLORS_DESIGN_SETTINGS* m_colorsSettings;
 
     int m_displayMode;                  // Gerber images ("layers" in Gerbview) can be drawn:
                                         // - in fast mode (write mode) but if there are negative
@@ -307,6 +306,30 @@ public:
      */
     void    SetGridVisibility( bool aVisible ) override;
 
+    /// @copydoc EDA_DRAW_FRAME::GetGridColor()
+    COLOR4D GetGridColor() const override
+    {
+        return m_themeManager->GetLayerColor( LAYER_GERBVIEW_GRID );
+    }
+
+    /// @copydoc EDA_DRAW_FRAME::SetGridColor()
+    void SetGridColor( COLOR4D aColor ) override
+    {
+        m_themeManager->SetLayerColor( LAYER_GERBVIEW_GRID, aColor );
+    }
+
+    /// @copydoc EDA_DRAW_FRAME::GetDrawBgColor()
+    COLOR4D GetDrawBgColor() const override
+    {
+        return m_themeManager->GetLayerColor( LAYER_GERBVIEW_BACKGROUND );
+    }
+
+    /// @copydoc EDA_DRAW_FRAME::SetDrawBgColor()
+    void SetDrawBgColor( COLOR4D aColor ) override
+    {
+        m_themeManager->SetLayerColor( LAYER_GERBVIEW_BACKGROUND, aColor );
+    }
+
     /**
      * Function GetVisibleLayers
      * is a proxy function that calls the correspondent function in m_BoardSettings
@@ -332,24 +355,22 @@ public:
     bool    IsLayerVisible( int aLayer ) const;
 
     /**
-     * Function GetVisibleElementColor
-     * returns the color of a gerber visible element.
-     */
-    COLOR4D GetVisibleElementColor( GERBVIEW_LAYER_ID aItemIdVisible ) const;
-
-    void    SetVisibleElementColor( GERBVIEW_LAYER_ID aItemIdVisible, COLOR4D aColor );
-
-    /**
      * Function GetLayerColor
      * gets a layer color for any valid layer.
      */
-    COLOR4D GetLayerColor( int aLayer ) const;
+    COLOR4D GetLayerColor( GERBVIEW_LAYER_ID aLayer ) const
+    {
+        return m_themeManager->GetLayerColor( aLayer );
+    }
 
     /**
      * Function SetLayerColor
      * changes a layer color for any valid layer.
      */
-    void    SetLayerColor( int aLayer, COLOR4D aColor );
+    void    SetLayerColor( GERBVIEW_LAYER_ID aLayer, COLOR4D aColor )
+    {
+        m_themeManager->SetLayerColor( aLayer, aColor );
+    }
 
     /**
      * Function GetNegativeItemsColor

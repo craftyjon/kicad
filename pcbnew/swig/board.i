@@ -62,7 +62,11 @@ HANDLE_EXCEPTIONS(BOARD::TracksInNetBetweenPoints)
 %include netinfo.i
 %include netclass.i
 
-%ignore operator++(SCH_LAYER_ID&);
+%ignore operator++(GAL_LAYER_ID&);
+
+%ignore operator++(GAL_LAYER_ID&);
+
+%ignore operator+(GAL_LAYER_ID&, int);
 
 %include layers_id_colors_and_visibility.h
 

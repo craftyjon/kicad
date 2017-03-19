@@ -241,10 +241,13 @@ const COLOR_THEME COLOR_THEME_MANAGER::defaultTheme = {
 
     { LAYER_DCODES,                COLOR4D( WHITE ) },
     { LAYER_NEGATIVE_OBJECTS,      COLOR4D( LIGHTGRAY ) },
+    { LAYER_GERBVIEW_GRID,         COLOR4D( DARKGRAY ) },
+    { LAYER_GERBVIEW_AXES,         COLOR4D( BLUE ) },
+    { LAYER_GERBVIEW_BACKGROUND,   COLOR4D( BLACK ) },
 };
 
 
-COLOR4D COLOR_THEME::GetLayerColor( LAYER_ID aLayer ) const
+COLOR4D COLOR_THEME::GetLayerColor( int aLayer ) const
 {
     auto it = m_colorMap.find( aLayer );
 
@@ -259,13 +262,42 @@ COLOR4D COLOR_THEME::GetLayerColor( LAYER_ID aLayer ) const
 }
 
 
+void COLOR_THEME::SetLayerColor( int aLayer, COLOR4D aColor )
+{
+    auto it = m_colorMap.find( aLayer );
+
+    if( it != m_colorMap.end() )
+    {
+        it->second = aColor;
+    }
+    else
+    {
+        wxASSERT_MSG( false, wxString::Format( "No layer map entry for layer %d!", aLayer ) );
+    }
+}
+
+
 COLOR_THEME_MANAGER::COLOR_THEME_MANAGER()
 {
 }
 
 
-COLOR4D COLOR_THEME_MANAGER::GetLayerColor( LAYER_ID aLayer ) const
+COLOR4D COLOR_THEME_MANAGER::getLayerColor( int aLayer ) const
 {
     return m_currentTheme ? m_currentTheme->GetLayerColor( aLayer )
                           : defaultTheme.GetLayerColor( aLayer );
+}
+
+
+void COLOR_THEME_MANAGER::setLayerColor( int aLayer, COLOR4D aColor )
+{
+    if( m_currentTheme )
+    {
+        m_currentTheme->SetLayerColor( aLayer, aColor );
+    }
+    else
+    {
+        // auto newTheme = cloneDefaultTheme();
+        // m_themes.push_back( newTheme );
+    }
 }

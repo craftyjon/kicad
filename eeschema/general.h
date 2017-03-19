@@ -99,9 +99,6 @@ void SetDefaultTextSize( int aSize );
 int GetDefaultBusThickness();
 void SetDefaultBusThickness( int aThickness );
 
-COLOR4D  GetLayerColor( SCH_LAYER_ID aLayer );
-void     SetLayerColor( COLOR4D aColor, SCH_LAYER_ID aLayer );
-
 // Color to draw selected items
 COLOR4D GetItemSelectedColor();
 

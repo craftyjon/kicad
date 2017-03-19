@@ -34,7 +34,6 @@
 #include <help_common_strings.h>
 #include <dialog_helpers.h>
 #include <class_layer_box_selector.h>
-#include <colors_selection.h>
 #include <wxPcbStruct.h>
 #include <class_drawpanel.h>
 #include <confirm.h>

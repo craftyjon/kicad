@@ -46,7 +46,6 @@
 #include <worksheet_viewitem.h>
 
 #include <pcbnew.h>
-#include <colors_selection.h>
 #include <collectors.h>
 
 #include <class_board.h>

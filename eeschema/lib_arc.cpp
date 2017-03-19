@@ -30,6 +30,7 @@
 #include <gr_basic.h>
 #include <macros.h>
 #include <class_drawpanel.h>
+#include <sch_base_frame.h>
 #include <plot_common.h>
 #include <trigo.h>
 #include <wxstruct.h>
@@ -419,7 +420,8 @@ void LIB_ARC::drawGraphic( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOf
         return;
 
     wxPoint pos1, pos2, posc;
-    COLOR4D color = GetLayerColor( LAYER_DEVICE );
+    auto frame = static_cast<SCH_BASE_FRAME*>( aPanel->GetParent() );
+    COLOR4D color = frame->GetLayerColor( LAYER_DEVICE );
 
     if( aColor == COLOR4D::UNSPECIFIED )       // Used normal color or selected color
     {
@@ -457,8 +459,8 @@ void LIB_ARC::drawGraphic( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOf
     {
         GRFilledArc( clipbox, aDC, posc.x, posc.y, pt1, pt2,
                      m_Radius, GetPenSize( ),
-                     (m_Flags & IS_MOVED) ? color : GetLayerColor( LAYER_DEVICE_BACKGROUND ),
-                     GetLayerColor( LAYER_DEVICE_BACKGROUND ) );
+                     (m_Flags & IS_MOVED) ? color : frame->GetLayerColor( LAYER_DEVICE_BACKGROUND ),
+                     frame->GetLayerColor( LAYER_DEVICE_BACKGROUND ) );
     }
     else if( fill == FILLED_SHAPE && !aData )
     {

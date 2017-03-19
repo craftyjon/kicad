@@ -26,8 +26,8 @@
  */
 
 #include <fctsys.h>
-#include <draw_frame.h>
 #include <class_drawpanel.h>
+#include <sch_base_frame.h>
 
 #include <general.h>
 
@@ -151,7 +151,8 @@ void WIDGET_EESCHEMA_COLOR_CONFIG::CreateControls()
             rowBoxSizer = new wxBoxSizer( wxHORIZONTAL );
             columnBoxSizer->Add( rowBoxSizer, 0, wxGROW | wxALL, 0 );
 
-            COLOR4D color = GetLayerColor( SCH_LAYER_ID( buttons->m_Layer ) );
+            auto drawFrame = static_cast<SCH_BASE_FRAME*>( GetDrawFrame() );
+            COLOR4D color = drawFrame->GetLayerColor( SCH_LAYER_ID( buttons->m_Layer ) );
             currentColors[ buttons->m_Layer ] = color;
 
             wxMemoryDC iconDC;
@@ -299,16 +300,16 @@ bool WIDGET_EESCHEMA_COLOR_CONFIG::TransferDataFromControl()
     }
 
     // Update color of background
-    GetDrawFrame()->SetDrawBgColor( bgcolor );
-    currentColors[ LAYER_SCHEMATIC_BACKGROUND ] = bgcolor;
+    auto drawFrame = static_cast<SCH_BASE_FRAME*>( GetDrawFrame() );
 
+    drawFrame->SetDrawBgColor( bgcolor );
+    currentColors[ LAYER_SCHEMATIC_BACKGROUND ] = bgcolor;
 
     for( SCH_LAYER_ID clyr = LAYER_WIRE; clyr < SCH_LAYER_ID_END; ++clyr )
     {
-        SetLayerColor( currentColors[ clyr ], clyr );
+        drawFrame->SetLayerColor( clyr, currentColors[ clyr ] );
     }
 
-    GetDrawFrame()->SetGridColor( GetLayerColor( LAYER_SCHEMATIC_GRID ) );
     GetDrawFrame()->GetCanvas()->Refresh();
 
     return true;

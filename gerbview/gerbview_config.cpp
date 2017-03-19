@@ -34,7 +34,6 @@
 #include <common.h>
 #include <class_drawpanel.h>
 #include <config_params.h>
-#include <colors_selection.h>
 
 #include <gerbview.h>
 #include <gerbview_frame.h>
@@ -87,7 +86,7 @@ PARAM_CFG_ARRAY& GERBVIEW_FRAME::GetConfigurationSettings()
 
     m_configSettings.push_back( new PARAM_CFG_INT( true, wxT( "DrawModeOption" ),
                                                    &m_displayMode, 2, 0, 2 ) );
-    m_configSettings.push_back( new PARAM_CFG_SETCOLOR( true,
+    /*m_configSettings.push_back( new PARAM_CFG_SETCOLOR( true,
                                                         wxT( "DCodeColorEx" ),
                                                         &g_ColorsSettings.m_LayersColors[
                                                             LAYER_DCODES],
@@ -96,14 +95,14 @@ PARAM_CFG_ARRAY& GERBVIEW_FRAME::GetConfigurationSettings()
                                                         wxT( "NegativeObjectsColorEx" ),
                                                         &g_ColorsSettings.m_LayersColors[
                                                             LAYER_NEGATIVE_OBJECTS],
-                                                        DARKGRAY ) );
+                                                        DARKGRAY ) );*/
     m_configSettings.push_back( new PARAM_CFG_BOOL( true,
                                                     wxT( "DisplayPolarCoordinates" ),
                                                     &m_DisplayOptions.m_DisplayPolarCood,
                                                     false ) );
 
     // Default colors for layers 0 to 31
-    static const COLOR4D color_default[] = {
+    /*static const COLOR4D color_default[] = {
         COLOR4D( GREEN ),     COLOR4D( BLUE ),         COLOR4D( LIGHTGRAY ), COLOR4D( MAGENTA ),
         COLOR4D( RED ),       COLOR4D( DARKGREEN ),    COLOR4D( BROWN ),     COLOR4D( MAGENTA ),
         COLOR4D( LIGHTGRAY ), COLOR4D( BLUE ),         COLOR4D( GREEN ),     COLOR4D( CYAN ),
@@ -140,7 +139,7 @@ PARAM_CFG_ARRAY& GERBVIEW_FRAME::GetConfigurationSettings()
             new PARAM_CFG_SETCOLOR( true, keys[i], prm, color_default[i] );
 
         m_configSettings.push_back( prm_entry );
-    }
+    }*/
 
     return m_configSettings;
 }

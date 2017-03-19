@@ -31,6 +31,7 @@
 #include <climits>
 #include <gal/gal_display_options.h>
 #include <gal/color4d.h>
+#include <color_theme.h>
 
 class wxSingleInstanceChecker;
 class EDA_HOTKEY;
@@ -79,14 +80,14 @@ protected:
                                             // a wxCommand ID = ID_POPUP_GRID_LEVEL_1000.
     bool        m_drawGrid;                 // hide/Show grid
     bool        m_showPageLimits;           ///< true to display the page limits
-    COLOR4D     m_gridColor;                ///< Grid color
-    COLOR4D     m_drawBgColor;              ///< the background color of the draw canvas
-                                            ///< BLACK for Pcbnew, BLACK or WHITE for eeschema
     double      m_zoomLevelCoeff;           ///< a suitable value to convert the internal zoom scaling factor
                                             // to a zoom level value which rougly gives 1.0 when the board/schematic
                                             // is at scale = 1
     int         m_UndoRedoCountMax;         ///< default Undo/Redo command Max depth, to be handed
                                             // to screens
+
+    /// Central manager for color settings
+    COLOR_THEME_MANAGER* m_themeManager;
 
     /// The area to draw on.
     EDA_DRAW_PANEL* m_canvas;
@@ -284,16 +285,16 @@ public:
     virtual void SetTitleBlock( const TITLE_BLOCK& aTitleBlock ) = 0;
 
     // the background color of the draw canvas:
-    // Virtual because some frames can have a specific way to get/set the bg color
+    // Virtual so that the child can define what layer the background color is stored on
     /**
      * @return the COLOR4D for the canvas background
      */
-    virtual COLOR4D GetDrawBgColor() const { return m_drawBgColor; }
+    virtual COLOR4D GetDrawBgColor() const { return COLOR4D::UNSPECIFIED; };
 
     /**
      * @param aColor: the COLOR4D for the canvas background
      */
-    virtual void SetDrawBgColor( COLOR4D aColor) { m_drawBgColor= aColor ; }
+    virtual void SetDrawBgColor( COLOR4D aColor) {};
 
     int GetCursorShape() const { return m_cursorShape; }
 
@@ -439,21 +440,17 @@ public:
 
     /**
      * Function GetGridColor() , virtual
+     * Must be overridden by the child to specify which layer the grid color comes from
      * @return the color of the grid
      */
-    virtual COLOR4D GetGridColor() const
-    {
-        return m_gridColor;
-    }
+    virtual COLOR4D GetGridColor() const = 0;
 
     /**
      * Function SetGridColor() , virtual
+     * Must be overridden by the child to specify which layer the grid color comes from
      * @param aColor = the new color of the grid
      */
-    virtual void SetGridColor( COLOR4D aColor )
-    {
-        m_gridColor = aColor;
-    }
+    virtual void SetGridColor( COLOR4D aColor ) = 0;
 
     /**
      * Function GetGridPosition

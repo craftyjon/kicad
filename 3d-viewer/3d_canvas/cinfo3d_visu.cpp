@@ -33,7 +33,6 @@
 #include <class_board.h>
 #include <3d_math.h>
 #include "3d_fastmath.h"
-#include <colors_selection.h>
 
 /**
  *  Trace mask used to enable or disable the trace output of this class.

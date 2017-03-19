@@ -209,7 +209,7 @@ void GBR_LAYOUT::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, GR_DRAWMODE aDrawMode,
         if( !gerber->m_IsVisible )
             continue;
 
-        gerber->m_PositiveDrawColor = gerbFrame->GetLayerColor( layer );
+        gerber->m_PositiveDrawColor = gerbFrame->GetLayerColor( GERBVIEW_DRAW_LAYER( layer ) );
 
        // Force black and white draw mode on request:
         if( aDisplayOptions->m_ForceBlackAndWhite )

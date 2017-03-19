@@ -90,7 +90,7 @@ void EDA_DRAW_FRAME::DrawWorkSheet( wxDC* aDC, BASE_SCREEN* aScreen, int aLineWi
         GRSetDrawMode( aDC, GR_COPY );
         GRRect( m_canvas->GetClipBox(), aDC, 0, 0,
                 pageSize.x * aScalar, pageSize.y * aScalar, aLineWidth,
-                m_drawBgColor == WHITE ? LIGHTGRAY : DARKDARKGRAY );
+                GetDrawBgColor() == WHITE ? LIGHTGRAY : DARKDARKGRAY );
     }
 
     TITLE_BLOCK t_block = GetTitleBlock();

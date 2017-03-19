@@ -31,7 +31,6 @@
 #include <gr_basic.h>
 #include <common.h>
 #include <class_drawpanel.h>
-#include <colors_selection.h>
 #include <wxBasePcbFrame.h>
 #include <macros.h>
 

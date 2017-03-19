@@ -34,7 +34,6 @@
 #include <build_version.h>
 #include <trigo.h>
 #include <base_units.h>
-#include <colors_selection.h>
 #include <class_gbr_layer_box_selector.h>
 #include <msgpanel.h>
 #include <bitmaps.h>
@@ -61,8 +60,9 @@ GERBVIEW_FRAME::GERBVIEW_FRAME( KIWAY* aKiway, wxWindow* aParent ):
     EDA_DRAW_FRAME( aKiway, aParent, FRAME_GERBER, wxT( "GerbView" ),
         wxDefaultPosition, wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE, GERBVIEW_FRAME_NAME )
 {
+    SetBackgroundColour( GetDrawBgColor().ToColour() );
+
     m_auxiliaryToolBar = NULL;
-    m_colorsSettings = &g_ColorsSettings;
     m_gerberLayout = NULL;
     m_zoomLevelCoeff = ZOOM_FACTOR( 110 );   // Adjusted to roughly displays zoom level = 1
                                              // when the screen shows a 1:1 image
@@ -607,30 +607,6 @@ bool GERBVIEW_FRAME::IsLayerVisible( int aLayer ) const
 }
 
 
-COLOR4D GERBVIEW_FRAME::GetVisibleElementColor( GERBVIEW_LAYER_ID aItemIdVisible ) const
-{
-    COLOR4D color = COLOR4D::UNSPECIFIED;
-
-    switch( aItemIdVisible )
-    {
-    case LAYER_NEGATIVE_OBJECTS:
-    case LAYER_DCODES:
-        color = m_colorsSettings->GetItemColor( aItemIdVisible );
-        break;
-
-    case LAYER_GERBVIEW_GRID:
-        color = GetGridColor();
-        break;
-
-    default:
-        wxLogDebug( wxT( "GERBVIEW_FRAME::GetVisibleElementColor(): bad arg %d" ),
-                    (int)aItemIdVisible );
-    }
-
-    return color;
-}
-
-
 void GERBVIEW_FRAME::SetGridVisibility( bool aVisible )
 {
     EDA_DRAW_FRAME::SetGridVisibility( aVisible );
@@ -638,45 +614,12 @@ void GERBVIEW_FRAME::SetGridVisibility( bool aVisible )
 }
 
 
-void GERBVIEW_FRAME::SetVisibleElementColor( GERBVIEW_LAYER_ID aItemIdVisible,
-                                             COLOR4D aColor )
-{
-    switch( aItemIdVisible )
-    {
-    case LAYER_NEGATIVE_OBJECTS:
-    case LAYER_DCODES:
-        m_colorsSettings->SetItemColor( aItemIdVisible, aColor );
-        break;
-
-    case LAYER_GERBVIEW_GRID:
-        SetGridColor( aColor );
-        m_colorsSettings->SetItemColor( aItemIdVisible, aColor );
-        break;
-
-    default:
-        wxLogDebug( wxT( "GERBVIEW_FRAME::SetVisibleElementColor(): bad arg %d" ),
-                    (int) aItemIdVisible );
-    }
-}
-
 COLOR4D GERBVIEW_FRAME::GetNegativeItemsColor() const
 {
     if( IsElementVisible( LAYER_NEGATIVE_OBJECTS ) )
-        return GetVisibleElementColor( LAYER_NEGATIVE_OBJECTS );
+        return GetLayerColor( LAYER_NEGATIVE_OBJECTS );
     else
         return GetDrawBgColor();
-}
-
-
-COLOR4D GERBVIEW_FRAME::GetLayerColor( int aLayer ) const
-{
-    return m_colorsSettings->GetLayerColor( aLayer );
-}
-
-
-void GERBVIEW_FRAME::SetLayerColor( int aLayer, COLOR4D aColor )
-{
-    m_colorsSettings->SetLayerColor( aLayer, aColor );
 }
 
 

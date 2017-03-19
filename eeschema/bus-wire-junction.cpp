@@ -121,7 +121,9 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
         return;
 
     segment = (SCH_LINE*) s_wires.begin();
-    COLOR4D color = GetLayerColor( segment->GetLayer() );
+
+    SCH_EDIT_FRAME* frame = (SCH_EDIT_FRAME*) aPanel->GetParent();
+    COLOR4D color = frame->GetLayerColor( segment->GetLayer() );
 
     if( aErase )
     {
@@ -133,8 +135,6 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
             segment = segment->Next();
         }
     }
-
-    SCH_EDIT_FRAME* frame = (SCH_EDIT_FRAME*) aPanel->GetParent();
 
     wxPoint endpos = frame->GetCrossHairPosition();
 

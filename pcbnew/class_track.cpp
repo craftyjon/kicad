@@ -37,7 +37,6 @@
 #include <class_drawpanel.h>
 #include <class_pcb_screen.h>
 #include <drawtxt.h>
-#include <colors_selection.h>
 #include <wxstruct.h>
 #include <wxBasePcbFrame.h>
 #include <class_board.h>

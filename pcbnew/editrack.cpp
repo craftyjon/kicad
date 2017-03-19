@@ -32,7 +32,6 @@
 #include <class_drawpanel.h>
 #include <trigo.h>
 #include <wxPcbStruct.h>
-#include <colors_selection.h>
 
 #include <pcbnew.h>
 #include <drc_stuff.h>

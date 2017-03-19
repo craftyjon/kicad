@@ -39,13 +39,16 @@ class COLOR_THEME
 public:
     COLOR_THEME() {}
 
-    COLOR_THEME( std::initializer_list< std::pair< const LAYER_ID, COLOR4D > > aMapList )
+    COLOR_THEME( std::initializer_list< std::pair< const int, COLOR4D > > aMapList )
         : m_colorMap( aMapList )
     {
     }
 
-    /// @see COLOR_THEME_MANAGER::GetLayerColor()
-    COLOR4D GetLayerColor( LAYER_ID aLayer ) const;
+    /// @see COLOR_THEME_MANAGER::getLayerColor()
+    COLOR4D GetLayerColor( int aLayer ) const;
+
+    /// @see COLOR_THEME_MANAGER::setLayerColor()
+    void SetLayerColor( int aLayer, COLOR4D aColor );
 
 protected:
 
@@ -58,7 +61,7 @@ private:
     bool m_dirty = false;
 
     /// Container for colors
-    std::map< LAYER_ID, COLOR4D > m_colorMap;
+    std::map< int, COLOR4D > m_colorMap;
 
     /// Displayed name of the theme
     wxString m_themeName = "";
@@ -77,16 +80,56 @@ class COLOR_THEME_MANAGER
 public:
     COLOR_THEME_MANAGER();
 
-    /**
-     * @brief Returns the color of a named layer
-     *
-     * @param aLayer The layer to retrieve color for (see layers_id_colors_and_visibility.h)
-     */
-    COLOR4D GetLayerColor( LAYER_ID aLayer ) const;
+    COLOR4D GetLayerColor( PCB_LAYER_ID aLayer ) const
+    {
+        return getLayerColor( static_cast<PCB_LAYER_ID>( aLayer ) );
+    }
+
+    COLOR4D GetLayerColor( GAL_LAYER_ID aLayer ) const
+    {
+        return getLayerColor( static_cast<GAL_LAYER_ID>( aLayer ) );
+    }
+
+    COLOR4D GetLayerColor( SCH_LAYER_ID aLayer ) const
+    {
+        return getLayerColor( static_cast<SCH_LAYER_ID>( aLayer ) );
+    }
+
+    COLOR4D GetLayerColor( GERBVIEW_LAYER_ID aLayer ) const
+    {
+        return getLayerColor( static_cast<GERBVIEW_LAYER_ID>( aLayer ) );
+    }
+
+    void SetLayerColor( PCB_LAYER_ID aLayer, COLOR4D aColor )
+    {
+        setLayerColor( static_cast<PCB_LAYER_ID>( aLayer ), aColor );
+    }
+
+    void SetLayerColor( GAL_LAYER_ID aLayer, COLOR4D aColor )
+    {
+        setLayerColor( static_cast<GAL_LAYER_ID>( aLayer ), aColor );
+    }
+
+    void SetLayerColor( SCH_LAYER_ID aLayer, COLOR4D aColor )
+    {
+        setLayerColor( static_cast<SCH_LAYER_ID>( aLayer ), aColor );
+    }
+
+    void SetLayerColor( GERBVIEW_LAYER_ID aLayer, COLOR4D aColor )
+    {
+        setLayerColor( static_cast<GERBVIEW_LAYER_ID>( aLayer ), aColor );
+    }
 
 private:
+
+    COLOR4D getLayerColor( int aLayer ) const;
+
+    void setLayerColor( int aLayer, COLOR4D aColor );
+
     /// The default theme is stored in code rather than as an external file
     static const COLOR_THEME defaultTheme;
+
+    std::vector< COLOR_THEME > m_themes;
 
     /// Pointer to the active color theme
     COLOR_THEME* m_currentTheme = NULL;

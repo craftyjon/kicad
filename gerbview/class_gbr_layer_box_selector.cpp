@@ -30,7 +30,6 @@
  */
 
 #include <common.h>
-#include <colors_selection.h>
 #include <gerbview_frame.h>
 #include <class_gerber_file_image_list.h>
 
@@ -74,7 +73,7 @@ COLOR4D GBR_LAYER_BOX_SELECTOR::GetLayerColor( int aLayer ) const
 {
     GERBVIEW_FRAME* frame = (GERBVIEW_FRAME*) GetParent()->GetParent();
 
-    return frame->GetLayerColor( aLayer );
+    return frame->GetLayerColor( (GERBVIEW_LAYER_ID) aLayer );
 }
 
 
