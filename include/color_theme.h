@@ -29,6 +29,7 @@
 
 using KIGFX::COLOR4D;
 
+
 /**
  * Represents a color theme (stored in memory or as a file)
  */
@@ -42,6 +43,16 @@ public:
     {
     }
 
+    /// Which applications the theme contains data for
+    enum SCOPE: int
+    {
+        SCOPE_UNDEFINED,
+        SCOPE_EESCHEMA,
+        SCOPE_PCBNEW,
+        SCOPE_GERBVIEW,
+        SCOPE_COUNT
+    };
+
     /// @see COLOR_THEME_MANAGER::getLayerColor()
     COLOR4D GetLayerColor( int aLayer ) const;
 
@@ -52,6 +63,19 @@ public:
     bool IsDirty() { return dirty; }
 
     void Flush() { dirty = false; }
+
+    /// Copies color settings (but not filename/name)
+    void Clone( const COLOR_THEME& aTheme );
+
+    /// Displayed name of the theme
+    wxString themeName = "";
+
+    static const int SCOPE_ALL = ( ( 1 << SCOPE_EESCHEMA ) |
+                                   ( 1 << SCOPE_PCBNEW ) |
+                                   ( 1 << SCOPE_GERBVIEW ) );
+
+    /// @see COLOR_THEME::SCOPE
+    std::bitset<SCOPE_COUNT> scope = SCOPE_ALL;
 
 protected:
 
@@ -65,9 +89,6 @@ private:
 
     /// Container for colors
     std::map< int, COLOR4D > colorMap;
-
-    /// Displayed name of the theme
-    wxString themeName = "";
 
     /// Filepath of the theme (if not the default theme)
     wxString filePath = "";
@@ -147,6 +168,8 @@ public:
         legacyMode = aMode;
     }
 
+    //void SwitchTheme()
+
 private:
 
     /**
@@ -167,16 +190,21 @@ private:
      */
     void setLayerColor( int aLayer, COLOR4D aColor );
 
+    /// Performs copy-on-write for default theme
+    std::shared_ptr<COLOR_THEME> cloneDefaultTheme();
+
     /// The default theme is stored in code rather than as an external file
     static const COLOR_THEME defaultTheme;
 
-    std::vector< COLOR_THEME > themes;
+    std::vector< std::shared_ptr<COLOR_THEME> > themes;
 
     /// Pointer to the active color theme
-    COLOR_THEME* currentTheme = NULL;
+    std::shared_ptr<COLOR_THEME> currentTheme;
 
     /// When true, colors will be converted to the nearest legacy match before return
     bool legacyMode = false;
+
+    COLOR_THEME::SCOPE scope = COLOR_THEME::SCOPE_UNDEFINED;
 };
 
 #endif

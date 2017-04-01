@@ -304,11 +304,11 @@ bool WIDGET_EESCHEMA_COLOR_CONFIG::TransferDataFromControl()
     auto drawFrame = static_cast<SCH_BASE_FRAME*>( GetDrawFrame() );
 
     drawFrame->SetDrawBgColor( bgcolor );
-    currentColors[ LAYER_SCHEMATIC_BACKGROUND ] = bgcolor;
+    currentColors[ SCH_LAYER_INDEX( LAYER_SCHEMATIC_BACKGROUND ) ] = bgcolor;
 
     for( SCH_LAYER_ID clyr = LAYER_WIRE; clyr < SCH_LAYER_ID_END; ++clyr )
     {
-        drawFrame->SetLayerColor( clyr, currentColors[ clyr ] );
+        drawFrame->SetLayerColor( clyr, currentColors[ SCH_LAYER_INDEX( clyr ) ] );
     }
 
     GetDrawFrame()->GetCanvas()->Refresh();

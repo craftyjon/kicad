@@ -595,9 +595,6 @@ void SCH_EDIT_FRAME::LoadSettings( wxConfigBase* aCfg )
 
     wxConfigLoadSetups( aCfg, GetConfigurationSettings() );
 
-    SetGridColor( GetLayerColor( LAYER_SCHEMATIC_GRID ) );
-    SetDrawBgColor( GetLayerColor( LAYER_SCHEMATIC_BACKGROUND ) );
-
     SetDefaultBusThickness( aCfg->Read( DefaultBusWidthEntry, DEFAULTBUSTHICKNESS ) );
     SetDefaultLineThickness( aCfg->Read( DefaultDrawLineWidthEntry, DEFAULTDRAWLINETHICKNESS ) );
     aCfg->Read( ShowHiddenPinsEntry, &m_showAllPins, false );

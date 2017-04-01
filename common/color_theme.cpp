@@ -285,6 +285,12 @@ void COLOR_THEME::SetLayerColor( int aLayer, COLOR4D aColor )
 }
 
 
+void COLOR_THEME::Clone( const COLOR_THEME& aTheme )
+{
+    colorMap = aTheme.colorMap;
+}
+
+
 COLOR_THEME_MANAGER::COLOR_THEME_MANAGER()
 {
 }
@@ -292,8 +298,8 @@ COLOR_THEME_MANAGER::COLOR_THEME_MANAGER()
 
 COLOR4D COLOR_THEME_MANAGER::getLayerColor( int aLayer ) const
 {
-    COLOR4D color = currentTheme ? currentTheme->GetLayerColor( aLayer )
-                                 : defaultTheme.GetLayerColor( aLayer );
+    COLOR4D color = ( currentTheme != nullptr ) ? currentTheme->GetLayerColor( aLayer )
+                                                : defaultTheme.GetLayerColor( aLayer );
 
     if( legacyMode )
     {
@@ -307,13 +313,21 @@ COLOR4D COLOR_THEME_MANAGER::getLayerColor( int aLayer ) const
 
 void COLOR_THEME_MANAGER::setLayerColor( int aLayer, COLOR4D aColor )
 {
-    if( currentTheme )
+    if( !currentTheme )
     {
-        currentTheme->SetLayerColor( aLayer, aColor );
+        auto newTheme = cloneDefaultTheme();
+        themes.push_back( newTheme );
+        currentTheme = newTheme;
     }
-    else
-    {
-        // auto newTheme = cloneDefaultTheme();
-        // m_themes.push_back( newTheme );
-    }
+
+    currentTheme->SetLayerColor( aLayer, aColor );
+}
+
+
+std::shared_ptr<COLOR_THEME> COLOR_THEME_MANAGER::cloneDefaultTheme()
+{
+    auto newTheme = std::make_shared<COLOR_THEME>();
+    newTheme->Clone( defaultTheme );
+    newTheme->themeName = _( "Unsaved Theme" );
+    return newTheme;
 }
