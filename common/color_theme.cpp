@@ -293,13 +293,14 @@ void COLOR_THEME::Clone( const COLOR_THEME& aTheme )
 
 COLOR_THEME_MANAGER::COLOR_THEME_MANAGER()
 {
+    themes.push_back( std::make_shared<COLOR_THEME>( defaultTheme ) );
+    currentTheme = themes[0];
 }
 
 
 COLOR4D COLOR_THEME_MANAGER::getLayerColor( int aLayer ) const
 {
-    COLOR4D color = ( currentTheme != nullptr ) ? currentTheme->GetLayerColor( aLayer )
-                                                : defaultTheme.GetLayerColor( aLayer );
+    COLOR4D color = currentTheme->GetLayerColor( aLayer );
 
     if( legacyMode )
     {
@@ -313,7 +314,8 @@ COLOR4D COLOR_THEME_MANAGER::getLayerColor( int aLayer ) const
 
 void COLOR_THEME_MANAGER::setLayerColor( int aLayer, COLOR4D aColor )
 {
-    if( !currentTheme )
+    // Default theme will always be at idx 0
+    if( currentTheme == themes[0] )
     {
         auto newTheme = cloneDefaultTheme();
         themes.push_back( newTheme );

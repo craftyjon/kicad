@@ -68,7 +68,7 @@ public:
     void Clone( const COLOR_THEME& aTheme );
 
     /// Displayed name of the theme
-    wxString themeName = "";
+    wxString themeName = _( "KiCad Default " );
 
     static const int SCOPE_ALL = ( ( 1 << SCOPE_EESCHEMA ) |
                                    ( 1 << SCOPE_PCBNEW ) |
@@ -166,6 +166,16 @@ public:
     void SetLegacyMode( bool aMode )
     {
         legacyMode = aMode;
+    }
+
+    wxString GetCurrentThemeName()
+    {
+        return currentTheme->themeName;
+    }
+
+    std::vector< std::shared_ptr<COLOR_THEME> >& GetThemeList()
+    {
+        return themes;
     }
 
     //void SwitchTheme()

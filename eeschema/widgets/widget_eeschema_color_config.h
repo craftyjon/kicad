@@ -45,11 +45,16 @@ private:
     EDA_DRAW_FRAME*         m_drawFrame;
     wxColourPickerCtrl*     m_SelBgColor;
     wxBoxSizer*             m_mainBoxSizer;
+    wxComboBox*             m_cbTheme;
 
     // Creates the controls and sizers
     void CreateControls();
 
-    void    SetColor( wxCommandEvent& aEvent );
+    // Event handler for color pickers
+    void SetColor( wxCommandEvent& aEvent );
+
+    // Updates theme controls
+    void UpdateControls();
 
     virtual EDA_DRAW_FRAME* GetDrawFrame() { return m_drawFrame; }
 

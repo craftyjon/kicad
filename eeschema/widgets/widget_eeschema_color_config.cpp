@@ -121,8 +121,29 @@ void WIDGET_EESCHEMA_COLOR_CONFIG::CreateControls()
     wxStaticText*   label;
     int             buttonId = 1800;
 
-    m_mainBoxSizer = new wxBoxSizer( wxHORIZONTAL );
+    m_mainBoxSizer = new wxBoxSizer( wxVERTICAL );
     SetSizer( m_mainBoxSizer );
+
+    // Theme management UI
+
+    auto themeSizer = new wxBoxSizer( wxHORIZONTAL );
+
+    auto text = new wxStaticText( this, wxID_ANY, _( "Theme:" ) );
+    themeSizer->Add( text, 1, wxALIGN_CENTER_VERTICAL | wxALL, 5 );
+
+    m_cbTheme = new wxComboBox( this, wxID_ANY, wxEmptyString, wxDefaultPosition,
+                                wxDefaultSize, 0, NULL, wxCB_DROPDOWN | wxCB_READONLY );
+    m_cbTheme->SetMinSize( wxSize( 200,-1 ) );
+
+    themeSizer->Add( m_cbTheme, 2, wxALIGN_CENTER_VERTICAL | wxALL, 5 );
+
+    m_mainBoxSizer->Add( themeSizer );
+
+
+    // Color picker UI
+
+    auto buttonSizer = new wxBoxSizer( wxHORIZONTAL );
+    m_mainBoxSizer->Add( buttonSizer );
 
     BUTTONINDEX* groups = buttonGroups;
     wxBoxSizer* columnBoxSizer = NULL;
@@ -132,7 +153,7 @@ void WIDGET_EESCHEMA_COLOR_CONFIG::CreateControls()
         COLORBUTTON* buttons = groups->m_Buttons;
 
         columnBoxSizer = new wxBoxSizer( wxVERTICAL );
-        m_mainBoxSizer->Add( columnBoxSizer, 1, wxALIGN_TOP | wxLEFT | wxTOP, 5 );
+        buttonSizer->Add( columnBoxSizer, 1, wxALIGN_TOP | wxLEFT | wxTOP, 5 );
         wxBoxSizer* rowBoxSizer = new wxBoxSizer( wxHORIZONTAL );
         columnBoxSizer->Add( rowBoxSizer, 0, wxGROW | wxLEFT | wxRIGHT | wxBOTTOM, 5 );
 
@@ -266,7 +287,18 @@ void WIDGET_EESCHEMA_COLOR_CONFIG::SetColor( wxCommandEvent& event )
     button->SetBitmapLabel( bitmap );
     button->Refresh();
 
+    UpdateControls();
     Refresh( false );
+}
+
+
+void WIDGET_EESCHEMA_COLOR_CONFIG::UpdateControls()
+{
+    for( auto theme : COLOR_THEME_MANAGER::Instance().GetThemeList() )
+    {
+        std::cout << theme->themeName << std::endl;
+    }
+    //m_cbTheme;
 }
 
 
