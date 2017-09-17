@@ -334,7 +334,17 @@ void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
 
     if( type != wxEVT_CHAR )
         aEvent.Skip();
+
+#elif defined ( __WINDOWS__ )
+    // On Windows, mouse wheel event and some keys event (PAGE UP, PAGE DOWN, ARROW KEYS) are previoulsy
+    // called, and calling aEvent.Skip() calls default handler for these specific keys equivalent to move
+    // the thumbtrack cursor.
+    // TODO: see a better filtering could be just mouse wheel and these special keys only.
+
+    if( !evt )
+        aEvent.Skip();
 #else
+    // on Linux, the event must be passed to the GUI
     aEvent.Skip();
 #endif
 
