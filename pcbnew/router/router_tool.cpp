@@ -1060,6 +1060,8 @@ int ROUTER_TOOL::InlineDrag( const TOOL_EVENT& aEvent )
     controls()->ShowCursor( false );
     frame()->UndoRedoBlock( false );
 
+    m_toolMgr->RunAction( PCB_ACTIONS::zoneFillAll, true );
+
     return 0;
 }
 
