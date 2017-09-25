@@ -55,6 +55,10 @@ WX_VIEW_CONTROLS::WX_VIEW_CONTROLS( VIEW* aView, wxScrolledCanvas* aParentPanel 
                             wxMouseEventHandler( WX_VIEW_CONTROLS::onButton ), NULL, this );
     m_parentPanel->Connect( wxEVT_LEFT_DOWN,
                             wxMouseEventHandler( WX_VIEW_CONTROLS::onButton ), NULL, this );
+    m_parentPanel->Connect( wxEVT_RIGHT_UP,
+                            wxMouseEventHandler( WX_VIEW_CONTROLS::onButton ), NULL, this );
+    m_parentPanel->Connect( wxEVT_RIGHT_DOWN,
+                            wxMouseEventHandler( WX_VIEW_CONTROLS::onButton ), NULL, this );
 #if defined _WIN32 || defined _WIN64
     m_parentPanel->Connect( wxEVT_ENTER_WINDOW,
                             wxMouseEventHandler( WX_VIEW_CONTROLS::onEnter ), NULL, this );
@@ -155,22 +159,23 @@ void WX_VIEW_CONTROLS::onWheel( wxMouseEvent& aEvent )
         wxLongLong  timeStamp   = wxGetLocalTimeMillis();
         double      timeDiff    = timeStamp.ToDouble() - m_timeStamp.ToDouble();
         int         rotation    = aEvent.GetWheelRotation();
-        double      zoomScale;
+        double      zoomScale = 1.0;
 
 #ifdef __WXMAC__
-        // The following is to support Apple pointer devices (MagicMouse &
-        // Macbook touchpad), which send events more frequently, but with smaller
-        // wheel rotation.
-        //
-        // It should not break other platforms, but I prefer to be safe than
-        // sorry. If you find a device that behaves in the same way on another
-        // platform, feel free to remove #ifdef directives.
-        if( timeDiff > 0 && timeDiff < 100 && std::abs( rotation ) < 20 )
-        {
-            aEvent.Skip();
-            return;
-        }
-#endif
+        // On Apple pointer devices, wheel events occur frequently and with
+        // smaller rotation values.  For those devices, let's handle zoom
+        // based on the rotation amount rather than the time difference.
+
+        // Unused
+        ( void )timeDiff;
+
+        rotation = ( rotation > 0 ) ? std::min( rotation , 100 )
+                                    : std::max( rotation , -100 );
+
+        double dscale = rotation * 0.01;
+        zoomScale = ( rotation > 0 ) ? (1 + dscale)  : 1/(1 - dscale);
+
+#else
 
         m_timeStamp = timeStamp;
 
@@ -186,6 +191,7 @@ void WX_VIEW_CONTROLS::onWheel( wxMouseEvent& aEvent )
         {
             zoomScale = ( rotation > 0 ) ? 1.05 : 1/1.05;
         }
+#endif
 
         if( IsCursorWarpingEnabled() )
         {
@@ -221,7 +227,9 @@ void WX_VIEW_CONTROLS::onButton( wxMouseEvent& aEvent )
     {
     case IDLE:
     case AUTO_PANNING:
-        if( aEvent.MiddleDown() )
+        if( aEvent.MiddleDown() ||
+            ( aEvent.LeftDown() && m_settings.m_panWithLeftButton ) ||
+            ( aEvent.RightDown() && m_settings.m_panWithRightButton ) )
         {
             m_dragStartPoint = VECTOR2D( aEvent.GetX(), aEvent.GetY() );
             m_lookStartPoint = m_view->GetCenter();
@@ -234,7 +242,7 @@ void WX_VIEW_CONTROLS::onButton( wxMouseEvent& aEvent )
         break;
 
     case DRAG_PANNING:
-        if( aEvent.MiddleUp() )
+        if( aEvent.MiddleUp() || aEvent.LeftUp() || aEvent.RightUp() )
             m_state = IDLE;
 
         break;
@@ -373,6 +381,11 @@ void WX_VIEW_CONTROLS::onScroll( wxScrollWinEvent& aEvent )
             dist = linePanDelta;
         else if( type == wxEVT_SCROLLWIN_LINEDOWN )
             dist = -linePanDelta;
+        else
+        {
+            wxASSERT( "Unhandled event type" );
+            return;
+        }
 
         VECTOR2D scroll = m_view->ToWorld( m_view->GetScreenPixelSize(), false ) * dist;
 
