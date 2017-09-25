@@ -1096,17 +1096,21 @@ int SELECTION_TOOL::findMove( const TOOL_EVENT& aEvent )
 
     if( module )
     {
+        KIGFX::VIEW_CONTROLS* viewCtrls = getViewControls();
         clearSelection();
         toggleSelection( module );
 
+        auto cursorPosition = viewCtrls->GetCursorPosition( false );
+
         // Place event on module origin first, so the generic anchor snap
         // doesn't just choose the closest pin for us
-        // Don't warp the view - we want the component to
-        // "teleport" to cursor, not move to the components position
-        getViewControls()->ForceCursorPosition( true, module->GetPosition() );
+        viewCtrls->ForceCursorPosition( true, module->GetPosition() );
 
         // pick the component up and start moving
         m_toolMgr->InvokeTool( "pcbnew.InteractiveEdit" );
+
+        // restore the previous cursor position
+        viewCtrls->SetCursorPosition( cursorPosition, false );
     }
 
     return 0;
@@ -1264,10 +1268,11 @@ void SELECTION_TOOL::clearSelection()
 BOARD_ITEM* SELECTION_TOOL::disambiguationMenu( GENERAL_COLLECTOR* aCollector )
 {
     BOARD_ITEM* current = NULL;
-    PCB_BRIGHT_BOX brightBox;
+    KIGFX::VIEW_GROUP highlightGroup;
     CONTEXT_MENU menu;
 
-    getView()->Add( &brightBox );
+    highlightGroup.SetLayer( LAYER_GP_OVERLAY );
+    getView()->Add( &highlightGroup );
 
     int limit = std::min( 9, aCollector->GetCount() );
 
@@ -1290,7 +1295,12 @@ BOARD_ITEM* SELECTION_TOOL::disambiguationMenu( GENERAL_COLLECTOR* aCollector )
         if( evt->Action() == TA_CONTEXT_MENU_UPDATE )
         {
             if( current )
+            {
                 current->ClearBrightened();
+                getView()->Hide( current, false );
+                highlightGroup.Remove( current );
+                getView()->MarkTargetDirty( KIGFX::TARGET_OVERLAY );
+            }
 
             int id = *evt->GetCommandId();
 
@@ -1299,6 +1309,9 @@ BOARD_ITEM* SELECTION_TOOL::disambiguationMenu( GENERAL_COLLECTOR* aCollector )
             {
                 current = ( *aCollector )[id - 1];
                 current->SetBrightened();
+                getView()->Hide( current, true );
+                highlightGroup.Add( current );
+                getView()->MarkTargetDirty( KIGFX::TARGET_OVERLAY );
             }
             else
             {
@@ -1317,19 +1330,16 @@ BOARD_ITEM* SELECTION_TOOL::disambiguationMenu( GENERAL_COLLECTOR* aCollector )
 
             break;
         }
-
-        // Draw a mark to show which item is available to be selected
-        if( current && current->IsBrightened() )
-        {
-            brightBox.SetItem( current );
-            getView()->SetVisible( &brightBox, true );
-//          getView()->Hide( &brightBox, false );
-            getView()->Update( &brightBox, KIGFX::GEOMETRY );
-            getView()->MarkTargetDirty( KIGFX::TARGET_OVERLAY );
-        }
     }
 
-    getView()->Remove( &brightBox );
+    if( current && current->IsBrightened() )
+    {
+        current->ClearBrightened();
+        getView()->Hide( current, false );
+        getView()->MarkTargetDirty( KIGFX::TARGET_OVERLAY );
+    }
+
+    getView()->Remove( &highlightGroup );
 
 
     return current;

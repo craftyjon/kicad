@@ -73,6 +73,10 @@ void PCB_BASE_FRAME::Import_Pad_Settings( D_PAD* aPad, bool aDraw )
 
     aPad->ImportSettingsFromMaster( mp );
 
+    aPad->SetPrimitives( mp.GetPrimitives() );
+    aPad->SetAnchorPadShape( mp.GetAnchorPadShape() );
+    aPad->MergePrimitivesAsPolygon();
+
     if( aDraw )
         m_canvas->RefreshDrawingRect( aPad->GetBoundingBox() );
 
@@ -138,11 +142,11 @@ void PCB_BASE_FRAME::AddPad( MODULE* aModule, bool draw )
     if( pad->GetAttribute() != PAD_ATTRIB_HOLE_NOT_PLATED )
     {
         padName = GetNextPadName( GetDesignSettings()
-                .m_Pad_Master.GetPadName() );
+                .m_Pad_Master.GetName() );
     }
 
-    pad->SetPadName( padName );
-    GetDesignSettings().m_Pad_Master.SetPadName( padName );
+    pad->SetName( padName );
+    GetDesignSettings().m_Pad_Master.SetName( padName );
 
     aModule->CalculateBoundingBox();
     SetMsgPanel( pad );

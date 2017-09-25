@@ -25,7 +25,7 @@
  */
 
 /**
- * @file muonde.cpp
+ * @file microwave.cpp
  * @brief Microwave pcb layout code.
  */
 
@@ -215,7 +215,7 @@ MODULE* PCB_EDIT_FRAME::CreateMuWaveBaseFootprint( const wxString& aValue,
         pad->SetLayerSet( F_Cu );
 
         Line.Printf( wxT( "%d" ), pad_num );
-        pad->SetPadName( Line );
+        pad->SetName( Line );
         pad_num++;
     }
 
@@ -329,7 +329,7 @@ MODULE* PCB_EDIT_FRAME::Create_MuWaveComponent( int shape_type )
         break;
 
     case 1:     //Stub :
-        pad->SetPadName( wxT( "1" ) );
+        pad->SetName( wxT( "1" ) );
         pad = pad->Next();
         pad->SetY0( -( gap_size + pad->GetSize().y ) / 2 );
         pad->SetSize( wxSize( pad->GetSize().x, gap_size ) );
@@ -338,17 +338,12 @@ MODULE* PCB_EDIT_FRAME::Create_MuWaveComponent( int shape_type )
 
     case 2:     // Arc Stub created by a polygonal approach:
     {
-        EDGE_MODULE* edge = new EDGE_MODULE( module );
-        module->GraphicalItemsList().PushFront( edge );
-
-        edge->SetShape( S_POLYGON );
-        edge->SetLayer( F_Cu );
+        pad->SetShape( PAD_SHAPE_CUSTOM );
+        pad->SetAnchorPadShape( PAD_SHAPE_RECT );
 
         int numPoints = (angle / 50) + 3;     // Note: angles are in 0.1 degrees
-        std::vector<wxPoint>& polyPoints = edge->GetPolyPoints();
+        std::vector<wxPoint> polyPoints;
         polyPoints.reserve( numPoints );
-
-        edge->m_Start0.y = -pad->GetSize().y / 2;
 
         polyPoints.push_back( wxPoint( 0, 0 ) );
 
@@ -357,9 +352,7 @@ MODULE* PCB_EDIT_FRAME::Create_MuWaveComponent( int shape_type )
         for( int ii = 1; ii<numPoints - 1; ii++ )
         {
             wxPoint pt( 0, -gap_size );
-
             RotatePoint( &pt.x, &pt.y, theta );
-
             polyPoints.push_back( pt );
 
             theta += 50;
@@ -370,6 +363,8 @@ MODULE* PCB_EDIT_FRAME::Create_MuWaveComponent( int shape_type )
 
         // Close the polygon:
         polyPoints.push_back( polyPoints[0] );
+
+        pad->AddPrimitive( polyPoints, 0 );  // add a polygonal basic shape
     }
         break;
 

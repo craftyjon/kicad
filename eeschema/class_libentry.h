@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2004-2015 Jean-Pierre Charras, jp.charras at wanadoo.fr
- * Copyright (C) 2008-2017 Wayne Stambaugh <stambaughw@verizon.net>
+ * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
  * Copyright (C) 2004-2017 KiCad Developers, see change_log.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
@@ -34,8 +34,8 @@
 #include <lib_id.h>
 #include <lib_draw_item.h>
 #include <lib_field.h>
-#include <lib_items.h>
 #include <vector>
+#include <multivector.h>
 
 class EDA_RECT;
 class LINE_READER;
@@ -49,6 +49,8 @@ class LIB_FIELD;
 typedef std::vector<LIB_ALIAS*>         LIB_ALIASES;
 typedef std::shared_ptr<LIB_PART>       PART_SPTR;      ///< shared pointer to LIB_PART
 typedef std::weak_ptr<LIB_PART>         PART_REF;       ///< weak pointer to LIB_PART
+typedef MULTIVECTOR<LIB_ITEM, LIB_ARC_T, LIB_FIELD_T> LIB_ITEMS_CONTAINER;
+typedef LIB_ITEMS_CONTAINER::ITEM_PTR_VECTOR LIB_ITEMS;
 
 
 /* values for member .m_options */
@@ -59,7 +61,11 @@ enum  LIBRENTRYOPTIONS
 };
 
 
-/// WXTRACE value to enable schematic library memory deletion debug output.
+/**
+ * @ingroup trace_env_vars
+ *
+ * Flag to enable schematic library memory deletion debug output.
+ */
 extern const wxChar traceSchLibMem[];
 
 
@@ -236,8 +242,7 @@ class LIB_PART : public EDA_ITEM
     long                m_dateModified;     ///< Date the part was last modified.
     LIBRENTRYOPTIONS    m_options;          ///< Special part features such as POWER or NORMAL.)
     int                 m_unitCount;        ///< Number of units (parts) per package.
-    LIB_ITEMS_MAP       drawingsMap;        ///< How to draw this part.
-    LIB_ITEMS_LIST      drawings;           ///< Wrapper to drawingsMap to present as a flat structure
+    LIB_ITEMS_CONTAINER m_drawings;         ///< Drawing items of this part.
     wxArrayString       m_FootprintList;    /**< List of suitable footprint names for the
                                                  part (wild card names accepted). */
     LIB_ALIASES         m_aliases;          ///< List of alias object pointers associated with the
@@ -683,19 +688,11 @@ public:
     /**
      * Return a reference to the draw item list.
      *
-     * @return LIB_ITEMS_LIST& - Reference to the draw item object list.
+     * @return LIB_ITEMS_CONTAINER& - Reference to the draw item object container.
      */
-    LIB_ITEMS_LIST& GetDrawItemList()
+    LIB_ITEMS_CONTAINER& GetDrawItems()
     {
-        return drawings;
-    }
-
-    /**
-     * Returns a reference to the draw item map that stores items per their type.
-     */
-    LIB_ITEMS_MAP& GetDrawItemMap()
-    {
-        return drawingsMap;
+        return m_drawings;
     }
 
     /**

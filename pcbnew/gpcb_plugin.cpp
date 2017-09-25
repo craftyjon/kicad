@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2012-2017 Wayne Stambaugh <stambaughw@verizon.net>
+ * Copyright (C) 2012 Wayne Stambaugh <stambaughw@gmail.com>
  * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
@@ -48,10 +48,11 @@
 #include <memory.h>
 
 /**
- * Definition for enabling and disabling footprint library trace output.  See the
- * wxWidgets documentation on using the WXTRACE environment variable.
+ * @ingroup trace_env_vars
+ *
+ * Flag to enable GEDA PCB plugin debug output.
  */
-static const wxString traceFootprintLibrary( wxT( "GedaPcbFootprintLib" ) );
+static const wxString traceFootprintLibrary = wxT( "KICAD_TRACE_GEDA_PLUGIN" );
 
 #ifdef DEBUG
 static void inline traceParams( wxArrayString& aParams )
@@ -667,7 +668,7 @@ MODULE* GPCB_FPL_CACHE::parseMODULE( LINE_READER* aLineReader )
             // and set to the pin name of the netlist on instantiation. Many gEDA
             // bare footprints use identical strings for name and number, so this
             // can be a bit confusing.
-            pad->SetPadName( parameters[paramCnt-3] );
+            pad->SetName( parameters[paramCnt-3] );
 
             int x1 = parseInt( parameters[2], conv_unit );
             int x2 = parseInt( parameters[4], conv_unit );
@@ -749,7 +750,7 @@ MODULE* GPCB_FPL_CACHE::parseMODULE( LINE_READER* aLineReader )
             // Pcbnew pad name is used for electrical connection calculations.
             // Accordingly it should be mapped to gEDA's pin/pad number,
             // which is used for the same purpose.
-            pad->SetPadName( parameters[paramCnt-3] );
+            pad->SetName( parameters[paramCnt-3] );
 
             wxPoint padPos( parseInt( parameters[2], conv_unit ),
                             parseInt( parameters[3], conv_unit ) );

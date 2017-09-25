@@ -80,7 +80,7 @@ void BRDITEMS_PLOTTER::PlotPad( D_PAD* aPad, COLOR4D aColor, EDA_DRAW_MODE_T aPl
         gbr_metadata.SetCopper( true );
 
         if( isOnExternalCopperLayer )
-            gbr_metadata.SetPadName( aPad->GetPadName() );
+            gbr_metadata.SetPadName( aPad->GetName() );
 
         gbr_metadata.SetNetName( aPad->GetNetname() );
 
@@ -88,7 +88,7 @@ void BRDITEMS_PLOTTER::PlotPad( D_PAD* aPad, COLOR4D aColor, EDA_DRAW_MODE_T aPl
         // when this is the case, they have no pad name and/or are not plated.
         // In this case gerber files have slightly different attributes.
         if( aPad->GetAttribute() == PAD_ATTRIB_HOLE_NOT_PLATED ||
-            aPad->GetPadName().IsEmpty() )
+            aPad->GetName().IsEmpty() )
             gbr_metadata.m_NetlistMetadata.m_NotInNet = true;
 
         if( !isOnExternalCopperLayer || !isPadOnBoardTechLayers )
@@ -180,6 +180,19 @@ void BRDITEMS_PLOTTER::PlotPad( D_PAD* aPad, COLOR4D aColor, EDA_DRAW_MODE_T aPl
     case PAD_SHAPE_ROUNDRECT:
         m_plotter->FlashPadRoundRect( shape_pos, aPad->GetSize(), aPad->GetRoundRectCornerRadius(),
                                       aPad->GetOrientation(), aPlotMode, &gbr_metadata );
+        break;
+
+    case PAD_SHAPE_CUSTOM:
+        {
+        SHAPE_POLY_SET polygons;
+        aPad->MergePrimitivesAsPolygon(&polygons, 64 );
+
+        if( polygons.OutlineCount() == 0 )
+            break;
+
+        aPad->CustomShapeAsPolygonToBoardPosition( &polygons, shape_pos, aPad->GetOrientation() );
+        m_plotter->FlashPadCustom( shape_pos, aPad->GetSize(), &polygons, aPlotMode, &gbr_metadata );
+        }
         break;
 
     case PAD_SHAPE_RECT:

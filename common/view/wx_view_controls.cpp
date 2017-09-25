@@ -323,22 +323,7 @@ void WX_VIEW_CONTROLS::onTimer( wxTimerEvent& aEvent )
         dir = m_view->ToWorld( dir, false );
         m_view->SetCenter( m_view->GetCenter() + dir * m_settings.m_autoPanSpeed );
 
-        // Notify tools that the cursor position has changed in the world coordinates
-        wxMouseEvent moveEvent( EVT_REFRESH_MOUSE );
-
-        // Set the modifiers state
-#if wxCHECK_VERSION( 3, 0, 0 )
-        moveEvent.SetControlDown( wxGetKeyState( WXK_CONTROL ) );
-        moveEvent.SetShiftDown( wxGetKeyState( WXK_SHIFT ) );
-        moveEvent.SetAltDown( wxGetKeyState( WXK_ALT ) );
-#else
-        // wx <3.0 do not have accessors, but the fields are exposed
-        moveEvent.m_controlDown = wxGetKeyState( WXK_CONTROL );
-        moveEvent.m_shiftDown = wxGetKeyState( WXK_SHIFT );
-        moveEvent.m_altDown = wxGetKeyState( WXK_ALT );
-#endif
-
-        wxPostEvent( m_parentPanel, moveEvent );
+        refreshMouse();
     }
     break;
 
@@ -443,10 +428,10 @@ VECTOR2D WX_VIEW_CONTROLS::GetCursorPosition( bool aEnableSnapping ) const
 }
 
 
-void WX_VIEW_CONTROLS::SetCursorPosition( const VECTOR2D& aPosition )
+void WX_VIEW_CONTROLS::SetCursorPosition( const VECTOR2D& aPosition, bool aWarpView )
 {
     m_updateCursor = false;
-    WarpCursor( aPosition, true, true );
+    WarpCursor( aPosition, true, aWarpView );
     m_cursorPos = aPosition;
 }
 
@@ -477,6 +462,8 @@ void WX_VIEW_CONTROLS::WarpCursor( const VECTOR2D& aPosition, bool aWorldCoordin
     {
         m_parentPanel->WarpPointer( aPosition.x, aPosition.y );
     }
+
+    refreshMouse();
 }
 
 
@@ -551,6 +538,27 @@ bool WX_VIEW_CONTROLS::handleAutoPanning( const wxMouseEvent& aEvent )
 
     wxASSERT_MSG( false, wxT( "This line should never be reached" ) );
     return false;    // Should not be reached, just avoid the compiler warnings..
+}
+
+
+void WX_VIEW_CONTROLS::refreshMouse() const
+{
+    // Notify tools that the cursor position has changed in the world coordinates
+    wxMouseEvent moveEvent( EVT_REFRESH_MOUSE );
+
+    // Set the modifiers state
+#if wxCHECK_VERSION( 3, 0, 0 )
+    moveEvent.SetControlDown( wxGetKeyState( WXK_CONTROL ) );
+    moveEvent.SetShiftDown( wxGetKeyState( WXK_SHIFT ) );
+    moveEvent.SetAltDown( wxGetKeyState( WXK_ALT ) );
+#else
+    // wx <3.0 do not have accessors, but the fields are exposed
+    moveEvent.m_controlDown = wxGetKeyState( WXK_CONTROL );
+    moveEvent.m_shiftDown = wxGetKeyState( WXK_SHIFT );
+    moveEvent.m_altDown = wxGetKeyState( WXK_ALT );
+#endif
+
+    wxPostEvent( m_parentPanel, moveEvent );
 }
 
 

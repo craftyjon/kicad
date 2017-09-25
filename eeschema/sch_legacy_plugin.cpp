@@ -72,7 +72,12 @@
 const char* delims = " \t\r\n";
 
 
-const wxChar traceSchLegacyPlugin[] = wxT( "KI_SCH_LEGACY_PLUGIN" );
+/**
+ * @ingroup trace_env_vars
+ *
+ * Flag to enable legacy schematic plugin debug output.
+ */
+const wxChar traceSchLegacyPlugin[] = wxT( "KICAD_TRACE_SCH_LEGACY_PLUGIN" );
 
 
 static bool is_eol( char c )
@@ -3022,7 +3027,7 @@ LIB_PIN* SCH_LEGACY_PLUGIN_CACHE::loadPin( std::unique_ptr< LIB_PART >& aPart,
     parseUnquotedString( number, aReader, line, &line );
 
     pin->SetName( name );
-    pin->SetPinNumFromString( number );
+    pin->SetNumber( number );
 
     wxPoint pos;
 

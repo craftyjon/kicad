@@ -56,11 +56,9 @@ static wxString LayerMaskDescribe( const BOARD* aBoard, LSET aMask );
 
 int D_PAD::m_PadSketchModePenSize = 0;      // Pen size used to draw pads in sketch mode
 
-
 D_PAD::D_PAD( MODULE* parent ) :
     BOARD_CONNECTED_ITEM( parent, PCB_PAD_T )
 {
-    m_NumPadName          = 0;
     m_Size.x = m_Size.y   = Mils2iu( 60 );  // Default pad size 60 mils.
     m_Drill.x = m_Drill.y = Mils2iu( 30 );  // Default drill size 30 mils.
     m_Orient              = 0;              // Pad rotation in 1/10 degrees.
@@ -72,6 +70,8 @@ D_PAD::D_PAD( MODULE* parent ) :
     }
 
     SetShape( PAD_SHAPE_CIRCLE );                   // Default pad shape is PAD_CIRCLE.
+    SetAnchorPadShape( PAD_SHAPE_CIRCLE );          // Default shape for custom shaped pads
+                                                    // is PAD_CIRCLE.
     SetDrillShape( PAD_DRILL_SHAPE_CIRCLE );        // Default pad drill shape is a circle.
     m_Attribute           = PAD_ATTRIB_STANDARD;    // Default pad type is NORMAL (thru hole)
     m_LocalClearance      = 0;
@@ -84,6 +84,8 @@ D_PAD::D_PAD( MODULE* parent ) :
     m_ZoneConnection      = PAD_ZONE_CONN_INHERITED; // Use parent setting by default
     m_ThermalWidth        = 0;                  // Use parent setting by default
     m_ThermalGap          = 0;                  // Use parent setting by default
+
+    m_customShapeClearanceArea = CUST_PAD_SHAPE_IN_ZONE_OUTLINE;
 
     // Set layers mask to default for a standard thru hole pad.
     m_layerMask           = StandardMask();
@@ -158,6 +160,22 @@ int D_PAD::boundingRadius() const
         x = m_Size.x >> 1;
         y = m_Size.y >> 1;
         radius += 1 + KiROUND( EuclideanNorm( wxSize( x - radius, y - radius )));
+        break;
+
+    case PAD_SHAPE_CUSTOM:
+        radius = 0;
+
+        for( int cnt = 0; cnt < m_customShapeAsPolygon.OutlineCount(); ++cnt )
+        {
+            const SHAPE_LINE_CHAIN& poly = m_customShapeAsPolygon.COutline( cnt );
+            for( int ii = 0; ii < poly.PointCount(); ++ii )
+            {
+                int dist = KiROUND( poly.CPoint( ii ).EuclideanNorm() );
+                radius = std::max( radius, dist );
+            }
+        }
+
+        radius += 1;
         break;
 
     default:
@@ -306,6 +324,32 @@ const EDA_RECT D_PAD::GetBoundingBox() const
         area.SetSize( dx-x, dy-y );
         break;
 
+    case PAD_SHAPE_CUSTOM:
+        {
+        SHAPE_POLY_SET polySet( m_customShapeAsPolygon );
+        // Move shape to actual position
+        CustomShapeAsPolygonToBoardPosition( &polySet, GetPosition(), GetOrientation() );
+        quadrant1 = m_Pos;
+        quadrant2 = m_Pos;
+
+        for( int cnt = 0; cnt < polySet.OutlineCount(); ++cnt )
+        {
+            const SHAPE_LINE_CHAIN& poly = polySet.COutline( cnt );
+
+            for( int ii = 0; ii < poly.PointCount(); ++ii )
+            {
+                quadrant1.x = std::min( quadrant1.x, poly.CPoint( ii ).x );
+                quadrant1.y = std::min( quadrant1.y, poly.CPoint( ii ).y );
+                quadrant2.x = std::max( quadrant2.x, poly.CPoint( ii ).x );
+                quadrant2.y = std::max( quadrant2.y, poly.CPoint( ii ).y );
+            }
+        }
+
+        area.SetOrigin( quadrant1 );
+        area.SetEnd( quadrant2 );
+        }
+        break;
+
     default:
         break;
     }
@@ -379,7 +423,45 @@ void D_PAD::Flip( const wxPoint& aCentre )
     // So the copper layers count is not taken in account
     SetLayerSet( FlipLayerMask( m_layerMask ) );
 
+    // Flip the basic shapes, in custom pads
+    FlipPrimitives();
+
     // m_boundingRadius = -1;  the shape has not been changed
+}
+
+
+// Flip the basic shapes, in custom pads
+void D_PAD::FlipPrimitives()
+{
+    // Flip custom shapes
+    for( unsigned ii = 0; ii < m_basicShapes.size(); ++ii )
+    {
+        PAD_CS_PRIMITIVE& primitive = m_basicShapes[ii];
+
+        MIRROR( primitive.m_Start.y, 0 );
+        MIRROR( primitive.m_End.y, 0 );
+        primitive.m_ArcAngle = -primitive.m_ArcAngle;
+
+        switch( primitive.m_Shape )
+        {
+        case S_POLYGON:         // polygon
+            for( unsigned jj = 0; jj < primitive.m_Poly.size(); jj++ )
+                MIRROR( primitive.m_Poly[jj].y, 0 );
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    // Flip local coordinates in merged Polygon
+    for( int cnt = 0; cnt < m_customShapeAsPolygon.OutlineCount(); ++cnt )
+    {
+        SHAPE_LINE_CHAIN& poly = m_customShapeAsPolygon.Outline( cnt );
+
+        for( int ii = 0; ii < poly.PointCount(); ++ii )
+            MIRROR( poly.Point( ii ).y, 0 );
+    }
 }
 
 
@@ -430,54 +512,12 @@ wxPoint D_PAD::ShapePos() const
 }
 
 
-wxString D_PAD::GetPadName() const
-{
-    wxString name;
-
-    StringPadName( name );
-    return name;
-}
-
-
-void D_PAD::StringPadName( wxString& text ) const
-{
-    text.Empty();
-
-    for( int ii = 0;  ii < PADNAMEZ && m_Padname[ii];  ii++ )
-    {
-        // m_Padname is 8 bit KiCad font junk, do not sign extend
-        text.Append( (unsigned char) m_Padname[ii] );
-    }
-}
-
-
-// Change pad name
-void D_PAD::SetPadName( const wxString& name )
-{
-    int ii, len;
-
-    len = name.Length();
-
-    if( len > PADNAMEZ )
-        len = PADNAMEZ;
-
-    // m_Padname[] is not UTF8, it is an 8 bit character that matches the KiCad font,
-    // so only copy the lower 8 bits of each character.
-
-    for( ii = 0; ii < len; ii++ )
-        m_Padname[ii] = (char) name.GetChar( ii );
-
-    for( ii = len; ii < PADNAMEZ; ii++ )
-        m_Padname[ii] = '\0';
-}
-
-
 bool D_PAD::IncrementPadName( bool aSkipUnconnectable, bool aFillSequenceGaps )
 {
     bool skip = aSkipUnconnectable && ( GetAttribute() == PAD_ATTRIB_HOLE_NOT_PLATED );
 
     if( !skip )
-        SetPadName( GetParent()->GetNextPadName( aFillSequenceGaps ) );
+        SetName( GetParent()->GetNextPadName( aFillSequenceGaps ) );
 
     return !skip;
 }
@@ -650,10 +690,8 @@ void D_PAD::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM>& aList )
 
     if( module )
     {
-        wxString msg = module->GetReference();
-        aList.push_back( MSG_PANEL_ITEM( _( "Footprint" ), msg, DARKCYAN ) );
-        StringPadName( Line );
-        aList.push_back( MSG_PANEL_ITEM( _( "Pad" ), Line, BROWN ) );
+        aList.push_back( MSG_PANEL_ITEM( _( "Footprint" ), module->GetReference(), DARKCYAN ) );
+        aList.push_back( MSG_PANEL_ITEM( _( "Pad" ), m_name, BROWN ) );
     }
 
     aList.push_back( MSG_PANEL_ITEM( _( "Net" ), GetNetname(), DARKCYAN ) );
@@ -816,6 +854,17 @@ bool D_PAD::HitTest( const wxPoint& aPosition ) const
         const SHAPE_LINE_CHAIN &poly = outline.COutline( 0 );
         return TestPointInsidePolygon( (const wxPoint*)&poly.CPoint(0), poly.PointCount(), delta );
     }
+        break;
+
+    case PAD_SHAPE_CUSTOM:
+        // Check for hit in polygon
+        RotatePoint( &delta, -m_Orient );
+
+        if( m_customShapeAsPolygon.OutlineCount() )
+        {
+            const SHAPE_LINE_CHAIN& poly = m_customShapeAsPolygon.COutline( 0 );
+            return TestPointInsidePolygon( (const wxPoint*)&poly.CPoint(0), poly.PointCount(), delta );
+        }
         break;
     }
 
@@ -1096,6 +1145,9 @@ wxString D_PAD::ShowPadShape() const
     case PAD_SHAPE_ROUNDRECT:
         return _( "Roundrect" );
 
+    case PAD_SHAPE_CUSTOM:
+        return _( "CustomShape" );
+
     default:
         return wxT( "???" );
     }
@@ -1128,7 +1180,7 @@ wxString D_PAD::GetSelectMenuText() const
 {
     wxString text;
     wxString padlayers( LayerMaskDescribe( GetBoard(), m_layerMask ) );
-    wxString padname( GetPadName() );
+    wxString padname( GetName() );
 
     if( padname.IsEmpty() )
     {
@@ -1139,7 +1191,7 @@ wxString D_PAD::GetSelectMenuText() const
     else
     {
         text.Printf( _( "Pad %s on %s of %s" ),
-                     GetChars(GetPadName() ), GetChars( padlayers ),
+                     GetChars(GetName() ), GetChars( padlayers ),
                      GetChars(GetParent()->GetReference() ) );
     }
 
@@ -1201,7 +1253,7 @@ void D_PAD::ViewGetLayers( int aLayers[], int& aCount ) const
         wxString msg;
         msg.Printf( wxT( "footprint %s, pad %s: could not find valid layer for pad" ),
                 GetParent() ? GetParent()->GetReference() : "<null>",
-                GetPadName().IsEmpty() ? "(unnamed)" : GetPadName() );
+                GetName().IsEmpty() ? "(unnamed)" : GetName() );
         wxLogWarning( msg );
     }
 #endif
@@ -1334,4 +1386,9 @@ void D_PAD::ImportSettingsFromMaster( const D_PAD& aMasterPad )
     default:
         ;
     }
+
+    // Add or remove custom pad shapes:
+    SetPrimitives( aMasterPad.GetPrimitives() );
+    SetAnchorPadShape( aMasterPad.GetAnchorPadShape() );
+    MergePrimitivesAsPolygon();
 }

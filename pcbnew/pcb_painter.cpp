@@ -53,6 +53,7 @@ PCB_RENDER_SETTINGS::PCB_RENDER_SETTINGS()
     m_clearance = CL_NONE;
     m_sketchBoardGfx = false;
     m_sketchFpGfx = false;
+    m_selectionCandidateColor = COLOR4D( 0.0, 1.0, 0.0, 0.75 );
 
     // By default everything should be displayed as filled
     for( unsigned int i = 0; i < PCB_LAYER_ID_COUNT; ++i )
@@ -210,6 +211,12 @@ const COLOR4D& PCB_RENDER_SETTINGS::GetColor( const VIEW_ITEM* aItem, int aLayer
 
     if( item )
     {
+        // Selection disambiguation
+        if( item->IsBrightened() )
+        {
+            return m_selectionCandidateColor;
+        }
+
         if( item->IsSelected() )
         {
             return m_layerColorsSel[aLayer];
@@ -548,7 +555,6 @@ void PCB_PAINTER::draw( const D_PAD* aPad, int aLayer )
     PAD_SHAPE_T shape;
     double m, n;
     double orientation = aPad->GetOrientation();
-    wxString buffer;
 
     // Draw description layer
     if( IsNetnameLayer( aLayer ) )
@@ -624,10 +630,9 @@ void PCB_PAINTER::draw( const D_PAD* aPad, int aLayer )
 
             if( m_pcbSettings.m_padNumbers )
             {
+                const wxString& padName = aPad->GetName();
                 textpos.y = -textpos.y;
-                aPad->StringPadName( buffer );
-                int len = buffer.Length();
-                double tsize = 1.5 * padsize.x / len;
+                double tsize = 1.5 * padsize.x / padName.Length();
                 tsize = std::min( tsize, size );
                 // Use a smaller text size to handle interline, pen size..
                 tsize *= 0.7;
@@ -636,7 +641,7 @@ void PCB_PAINTER::draw( const D_PAD* aPad, int aLayer )
 
                 m_gal->SetGlyphSize( numsize );
                 m_gal->SetLineWidth( numsize.x / 12.0 );
-                m_gal->BitmapText( aPad->GetPadName(), textpos, 0.0 );
+                m_gal->BitmapText( padName, textpos, 0.0 );
             }
 
             m_gal->Restore();
@@ -681,6 +686,8 @@ void PCB_PAINTER::draw( const D_PAD* aPad, int aLayer )
     m_gal->Translate( VECTOR2D( aPad->GetPosition() ) );
     m_gal->Rotate( -aPad->GetOrientationRadians() );
 
+    int custom_margin = 0;     // a clearance/margin for custom shape, for solder paste/mask
+
     // Choose drawing settings depending on if we are drawing a pad itself or a hole
     if( aLayer == LAYER_PADS_HOLES || aLayer == LAYER_NON_PLATED )
     {
@@ -692,6 +699,7 @@ void PCB_PAINTER::draw( const D_PAD* aPad, int aLayer )
     {
         // Drawing soldermask
         int soldermaskMargin = aPad->GetSolderMaskMargin();
+        custom_margin = soldermaskMargin;
 
         m_gal->Translate( VECTOR2D( aPad->GetOffset() ) );
         size  = VECTOR2D( aPad->GetSize().x / 2.0 + soldermaskMargin,
@@ -702,6 +710,8 @@ void PCB_PAINTER::draw( const D_PAD* aPad, int aLayer )
     {
         // Drawing solderpaste
         wxSize solderpasteMargin = aPad->GetSolderPasteMargin();
+        // try to find a clearance which can be used for custom shapes
+        custom_margin = solderpasteMargin.x;
 
         m_gal->Translate( VECTOR2D( aPad->GetOffset() ) );
         size  = VECTOR2D( aPad->GetSize().x / 2.0 + solderpasteMargin.x,
@@ -787,6 +797,55 @@ void PCB_PAINTER::draw( const D_PAD* aPad, int aLayer )
         }
         break;
     }
+
+    case PAD_SHAPE_CUSTOM:
+    {   // Draw the complex custom shape
+        std::deque<VECTOR2D> pointList;
+
+        // Use solder[Paste/Mask]size or pad size to build pad shape
+        // however, solder[Paste/Mask] size has no actual meaning for a
+        // custom shape, because it is a set of basic shapes
+        // We use the custom_margin (good for solder mask, but approximative
+        // for solder paste).
+        if( custom_margin )
+        {
+            SHAPE_POLY_SET outline;
+            outline.Append( aPad->GetCustomShapeAsPolygon() );
+            const int segmentToCircleCount = 32;
+            outline.Inflate( custom_margin, segmentToCircleCount );
+
+            // Draw the polygon: only one polygon is expected
+            SHAPE_LINE_CHAIN& poly = outline.Outline( 0 );
+
+            for( int ii = 0; ii < poly.PointCount(); ii++ )
+                pointList.push_back( poly.Point( ii ) );
+        }
+        else
+        {
+            // Draw the polygon: only one polygon is expected
+            // However we provide a multi polygon shape drawing
+            // ( for the future or  to show even an incorrect shape
+            const SHAPE_POLY_SET& outline = aPad->GetCustomShapeAsPolygon();
+
+            for( int jj = 0; jj < outline.OutlineCount(); ++jj )
+            {
+                const SHAPE_LINE_CHAIN& poly = outline.COutline( jj );
+
+                for( int ii = 0; ii < poly.PointCount(); ii++ )
+                    pointList.push_back( poly.CPoint( ii ) );
+            }
+        }
+
+        if( m_pcbSettings.m_sketchMode[LAYER_PADS] )
+        {
+            // Add the beginning point to close the outline
+            pointList.push_back( pointList.front() );
+            m_gal->DrawPolyline( pointList );
+        }
+        else
+            m_gal->DrawPolygon( pointList );
+    }
+        break;
 
     case PAD_SHAPE_TRAPEZOID:
     {

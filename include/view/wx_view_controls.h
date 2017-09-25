@@ -78,7 +78,7 @@ public:
     /// @copydoc VIEW_CONTROLS::GetCursorPosition()
     VECTOR2D GetCursorPosition( bool aSnappingEnabled ) const override;
 
-    void SetCursorPosition( const VECTOR2D& aPosition ) override;
+    void SetCursorPosition( const VECTOR2D& aPosition, bool warpView ) override;
 
     /// @copydoc VIEW_CONTROLS::CursorWarp()
     void WarpCursor( const VECTOR2D& aPosition, bool aWorldCoordinates = false,
@@ -112,6 +112,13 @@ private:
      * is in the area that causes autopanning to happen).
      */
     bool handleAutoPanning( const wxMouseEvent& aEvent );
+
+    /**
+     * Sends an event to refresh mouse position. It is mostly used for notifying the tools
+     * that the cursor position in the world coordinates has changed, whereas the screen coordinates
+     * remained the same (e.g. frame edge autopanning).
+     */
+    void refreshMouse() const;
 
     /// Current state of VIEW_CONTROLS
     STATE       m_state;
