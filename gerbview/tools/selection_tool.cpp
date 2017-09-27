@@ -38,7 +38,6 @@ using namespace std::placeholders;
 
 #include <tool/tool_event.h>
 #include <tool/tool_manager.h>
-#include <preview_items/bright_box.h>
 #include <preview_items/ruler_item.h>
 #include <preview_items/selection_area.h>
 

@@ -338,6 +338,7 @@ set( COMMON_SRCS
     tool/conditional_menu.cpp
     tool/selection_conditions.cpp
     tool/zoom_tool.cpp
+    tool/selection_tool.cpp
 
     geometry/seg.cpp
     geometry/shape.cpp

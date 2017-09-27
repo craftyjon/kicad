@@ -18,36 +18,36 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __GERBVIEW_SELECTION_TOOL_H
-#define __GERBVIEW_SELECTION_TOOL_H
+#ifndef __SELECTION_TOOL_H
+#define __SELECTION_TOOL_H
 
-//#include <memory>
-//#include <math/vector2d.h>
+#include <memory>
+#include <math/vector2d.h>
 
-// #include <tool/tool_interactive.h>
-// #include <tool/context_menu.h>
-// #include <tool/selection.h>
-// #include <tool/selection_conditions.h>
-// #include <tool/tool_menu.h>
-
-#include <tool/selection_tool.h>
-
-#include <gerbview_frame.h>
-
-// class SELECTION_AREA;
-class GERBER_COLLECTOR;
-
-// namespace KIGFX
-// {
-//     class GAL;
-// }
+#include <tool/tool_interactive.h>
+#include <tool/context_menu.h>
+#include <tool/selection.h>
+#include <tool/selection_conditions.h>
+#include <tool/tool_menu.h>
 
 
-class GERBVIEW_SELECTION_TOOL : public SELECTION_TOOL
+class SELECTION_AREA;
+class COLLECTOR;
+
+namespace KIGFX
+{
+    class GAL;
+}
+
+
+/**
+ * Generic SELECTION_TOOL; overridden in each program to define specific behavior
+ */
+class SELECTION_TOOL : public TOOL_INTERACTIVE
 {
 public:
-    GERBVIEW_SELECTION_TOOL();
-    ~GERBVIEW_SELECTION_TOOL();
+    SELECTION_TOOL();
+    ~SELECTION_TOOL();
 
     /// @copydoc TOOL_BASE::Init()
     bool Init() override;
@@ -161,7 +161,7 @@ private:
      *
      * @param aItems contains list of items that are displayed to the user.
      */
-    EDA_ITEM* disambiguationMenu( GERBER_COLLECTOR* aItems );
+    EDA_ITEM* disambiguationMenu( COLLECTOR* aItems );
 
     /**
      * Function toggleSelection()
@@ -223,10 +223,8 @@ private:
      * doing some braindead heuristics.
      * @param aCollector is the collector that has a list of items to be queried.
      */
-    void guessSelectionCandidates( GERBER_COLLECTOR& aCollector ) const;
+    void guessSelectionCandidates( COLLECTOR& aCollector ) const;
 
-    /// Pointer to the parent frame.
-    GERBVIEW_FRAME* m_frame;
 
     /// Current state of selection.
     SELECTION m_selection;
