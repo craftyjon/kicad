@@ -36,22 +36,60 @@
 #include <class_netlist_object.h>
 
 #include <wx/regex.h>
+#include <wx/tokenzr.h>
 
 
 /**
- * The regular expression string for label bus notation.  Valid bus labels are defined as
- * one or more non-whitespace characters from the beginning of the string followed by the
- * bus notation [nn...mm] with no characters after the closing bracket.
+ *
+ * Buses can be defined in multiple ways. A homogenous bus is defined as a
+ * vector:
+ *
+ *     BUS_NAME[M..N]
+ *
+ * For example, the bus A[3..0] will contain nets A3, A2, A1, and A0.
+ * The BUS_NAME is required.  M and N must be integers but do not need to be in
+ * any particular order -- A[0..3] produces the same result.
+ *
+ * Like net names, bus names cannot contain whitespace.
+ *
+ * A heterogenous bus is just a grouping of signals, separated by spaces, some
+ * of which may be vectors.  Heterogenous buses can have names, but do not need to.
+ *
+ *     MEMORY{A[15..0] D[7..0] RW CE OE}
+ *
+ * In named heterogenous buses, the net names are expanded as <BUS_NAME>.<NET_NAME>
+ * In the above example, the nets would be named like MEMORY.A15, MEMORY.D0, MEMORY.OE, etc.
+ *
+ *     {USB_DP USB_DN}
+ *
+ * In the above example, the bus is unnamed and
+ *
  */
 static wxRegEx busLabelRe( wxT( "^([^[:space:]]+)(\\[[\\d]+\\.+[\\d]+\\])$" ), wxRE_ADVANCED );
+static wxRegEx heteroBusLabelRe( wxT( "^([^[:space:]]+)?\\{((?:[^[:space:]]+(?:\\[[\\d]+\\.+[\\d]+\\])? ?)+)\\}$" ), wxRE_ADVANCED );
 
 
 bool IsBusLabel( const wxString& aLabel )
+{
+    return IsBusVectorLabel( aLabel ) || IsHeteroBusLabel( aLabel );
+}
+
+
+bool IsBusVectorLabel( const wxString& aLabel )
 {
     wxCHECK_MSG( busLabelRe.IsValid(), false,
                  wxT( "Invalid regular expression in IsBusLabel()." ) );
 
     return busLabelRe.Matches( aLabel );
+}
+
+
+bool IsHeteroBusLabel( const wxString& aLabel )
+{
+    wxCHECK_MSG( heteroBusLabelRe.IsValid(), false,
+                 wxT( "Invalid regular expression in IsHeteroBusLabel()." ) );
+
+    return heteroBusLabelRe.Matches( aLabel );
 }
 
 
@@ -238,6 +276,50 @@ bool NETLIST_OBJECT::IsLabelConnected( NETLIST_OBJECT* aNetItem )
 }
 
 
+void NETLIST_OBJECT::parseBusVector( wxString vector, wxString* name, long* begin, long* end )
+{
+    wxCHECK_RET( IsBusLabel( vector ),
+                 wxT( "<" ) + vector + wxT( "> is not a valid bus vector." ) );
+
+    *name = busLabelRe.GetMatch( vector, 1 );
+    wxString numberString = busLabelRe.GetMatch( vector, 2 );
+
+    // numberString will include the brackets, e.g. [5..0] so skip the first one
+    size_t i = 1, len = numberString.Len();
+    wxString tmp;
+
+    while( i < len && numberString[i] != '.' )
+    {
+        tmp.Append( numberString[i] );
+        i++;
+    }
+
+    tmp.ToLong( begin );
+
+    while( i < len && numberString[i] == '.' )
+        i++;
+
+    tmp.Empty();
+
+    while( i < len && numberString[i] != ']' )
+    {
+        tmp.Append( numberString[i] );
+        i++;
+    }
+
+    tmp.ToLong( end );
+
+    if( *begin < 0 )
+        *begin = 0;
+
+    if( *end < 0 )
+        *end = 0;
+
+    if( *begin > *end )
+        std::swap( *begin, *end );
+}
+
+
 void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItems )
 {
     wxCHECK_RET( IsBusLabel( m_Label ),
@@ -254,64 +336,97 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
     else
         wxCHECK_RET( false, wxT( "Net list object type is not valid." ) );
 
-    unsigned i;
-    wxString tmp, busName, busNumber;
-    long begin, end, member;
-
-    busName = busLabelRe.GetMatch( m_Label, 1 );
-    busNumber = busLabelRe.GetMatch( m_Label, 2 );
-
-    /* Search for  '[' because a bus label is like "busname[nn..mm]" */
-    i = busNumber.Find( '[' );
-    i++;
-
-    while( i < busNumber.Len() && busNumber[i] != '.' )
+    if( IsHeteroBusLabel( m_Label ) )
     {
-        tmp.Append( busNumber[i] );
-        i++;
+        // Hetero bus label: first group is the (optional) name,
+        // second group is the contents of the group (space-delimited), e.g.
+        // NET1 NET2 NETVECTOR[M..N] LASTNET
+
+        wxString tmp, busName, busContents;
+        bool selfSet = false;
+
+        busName = heteroBusLabelRe.GetMatch( m_Label, 1 );
+        busContents = heteroBusLabelRe.GetMatch( m_Label, 2 );
+
+        wxStringTokenizer tokenizer( busContents, " " );
+        while( tokenizer.HasMoreTokens() )
+        {
+            tmp = tokenizer.GetNextToken();
+
+            // Handle a nested vector bus inside the hetero bus
+            if( IsBusLabel( tmp ) )
+            {
+                wxString vecName, tmpMember;
+                long begin, end, member;
+
+                parseBusVector( tmp, &vecName, &begin, &end );
+
+                if( !selfSet )
+                {
+                    member = begin;
+                    tmpMember = vecName;
+                    tmpMember << member;
+                    m_Label = tmpMember;
+                    m_Member = member;
+
+                    selfSet = true;
+                }
+
+                for( member++; member <= end; member++ )
+                {
+                    auto item = new NETLIST_OBJECT( *this );
+
+                    tmpMember = vecName;
+                    tmpMember << member;
+                    item->m_Label = tmpMember;
+                    item->m_Member = member;
+
+                    aNetListItems.push_back( item );
+                }
+            }
+            else
+            {
+                if( !selfSet )
+                {
+                    m_Label = tmp;
+                    selfSet = true;
+                }
+                else
+                {
+                    auto item = new NETLIST_OBJECT( *this );
+                    item->m_Label = tmp;
+                    aNetListItems.push_back( item );
+                }
+            }
+        }
     }
-
-    tmp.ToLong( &begin );
-
-    while( i < busNumber.Len() && busNumber[i] == '.' )
-        i++;
-
-    tmp.Empty();
-
-    while( i < busNumber.Len() && busNumber[i] != ']' )
+    else
     {
-        tmp.Append( busNumber[i] );
-        i++;
-    }
+        // Normal bus label
 
-    tmp.ToLong( &end );
+        wxString busName, tmp;
+        long begin, end, member;
 
-    if( begin < 0 )
-        begin = 0;
+        parseBusVector( m_Label, &busName, &begin, &end );
 
-    if( end < 0 )
-        end = 0;
-
-    if( begin > end )
-        std::swap( begin, end );
-
-    member = begin;
-    tmp = busName;
-    tmp << member;
-    m_Label = tmp;
-    m_Member = member;
-
-    for( member++; member <= end; member++ )
-    {
-        NETLIST_OBJECT* item = new NETLIST_OBJECT( *this );
-
-        // Conversion of bus label to the root name + the current member id.
+        member = begin;
         tmp = busName;
         tmp << member;
-        item->m_Label = tmp;
-        item->m_Member = member;
+        m_Label = tmp;
+        m_Member = member;
 
-        aNetListItems.push_back( item );
+        for( member++; member <= end; member++ )
+        {
+            auto item = new NETLIST_OBJECT( *this );
+
+            // Conversion of bus label to the root name + the current member id.
+            tmp = busName;
+            tmp << member;
+            item->m_Label = tmp;
+            item->m_Member = member;
+
+            aNetListItems.push_back( item );
+        }
     }
 }
 

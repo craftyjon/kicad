@@ -45,6 +45,7 @@
 #include <sch_text.h>
 #include <sch_sheet.h>
 #include <sch_bitmap.h>
+#include <sch_bus_alias.h>
 #include <sch_legacy_plugin.h>
 #include <template_fieldnames.h>
 #include <class_sch_screen.h>
@@ -705,6 +706,8 @@ void SCH_LEGACY_PLUGIN::loadFile( const wxString& aFileName, SCH_SCREEN* aScreen
             aScreen->Append( loadBusEntry( reader ) );
         else if( strCompare( "Text", line ) )
             aScreen->Append( loadText( reader ) );
+        else if( strCompare( "BusAlias", line ) )
+            loadBusAlias( reader, aScreen );
         else if( strCompare( "$EndSCHEMATC", line ) )
             return;
     }
@@ -1559,6 +1562,14 @@ SCH_COMPONENT* SCH_LEGACY_PLUGIN::loadComponent( FILE_LINE_READER& aReader )
     SCH_PARSE_ERROR( "invalid component line", aReader, line );
 
     return NULL;  // Prevents compiler warning.  Should never get here.
+}
+
+
+SCH_BUS_ALIAS* SCH_LEGACY_PLUGIN::loadBusAlias( FILE_LINE_READER& aReader, SCH_SCREEN* aScreen )
+{
+    std::unique_ptr< SCH_BUS_ALIAS > busAlias;
+
+    return busAlias.release();
 }
 
 

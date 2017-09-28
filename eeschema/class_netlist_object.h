@@ -128,6 +128,17 @@ private:
                                          * default net name.
                                          */
 
+    /**
+     * Parses a bus vector (e.g. A[7..0]) into name, begin, and end.
+     * Ensures that begin and end are positive and that end > begin.
+     *
+     * @param vector is a bus vector label string
+     * @param name output of the name portion of the label
+     * @param begin is the first entry in the vector
+     * @param end is the last entry in the vector
+     */
+    void parseBusVector( wxString vector, wxString* name, long* begin, long* end );
+
 public:
 
 #if defined(DEBUG)
@@ -495,12 +506,27 @@ private:
 
 
 /**
- * Function IsBusLabel
- * test if \a aLabel has a bus notation.
+ * Test if \a aLabel has a bus notation.
  *
  * @param aLabel A wxString object containing the label to test.
  * @return true if text is a bus notation format otherwise false is returned.
  */
 extern bool IsBusLabel( const wxString& aLabel );
+
+/**
+ * Test if \a aLabel has a bus vector notation (simple bus, e.g. A[7..0])
+ *
+ * @param aLabel A wxString object containing the label to test.
+ * @return true if text is a bus notation format otherwise false is returned.
+ */
+extern bool IsBusVectorLabel( const wxString& aLabel );
+
+/**
+ * Test if \a aLabel has a heterogenous bus notation.
+ *
+ * @param aLabel A wxString object containing the label to test.
+ * @return true if text is a heterogenous bus notation format otherwise false is returned.
+ */
+extern bool IsHeteroBusLabel( const wxString& aLabel );
 
 #endif    // _CLASS_NETLIST_OBJECT_H_

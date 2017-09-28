@@ -181,6 +181,7 @@ set( EESCHEMA_SRCS
     sch_sheet_pin.cpp
     sch_text.cpp
     sch_validators.cpp
+    sch_bus_alias.cpp
     schedit.cpp
     schematic_undo_redo.cpp
     schframe.cpp
