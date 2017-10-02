@@ -75,7 +75,7 @@ public:
      * Returns the current selection set, filtered according to aFlags.
      * If the set is empty, performs the legacy-style hover selection.
      */
-    SELECTION& RequestSelection( int aFlags = SELECTION_DEFAULT );
+    virtual SELECTION& RequestSelection( int aFlags = SELECTION_DEFAULT );
 
     inline TOOL_MENU& GetToolMenu()
     {
@@ -224,6 +224,12 @@ private:
      * @param aCollector is the collector that has a list of items to be queried.
      */
     void guessSelectionCandidates( GERBER_COLLECTOR& aCollector ) const;
+
+    ///> Returns the selection collector (creating if needed)
+    COLLECTOR* getCollector() override;
+
+    ///> Returns the collection filter for this tool
+    const KICAD_T[] getCollectionFilter() override { return GERBER_COLLECTOR::AllItems }
 
     /// Pointer to the parent frame.
     GERBVIEW_FRAME* m_frame;

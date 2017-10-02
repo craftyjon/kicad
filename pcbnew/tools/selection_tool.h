@@ -326,6 +326,9 @@ private:
     /// Current state of selection.
     SELECTION m_selection;
 
+    /// Selection collector
+    COLLECTOR* m_collector;
+
     /// Flag saying if items should be added to the current selection or rather replace it.
     bool m_additive;
 

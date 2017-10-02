@@ -50,10 +50,10 @@ public:
     ~SELECTION_TOOL();
 
     /// @copydoc TOOL_BASE::Init()
-    bool Init() override;
+    //bool Init() override;
 
     /// @copydoc TOOL_BASE::Reset()
-    void Reset( RESET_REASON aReason ) override;
+    //void Reset( RESET_REASON aReason ) override;
 
     /**
      * Function Main()
@@ -225,6 +225,14 @@ private:
      */
     void guessSelectionCandidates( COLLECTOR& aCollector ) const;
 
+    ///> Returns the selection collector (creating if needed)
+    virtual COLLECTOR* getCollector();
+
+    ///> Returns the collection filter for this tool
+    virtual const KICAD_T[] getCollectionFilter();
+
+    /// The host frame
+    EDA_DRAW_FRAME* m_frame;
 
     /// Current state of selection.
     SELECTION m_selection;
