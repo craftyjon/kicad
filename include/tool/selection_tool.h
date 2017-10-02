@@ -177,7 +177,7 @@ private:
      *
      * @return True if the item fulfills conditions to be selected.
      */
-    bool selectable( const EDA_ITEM* aItem ) const;
+    virtual bool selectable( const EDA_ITEM* aItem ) const = 0;
 
     /**
      * Function select()
@@ -200,14 +200,14 @@ private:
      * Marks item as selected, but does not add it to the ITEMS_PICKED_LIST.
      * @param aItem is an item to be be marked.
      */
-    void selectVisually( EDA_ITEM* aItem );
+    virtual void selectVisually( EDA_ITEM* aItem ) = 0;
 
     /**
      * Function unselectVisually()
      * Marks item as selected, but does not add it to the ITEMS_PICKED_LIST.
      * @param aItem is an item to be be marked.
      */
-    void unselectVisually( EDA_ITEM* aItem );
+    virtual void unselectVisually( EDA_ITEM* aItem ) = 0;
 
     /**
      * Function selectionContains()

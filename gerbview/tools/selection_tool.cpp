@@ -207,6 +207,48 @@ SELECTION& GERBVIEW_SELECTION_TOOL::RequestSelection( int aFlags )
 }
 
 
+bool SELECTION_TOOL::selectable( const EDA_ITEM* aItem ) const
+{
+    auto item = static_cast<const GERBER_DRAW_ITEM*>( aItem );
+
+    if( item->GetLayerPolarity() )
+    {
+        // Don't allow selection of invisible negative items
+        auto rs = static_cast<KIGFX::GERBVIEW_RENDER_SETTINGS*>( getView()->GetPainter()->GetSettings() );
+        if( !rs->IsShowNegativeItems() )
+            return false;
+    }
+
+    return getEditFrame<GERBVIEW_FRAME>()->IsLayerVisible( item->GetLayer() );
+}
+
+
+void GERBVIEW_SELECTION_TOOL::selectVisually( EDA_ITEM* aItem )
+{
+    // Move the item's layer to the front
+    int layer = static_cast<GERBER_DRAW_ITEM*>( aItem )->GetLayer();
+    m_frame->SetActiveLayer( layer, true );
+
+    // Hide the original item, so it is shown only on overlay
+    aItem->SetSelected();
+    getView()->Hide( aItem, true );
+
+    getView()->Update( &m_selection );
+}
+
+
+void GERBVIEW_SELECTION_TOOL::unselectVisually( EDA_ITEM* aItem )
+{
+    // Restore original item visibility
+    aItem->ClearSelected();
+    getView()->Hide( aItem, false );
+    getView()->Update( aItem, KIGFX::ALL );
+
+    getView()->Update( &m_selection );
+}
+
+
+
 void GERBVIEW_SELECTION_TOOL::setTransitions()
 {
     Go( &GERBVIEW_SELECTION_TOOL::Main,             GERBVIEW_ACTIONS::selectionActivate.MakeEvent() );

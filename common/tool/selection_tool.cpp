@@ -19,8 +19,15 @@
  */
 
 #include <base_struct.h>
+#include <class_collector.h>
 #include <class_eda_rect.h>
+#include <draw_frame.h>
+#include <id.h>
+#include <tool/tool_event.h>
 #include <tool/tool_manager.h>
+#include <painter.h>
+#include <preview_items/ruler_item.h>
+#include <preview_items/selection_area.h>
 #include <view/view.h>
 
 #include <tool/selection_tool.h>
@@ -145,16 +152,16 @@ bool SELECTION_TOOL::selectPoint( const VECTOR2I& aWhere, bool aOnDrag )
 
     collector.Collect( model, getCollectionFilter(), wxPoint( aWhere.x, aWhere.y ) );
 
-    bool anyCollected = collector.GetCount() != 0;
+    bool anyCollected = collector->GetCount() != 0;
 
     // Remove unselectable items
-    for( int i = collector.GetCount() - 1; i >= 0; --i )
+    for( int i = collector->GetCount() - 1; i >= 0; --i )
     {
         if( !selectable( collector[i] ) )
-            collector.Remove( i );
+            collector->Remove( i );
     }
 
-    switch( collector.GetCount() )
+    switch( collector->GetCount() )
     {
     case 0:
         if( !m_additive && anyCollected )
@@ -169,18 +176,18 @@ bool SELECTION_TOOL::selectPoint( const VECTOR2I& aWhere, bool aOnDrag )
 
     default:
         // Let's see if there is still disambiguation in selection..
-        if( collector.GetCount() == 1 )
+        if( collector->GetCount() == 1 )
         {
             toggleSelection( collector[0] );
 
             return true;
         }
-        else if( collector.GetCount() > 1 )
+        else if( collector->GetCount() > 1 )
         {
             if( aOnDrag )
                 Wait( TOOL_EVENT( TC_ANY, TA_MOUSE_UP, BUT_LEFT ) );
 
-            item = disambiguationMenu( &collector );
+            item = disambiguationMenu( collector );
 
             if( item )
             {
@@ -264,7 +271,7 @@ bool SELECTION_TOOL::selectMultiple()
 
             for( it = selectedItems.begin(), it_end = selectedItems.end(); it != it_end; ++it )
             {
-                auto item = static_cast<GERBER_DRAW_ITEM*>( it->first );
+                auto item = static_cast< EDA_ITEM* >( it->first );
 
                 if( !item || !selectable( item ) )
                     continue;
@@ -298,7 +305,7 @@ bool SELECTION_TOOL::selectMultiple()
             }
 
             if( m_selection.Size() == 1 )
-                m_frame->SetCurItem( static_cast<GERBER_DRAW_ITEM*>( m_selection.Front() ) );
+                m_frame->SetCurItem( m_selection.Front() );
             else
                 m_frame->SetCurItem( NULL );
 
@@ -421,7 +428,7 @@ void SELECTION_TOOL::clearSelection()
         return;
 
     for( auto item : m_selection )
-        unselectVisually( static_cast<EDA_ITEM*>( item ) );
+        unselectVisually( item );
 
     m_selection.Clear();
 
@@ -533,22 +540,6 @@ EDA_ITEM* SELECTION_TOOL::disambiguationMenu( COLLECTOR* aCollector )
 }
 
 
-bool SELECTION_TOOL::selectable( const EDA_ITEM* aItem ) const
-{
-    auto item = static_cast<const GERBER_DRAW_ITEM*>( aItem );
-
-    if( item->GetLayerPolarity() )
-    {
-        // Don't allow selection of invisible negative items
-        auto rs = static_cast<KIGFX::GERBVIEW_RENDER_SETTINGS*>( getView()->GetPainter()->GetSettings() );
-        if( !rs->IsShowNegativeItems() )
-            return false;
-    }
-
-    return getEditFrame<GERBVIEW_FRAME>()->IsLayerVisible( item->GetLayer() );
-}
-
-
 void SELECTION_TOOL::select( EDA_ITEM* aItem )
 {
     if( aItem->IsSelected() )
@@ -563,7 +554,7 @@ void SELECTION_TOOL::select( EDA_ITEM* aItem )
     if( m_selection.Size() == 1 )
     {
         // Set as the current item, so the information about selection is displayed
-        m_frame->SetCurItem( static_cast<GERBER_DRAW_ITEM*>( aItem ), true );
+        m_frame->SetCurItem( aItem, true );
     }
     else if( m_selection.Size() == 2 )  // Check only for 2, so it will not be
     {                                   // called for every next selected item
@@ -586,31 +577,6 @@ void SELECTION_TOOL::unselect( EDA_ITEM* aItem )
         m_frame->SetCurItem( NULL );
         getView()->Remove( &m_selection );
     }
-}
-
-
-void SELECTION_TOOL::selectVisually( EDA_ITEM* aItem )
-{
-    // Move the item's layer to the front
-    int layer = static_cast<GERBER_DRAW_ITEM*>( aItem )->GetLayer();
-    m_frame->SetActiveLayer( layer, true );
-
-    // Hide the original item, so it is shown only on overlay
-    aItem->SetSelected();
-    getView()->Hide( aItem, true );
-
-    getView()->Update( &m_selection );
-}
-
-
-void SELECTION_TOOL::unselectVisually( EDA_ITEM* aItem )
-{
-    // Restore original item visibility
-    aItem->ClearSelected();
-    getView()->Hide( aItem, false );
-    getView()->Update( aItem, KIGFX::ALL );
-
-    getView()->Update( &m_selection );
 }
 
 
@@ -639,7 +605,7 @@ int SELECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
     auto& controls = *getViewControls();
 
     Activate();
-    getEditFrame<GERBVIEW_FRAME>()->SetToolID( ID_TB_MEASUREMENT_TOOL,
+    m_frame->SetToolID( ID_TB_MEASUREMENT_TOOL,
                         wxCURSOR_PENCIL, _( "Measure distance between two points" ) );
 
     KIGFX::PREVIEW::TWO_POINT_GEOMETRY_MANAGER twoPtMgr;
@@ -720,7 +686,7 @@ int SELECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
     view.Remove( &ruler );
     getViewControls()->SetAdditionalPanButtons( false, false );
 
-    getEditFrame<GERBVIEW_FRAME>()->SetToolID( ID_NO_TOOL_SELECTED, wxCURSOR_DEFAULT, wxEmptyString );
+    m_frame->SetToolID( ID_NO_TOOL_SELECTED, wxCURSOR_DEFAULT, wxEmptyString );
 
     return 0;
 }
@@ -732,7 +698,7 @@ VECTOR2I SELECTION::GetCenter() const
 
     if( Size() == 1 )
     {
-        centre = static_cast<GERBER_DRAW_ITEM*>( Front() )->GetPosition();
+        centre = static_cast<EDA_ITEM*>( Front() )->GetPosition();
     }
     else
     {

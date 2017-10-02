@@ -109,7 +109,6 @@ enum gerbview_ids
     ID_TB_OPTIONS_SHOW_GBR_MODE_2,
     ID_TB_OPTIONS_DIFF_MODE,
     ID_TB_OPTIONS_HIGH_CONTRAST_MODE,
-    ID_TB_MEASUREMENT_TOOL,
 
     // Right click context menu
     ID_HIGHLIGHT_REMOVE_ALL,

@@ -334,6 +334,17 @@ public:
     virtual BASE_SCREEN* GetScreen() const  { return m_currentScreen; }
 
     /**
+     * Sets the currently selected item and displays it in the MsgPanel.
+     * If the given item is NULL then the MsgPanel is erased and there is no
+     * currently selected item. This function is intended to make the process
+     * of "selecting" an item more formal, and to indivisibly tie the operation
+     * of selecting an item to displaying its information in the MsgPanel.
+     * @param aItem The EDA_ITEM to make the selected item or NULL if none.
+     * @param aDisplayInfo = true to display item info, false if not (default = true)
+     */
+    virtual void SetCurItem( EDA_ITEM* aItem, bool aDisplayInfo = true ) = 0;
+
+    /**
      * Execute a remote command send via a socket to the application,
      * port KICAD_PCB_PORT_SERVICE_NUMBER (currently 4242)
      * It called by EDA_DRAW_FRAME::OnSockRequest().

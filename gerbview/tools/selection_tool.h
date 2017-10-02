@@ -200,14 +200,14 @@ private:
      * Marks item as selected, but does not add it to the ITEMS_PICKED_LIST.
      * @param aItem is an item to be be marked.
      */
-    void selectVisually( EDA_ITEM* aItem );
+    void selectVisually( EDA_ITEM* aItem ) override;
 
     /**
      * Function unselectVisually()
      * Marks item as selected, but does not add it to the ITEMS_PICKED_LIST.
      * @param aItem is an item to be be marked.
      */
-    void unselectVisually( EDA_ITEM* aItem );
+    void unselectVisually( EDA_ITEM* aItem ) override;
 
     /**
      * Function selectionContains()
