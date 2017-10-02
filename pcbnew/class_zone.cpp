@@ -105,6 +105,7 @@ ZONE_CONTAINER::ZONE_CONTAINER( const ZONE_CONTAINER& aZone ) :
     m_hatchPitch = aZone.m_hatchPitch;
     m_HatchLines = aZone.m_HatchLines;
 
+    SetLayerSet( aZone.GetLayerSet() );
     SetLocalFlags( aZone.GetLocalFlags() );
 }
 
@@ -132,6 +133,8 @@ ZONE_CONTAINER& ZONE_CONTAINER::operator=( const ZONE_CONTAINER& aOther )
     m_FilledPolysList.Append( aOther.m_FilledPolysList );
     m_FillSegmList.clear();
     m_FillSegmList = aOther.m_FillSegmList;
+
+    SetLayerSet( aOther.GetLayerSet() );
 
     return *this;
 }
@@ -176,6 +179,107 @@ const wxPoint& ZONE_CONTAINER::GetPosition() const
 }
 
 
+PCB_LAYER_ID ZONE_CONTAINER::GetLayer() const
+{
+    return BOARD_ITEM::GetLayer();
+}
+
+
+bool ZONE_CONTAINER::IsOnCopperLayer() const
+{
+    if( GetIsKeepout() )
+    {
+        return ( m_layerSet & LSET::AllCuMask() ).count() > 0;
+    }
+    else
+    {
+        return IsCopperLayer( GetLayer() );
+    }
+}
+
+
+bool ZONE_CONTAINER::CommonLayerExists( const LSET aLayerSet ) const
+{
+    LSET common = GetLayerSet() & aLayerSet;
+
+    return common.count() > 0;
+}
+
+
+void ZONE_CONTAINER::SetLayer( PCB_LAYER_ID aLayer )
+{
+    SetLayerSet( LSET( aLayer ) );
+
+    m_Layer = aLayer;
+}
+
+
+void ZONE_CONTAINER::SetLayerSet( LSET aLayerSet )
+{
+    if( GetIsKeepout() )
+    {
+        // Keepouts can only exist on copper layers
+        aLayerSet &= LSET::AllCuMask();
+    }
+
+    if( aLayerSet.count() == 0 )
+    {
+        return;
+    }
+
+    m_layerSet = aLayerSet;
+
+    // Set the single layer to the first selected layer
+    m_Layer = aLayerSet.Seq()[0];
+}
+
+
+LSET ZONE_CONTAINER::GetLayerSet() const
+{
+    // TODO - Enable multi-layer zones for all zone types
+    // not just keepout zones
+    if( GetIsKeepout() )
+    {
+        return m_layerSet;
+    }
+    else
+    {
+        return LSET( m_Layer );
+    }
+}
+
+void ZONE_CONTAINER::ViewGetLayers( int aLayers[], int& aCount ) const
+{
+    if( GetIsKeepout() )
+    {
+        LSEQ layers = m_layerSet.Seq();
+
+        for( unsigned int idx = 0; idx < layers.size(); idx++ )
+        {
+            aLayers[idx] = layers[idx];
+        }
+
+        aCount = layers.size();
+    }
+    else
+    {
+        aLayers[0] = m_Layer;
+        aCount = 1;
+    }
+}
+
+
+bool ZONE_CONTAINER::IsOnLayer( PCB_LAYER_ID aLayer ) const
+{
+    if( GetIsKeepout() )
+    {
+        return m_layerSet.test( aLayer );
+    }
+
+    return BOARD_ITEM::IsOnLayer( aLayer );
+}
+
+
 void ZONE_CONTAINER::Draw( EDA_DRAW_PANEL* panel, wxDC* DC, GR_DRAWMODE aDrawMode,
                            const wxPoint& offset )
 {
@@ -188,10 +292,73 @@ void ZONE_CONTAINER::Draw( EDA_DRAW_PANEL* panel, wxDC* DC, GR_DRAWMODE aDrawMod
 
     auto frame = static_cast<PCB_BASE_FRAME*> ( panel->GetParent() );
 
-    auto color = frame->Settings().Colors().GetLayerColor( m_Layer );
+    PCB_LAYER_ID draw_layer = UNDEFINED_LAYER;
 
-    if( brd->IsLayerVisible( m_Layer ) == false && !( aDrawMode & GR_HIGHLIGHT ) )
+    LSET layers = GetLayerSet() & brd->GetVisibleLayers();
+
+    // If there are no visible layers and the zone is not highlighted, return
+    if( layers.count() == 0 && !( aDrawMode & GR_HIGHLIGHT ) )
+    {
         return;
+    }
+
+    /* Keepout zones can exist on multiple layers
+     * Thus, determining which color to use to render them is a bit tricky.
+     * In descending order of priority:
+     *
+     * 1. If in GR_HIGHLIGHT mode:
+     *   a. If zone is on selected layer, use layer color!
+     *   b. Else, use grey
+     * 1. Not in GR_HIGHLIGHT mode
+     *   a. If zone is on selected layer, use layer color
+     *   b. Else, use color of top-most (visible) layer
+     *
+     */
+    if( GetIsKeepout() )
+    {
+        // At least one layer must be provided!
+        assert( GetLayerSet().count() > 0 );
+
+        // Not on any visible layer?
+        if( layers.count() == 0 && !( aDrawMode & GR_HIGHLIGHT ) )
+        {
+            return;
+        }
+
+        // Is keepout zone present on the selected layer?
+        if( layers.test( curr_layer ) )
+        {
+            draw_layer = curr_layer;
+        }
+        else
+        {
+            // Select the first (top) visible layer
+            if( layers.count() > 0 )
+            {
+                draw_layer = layers.Seq()[0];
+            }
+            else
+            {
+                draw_layer = GetLayerSet().Seq()[0];
+            }
+        }
+
+    }
+    /* Non-keepout zones are easier to deal with
+     */
+    else
+    {
+        if( brd->IsLayerVisible( GetLayer() ) == false && !( aDrawMode & GR_HIGHLIGHT ) )
+        {
+            return;
+        }
+
+        draw_layer = GetLayer();
+    }
+
+    assert( draw_layer != UNDEFINED_LAYER );
+
+    auto color = frame->Settings().Colors().GetLayerColor( draw_layer );
 
     GRSetDrawMode( DC, aDrawMode );
     DISPLAY_OPTIONS* displ_opts = (DISPLAY_OPTIONS*)panel->GetDisplayOptions();
@@ -199,11 +366,15 @@ void ZONE_CONTAINER::Draw( EDA_DRAW_PANEL* panel, wxDC* DC, GR_DRAWMODE aDrawMod
     if( displ_opts->m_ContrastModeDisplay )
     {
         if( !IsOnLayer( curr_layer ) )
+        {
             color = COLOR4D( DARKDARKGRAY );
+        }
     }
 
     if( ( aDrawMode & GR_HIGHLIGHT ) && !( aDrawMode & GR_AND ) )
+    {
         color.SetToLegacyHighlightColor();
+    }
 
     color.a = 0.588;
 
@@ -242,6 +413,7 @@ void ZONE_CONTAINER::Draw( EDA_DRAW_PANEL* panel, wxDC* DC, GR_DRAWMODE aDrawMod
 void ZONE_CONTAINER::DrawFilledArea( EDA_DRAW_PANEL* panel,
                                      wxDC* DC, GR_DRAWMODE aDrawMode, const wxPoint& offset )
 {
+
     static std::vector <wxPoint> CornersBuffer;
     DISPLAY_OPTIONS* displ_opts = (DISPLAY_OPTIONS*)panel->GetDisplayOptions();
 
@@ -262,9 +434,9 @@ void ZONE_CONTAINER::DrawFilledArea( EDA_DRAW_PANEL* panel,
     PCB_LAYER_ID    curr_layer = ( (PCB_SCREEN*) panel->GetScreen() )->m_Active_Layer;
 
     auto frame = static_cast<PCB_BASE_FRAME*> ( panel->GetParent() );
-    auto color = frame->Settings().Colors().GetLayerColor( m_Layer );
+    auto color = frame->Settings().Colors().GetLayerColor( GetLayer() );
 
-    if( brd->IsLayerVisible( m_Layer ) == false && !( aDrawMode & GR_HIGHLIGHT ) )
+    if( brd->IsLayerVisible( GetLayer() ) == false && !( aDrawMode & GR_HIGHLIGHT ) )
         return;
 
     GRSetDrawMode( DC, aDrawMode );
@@ -389,7 +561,7 @@ void ZONE_CONTAINER::DrawWhileCreateOutline( EDA_DRAW_PANEL* panel, wxDC* DC,
     PCB_LAYER_ID    curr_layer = ( (PCB_SCREEN*) panel->GetScreen() )->m_Active_Layer;
 
     auto frame = static_cast<PCB_BASE_FRAME*> ( panel->GetParent() );
-    auto color = frame->Settings().Colors().GetLayerColor( m_Layer );
+    auto color = frame->Settings().Colors().GetLayerColor( GetLayer() );
 
     DISPLAY_OPTIONS* displ_opts = (DISPLAY_OPTIONS*)panel->GetDisplayOptions();
 
@@ -789,7 +961,15 @@ void ZONE_CONTAINER::Flip( const wxPoint& aCentre )
 {
     Mirror( aCentre );
     int copperLayerCount = GetBoard()->GetCopperLayerCount();
-    SetLayer( FlipLayer( GetLayer(), copperLayerCount ) );
+
+    if( GetIsKeepout() )
+    {
+        SetLayerSet( FlipLayerMask( GetLayerSet(), copperLayerCount ) );
+    }
+    else
+    {
+        SetLayer( FlipLayer( GetLayer(), copperLayerCount ) );
+    }
 }
 
 

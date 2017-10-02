@@ -53,7 +53,7 @@ void GERBVIEW_FRAME::ReCreateHToolbar( void )
         return;
 
     m_mainToolBar = new wxAuiToolBar( this, ID_H_TOOLBAR, wxDefaultPosition, wxDefaultSize,
-                                      wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_HORZ_LAYOUT );
+                                      KICAD_AUI_TB_STYLE | wxAUI_TB_HORZ_LAYOUT );
 
     // Set up toolbar
     m_mainToolBar->AddTool( ID_GERBVIEW_ERASE_ALL, wxEmptyString,
@@ -142,7 +142,7 @@ void GERBVIEW_FRAME::ReCreateAuxiliaryToolbar()
     }
 
     m_auxiliaryToolBar = new wxAuiToolBar( this, ID_AUX_TOOLBAR, wxDefaultPosition, wxDefaultSize,
-                                           wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_HORZ_LAYOUT );
+                                           KICAD_AUI_TB_STYLE | wxAUI_TB_HORZ_LAYOUT );
 
     // Creates box to display and choose components:
     wxStaticText* text = new wxStaticText( m_auxiliaryToolBar, wxID_ANY, _("Cmp:") );
@@ -193,7 +193,7 @@ void GERBVIEW_FRAME::ReCreateVToolbar( void )
         return;
 
     m_drawToolBar = new wxAuiToolBar( this, ID_V_TOOLBAR, wxDefaultPosition, wxDefaultSize,
-                                      wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_VERTICAL );
+                                      KICAD_AUI_TB_STYLE | wxAUI_TB_VERTICAL );
 
     // Set up toolbar
     m_drawToolBar->AddTool( ID_NO_TOOL_SELECTED, wxEmptyString, KiBitmap( cursor_xpm ) );
@@ -209,7 +209,7 @@ void GERBVIEW_FRAME::ReCreateOptToolbar( void )
         m_optionsToolBar->Clear();
     else
         m_optionsToolBar = new wxAuiToolBar( this, ID_OPT_TOOLBAR, wxDefaultPosition, wxDefaultSize,
-                                             wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_VERTICAL );
+                                             KICAD_AUI_TB_STYLE | wxAUI_TB_VERTICAL );
 
     // TODO: these can be moved to the 'proper' vertical toolbar if and when there are
     // actual tools to put there. That, or I'll get around to implementing configurable
@@ -280,18 +280,18 @@ void GERBVIEW_FRAME::ReCreateOptToolbar( void )
         m_optionsToolBar->AddSeparator();
         m_optionsToolBar->AddTool( ID_TB_OPTIONS_SHOW_GBR_MODE_0, wxEmptyString,
                                    KiBitmap( gbr_select_mode0_xpm ),
-                                   _( "Show layers in raw mode \
-    (could have problems with negative items when more than one gerber file is shown)" ),
+                                   _( "Show layers in raw mode\n"
+        "(could have problems with negative items when more than one gerber file is shown)" ),
                                    wxITEM_CHECK );
         m_optionsToolBar->AddTool( ID_TB_OPTIONS_SHOW_GBR_MODE_1, wxEmptyString,
                                    KiBitmap( gbr_select_mode1_xpm ),
-                                   _( "Show layers in stacked mode \
-    (show negative items without artifacts, sometimes slow)" ),
+                                   _( "Show layers in stacked mode\n"
+                                      "(show negative items without artifacts)" ),
                                    wxITEM_CHECK );
         m_optionsToolBar->AddTool( ID_TB_OPTIONS_SHOW_GBR_MODE_2, wxEmptyString,
                                    KiBitmap( gbr_select_mode2_xpm ),
-                                   _( "Show layers in transparency mode \
-    (show negative items without artifacts, sometimes slow)" ),
+                                   _( "Show layers in transparency mode\n"
+                                      "(show negative items without artifacts)" ),
                                    wxITEM_CHECK );
     }
     else

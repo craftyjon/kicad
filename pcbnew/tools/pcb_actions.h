@@ -294,11 +294,14 @@ public:
     /// Tool for creating an array of objects
     static TOOL_ACTION createArray;
 
-    /// Copying module items to clipboard
-    static TOOL_ACTION copyItems;
+    /// Copy selected items to clipboard
+    static TOOL_ACTION copyToClipboard;
 
-    /// Pasting module items from clipboard
-    static TOOL_ACTION pasteItems;
+    /// Paste from clipboard
+    static TOOL_ACTION pasteFromClipboard;
+
+    /// Paste from clipboard
+    static TOOL_ACTION cutToClipboard;
 
     /// Display module edges as outlines
     static TOOL_ACTION moduleEdgeOutlines;

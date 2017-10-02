@@ -35,6 +35,8 @@
 #include <functional>
 using namespace std::placeholders;
 
+#include "pcb_draw_panel_gal.h"
+
 BOARD_COMMIT::BOARD_COMMIT( PCB_TOOL* aTool )
 {
     m_toolMgr = aTool->GetManager();
@@ -132,6 +134,7 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
                     // modules inside modules are not supported yet
                     assert( boardItem->Type() != PCB_MODULE_T );
 
+                    boardItem->SetParent( board->m_Modules.GetFirst() );
                     if( !( changeFlags & CHT_DONE ) )
                         board->m_Modules->Add( boardItem );
                 }
@@ -217,7 +220,6 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
                     if( !( changeFlags & CHT_DONE ) )
                         board->Remove( boardItem );
 
-                    //ratsnest->Remove( boardItem );    // currently done by BOARD::Remove()
                     break;
 
                 case PCB_MODULE_T:
@@ -281,7 +283,11 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
         toolMgr->PostEvent( { TC_MESSAGE, TA_MODEL_CHANGE, AS_GLOBAL } );
 
     if ( !m_editModules )
+    {
+        auto panel = static_cast<PCB_DRAW_PANEL_GAL*>( frame->GetGalCanvas() );
         connectivity->RecalculateRatsnest();
+        panel->RedrawRatsnest();
+    }
 
     frame->OnModify();
     frame->UpdateMsgPanel();

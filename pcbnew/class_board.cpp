@@ -103,7 +103,6 @@ BOARD::BOARD() :
 
     // Initialize ratsnest
     m_connectivity.reset( new CONNECTIVITY_DATA() );
-    m_connectivity->Build( this );
 }
 
 
@@ -2903,4 +2902,18 @@ D_PAD* BOARD::GetPad( unsigned aIndex ) const
     }
 
     return nullptr;
+}
+
+void BOARD::ClearAllNetCodes()
+{
+    for ( auto zone : Zones() )
+        zone->SetNetCode( 0 );
+
+    for ( auto mod : Modules() )
+        for ( auto pad : mod->Pads() )
+            pad->SetNetCode( 0 );
+
+    for ( auto track : Tracks() )
+        track->SetNetCode( 0 );
+
 }

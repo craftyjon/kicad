@@ -754,6 +754,8 @@ void PCB_EDIT_FRAME::enableGALSpecificMenus()
     // some menus are active only in GAL mode and do nothing in legacy mode.
     // So enable or disable them, depending on the display mode
 
+    ReCreateMenuBar();
+
     if( GetMenuBar() )
     {
         // Enable / disable some menus which are usable only on GAL
@@ -1181,9 +1183,9 @@ void PCB_EDIT_FRAME::OnUpdatePCBFromSch( wxCommandEvent& event )
 {
     if( Kiface().IsSingle() )
     {
-        DisplayError( this,  _( "Cannot update the PCB, because the Kicad is "
+        DisplayError( this,  _( "Cannot update the PCB, because Pcbnew is "
                                 "opened in stand-alone mode. In order to create or update "
-                                "PCBs from schematics, you need to launch the Kicad shell "
+                                "PCBs from schematics, you need to launch the KiCad project manager "
                                 "and create a PCB project." ) );
         return;
     }

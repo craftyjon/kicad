@@ -120,6 +120,10 @@ public:
 
     void GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList ) override;
 
+    void SetLayerSet( LSET aLayerSet );
+
+    virtual LSET GetLayerSet() const override;
+
     /**
      * Function Draw
      * Draws the zone outline.
@@ -176,10 +180,21 @@ public:
      * Function IsOnCopperLayer
      * @return true if this zone is on a copper layer, false if on a technical layer
      */
-    bool IsOnCopperLayer() const
-    {
-        return  IsCopperLayer( GetLayer() );
-    }
+    bool IsOnCopperLayer() const;
+
+    /**
+     * Function CommonLayerExist
+     * Test if this zone shares a common layer with the given layer set
+     */
+    bool CommonLayerExists( const LSET aLayerSet ) const;
+
+    virtual void SetLayer( PCB_LAYER_ID aLayer ) override;
+
+    virtual PCB_LAYER_ID GetLayer() const override;
+
+    virtual bool IsOnLayer( PCB_LAYER_ID ) const override;
+
+    virtual void ViewGetLayers( int aLayers[], int& aCount ) const override;
 
     /// How to fill areas: 0 = use filled polygons, 1 => fill with segments.
     void SetFillMode( int aFillMode )                   { m_FillMode = aFillMode; }
@@ -579,6 +594,9 @@ public:
      * returns a reference to the list of filled polygons.
      * @return Reference to the list of filled polygons.
      */
+
+    //TODO - This should be called for each layer on which the zone exists
+
     const SHAPE_POLY_SET& GetFilledPolysList() const
     {
         return m_FilledPolysList;
@@ -724,6 +742,8 @@ private:
     SHAPE_POLY_SET*       m_smoothedPoly;        // Corner-smoothed version of m_Poly
     int                   m_cornerSmoothingType;
     unsigned int          m_cornerRadius;
+
+    LSET                  m_layerSet;
 
     /* Priority: when a zone outline is inside and other zone, if its priority is higher
      * the other zone priority, it will be created inside.

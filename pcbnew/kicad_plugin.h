@@ -43,7 +43,8 @@ class NETINFO_MAPPING;
 //                                              // went to 32 Cu layers from 16.
 //#define SEXPR_BOARD_FILE_VERSION    20160815  // differential pair settings per net class
 //#define SEXPR_BOARD_FILE_VERSION    20170123  // EDA_TEXT refactor, moved 'hide'
-#define SEXPR_BOARD_FILE_VERSION      20170920  // long pad names and custom pad shape
+//#define SEXPR_BOARD_FILE_VERSION    20170920  // long pad names and custom pad shape
+#define SEXPR_BOARD_FILE_VERSION      20170922  // Keepout zones can exist on multiple layers
 
 #define CTL_STD_LAYER_NAMES         (1 << 0)    ///< Use English Standard layer names
 #define CTL_OMIT_NETS               (1 << 1)    ///< Omit pads net names (useless in library)
@@ -108,7 +109,7 @@ public:
         return wxT( "kicad_pcb" );
     }
 
-    void Save( const wxString& aFileName, BOARD* aBoard,
+    virtual void Save( const wxString& aFileName, BOARD* aBoard,
                const PROPERTIES* aProperties = NULL ) override;
 
     BOARD* Load( const wxString& aFileName, BOARD* aAppendToMe,
@@ -186,6 +187,21 @@ protected:
     void cacheLib( const wxString& aLibraryPath, const wxString& aFootprintName = wxEmptyString );
 
     void init( const PROPERTIES* aProperties );
+
+    /// formats the board setup information
+    void formatSetup( BOARD* aBoard, int aNestLevel = 0 ) const;
+
+    /// formats the General section of the file
+    void formatGeneral( BOARD* aBoard, int aNestLevel = 0 ) const;
+
+    /// formats the board layer information
+    void formatBoardLayers( BOARD* aBoard, int aNestLevel = 0 ) const;
+
+    /// formats the Nets and Netclasses
+    void formatNetInformation( BOARD* aBoard, int aNestLevel = 0 ) const;
+
+    /// writes everything that comes before the board_items, like settings and layers etc
+    void formatHeader( BOARD* aBoard, int aNestLevel = 0 ) const;
 
 private:
     void format( BOARD* aBoard, int aNestLevel = 0 ) const;

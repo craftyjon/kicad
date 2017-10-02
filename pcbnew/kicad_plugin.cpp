@@ -527,8 +527,7 @@ void PCB_IO::formatLayer( const BOARD_ITEM* aItem ) const
         m_out->Print( 0, " (layer %s)", m_out->Quotew( aItem->GetLayerName() ).c_str() );
 }
 
-
-void PCB_IO::format( BOARD* aBoard, int aNestLevel ) const
+void PCB_IO::formatSetup( BOARD* aBoard, int aNestLevel ) const
 {
     const BOARD_DESIGN_SETTINGS& dsnSettings = aBoard->GetDesignSettings();
 
@@ -572,7 +571,8 @@ void PCB_IO::format( BOARD* aBoard, int aNestLevel ) const
 
     // Save used non-copper layers in the order they are defined.
     // desired sequence for non Cu BOARD layers.
-    static const PCB_LAYER_ID non_cu[] = {
+    static const PCB_LAYER_ID non_cu[] =
+    {
         B_Adhes,        // 32
         F_Adhes,
         B_Paste,
@@ -719,8 +719,96 @@ void PCB_IO::format( BOARD* aBoard, int aNestLevel ) const
     aBoard->GetPlotOptions().Format( m_out, aNestLevel+1 );
 
     m_out->Print( aNestLevel, ")\n\n" );
+}
 
-    // Save net codes and names
+
+void PCB_IO::formatGeneral( BOARD* aBoard, int aNestLevel ) const
+{
+    const BOARD_DESIGN_SETTINGS& dsnSettings = aBoard->GetDesignSettings();
+
+    m_out->Print( 0, "\n" );
+    m_out->Print( aNestLevel, "(general\n" );
+    // Write Bounding box info
+    m_out->Print( aNestLevel+1, "(thickness %s)\n",
+                  FMTIU( dsnSettings.GetBoardThickness() ).c_str() );
+
+    m_out->Print( aNestLevel+1, "(drawings %d)\n", aBoard->Drawings().Size() );
+    m_out->Print( aNestLevel+1, "(tracks %d)\n", aBoard->GetNumSegmTrack() );
+    m_out->Print( aNestLevel+1, "(zones %d)\n", aBoard->GetNumSegmZone() );
+    m_out->Print( aNestLevel+1, "(modules %d)\n", aBoard->m_Modules.GetCount() );
+    m_out->Print( aNestLevel+1, "(nets %d)\n", m_mapping->GetSize() );
+    m_out->Print( aNestLevel, ")\n\n" );
+
+    aBoard->GetPageSettings().Format( m_out, aNestLevel, m_ctl );
+    aBoard->GetTitleBlock().Format( m_out, aNestLevel, m_ctl );
+}
+
+
+void PCB_IO::formatBoardLayers( BOARD* aBoard, int aNestLevel ) const
+{
+    m_out->Print( aNestLevel, "(layers\n" );
+
+    // Save only the used copper layers from front to back.
+    LSET visible_layers = aBoard->GetVisibleLayers();
+
+    for( LSEQ cu = aBoard->GetEnabledLayers().CuStack();  cu;  ++cu )
+    {
+        PCB_LAYER_ID layer = *cu;
+
+        m_out->Print( aNestLevel+1, "(%d %s %s", layer,
+                      m_out->Quotew( aBoard->GetLayerName( layer ) ).c_str(),
+                      LAYER::ShowType( aBoard->GetLayerType( layer ) ) );
+
+        if( !visible_layers[layer] )
+            m_out->Print( 0, " hide" );
+
+        m_out->Print( 0, ")\n" );
+    }
+
+    // Save used non-copper layers in the order they are defined.
+    // desired sequence for non Cu BOARD layers.
+    static const PCB_LAYER_ID non_cu[] =
+    {
+        B_Adhes,        // 32
+        F_Adhes,
+        B_Paste,
+        F_Paste,
+        B_SilkS,
+        F_SilkS,
+        B_Mask,
+        F_Mask,
+        Dwgs_User,
+        Cmts_User,
+        Eco1_User,
+        Eco2_User,
+        Edge_Cuts,
+        Margin,
+        B_CrtYd,
+        F_CrtYd,
+        B_Fab,
+        F_Fab
+    };
+
+    for( LSEQ seq = aBoard->GetEnabledLayers().Seq( non_cu, DIM( non_cu ) );  seq;  ++seq )
+    {
+        PCB_LAYER_ID layer = *seq;
+
+        m_out->Print( aNestLevel+1, "(%d %s user", layer,
+                      m_out->Quotew( aBoard->GetLayerName( layer ) ).c_str() );
+
+        if( !visible_layers[layer] )
+            m_out->Print( 0, " hide" );
+
+        m_out->Print( 0, ")\n" );
+    }
+
+    m_out->Print( aNestLevel, ")\n\n" );
+}
+
+
+void PCB_IO::formatNetInformation( BOARD* aBoard, int aNestLevel ) const
+{
+    const BOARD_DESIGN_SETTINGS& dsnSettings = aBoard->GetDesignSettings();
     for( NETINFO_MAPPING::iterator net = m_mapping->begin(), netEnd = m_mapping->end();
             net != netEnd; ++net )
     {
@@ -745,6 +833,23 @@ void PCB_IO::format( BOARD* aBoard, int aNestLevel ) const
         filterNetClass( *aBoard, netclass );    // Remove empty nets (from a copy of a netclass)
         netclass.Format( m_out, aNestLevel, m_ctl );
     }
+}
+
+
+void PCB_IO::formatHeader( BOARD* aBoard, int aNestLevel ) const
+{
+    formatGeneral( aBoard );
+    // Layers.
+    formatBoardLayers( aBoard );
+    // Setup
+    formatSetup( aBoard, aNestLevel );
+    // Save net codes and names
+    formatNetInformation( aBoard, aNestLevel );
+}
+
+void PCB_IO::format( BOARD* aBoard, int aNestLevel ) const
+{
+    formatHeader( aBoard );
 
     // Save the modules.
     for( MODULE* module = aBoard->m_Modules;  module;  module = module->Next() )
@@ -1541,7 +1646,7 @@ void PCB_IO::format( TRACK* aTrack, int aNestLevel ) const
     {
         PCB_LAYER_ID  layer1, layer2;
 
-        const VIA*  via = static_cast<const VIA*>(aTrack);
+        const VIA*  via = static_cast<const VIA*>( aTrack );
         BOARD*      board = (BOARD*) via->GetParent();
 
         wxCHECK_RET( board != 0, wxT( "Via " ) + via->GetSelectMenuText() +
@@ -1609,7 +1714,15 @@ void PCB_IO::format( ZONE_CONTAINER* aZone, int aNestLevel ) const
                   aZone->GetIsKeepout() ? 0 : m_mapping->Translate( aZone->GetNetCode() ),
                   m_out->Quotew( aZone->GetIsKeepout() ? wxT("") : aZone->GetNetname() ).c_str() );
 
-    formatLayer( aZone );
+    // If a zone exists on multiple layers, format accordingly
+    if( aZone->GetLayerSet().count() > 1 )
+    {
+        formatLayers( aZone->GetLayerSet() );
+    }
+    else
+    {
+        formatLayer( aZone );
+    }
 
     m_out->Print( 0, " (tstamp %lX)", (unsigned long) aZone->GetTimeStamp() );
 

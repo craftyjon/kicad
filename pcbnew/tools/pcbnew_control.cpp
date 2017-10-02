@@ -27,7 +27,9 @@
 #include "pcbnew_control.h"
 #include "pcb_actions.h"
 #include "selection_tool.h"
+#include "edit_tool.h"
 #include "picker_tool.h"
+#include "pcb_editor_control.h"
 #include "grid_helper.h"
 
 #include <class_board.h>
@@ -40,6 +42,8 @@
 #include <hotkeys.h>
 #include <properties.h>
 #include <io_mgr.h>
+#include <kicad_plugin.h>
+#include <kicad_clipboard.h>
 
 #include <pcbnew_id.h>
 #include <wxPcbStruct.h>
@@ -51,6 +55,7 @@
 #include <pcb_painter.h>
 #include <origin_viewitem.h>
 #include <board_commit.h>
+#include <bitmaps.h>
 
 #include <functional>
 using namespace std::placeholders;
@@ -221,9 +226,14 @@ TOOL_ACTION PCB_ACTIONS::toBeDone( "pcbnew.Control.toBeDone",
         AS_GLOBAL, 0,           // dialog saying it is not implemented yet
         "", "" );               // so users are aware of that
 
+TOOL_ACTION PCB_ACTIONS::pasteFromClipboard( "pcbnew.InteractiveEdit.pasteFromClipboard",
+        AS_GLOBAL, MD_CTRL + int( 'V' ),
+        _( "Paste" ), _( "Paste content from clipboard" ),
+        paste_xpm );
+
 
 PCBNEW_CONTROL::PCBNEW_CONTROL() :
-    TOOL_INTERACTIVE( "pcbnew.Control" ), m_frame( NULL )
+    PCB_TOOL( "pcbnew.Control" ), m_frame( NULL )
 {
     m_gridOrigin.reset( new KIGFX::ORIGIN_VIEWITEM() );
 }
@@ -240,7 +250,7 @@ void PCBNEW_CONTROL::Reset( RESET_REASON aReason )
 
     if( aReason == MODEL_RELOAD || aReason == GAL_SWITCH )
     {
-        m_gridOrigin->SetPosition( getModel<BOARD>()->GetGridOrigin() );
+        m_gridOrigin->SetPosition( board()->GetGridOrigin() );
         getView()->Remove( m_gridOrigin.get() );
         getView()->Add( m_gridOrigin.get() );
     }
@@ -257,10 +267,10 @@ int PCBNEW_CONTROL::TrackDisplayMode( const TOOL_EVENT& aEvent )
     displ_opts->m_DisplayPcbTrackFill = !displ_opts->m_DisplayPcbTrackFill;
     settings->LoadDisplayOptions( displ_opts );
 
-    for( TRACK* track = getModel<BOARD>()->m_Track; track; track = track->Next() )
+    for( auto track : board()->Tracks() )
     {
         if( track->Type() == PCB_TRACE_T )
-            getView()->Update( track, KIGFX::GEOMETRY );
+            view()->Update( track, KIGFX::GEOMETRY );
     }
 
     m_frame->GetGalCanvas()->Refresh();
@@ -280,7 +290,7 @@ int PCBNEW_CONTROL::PadDisplayMode( const TOOL_EVENT& aEvent )
     displ_opts->m_DisplayPadFill = !displ_opts->m_DisplayPadFill;
     settings->LoadDisplayOptions( displ_opts );
 
-    for( MODULE* module = getModel<BOARD>()->m_Modules; module; module = module->Next() )
+    for( auto module : board()->Modules() )
     {
         for( auto pad : module->Pads() )
             getView()->Update( pad, KIGFX::GEOMETRY );
@@ -302,7 +312,7 @@ int PCBNEW_CONTROL::ViaDisplayMode( const TOOL_EVENT& aEvent )
     displ_opts->m_DisplayViaFill = !displ_opts->m_DisplayViaFill;
     settings->LoadDisplayOptions( displ_opts );
 
-    for( TRACK* track = getModel<BOARD>()->m_Track; track; track = track->Next() )
+    for( auto track : board()->Tracks() )
     {
         if( track->Type() == PCB_TRACE_T || track->Type() == PCB_VIA_T )
             getView()->Update( track, KIGFX::GEOMETRY );
@@ -332,9 +342,8 @@ int PCBNEW_CONTROL::ZoneDisplayMode( const TOOL_EVENT& aEvent )
 
     settings->LoadDisplayOptions( displ_opts );
 
-    BOARD* board = getModel<BOARD>();
-    for( int i = 0; i < board->GetAreaCount(); ++i )
-        getView()->Update( board->GetArea( i ), KIGFX::GEOMETRY );
+    for( int i = 0; i < board()->GetAreaCount(); ++i )
+        view()->Update( board()->GetArea( i ), KIGFX::GEOMETRY );
 
     m_frame->GetGalCanvas()->Refresh();
 
@@ -385,7 +394,7 @@ int PCBNEW_CONTROL::LayerNext( const TOOL_EVENT& aEvent )
     if( layer < F_Cu || layer > B_Cu )
         return 0;
 
-    int layerCount = getModel<BOARD>()->GetCopperLayerCount();
+    int layerCount = board()->GetCopperLayerCount();
 
     if( layer == layerCount - 2 || layerCount < 2 )
         layer = B_Cu;
@@ -409,7 +418,7 @@ int PCBNEW_CONTROL::LayerPrev( const TOOL_EVENT& aEvent )
     if( layer < F_Cu || layer > B_Cu )
         return 0;
 
-    int layerCount = getModel<BOARD>()->GetCopperLayerCount();
+    int layerCount = board()->GetCopperLayerCount();
 
     if( layer == F_Cu || layerCount < 2 )
         layer = B_Cu;
@@ -640,7 +649,7 @@ int PCBNEW_CONTROL::GridSetOrigin( const TOOL_EVENT& aEvent )
 
 int PCBNEW_CONTROL::GridResetOrigin( const TOOL_EVENT& aEvent )
 {
-    getModel<BOARD>()->SetGridOrigin( wxPoint( 0, 0 ) );
+    board()->SetGridOrigin( wxPoint( 0, 0 ) );
     m_gridOrigin->SetPosition( VECTOR2D( 0, 0 ) );
 
     return 0;
@@ -728,8 +737,84 @@ int PCBNEW_CONTROL::DeleteItemCursor( const TOOL_EVENT& aEvent )
     return 0;
 }
 
+int PCBNEW_CONTROL::PasteItemsFromClipboard( const TOOL_EVENT& aEvent )
+{
+    CLIPBOARD_IO pi;
+    BOARD tmpBoard;
+    BOARD_ITEM* clipItem = pi.Parse();
 
-int PCBNEW_CONTROL::AppendBoard( const TOOL_EVENT& aEvent )
+    if( !clipItem )
+    {
+        return 0;
+    }
+
+    if( clipItem->Type() == PCB_T )
+        static_cast<BOARD*>(clipItem)->ClearAllNetCodes();
+
+    bool editModules = m_editModules || frame()->IsType( FRAME_PCB_MODULE_EDITOR );
+
+    // The clipboard can contain two different things, an entire kicad_pcb
+    // or a single module
+
+    if( editModules && ( !board() || !module() ) )
+    {
+        wxLogDebug( wxT( "Attempting to paste to empty module editor window\n") );
+        return 0;
+    }
+
+
+    switch( clipItem->Type() )
+    {
+        case PCB_T:
+        {
+            if( editModules )
+            {
+                wxLogDebug( wxT( "attempting to paste a pcb in the footprint editor\n") );
+                return 0;
+            }
+
+		    placeBoardItems( static_cast<BOARD*>( clipItem ) );
+            break;
+        }
+
+        case PCB_MODULE_T:
+        {
+            std::vector<BOARD_ITEM *> items;
+
+            clipItem->SetParent( board() );
+
+            if( editModules )
+            {
+                auto mod = static_cast<MODULE *>( clipItem );
+
+                for( auto pad : mod->Pads() )
+                {
+                    pad->SetParent ( board()->m_Modules.GetFirst() );
+                    items.push_back( pad );
+                }
+                for( auto item : mod->GraphicalItems() )
+                {
+                    item->SetParent ( board()->m_Modules.GetFirst() );
+                    items.push_back( item );
+                }
+            }
+            else
+            {
+                items.push_back( clipItem );
+            }
+
+            placeBoardItems( items );
+            break;
+        }
+        default:
+            m_frame->DisplayToolMsg( _( "Invalid clipboard contents" ) );
+            // FAILED
+            break;
+    }
+    return 1;
+}
+
+int PCBNEW_CONTROL::AppendBoardFromFile( const TOOL_EVENT& aEvent )
 {
     int open_ctl;
     wxString fileName;
@@ -737,31 +822,89 @@ int PCBNEW_CONTROL::AppendBoard( const TOOL_EVENT& aEvent )
     PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( m_frame );
 
     if( !editFrame )
-        return 0;
+        return 1;
 
     // Pick a file to append
     if( !AskLoadBoardFileName( editFrame, &open_ctl, &fileName, true ) )
-        return 0;
+        return 1;
 
     IO_MGR::PCB_FILE_T pluginType = plugin_type( fileName, open_ctl );
     PLUGIN::RELEASER pi( IO_MGR::PluginFind( pluginType ) );
 
+    return AppendBoard( *pi, fileName );
+}
+
+int PCBNEW_CONTROL::placeBoardItems( BOARD* aBoard )
+{
+    std::vector<BOARD_ITEM*> items;
+
+    for( auto track : aBoard->Tracks() )
+    {
+        items.push_back( track );
+    }
+
+    for( auto module : aBoard->Modules() )
+    {
+        items.push_back( module );
+    }
+
+    for( auto drawing : aBoard->Drawings() )
+    {
+        items.push_back( drawing );
+    }
+
+    for( auto zone : aBoard->Zones() )
+    {
+        items.push_back( zone );
+    }
+
+    return placeBoardItems( items );
+}
+
+
+int PCBNEW_CONTROL::placeBoardItems( std::vector<BOARD_ITEM*>& aItems )
+{
+    m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
+
+    auto selectionTool = m_toolMgr->GetTool<SELECTION_TOOL>();
+    auto editTool = m_toolMgr->GetTool<EDIT_TOOL>();
+
+    SELECTION& selection = selectionTool->GetSelection();
+
+    for( auto item : aItems )
+    {
+        item->SetSelected();
+        selection.Add( item );
+        editTool->GetCurrentCommit()->Add( item );
+    }
+
+    selection.SetReferencePoint( VECTOR2I( 0, 0 ) );
+
+    m_toolMgr->ProcessEvent( SELECTION_TOOL::SelectedEvent );
+    m_toolMgr->RunAction( PCB_ACTIONS::move, true );
+
+    return 0;
+}
+
+int PCBNEW_CONTROL::AppendBoard( PLUGIN& pi, wxString& fileName )
+{
+    PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( m_frame );
+    if( !editFrame )
+        return 1;
+
     // Mark existing tracks, in order to know what are the new tracks
     // Tracks are inserted, not appended, so mark existing tracks to be
     // able to select the new tracks only later
-    BOARD* board = getModel<BOARD>();
+    BOARD* brd = board();
+    if( !brd )
+        return 1;
 
-    for( TRACK* track = board->m_Track; track; track = track->Next() )
+    for( auto track : brd->Tracks() )
         track->SetFlags( FLAG0 );
 
-    // Other items are appended to the item list, so keep trace to the last existing item is enough
-    MODULE* module = board->m_Modules.GetLast();
-    BOARD_ITEM* drawing = board->DrawingsList().GetLast();
-    int zonescount = board->GetAreaCount();
-
     // Keep also the count of copper layers, to adjust if necessary
-    int initialCopperLayerCount = board->GetCopperLayerCount();
-    LSET initialEnabledLayers = board->GetEnabledLayers();
+    int initialCopperLayerCount = brd->GetCopperLayerCount();
+    LSET initialEnabledLayers = brd->GetEnabledLayers();
 
     // Load the data
     try
@@ -778,7 +921,7 @@ int PCBNEW_CONTROL::AppendBoard( const TOOL_EVENT& aEvent )
         props["page_height"] = ybuf;
 
         editFrame->GetDesignSettings().m_NetClasses.Clear();
-        pi->Load( fileName, board, &props );
+        pi.Load( fileName, brd, &props );
     }
     catch( const IO_ERROR& ioe )
     {
@@ -789,86 +932,25 @@ int PCBNEW_CONTROL::AppendBoard( const TOOL_EVENT& aEvent )
     }
 
     // rebuild nets and ratsnest before any use of nets
-    board->BuildListOfNets();
-    board->SynchronizeNetsAndNetClasses();
-    board->GetConnectivity()->Build( board );
+    brd->BuildListOfNets();
+    brd->SynchronizeNetsAndNetClasses();
 
-    m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
-
-    SELECTION_TOOL* selectionTool = m_toolMgr->GetTool<SELECTION_TOOL>();
-    SELECTION& selection = selectionTool->GetSelection();
-    BOARD_COMMIT commit( editFrame );
-
-    // Process the new items
-    for( TRACK* track = board->m_Track; track; track = track->Next() )
-    {
-        if( track->GetFlags() & FLAG0 )
-        {
-            track->ClearFlags( FLAG0 );
-            continue;
-        }
-
-        commit.Added( track );
-        selection.Add( track );
-    }
-
-    module = module ? module->Next() : board->m_Modules;
-
-    for( ; module; module = module->Next() )
-    {
-        commit.Added( module );
-        selection.Add( module );
-    }
-
-    drawing = drawing ? drawing->Next() : board->DrawingsList();
-
-    for( ; drawing; drawing = drawing->Next() )
-    {
-        commit.Added( drawing );
-        selection.Add( drawing );
-    }
-
-    for( ZONE_CONTAINER* zone = board->GetArea( zonescount ); zone;
-         zone = board->GetArea( zonescount ) )
-    {
-        ++zonescount;
-        commit.Added( zone );
-        selection.Add( zone );
-    }
-
-    if( commit.Empty() )
-        return 0;
-
-    commit.Push( _( "Append a board" ) );
 
     // Synchronize layers
     // we should not ask PLUGINs to do these items:
-    int copperLayerCount = board->GetCopperLayerCount();
+    int copperLayerCount = brd->GetCopperLayerCount();
 
     if( copperLayerCount > initialCopperLayerCount )
-        board->SetCopperLayerCount( copperLayerCount );
+        brd->SetCopperLayerCount( copperLayerCount );
 
     // Enable all used layers, and make them visible:
-    LSET enabledLayers = board->GetEnabledLayers();
+    LSET enabledLayers = brd->GetEnabledLayers();
     enabledLayers |= initialEnabledLayers;
-    board->SetEnabledLayers( enabledLayers );
-    board->SetVisibleLayers( enabledLayers );
-    editFrame->ReCreateLayerBox();
-    editFrame->ReFillLayerWidget();
-    static_cast<PCB_DRAW_PANEL_GAL*>( editFrame->GetGalCanvas() )->SyncLayersVisibility( board );
+    brd->SetEnabledLayers( enabledLayers );
+    brd->SetVisibleLayers( enabledLayers );
 
-    // Start dragging the appended board
-    if( selection.Size() )     // be sure at least one item is loaded
-    {
-        // Inform other potentially interested tools
-        m_toolMgr->ProcessEvent( SELECTION_TOOL::SelectedEvent );
 
-        VECTOR2D v( static_cast<BOARD_ITEM*>( selection.Front() )->GetPosition() );
-        getViewControls()->WarpCursor( v, true, true );
-        m_toolMgr->InvokeTool( "pcbnew.InteractiveEdit" );
-    }
-
-    return 0;
+    return placeBoardItems( brd );
 }
 
 
@@ -945,9 +1027,15 @@ void PCBNEW_CONTROL::setTransitions()
     Go( &PCBNEW_CONTROL::SwitchCursor,       PCB_ACTIONS::switchCursor.MakeEvent() );
     Go( &PCBNEW_CONTROL::SwitchUnits,        PCB_ACTIONS::switchUnits.MakeEvent() );
     Go( &PCBNEW_CONTROL::DeleteItemCursor,   PCB_ACTIONS::deleteItemCursor.MakeEvent() );
-    Go( &PCBNEW_CONTROL::AppendBoard,        PCB_ACTIONS::appendBoard.MakeEvent() );
     Go( &PCBNEW_CONTROL::ShowHelp,           PCB_ACTIONS::showHelp.MakeEvent() );
     Go( &PCBNEW_CONTROL::ToBeDone,           PCB_ACTIONS::toBeDone.MakeEvent() );
+
+    // Append control
+    Go( &PCBNEW_CONTROL::AppendBoardFromFile,
+            PCB_ACTIONS::appendBoard.MakeEvent() );
+
+    Go( &PCBNEW_CONTROL::PasteItemsFromClipboard,
+            PCB_ACTIONS::pasteFromClipboard.MakeEvent() );
 }
 
 
