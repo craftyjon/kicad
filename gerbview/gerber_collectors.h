@@ -117,18 +117,9 @@ public:
      */
     SEARCH_RESULT Inspect( EDA_ITEM* testItem, void* testData )  override;
 
-    /**
-     * Function Collect
-     * scans an EDA_ITEM using this class's Inspector method, which does the collection.
-     * @param aItem An EDA_ITEM to scan
-     * @param aScanList A list of KICAD_Ts with a terminating EOT, that specs
-     *  what is to be collected and the priority order of the resultant
-     *  collection in "m_List".
-     * @param aRefPos A wxPoint to use in hit-testing.
-     * @param aGuide The COLLECTORS_GUIDE to use in collecting items.
-     */
+    ///> @copydoc COLLECTOR::Collect()
     void Collect( EDA_ITEM* aItem, const KICAD_T aScanList[],
-                 const wxPoint& aRefPos/*, const COLLECTORS_GUIDE& aGuide */);
+                  const wxPoint& aRefPos) override;
 };
 
 #endif

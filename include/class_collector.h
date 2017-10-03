@@ -266,6 +266,9 @@ public:
         return cnt;
     }
 
+
+    virtual void Collect( EDA_ITEM* aItem, const KICAD_T aFilterList[], const wxPoint& aPosition ) = 0;
+
     /**
      * Function Collect
      * scans an EDA_ITEM using this class's Inspector method, which does

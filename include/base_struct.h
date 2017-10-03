@@ -304,6 +304,17 @@ public:
         return false;   // derived classes should override this function
     }
 
+    /**
+     * Tests if the given EDA_RECT intersects this object.
+     * For now, an ending point must be inside this rect.
+     * @param aRefArea a wxPoint to test
+     * @return bool - true if a hit, else false
+     */
+    virtual bool HitTest( const EDA_RECT& aPosition ) const
+    {
+        return false;   // derived classes should override this function
+    }
+
 
     /**
      * Function GetBoundingBox

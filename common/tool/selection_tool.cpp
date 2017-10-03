@@ -35,9 +35,8 @@
 
 SELECTION_TOOL::SELECTION_TOOL() :
         TOOL_INTERACTIVE( "common.InteractiveSelection" ),
-        m_frame( NULL ), m_additive( false ), m_subtractive( false ),
-        m_multiple( false ),
-        m_menu( *this )
+        m_frame( NULL ), m_collector( NULL ), m_additive( false ),
+        m_subtractive( false ), m_multiple( false ), m_menu( *this )
 {
 }
 
@@ -150,14 +149,14 @@ bool SELECTION_TOOL::selectPoint( const VECTOR2I& aWhere, bool aOnDrag )
     auto collector = getCollector();
     EDA_ITEM* model = getModel<EDA_ITEM>();
 
-    collector.Collect( model, getCollectionFilter(), wxPoint( aWhere.x, aWhere.y ) );
+    collector->Collect( model, getCollectionFilter(), wxPoint( aWhere.x, aWhere.y ) );
 
     bool anyCollected = collector->GetCount() != 0;
 
     // Remove unselectable items
     for( int i = collector->GetCount() - 1; i >= 0; --i )
     {
-        if( !selectable( collector[i] ) )
+        if( !selectable( ( *collector )[i] ) )
             collector->Remove( i );
     }
 
@@ -170,7 +169,7 @@ bool SELECTION_TOOL::selectPoint( const VECTOR2I& aWhere, bool aOnDrag )
         return false;
 
     case 1:
-        toggleSelection( collector[0] );
+        toggleSelection( ( *collector )[0] );
 
         return true;
 
@@ -178,7 +177,7 @@ bool SELECTION_TOOL::selectPoint( const VECTOR2I& aWhere, bool aOnDrag )
         // Let's see if there is still disambiguation in selection..
         if( collector->GetCount() == 1 )
         {
-            toggleSelection( collector[0] );
+            toggleSelection( ( *collector )[0] );
 
             return true;
         }
@@ -698,7 +697,7 @@ VECTOR2I SELECTION::GetCenter() const
 
     if( Size() == 1 )
     {
-        centre = static_cast<EDA_ITEM*>( Front() )->GetPosition();
+        centre = static_cast<EDA_ITEM*>( Front() )->GetBoundingBox().Centre();
     }
     else
     {
@@ -752,3 +751,7 @@ const KIGFX::VIEW_GROUP::ITEMS SELECTION::updateDrawList() const
     return items;
 }
 
+
+const TOOL_EVENT SELECTION_TOOL::SelectedEvent( TC_MESSAGE, TA_ACTION, "common.InteractiveSelection.selected" );
+const TOOL_EVENT SELECTION_TOOL::UnselectedEvent( TC_MESSAGE, TA_ACTION, "common.InteractiveSelection.unselected" );
+const TOOL_EVENT SELECTION_TOOL::ClearedEvent( TC_MESSAGE, TA_ACTION, "common.InteractiveSelection.cleared" );

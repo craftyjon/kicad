@@ -25,7 +25,6 @@ using namespace std::placeholders;
 
 #include <base_struct.h>
 
-#include <gerber_collectors.h>
 //#include <confirm.h>
 
 #include <class_draw_panel_gal.h>
@@ -44,7 +43,7 @@ using namespace std::placeholders;
 #include <gerbview_id.h>
 #include <gerbview_painter.h>
 
-#include "selection_tool.h"
+#include "gerbview_selection_tool.h"
 #include "gerbview_actions.h"
 
 // Selection tool actions
@@ -129,10 +128,7 @@ private:
 
 
 GERBVIEW_SELECTION_TOOL::GERBVIEW_SELECTION_TOOL() :
-        SELECTION_TOOL( "gerbview.InteractiveSelection" ),
-        m_frame( NULL ), m_additive( false ), m_subtractive( false ),
-        m_multiple( false ),
-        m_menu( *this )
+        SELECTION_TOOL()
 {
 }
 
@@ -207,7 +203,7 @@ SELECTION& GERBVIEW_SELECTION_TOOL::RequestSelection( int aFlags )
 }
 
 
-bool SELECTION_TOOL::selectable( const EDA_ITEM* aItem ) const
+bool GERBVIEW_SELECTION_TOOL::selectable( const EDA_ITEM* aItem ) const
 {
     auto item = static_cast<const GERBER_DRAW_ITEM*>( aItem );
 
@@ -227,7 +223,7 @@ void GERBVIEW_SELECTION_TOOL::selectVisually( EDA_ITEM* aItem )
 {
     // Move the item's layer to the front
     int layer = static_cast<GERBER_DRAW_ITEM*>( aItem )->GetLayer();
-    m_frame->SetActiveLayer( layer, true );
+    getFrame()->SetActiveLayer( layer, true );
 
     // Hide the original item, so it is shown only on overlay
     aItem->SetSelected();
@@ -248,7 +244,6 @@ void GERBVIEW_SELECTION_TOOL::unselectVisually( EDA_ITEM* aItem )
 }
 
 
-
 void GERBVIEW_SELECTION_TOOL::setTransitions()
 {
     Go( &GERBVIEW_SELECTION_TOOL::Main,             GERBVIEW_ACTIONS::selectionActivate.MakeEvent() );
@@ -258,8 +253,3 @@ void GERBVIEW_SELECTION_TOOL::setTransitions()
     Go( &GERBVIEW_SELECTION_TOOL::UnselectItem,     GERBVIEW_ACTIONS::unselectItem.MakeEvent() );
     Go( &GERBVIEW_SELECTION_TOOL::MeasureTool,      GERBVIEW_ACTIONS::measureTool.MakeEvent() );
 }
-
-
-const TOOL_EVENT GERBVIEW_SELECTION_TOOL::SelectedEvent( TC_MESSAGE, TA_ACTION, "gerbview.InteractiveSelection.selected" );
-const TOOL_EVENT GERBVIEW_SELECTION_TOOL::UnselectedEvent( TC_MESSAGE, TA_ACTION, "gerbview.InteractiveSelection.unselected" );
-const TOOL_EVENT GERBVIEW_SELECTION_TOOL::ClearedEvent( TC_MESSAGE, TA_ACTION, "gerbview.InteractiveSelection.cleared" );

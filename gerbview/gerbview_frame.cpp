@@ -881,7 +881,7 @@ void GERBVIEW_FRAME::SetAuxOrigin( const wxPoint& aPosition )
 }
 
 
-void GERBVIEW_FRAME::SetCurItem( GERBER_DRAW_ITEM* aItem, bool aDisplayInfo )
+void GERBVIEW_FRAME::SetCurItem( EDA_ITEM* aItem, bool aDisplayInfo )
 {
     GetScreen()->SetCurItem( aItem );
 

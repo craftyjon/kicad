@@ -24,6 +24,8 @@
 #include <memory>
 #include <math/vector2d.h>
 
+#include <core/typeinfo.h>
+
 #include <tool/tool_interactive.h>
 #include <tool/context_menu.h>
 #include <tool/selection.h>
@@ -112,13 +114,10 @@ public:
     ///> Event sent after selection is cleared.
     static const TOOL_EVENT ClearedEvent;
 
-    ///> Sets up handlers for various events.
-    void setTransitions() override;
-
     ///> Zooms the screen to center and fit the current selection.
     void zoomFitSelection( void );
 
-private:
+protected:
     /**
      * Function selectPoint()
      * Selects an item pointed by the parameter aWhere. If there is more than one item at that
@@ -226,16 +225,18 @@ private:
     void guessSelectionCandidates( COLLECTOR& aCollector ) const;
 
     ///> Returns the selection collector (creating if needed)
-    virtual COLLECTOR* getCollector();
+    virtual COLLECTOR* getCollector() = 0;
 
     ///> Returns the collection filter for this tool
-    virtual const KICAD_T[] getCollectionFilter();
+    virtual const KICAD_T* getCollectionFilter() = 0;
 
     /// The host frame
     EDA_DRAW_FRAME* m_frame;
 
     /// Current state of selection.
     SELECTION m_selection;
+
+    COLLECTOR* m_collector;
 
     /// Flag saying if items should be added to the current selection or rather replace it.
     bool m_additive;
