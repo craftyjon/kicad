@@ -261,6 +261,10 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     // to edit a bad layer
     GetBoard()->SetVisibleAlls();
 
+    // However the "no net" mark on pads is useless, because there is
+    // no net in footprint editor: make it non visible
+    GetBoard()->SetElementVisibility( LAYER_NO_CONNECTS, false );
+
     wxFont font = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT );
     m_Layers = new PCB_LAYER_WIDGET( this, GetCanvas(), font.GetPointSize(), true );
 
@@ -736,8 +740,6 @@ void FOOTPRINT_EDIT_FRAME::Show3D_Frame( wxCommandEvent& event )
 
 bool FOOTPRINT_EDIT_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPosition, EDA_KEY aHotKey )
 {
-    bool eventHandled = true;
-
     // Filter out the 'fake' mouse motion after a keyboard movement
     if( !aHotKey && m_movingCursorWithKeyboard )
     {
@@ -755,19 +757,19 @@ bool FOOTPRINT_EDIT_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPosition, 
 
     wxPoint oldpos = GetCrossHairPosition();
     wxPoint pos = aPosition;
-    GeneralControlKeyMovement( aHotKey, &pos, snapToGrid );
+    bool keyHandled = GeneralControlKeyMovement( aHotKey, &pos, snapToGrid );
 
     SetCrossHairPosition( pos, snapToGrid );
     RefreshCrossHair( oldpos, aPosition, aDC );
 
-    if( aHotKey )
+    if( aHotKey && OnHotKey( aDC, aHotKey, aPosition ) )
     {
-        eventHandled = OnHotKey( aDC, aHotKey, aPosition );
+        keyHandled = true;
     }
 
     UpdateStatusBar();
 
-    return eventHandled;
+    return keyHandled;
 }
 
 
@@ -1011,4 +1013,6 @@ void FOOTPRINT_EDIT_FRAME::UseGalCanvas( bool aEnable )
         GetGalCanvas()->GetGAL()->SetAxesEnabled( true );
         updateView();
     }
+
+    ReCreateMenuBar();
 }

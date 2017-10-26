@@ -61,13 +61,14 @@ static const EDA_COLOR_T default_layer_color[] = {
     LIGHTGRAY,    BLUE, GREEN, YELLOW,  // Dwgs_User, Cmts_User, Eco1_User, Eco2_User
 
     // Special layers
-    YELLOW,                 // Edge_Cuts
-    LIGHTMAGENTA,           // Margin
-    DARKGRAY,     LIGHTGRAY, // B_CrtYd, F_CrtYd,
-    BLUE,         DARKGRAY  // B_Fab, F_Fab
+    YELLOW,                     // Edge_Cuts
+    LIGHTMAGENTA,               // Margin
+    DARKGRAY,     LIGHTGRAY,    // B_CrtYd, F_CrtYd,
+    BLUE,         DARKGRAY      // B_Fab, F_Fab
 };
 
 
+// for color order, see enum GAL_LAYER_ID
 static const EDA_COLOR_T default_items_color[] = {
     LIGHTGRAY, // unused
     CYAN,      // LAYER_VIA_MICROVIA
@@ -82,7 +83,9 @@ static const EDA_COLOR_T default_items_color[] = {
     GREEN,     // LAYER_PAD_BK
     LIGHTGRAY, // LAYER_RATSNEST
     DARKGRAY,  // LAYER_GRID
-    LIGHTRED,  LIGHTGRAY, LIGHTGRAY, LIGHTGRAY,
+    LIGHTRED,  // LAYER_GRID_AXES
+    BLUE,      // LAYER_NO_CONNECTS
+    LIGHTGRAY, LIGHTGRAY,
     LIGHTGRAY, LIGHTGRAY, LIGHTGRAY, LIGHTGRAY,
     LIGHTGRAY, LIGHTGRAY, LIGHTGRAY, LIGHTGRAY,
     LIGHTGRAY, LIGHTGRAY, LIGHTGRAY, LIGHTGRAY,
@@ -102,9 +105,9 @@ COLORS_DESIGN_SETTINGS::COLORS_DESIGN_SETTINGS( FRAME_T aFrameType )
             src = 0;        // wrap the source.
     }
 
-    for( unsigned src = 0, dst = LAYER_VIAS; dst < DIM( default_items_color ); ++dst )
+    for( unsigned src = 0, dst = LAYER_VIAS; src < DIM( default_items_color ); ++dst, ++src )
     {
-        m_LayersColors[dst] = COLOR4D( default_items_color[src++] );
+        m_LayersColors[dst] = COLOR4D( default_items_color[src] );
     }
 
     m_LayersColors[ LAYER_PCB_BACKGROUND ] = BLACK;
@@ -224,6 +227,7 @@ void COLORS_DESIGN_SETTINGS::setupConfigParams()
         Add( "Color4DViaBBlindEx", ITEM_COLOR( LAYER_VIA_BBLIND ), BROWN );
         Add( "Color4DViaMicroEx", ITEM_COLOR( LAYER_VIA_MICROVIA ), CYAN );
         Add( "Color4DRatsEx", ITEM_COLOR( LAYER_RATSNEST ), WHITE );
+        Add( "Color4DNoNetPadMarker", ITEM_COLOR( LAYER_NO_CONNECTS ), BLUE );
     }
 
     SetConfigPrefix( currprefix );

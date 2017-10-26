@@ -7,7 +7,7 @@
  *
  * Copyright (C) 2014 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2014 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
- * Copyright (C) 1992-2015 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -58,11 +58,9 @@ public:
 private:
     PCB_BASE_FRAME* m_parent;
     wxConfigBase*   m_config;               ///< Current config
-    ZONE_SETTINGS   m_zonesettings;
-    ZONE_SETTINGS*  m_ptr;
-
-    std::vector<LAYER_NUM> m_layerId;       ///< Handle the real layer number from layer
-                                            ///< name position in m_LayerSelectionCtrl
+    ZONE_SETTINGS   m_zonesettings;         ///< the working copy of zone settings
+    ZONE_SETTINGS*  m_ptr;                  ///< the pointer to the zone settings
+                                            ///< of the zone to edit
 
     /**
      * Function initDialog
@@ -70,7 +68,12 @@ private:
      */
     void initDialog();
 
-    virtual void OnOkClick( wxCommandEvent& event ) override;
+    /**
+     * automatically called by wxWidgets before closing the dialog
+     */
+    virtual bool TransferDataFromWindow() override;
+
+    virtual void OnLayerSelection( wxDataViewEvent& event ) override;
 
     /**
      * Function AcceptOptionsForKeepOut
@@ -80,16 +83,16 @@ private:
     bool AcceptOptionsForKeepOut();
 
     /**
-     * Function makeLayerBitmap
-     * creates the colored rectangle bitmaps used in the layer selection widget.
+     * Function makeLayerIcon
+     * creates the colored rectangle icons used in the layer selection widget.
      * @param aColor is the color to fill the rectangle with.
      */
-    wxBitmap makeLayerBitmap( COLOR4D aColor );
+    wxIcon makeLayerIcon( COLOR4D aColor );
 };
 
 
-#define LAYER_BITMAP_SIZE_X     20
-#define LAYER_BITMAP_SIZE_Y     10
+#define LAYER_BITMAP_SIZE_X     25
+#define LAYER_BITMAP_SIZE_Y     15
 
 ZONE_EDIT_T InvokeKeepoutAreaEditor( PCB_BASE_FRAME* aCaller, ZONE_SETTINGS* aSettings )
 {
@@ -145,53 +148,85 @@ void DIALOG_KEEPOUT_AREA_PROPERTIES::initDialog()
         break;
     }
 
-    // Create one column in m_LayerSelectionCtrl
-    wxListItem column0;
-    column0.SetId( 0 );
-    m_LayerSelectionCtrl->InsertColumn( 0, column0 );
-
-    wxImageList* imageList = new wxImageList( LAYER_BITMAP_SIZE_X, LAYER_BITMAP_SIZE_Y );
-    m_LayerSelectionCtrl->AssignImageList( imageList, wxIMAGE_LIST_SMALL );
-
     // Build copper layer list and append to layer widget
     LSET show = LSET::AllCuMask( board->GetCopperLayerCount() );
+
+    auto* checkColumn = m_layers->AppendToggleColumn( wxEmptyString );
+    auto* layerColumn = m_layers->AppendIconTextColumn( wxEmptyString );
+
+    wxVector<wxVariant> row;
+
     int imgIdx = 0;
 
     for( LSEQ cu_stack = show.UIOrder();  cu_stack;  ++cu_stack, imgIdx++ )
     {
         PCB_LAYER_ID layer = *cu_stack;
 
-        m_layerId.push_back( layer );
-
         msg = board->GetLayerName( layer );
 
         COLOR4D layerColor = m_parent->Settings().Colors().GetLayerColor( layer );
 
-        imageList->Add( makeLayerBitmap( layerColor ) );
+        row.clear();
+        row.push_back( m_zonesettings.m_Layers.test( layer ) );
+        auto iconItem = wxDataViewIconText( msg, makeLayerIcon( layerColor ) );
+        row.push_back( wxVariant( iconItem ) );
 
-        int itemIndex = m_LayerSelectionCtrl->InsertItem(
-                m_LayerSelectionCtrl->GetItemCount(), msg, imgIdx );
+        m_layers->AppendItem( row );
 
-        if( m_zonesettings.m_CurrentZone_Layer == layer )
-            m_LayerSelectionCtrl->Select( itemIndex );
     }
-
-    m_LayerSelectionCtrl->SetColumnWidth( 0, wxLIST_AUTOSIZE);
 
     // Init keepout parameters:
     m_cbTracksCtrl->SetValue( m_zonesettings.GetDoNotAllowTracks() );
     m_cbViasCtrl->SetValue( m_zonesettings.GetDoNotAllowVias() );
     m_cbCopperPourCtrl->SetValue( m_zonesettings.GetDoNotAllowCopperPour() );
+
+    checkColumn->SetWidth( wxCOL_WIDTH_AUTOSIZE );
+    layerColumn->SetWidth( wxCOL_WIDTH_AUTOSIZE );
+
+    m_layers->SetExpanderColumn( layerColumn );
+    m_layers->SetMinSize( wxSize( 300, -1 ) );
+
+    m_layers->Update();
+
+    Update();
+
+    m_sdbSizerButtonsOK->Enable( m_zonesettings.m_Layers.count() > 0 );
 }
 
 
-void DIALOG_KEEPOUT_AREA_PROPERTIES::OnOkClick( wxCommandEvent& event )
+bool DIALOG_KEEPOUT_AREA_PROPERTIES::TransferDataFromWindow()
 {
     if( AcceptOptionsForKeepOut() )
     {
         *m_ptr = m_zonesettings;
-        event.Skip();       // ends returning wxID_OK (default behavior)
+        return true;
     }
+
+    return false;
+}
+
+
+void DIALOG_KEEPOUT_AREA_PROPERTIES::OnLayerSelection( wxDataViewEvent& event )
+{
+    if( event.GetColumn() != 0 )
+    {
+        return;
+    }
+
+    wxDataViewItem item = event.GetItem();
+
+    int row = m_layers->ItemToRow( item );
+    bool selected = m_layers->GetToggleValue( row, 0 );
+
+    BOARD* board = m_parent->GetBoard();
+    LSEQ cu_stack = LSET::AllCuMask( board->GetCopperLayerCount() ).UIOrder();
+
+    if( row < (int)cu_stack.size() )
+    {
+        m_zonesettings.m_Layers.set( cu_stack[ row ], selected );
+    }
+
+    m_sdbSizerButtonsOK->Enable( m_zonesettings.m_Layers.count() > 0 );
 }
 
 
@@ -213,16 +248,11 @@ bool DIALOG_KEEPOUT_AREA_PROPERTIES::AcceptOptionsForKeepOut()
         return false;
     }
 
-    // Get the layer selection for this zone
-    int ii = m_LayerSelectionCtrl->GetFirstSelected();
-
-    if( ii < 0 )
+    if( m_zonesettings.m_Layers.count() == 0 )
     {
-        DisplayError( NULL, _( "No layer selected." ) );
+        DisplayError( NULL, _( "No layers selected." ) );
         return false;
     }
-
-    m_zonesettings.m_CurrentZone_Layer = ToLAYER_ID( m_layerId[ii] );
 
     switch( m_OutlineAppearanceCtrl->GetSelection() )
     {
@@ -250,13 +280,13 @@ bool DIALOG_KEEPOUT_AREA_PROPERTIES::AcceptOptionsForKeepOut()
     else
         m_zonesettings.m_Zone_45_Only = true;
 
-    m_zonesettings.m_ZonePriority = 0; //m_PriorityLevelCtrl->GetValue();
-
+    m_zonesettings.m_ZonePriority = 0;  // for a keepout, this param is not used.
+                                        // set it to 0
     return true;
 }
 
 
-wxBitmap DIALOG_KEEPOUT_AREA_PROPERTIES::makeLayerBitmap( COLOR4D aColor )
+wxIcon DIALOG_KEEPOUT_AREA_PROPERTIES::makeLayerIcon( COLOR4D aColor )
 {
     wxBitmap    bitmap( LAYER_BITMAP_SIZE_X, LAYER_BITMAP_SIZE_Y );
     wxBrush     brush;
@@ -269,5 +299,8 @@ wxBitmap DIALOG_KEEPOUT_AREA_PROPERTIES::makeLayerBitmap( COLOR4D aColor )
     iconDC.SetBrush( brush );
     iconDC.DrawRectangle( 0, 0, LAYER_BITMAP_SIZE_X, LAYER_BITMAP_SIZE_Y );
 
-    return bitmap;
+    iconDC.SelectObject( wxNullBitmap );    // mandatory before using bitmap data
+    wxIcon icon;
+    icon.CopyFromBitmap( bitmap );
+    return icon;
 }

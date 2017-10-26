@@ -390,7 +390,7 @@ int PCB_EDITOR_CONTROL::ViaSizeDec( const TOOL_EVENT& aEvent )
 
 int PCB_EDITOR_CONTROL::PlaceModule( const TOOL_EVENT& aEvent )
 {
-    MODULE* module = NULL;
+    MODULE* module = aEvent.Parameter<MODULE*>();
     KIGFX::VIEW* view = getView();
     KIGFX::VIEW_CONTROLS* controls = getViewControls();
     BOARD* board = getModel<BOARD>();
@@ -406,10 +406,20 @@ int PCB_EDITOR_CONTROL::PlaceModule( const TOOL_EVENT& aEvent )
     Activate();
     m_frame->SetToolID( ID_PCB_MODULE_BUTT, wxCURSOR_PENCIL, _( "Add footprint" ) );
 
+    // Add all the drawable parts to preview
+    VECTOR2I cursorPos = controls->GetCursorPosition();
+    if( module )
+    {
+        module->SetPosition( wxPoint( cursorPos.x, cursorPos.y ) );
+        preview.Add( module );
+        module->RunOnChildren( std::bind( &KIGFX::VIEW_GROUP::Add, &preview, _1 ) );
+        view->Update( &preview );
+    }
+
     // Main loop: keep receiving events
     while( OPT_TOOL_EVENT evt = Wait() )
     {
-        VECTOR2I cursorPos = controls->GetCursorPosition();
+        cursorPos = controls->GetCursorPosition();
 
         if( evt->IsCancel() || evt->IsActivate() )
         {
@@ -912,11 +922,20 @@ int PCB_EDITOR_CONTROL::ZoneDuplicate( const TOOL_EVENT& aEvent )
 
     // If the new zone is on the same layer as the the initial zone,
     // do nothing
-    if( success && ( oldZone->GetLayer() == zoneSettings.m_CurrentZone_Layer ) )
+    if( success )
     {
-        DisplayError( m_frame,
-            _( "The duplicated zone cannot be on the same layer as the original zone." ) );
-        success = false;
+        if( oldZone->GetIsKeepout() && ( oldZone->GetLayerSet() == zoneSettings.m_Layers ) )
+        {
+            DisplayError(
+                    m_frame, _( "The duplicated keepout zone cannot be on the same layers as the original zone." ) );
+            success = false;
+        }
+        else if( !oldZone->GetIsKeepout() && ( oldZone->GetLayer() == zoneSettings.m_CurrentZone_Layer ) )
+        {
+            DisplayError(
+                    m_frame, _( "The duplicated zone cannot be on the same layer as the original zone." ) );
+            success = false;
+        }
     }
 
     // duplicate the zone
@@ -1197,7 +1216,8 @@ void PCB_EDITOR_CONTROL::calculateSelectionRatsnest()
 {
     auto selectionTool = m_toolMgr->GetTool<SELECTION_TOOL>();
     auto& selection = selectionTool->GetSelection();
-    auto connectivity = getModel<BOARD>()->GetConnectivity();
+    auto connectivity = board()->GetConnectivity();
+
     std::vector<BOARD_ITEM*> items;
     items.reserve( selection.Size() );
 

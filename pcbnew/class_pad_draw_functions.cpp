@@ -1,10 +1,10 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2016 Jean-Pierre Charras, jean-pierre.charras@ujf-grenoble.fr
+ * Copyright (C) 2017 Jean-Pierre Charras, jean-pierre.charras@ujf-grenoble.fr
  * Copyright (C) 2012 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
  * Copyright (C) 2012 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 1992-2016 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -63,6 +63,7 @@ PAD_DRAWINFO::PAD_DRAWINFO()
     m_Color           = BLACK;
     m_HoleColor       = BLACK; // could be DARKGRAY;
     m_NPHoleColor     = YELLOW;
+    m_NoNetMarkColor  = BLUE;
     m_PadClearance    = 0;
     m_Display_padnum  = true;
     m_Display_netname = true;
@@ -285,6 +286,7 @@ void D_PAD::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, GR_DRAWMODE aDraw_mode,
 
     drawInfo.m_DrawMode    = aDraw_mode;
     drawInfo.m_Color       = color;
+    drawInfo.m_NoNetMarkColor = cds.GetItemColor( LAYER_NO_CONNECTS );
     drawInfo.m_DrawPanel   = aPanel;
     drawInfo.m_Mask_margin = mask_margin;
     drawInfo.m_ShowNCMark  = brd->IsElementVisible( LAYER_NO_CONNECTS );
@@ -400,11 +402,17 @@ void D_PAD::DrawShape( EDA_RECT* aClipBox, wxDC* aDC, PAD_DRAWINFO& aDrawInfo )
             TransformShapeWithClearanceToPolygon( outline, aDrawInfo.m_PadClearance, SEGCOUNT, 1.0 );
 
             // Draw the polygon: Inflate creates only one convex polygon
-            SHAPE_LINE_CHAIN& poly = outline.Outline( 0 );
+            if( outline.OutlineCount() > 0 )
+            {
+                SHAPE_LINE_CHAIN& poly = outline.Outline( 0 );
 
-            GRClosedPoly( aClipBox, aDC, poly.PointCount(),
-                          (wxPoint*)&poly.Point( 0 ), false, 0,
-                          aDrawInfo.m_Color, aDrawInfo.m_Color );
+                if( poly.PointCount() > 0 )
+                {
+                    GRClosedPoly( aClipBox, aDC, poly.PointCount(),
+                                  (wxPoint*)&poly.Point( 0 ), false, 0,
+                                  aDrawInfo.m_Color, aDrawInfo.m_Color );
+                }
+            }
         }
         break;
 
@@ -432,11 +440,17 @@ void D_PAD::DrawShape( EDA_RECT* aClipBox, wxDC* aDC, PAD_DRAWINFO& aDrawInfo )
             TransformRoundRectToPolygon( outline, shape_pos, size, GetOrientation(),
                                          corner_radius, 64 );
 
-            SHAPE_LINE_CHAIN& poly = outline.Outline( 0 );
+            if( outline.OutlineCount() > 0 )
+            {
+                SHAPE_LINE_CHAIN& poly = outline.Outline( 0 );
 
-            GRClosedPoly( aClipBox, aDC, poly.PointCount(),
-                          (wxPoint*)&poly.Point( 0 ), aDrawInfo.m_ShowPadFilled, 0,
-                          aDrawInfo.m_Color, aDrawInfo.m_Color );
+                if( poly.PointCount() > 0 )
+                {
+                    GRClosedPoly( aClipBox, aDC, poly.PointCount(),
+                                  (wxPoint*)&poly.Point( 0 ), aDrawInfo.m_ShowPadFilled, 0,
+                                  aDrawInfo.m_Color, aDrawInfo.m_Color );
+                }
+            }
         }
 
         if( aDrawInfo.m_PadClearance )
@@ -450,12 +464,18 @@ void D_PAD::DrawShape( EDA_RECT* aClipBox, wxDC* aDC, PAD_DRAWINFO& aDrawInfo )
             TransformRoundRectToPolygon( outline, shape_pos, size, GetOrientation(),
                                      corner_radius, 32 );
 
-            // Draw the polygon: Inflate creates only one convex polygon
-            SHAPE_LINE_CHAIN& clearance_poly = outline.Outline( 0 );
+            if( outline.OutlineCount() > 0 )
+            {
+                // Draw the polygon: Inflate creates only one convex polygon
+                SHAPE_LINE_CHAIN& clearance_poly = outline.Outline( 0 );
 
-            GRClosedPoly( aClipBox, aDC, clearance_poly.PointCount(),
-                          (wxPoint*)&clearance_poly.Point( 0 ), false, 0,
-                          aDrawInfo.m_Color, aDrawInfo.m_Color );
+                if( clearance_poly.PointCount() > 0 )
+                {
+                    GRClosedPoly( aClipBox, aDC, clearance_poly.PointCount(),
+                                  (wxPoint*)&clearance_poly.Point( 0 ), false, 0,
+                                  aDrawInfo.m_Color, aDrawInfo.m_Color );
+                }
+            }
         }
     }
         break;
@@ -539,9 +559,12 @@ void D_PAD::DrawShape( EDA_RECT* aClipBox, wxDC* aDC, PAD_DRAWINFO& aDrawInfo )
             {
                 poly = &clearance_outline.Outline( jj );
 
-                GRClosedPoly( aClipBox, aDC, poly->PointCount(),
-                              (wxPoint*)&poly->Point( 0 ), false, 0,
-                              aDrawInfo.m_Color, aDrawInfo.m_Color );
+                if( poly->PointCount() > 0 )
+                {
+                    GRClosedPoly( aClipBox, aDC, poly->PointCount(),
+                                  (wxPoint*)&poly->Point( 0 ), false, 0,
+                                  aDrawInfo.m_Color, aDrawInfo.m_Color );
+                }
             }
         }
         break;
@@ -612,15 +635,14 @@ void D_PAD::DrawShape( EDA_RECT* aClipBox, wxDC* aDC, PAD_DRAWINFO& aDrawInfo )
     if( GetNetCode() == 0 && aDrawInfo.m_ShowNCMark )
     {
         int dx0 = std::min( halfsize.x, halfsize.y );
-        COLOR4D nc_color = COLOR4D( BLUE );
 
         if( m_layerMask[F_Cu] )    /* Draw \ */
             GRLine( aClipBox, aDC, holepos.x - dx0, holepos.y - dx0,
-                    holepos.x + dx0, holepos.y + dx0, 0, nc_color );
+                    holepos.x + dx0, holepos.y + dx0, 0, aDrawInfo.m_NoNetMarkColor );
 
         if( m_layerMask[B_Cu] )     // Draw /
             GRLine( aClipBox, aDC, holepos.x + dx0, holepos.y - dx0,
-                    holepos.x - dx0, holepos.y + dx0, 0, nc_color );
+                    holepos.x - dx0, holepos.y + dx0, 0, aDrawInfo.m_NoNetMarkColor );
     }
 
     if( !aDrawInfo.m_IsPrinting )

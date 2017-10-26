@@ -59,7 +59,7 @@ static void prepareToolsMenu( wxMenu* aParentMenu );
 static void prepareHelpMenu( wxMenu* aParentMenu );
 
 // Build the edit menu
-static void prepareEditMenu( wxMenu* aParentMenu );
+static void prepareEditMenu( wxMenu* aParentMenu, bool aUseGal );
 
 // Build the route menu
 static void prepareRouteMenu( wxMenu* aParentMenu );
@@ -103,7 +103,7 @@ void PCB_EDIT_FRAME::ReCreateMenuBar()
 
     //----- Edit menu -----------------------------------------------------------
     wxMenu* editMenu = new wxMenu;
-    prepareEditMenu( editMenu );
+    prepareEditMenu( editMenu, IsGalCanvasActive() );
 
     //----- View menu -----------------------------------------------------------
     wxMenu* viewMenu = new wxMenu;
@@ -335,9 +335,14 @@ void preparePlaceMenu( wxMenu* aParentMenu )
                  KiBitmap( add_circle_xpm ) );
 
     AddMenuItem( aParentMenu, ID_PCB_ADD_LINE_BUTT,
-                 _( "&Line or Polygon" ),
-                 _( "Add graphic line or polygon" ),
-                 KiBitmap( add_dashed_line_xpm ) );
+                 _( "&Lines" ),
+                 _( "Add graphic lines" ),
+                 KiBitmap( add_graphical_segments_xpm ) );
+
+    AddMenuItem( aParentMenu, ID_PCB_ADD_POLYGON_BUTT,
+                  _( "&Polygons" ),
+                  _( "Add graphic polygons" ),
+                  KiBitmap( add_graphical_polygon_xpm ) );
 
     aParentMenu->AppendSeparator();
 
@@ -455,7 +460,7 @@ void prepareHelpMenu( wxMenu* aParentMenu )
 
 
 // Build the edit menu
-void prepareEditMenu( wxMenu* aParentMenu )
+void prepareEditMenu( wxMenu* aParentMenu, bool aUseGal )
 {
     wxString text;
 

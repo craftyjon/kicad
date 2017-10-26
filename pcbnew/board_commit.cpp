@@ -35,6 +35,8 @@
 #include <functional>
 using namespace std::placeholders;
 
+#include "pcb_draw_panel_gal.h"
+
 BOARD_COMMIT::BOARD_COMMIT( PCB_TOOL* aTool )
 {
     m_toolMgr = aTool->GetManager();
@@ -85,12 +87,12 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
             {
                 if( !ent.m_copy )
                 {
-                    assert( changeType != CHT_MODIFY );     // too late to make a copy..
+                    wxASSERT( changeType != CHT_MODIFY );     // too late to make a copy..
                     ent.m_copy = ent.m_item->Clone();
                 }
 
-                assert( ent.m_item->Type() == PCB_MODULE_T );
-                assert( ent.m_copy->Type() == PCB_MODULE_T );
+                wxASSERT( ent.m_item->Type() == PCB_MODULE_T );
+                wxASSERT( ent.m_copy->Type() == PCB_MODULE_T );
 
                 if( aCreateUndoEntry )
                 {
@@ -130,8 +132,9 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
                 else
                 {
                     // modules inside modules are not supported yet
-                    assert( boardItem->Type() != PCB_MODULE_T );
+                    wxASSERT( boardItem->Type() != PCB_MODULE_T );
 
+                    boardItem->SetParent( board->m_Modules.GetFirst() );
                     if( !( changeFlags & CHT_DONE ) )
                         board->m_Modules->Add( boardItem );
                 }
@@ -180,7 +183,7 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
                                 break;
 
                             default:
-                                assert( false );
+                                wxASSERT( false );
                                 break;
                         }
                     }
@@ -192,7 +195,7 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
                         if( !( changeFlags & CHT_DONE ) )
                         {
                             MODULE* module = static_cast<MODULE*>( boardItem->GetParent() );
-                            assert( module && module->Type() == PCB_MODULE_T );
+                            wxASSERT( module && module->Type() == PCB_MODULE_T );
                             module->Delete( boardItem );
                         }
 
@@ -217,13 +220,12 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
                     if( !( changeFlags & CHT_DONE ) )
                         board->Remove( boardItem );
 
-                    //ratsnest->Remove( boardItem );    // currently done by BOARD::Remove()
                     break;
 
                 case PCB_MODULE_T:
                 {
                     // There are no modules inside a module yet
-                    assert( !m_editModules );
+                    wxASSERT( !m_editModules );
 
                     MODULE* module = static_cast<MODULE*>( boardItem );
                     module->ClearFlags();
@@ -240,7 +242,7 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
                 break;
 
                 default:                        // other types do not need to (or should not) be handled
-                    assert( false );
+                    wxASSERT( false );
                     break;
                 }
                 break;
@@ -251,7 +253,7 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
                 if( !m_editModules && aCreateUndoEntry )
                 {
                     ITEM_PICKER itemWrapper( boardItem, UR_CHANGED );
-                    assert( ent.m_copy );
+                    wxASSERT( ent.m_copy );
                     itemWrapper.SetLink( ent.m_copy );
                     undoList.PushItem( itemWrapper );
                 }
@@ -269,7 +271,7 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
             }
 
             default:
-                assert( false );
+                wxASSERT( false );
                 break;
         }
     }
@@ -281,7 +283,11 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
         toolMgr->PostEvent( { TC_MESSAGE, TA_MODEL_CHANGE, AS_GLOBAL } );
 
     if ( !m_editModules )
+    {
+        auto panel = static_cast<PCB_DRAW_PANEL_GAL*>( frame->GetGalCanvas() );
         connectivity->RecalculateRatsnest();
+        panel->RedrawRatsnest();
+    }
 
     frame->OnModify();
     frame->UpdateMsgPanel();
@@ -375,7 +381,7 @@ void BOARD_COMMIT::Revert()
         }
 
         default:
-            assert( false );
+            wxASSERT( false );
             break;
         }
     }

@@ -130,7 +130,8 @@ static const wxString getPinOrientationName( unsigned aPinOrientationCode )
 
 static int InternalPinDecoSize( const LIB_PIN &aPin )
 {
-    return aPin.GetNameTextSize() / 2;
+
+    return aPin.GetNameTextSize() != 0 ? aPin.GetNameTextSize() / 2 : aPin.GetNumberTextSize() / 2;
 }
 
 /// Utility for getting the size of the 'external' pin decorators (as a radius)
@@ -156,7 +157,7 @@ LIB_PIN::LIB_PIN( LIB_PART*      aParent ) :
 }
 
 
-void LIB_PIN::SetName( const wxString& aName )
+void LIB_PIN::SetName( const wxString& aName, bool aTestOtherPins )
 {
     wxString tmp = ( aName.IsEmpty() ) ? wxT( "~" ) : aName;
 
@@ -167,6 +168,9 @@ void LIB_PIN::SetName( const wxString& aName )
         m_name = tmp;
         SetModified();
     }
+
+    if( !aTestOtherPins )
+        return;
 
     if( GetParent() == NULL )
         return;
@@ -185,13 +189,16 @@ void LIB_PIN::SetName( const wxString& aName )
 }
 
 
-void LIB_PIN::SetNameTextSize( int size )
+void LIB_PIN::SetNameTextSize( int size, bool aTestOtherPins )
 {
     if( size != m_nameTextSize )
     {
         m_nameTextSize = size;
         SetModified();
     }
+
+    if( !aTestOtherPins )
+        return;
 
     if( GetParent() == NULL )
         return;
@@ -210,13 +217,16 @@ void LIB_PIN::SetNameTextSize( int size )
 }
 
 
-void LIB_PIN::SetNumberTextSize( int size )
+void LIB_PIN::SetNumberTextSize( int size, bool aTestOtherPins )
 {
     if( size != m_numTextSize )
     {
         m_numTextSize = size;
         SetModified();
     }
+
+    if( !aTestOtherPins )
+        return;
 
     if( GetParent() == NULL )
         return;
@@ -235,13 +245,16 @@ void LIB_PIN::SetNumberTextSize( int size )
 }
 
 
-void LIB_PIN::SetOrientation( int orientation )
+void LIB_PIN::SetOrientation( int orientation, bool aTestOtherPins )
 {
     if( m_orientation != orientation )
     {
         m_orientation = orientation;
         SetModified();
     }
+
+    if( !aTestOtherPins )
+        return;
 
     if( GetParent() == NULL )
         return;
@@ -290,7 +303,7 @@ void LIB_PIN::SetShape( GRAPHIC_PINSHAPE aShape )
 }
 
 
-void LIB_PIN::SetType( ELECTRICAL_PINTYPE aType )
+void LIB_PIN::SetType( ELECTRICAL_PINTYPE aType, bool aTestOtherPins )
 {
     assert( aType >= 0 && aType < (int)PINTYPE_COUNT );
 
@@ -305,6 +318,9 @@ void LIB_PIN::SetType( ELECTRICAL_PINTYPE aType )
         m_type = aType;
         SetModified();
     }
+
+    if( !aTestOtherPins )
+        return;
 
     if( GetParent() == NULL )
         return;
@@ -323,13 +339,16 @@ void LIB_PIN::SetType( ELECTRICAL_PINTYPE aType )
 }
 
 
-void LIB_PIN::SetLength( int length )
+void LIB_PIN::SetLength( int length, bool aTestOtherPins )
 {
     if( m_length != length )
     {
         m_length = length;
         SetModified();
     }
+
+    if( !aTestOtherPins )
+        return;
 
     if( GetParent() == NULL )
         return;

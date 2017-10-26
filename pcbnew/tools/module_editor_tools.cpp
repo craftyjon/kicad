@@ -23,6 +23,7 @@
  */
 
 #include "module_editor_tools.h"
+#include "kicad_clipboard.h"
 #include "selection_tool.h"
 #include "pcb_actions.h"
 #include <tool/tool_manager.h>
@@ -58,17 +59,21 @@ TOOL_ACTION PCB_ACTIONS::placePad( "pcbnew.ModuleEditor.placePad",
         AS_GLOBAL, 0,
         _( "Add Pad" ), _( "Add a pad" ), NULL, AF_ACTIVATE );
 
+TOOL_ACTION PCB_ACTIONS::createPadFromShapes( "pcbnew.ModuleEditor.createPadFromShapes",
+        AS_CONTEXT, 0,
+        _( "Create Pad from Selected Shapes" ),
+        _( "Creates a custom-shaped pads from a set of selected shapes" ),
+        primitives_to_custom_pad_xpm );
+
+TOOL_ACTION PCB_ACTIONS::explodePadToShapes( "pcbnew.ModuleEditor.explodePadToShapes",
+        AS_CONTEXT, 0,
+        _( "Explode Selected Pad to Graphical Shapes" ),
+        _( "Converts a custom-shaped pads to a set of graphical shapes" ),
+        custom_pad_to_primitives_xpm );
+
 TOOL_ACTION PCB_ACTIONS::enumeratePads( "pcbnew.ModuleEditor.enumeratePads",
         AS_GLOBAL, 0,
         _( "Enumerate Pads" ), _( "Enumerate pads" ), pad_enumerate_xpm, AF_ACTIVATE );
-
-TOOL_ACTION PCB_ACTIONS::copyItems( "pcbnew.ModuleEditor.copyItems",
-        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_COPY_ITEM ),
-        _( "Copy" ), _( "Copy items" ), NULL, AF_ACTIVATE );
-
-TOOL_ACTION PCB_ACTIONS::pasteItems( "pcbnew.ModuleEditor.pasteItems",
-        AS_GLOBAL, MD_CTRL + int( 'V' ),
-        _( "Paste" ), _( "Paste items" ), NULL, AF_ACTIVATE );
 
 TOOL_ACTION PCB_ACTIONS::moduleEdgeOutlines( "pcbnew.ModuleEditor.graphicOutlines",
         AS_GLOBAL, 0,
@@ -264,189 +269,6 @@ int MODULE_EDITOR_TOOLS::EnumeratePads( const TOOL_EVENT& aEvent )
 }
 
 
-int MODULE_EDITOR_TOOLS::CopyItems( const TOOL_EVENT& aEvent )
-{
-    const SELECTION& selection = m_toolMgr->GetTool<SELECTION_TOOL>()->GetSelection();
-
-    Activate();
-
-    getViewControls()->SetSnapping( true );
-    getViewControls()->ShowCursor( true );
-    getViewControls()->SetAutoPan( true );
-
-    frame()->DisplayToolMsg( _( "Select reference point" ) );
-
-    bool cancelled = false;
-    VECTOR2I cursorPos = getViewControls()->GetCursorPosition();
-
-    while( OPT_TOOL_EVENT evt = Wait() )
-    {
-        if( evt->IsMotion() )
-        {
-            cursorPos = getViewControls()->GetCursorPosition();
-        }
-        else if( evt->IsClick( BUT_LEFT ) )
-        {
-            break;
-        }
-        else if( evt->IsCancel() || evt->IsActivate() )
-        {
-            cancelled = true;
-            break;
-        }
-    }
-
-    if( !cancelled )
-    {
-        PCB_IO io( CTL_FOR_CLIPBOARD );
-
-        // Create a temporary module that contains selected items to ease serialization
-        MODULE module( board() );
-
-        for( auto item : selection )
-        {
-            auto clone = static_cast<BOARD_ITEM*>( item->Clone() );
-
-            // Do not add reference/value - convert them to the common type
-            if( TEXTE_MODULE* text = dyn_cast<TEXTE_MODULE*>( clone ) )
-                text->SetType( TEXTE_MODULE::TEXT_is_DIVERS );
-
-            module.Add( clone );
-        }
-
-        // Set the new relative internal local coordinates of copied items
-        MODULE* editedModule = board()->m_Modules;
-        wxPoint moveVector = module.GetPosition() + editedModule->GetPosition() -
-                             wxPoint( cursorPos.x, cursorPos.y );
-        module.MoveAnchorPosition( moveVector );
-
-        io.Format( &module, 0 );
-        std::string data = io.GetStringOutput( true );
-        m_toolMgr->SaveClipboard( data );
-    }
-
-    frame()->DisplayToolMsg( wxString::Format( _( "Copied %d item(s)" ), selection.Size() ) );
-
-    return 0;
-}
-
-
-int MODULE_EDITOR_TOOLS::PasteItems( const TOOL_EVENT& aEvent )
-{
-    // Parse clipboard
-    PCB_IO io( CTL_FOR_CLIPBOARD );
-    MODULE* pastedModule = NULL;
-
-    try
-    {
-        BOARD_ITEM* item = io.Parse( wxString( m_toolMgr->GetClipboard().c_str(), wxConvUTF8 ) );
-        assert( item->Type() == PCB_MODULE_T );
-        pastedModule = dyn_cast<MODULE*>( item );
-    }
-    catch( ... )
-    {
-        frame()->DisplayToolMsg( _( "Invalid clipboard contents" ) );
-        return 0;
-    }
-
-    // Placement tool part
-    VECTOR2I cursorPos = getViewControls()->GetCursorPosition();
-
-    // Add a VIEW_GROUP that serves as a preview for the new item
-    KIGFX::VIEW_GROUP preview( view() );
-    pastedModule->SetParent( board() );
-    pastedModule->SetPosition( wxPoint( cursorPos.x, cursorPos.y ) );
-    pastedModule->RunOnChildren( std::bind( &KIGFX::VIEW_GROUP::Add,
-                                                std::ref( preview ),  _1 ) );
-    preview.Add( pastedModule );
-    view()->Add( &preview );
-
-    m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
-    getViewControls()->ShowCursor( true );
-    getViewControls()->SetSnapping( true );
-    getViewControls()->SetAutoPan( true );
-
-    Activate();
-
-    // Main loop: keep receiving events
-    while( OPT_TOOL_EVENT evt = Wait() )
-    {
-        cursorPos = getViewControls()->GetCursorPosition();
-
-        if( evt->IsMotion() )
-        {
-            pastedModule->SetPosition( wxPoint( cursorPos.x, cursorPos.y ) );
-            view()->Update( &preview );
-        }
-
-        else if( evt->Category() == TC_COMMAND )
-        {
-            if( TOOL_EVT_UTILS::IsRotateToolEvt( *evt ) )
-            {
-                const auto rotationAngle = TOOL_EVT_UTILS::GetEventRotationAngle(
-                        *frame(), *evt );
-                pastedModule->Rotate( pastedModule->GetPosition(), rotationAngle );
-                view()->Update( &preview );
-            }
-            else if( evt->IsAction( &PCB_ACTIONS::flip ) )
-            {
-                pastedModule->Flip( pastedModule->GetPosition() );
-                view()->Update( &preview );
-            }
-            else if( evt->IsCancel() || evt->IsActivate() )
-            {
-                preview.Clear();
-                break;
-            }
-        }
-
-        else if( evt->IsClick( BUT_LEFT ) )
-        {
-            BOARD_COMMIT commit( frame() );
-
-            board()->m_Status_Pcb = 0;    // I have no clue why, but it is done in the legacy view
-
-            // MODULE::RunOnChildren is infeasible here: we need to create copies of items, do not
-            // directly modify them
-
-            for( auto pad : pastedModule->Pads() )
-            {
-                D_PAD* clone = static_cast<D_PAD*>( pad->Clone() );
-                commit.Add( clone );
-            }
-
-            for( auto drawing : pastedModule->GraphicalItems() )
-            {
-                BOARD_ITEM* clone = static_cast<BOARD_ITEM*>( drawing->Clone() );
-
-                if( TEXTE_MODULE* text = dyn_cast<TEXTE_MODULE*>( clone ) )
-                {
-                    // Do not add reference/value - convert them to the common type
-                    text->SetType( TEXTE_MODULE::TEXT_is_DIVERS );
-
-                    // Whyyyyyyyyyyyyyyyyyyyyyy?! All other items conform to rotation performed
-                    // on its parent module, but texts are so independent..
-                    text->Rotate( text->GetPosition(), pastedModule->GetOrientation() );
-                    commit.Add( text );
-                }
-
-                commit.Add( clone );
-            }
-
-            commit.Push( _( "Paste clipboard contents" ) );
-            preview.Clear();
-
-            break;
-        }
-    }
-
-    delete pastedModule;
-    view()->Remove( &preview );
-
-    return 0;
-}
-
-
 int MODULE_EDITOR_TOOLS::ModuleTextOutlines( const TOOL_EVENT& aEvent )
 {
     KIGFX::VIEW* view = getView();
@@ -511,13 +333,204 @@ int MODULE_EDITOR_TOOLS::ModuleEdgeOutlines( const TOOL_EVENT& aEvent )
     return 0;
 }
 
+int MODULE_EDITOR_TOOLS::ExplodePadToShapes( const TOOL_EVENT& aEvent )
+{
+    SELECTION& selection = m_toolMgr->GetTool<SELECTION_TOOL>()->GetSelection();
+    BOARD_COMMIT commit( frame() );
+
+    if( selection.Size() != 1 )
+        return 0;
+
+    if( selection[0]->Type() != PCB_PAD_T )
+        return 0;
+
+    auto pad = static_cast<D_PAD*>( selection[0] );
+
+    if( pad->GetShape() != PAD_SHAPE_CUSTOM )
+        return 0;
+
+    commit.Modify( pad );
+
+    wxPoint anchor = pad->GetPosition();
+
+    for( auto prim : pad->GetPrimitives() )
+    {
+        auto ds = new EDGE_MODULE( board()->m_Modules );
+
+        prim.ExportTo( ds );    // ExportTo exports to a DRAWSEGMENT
+        // Fix an arbitray draw layer for this EDGE_MODULE
+        ds->SetLayer( Dwgs_User ); //pad->GetLayer() );
+        ds->Move( anchor );
+
+        commit.Add( ds );
+    }
+
+    pad->SetShape( pad->GetAnchorPadShape() );
+    commit.Push( _("Explode pad to shapes") );
+
+    m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
+
+    return 0;
+}
+
+
+int MODULE_EDITOR_TOOLS::CreatePadFromShapes( const TOOL_EVENT& aEvent )
+{
+    SELECTION& selection = m_toolMgr->GetTool<SELECTION_TOOL>()->GetSelection();
+
+    std::unique_ptr<D_PAD> pad ( new D_PAD ( board()->m_Modules ) );
+    D_PAD *refPad = nullptr;
+    bool multipleRefPadsFound = false;
+    bool illegalItemsFound = false;
+
+    std::vector<PAD_CS_PRIMITIVE> shapes;
+
+    BOARD_COMMIT commit( frame() );
+
+    for( auto item : selection )
+    {
+        switch( item->Type() )
+        {
+            case PCB_PAD_T:
+            {
+                if( refPad )
+                    multipleRefPadsFound = true;
+
+                refPad = static_cast<D_PAD*>( item );
+                break;
+            }
+
+            case PCB_MODULE_EDGE_T:
+            {
+                auto em = static_cast<EDGE_MODULE*> ( item );
+
+                PAD_CS_PRIMITIVE shape( em->GetShape() );
+                shape.m_Start = em->GetStart();
+                shape.m_End = em->GetEnd();
+                shape.m_Radius = em->GetRadius();
+                shape.m_Thickness = em->GetWidth();
+                shape.m_ArcAngle = em->GetAngle();
+                shape.m_Poly = em->GetPolyPoints();
+
+                shapes.push_back(shape);
+
+                break;
+            }
+
+            default:
+            {
+                illegalItemsFound = true;
+                break;
+            }
+        }
+    }
+
+    if( refPad && selection.Size() == 1 )
+    {
+        // don't convert a pad into itself...
+        return 0;
+    }
+
+    if( multipleRefPadsFound )
+    {
+        DisplayErrorMessage( frame(),
+            _(  "Cannot convert items to a custom-shaped pad:\n"
+                "selection contains more than one reference pad." ) );
+        return 0;
+    }
+
+    if( illegalItemsFound )
+    {
+        DisplayErrorMessage( frame(),
+            _( "Cannot convert items to a custom-shaped pad:\n"
+               "selection contains unsupported items.\n"
+               "Only graphical lines, circles, arcs and polygons are allowed." ) );
+        return 0;
+    }
+
+    if( refPad )
+    {
+        pad.reset( static_cast<D_PAD*>( refPad->Clone() ) );
+    }
+    else
+    {
+        // Create a default pad anchor:
+        pad->SetAnchorPadShape( PAD_SHAPE_CIRCLE );
+        pad->SetAttribute( PAD_ATTRIB_SMD );
+        pad->SetLayerSet( D_PAD::SMDMask() );
+        int radius = Millimeter2iu( 0.2 );
+        pad->SetSize ( wxSize( radius, radius ) );
+        pad->IncrementPadName( true, true );
+    }
+
+
+    pad->SetPrimitives( shapes );
+    pad->SetShape ( PAD_SHAPE_CUSTOM );
+
+    boost::optional<VECTOR2I> anchor;
+    VECTOR2I tmp;
+
+    if( refPad )
+    {
+        anchor = pad->GetPosition();
+    }
+    else if( pad->GetBestAnchorPosition( tmp ) )
+    {
+        anchor = tmp;
+    }
+
+    if( !anchor )
+    {
+        DisplayErrorMessage( frame(),
+            _( "Cannot convert items to a custom-shaped pad:\n"
+               "unable to determine the anchor point position.\n"
+               "Consider adding a small anchor pad to the selection and try again.") );
+        return 0;
+    }
+
+
+    // relocate the shapes, they are relative to the anchor pad position
+    for( auto& shape : shapes )
+    {
+        shape.Move( wxPoint( -anchor->x, -anchor->y ) );
+    }
+
+
+    pad->SetPosition( wxPoint( anchor->x, anchor->y ) );
+    pad->SetPrimitives( shapes );
+
+    bool result = pad->MergePrimitivesAsPolygon();
+
+    if( !result )
+    {
+        DisplayErrorMessage( frame(),
+                _( "Cannot convert items to a custom-shaped pad:\n"
+                   "selected items do not form a single solid shape.") );
+        return 0;
+    }
+
+    auto padPtr = pad.release();
+
+    commit.Add( padPtr );
+    for ( auto item : selection )
+    {
+        commit.Remove( item );
+    }
+
+    m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
+    m_toolMgr->RunAction( PCB_ACTIONS::selectItem, true, padPtr );
+
+    commit.Push(_("Create Pad from Selected Shapes") );
+
+    return 0;
+}
 
 void MODULE_EDITOR_TOOLS::setTransitions()
 {
     Go( &MODULE_EDITOR_TOOLS::PlacePad,            PCB_ACTIONS::placePad.MakeEvent() );
+    Go( &MODULE_EDITOR_TOOLS::CreatePadFromShapes, PCB_ACTIONS::createPadFromShapes.MakeEvent() );
+    Go( &MODULE_EDITOR_TOOLS::ExplodePadToShapes,  PCB_ACTIONS::explodePadToShapes.MakeEvent() );
     Go( &MODULE_EDITOR_TOOLS::EnumeratePads,       PCB_ACTIONS::enumeratePads.MakeEvent() );
-    Go( &MODULE_EDITOR_TOOLS::CopyItems,           PCB_ACTIONS::copyItems.MakeEvent() );
-    Go( &MODULE_EDITOR_TOOLS::PasteItems,          PCB_ACTIONS::pasteItems.MakeEvent() );
     Go( &MODULE_EDITOR_TOOLS::ModuleTextOutlines,  PCB_ACTIONS::moduleTextOutlines.MakeEvent() );
     Go( &MODULE_EDITOR_TOOLS::ModuleEdgeOutlines,  PCB_ACTIONS::moduleEdgeOutlines.MakeEvent() );
 }

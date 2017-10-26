@@ -489,7 +489,7 @@ DIALOG_PAD_PROPERTIES_BASE::DIALOG_PAD_PROPERTIES_BASE( wxWindow* parent, wxWind
 	m_sbSizerZonesSettings = new wxStaticBoxSizer( new wxStaticBox( m_localSettingsPanel, wxID_ANY, _("Copper Zones") ), wxVERTICAL );
 	
 	wxFlexGridSizer* fgSizerCopperZonesOpts;
-	fgSizerCopperZonesOpts = new wxFlexGridSizer( 3, 3, 0, 0 );
+	fgSizerCopperZonesOpts = new wxFlexGridSizer( 0, 3, 0, 0 );
 	fgSizerCopperZonesOpts->AddGrowableCol( 1 );
 	fgSizerCopperZonesOpts->SetFlexibleDirection( wxBOTH );
 	fgSizerCopperZonesOpts->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
@@ -531,13 +531,13 @@ DIALOG_PAD_PROPERTIES_BASE::DIALOG_PAD_PROPERTIES_BASE( wxWindow* parent, wxWind
 	
 	m_staticTextcps = new wxStaticText( m_sbSizerZonesSettings->GetStaticBox(), wxID_ANY, _("Custom pad shape in zone:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticTextcps->Wrap( -1 );
-	fgSizerCopperZonesOpts->Add( m_staticTextcps, 0, wxALL, 5 );
+	fgSizerCopperZonesOpts->Add( m_staticTextcps, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 	
 	wxString m_ZoneCustomPadShapeChoices[] = { _("Use pad shape"), _("Use pad convex hull") };
 	int m_ZoneCustomPadShapeNChoices = sizeof( m_ZoneCustomPadShapeChoices ) / sizeof( wxString );
 	m_ZoneCustomPadShape = new wxChoice( m_sbSizerZonesSettings->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, m_ZoneCustomPadShapeNChoices, m_ZoneCustomPadShapeChoices, 0 );
 	m_ZoneCustomPadShape->SetSelection( 0 );
-	fgSizerCopperZonesOpts->Add( m_ZoneCustomPadShape, 0, wxALL|wxEXPAND, 5 );
+	fgSizerCopperZonesOpts->Add( m_ZoneCustomPadShape, 0, wxEXPAND|wxBOTTOM|wxLEFT, 5 );
 	
 	
 	fgSizerCopperZonesOpts->Add( 0, 0, 1, wxEXPAND, 5 );
@@ -571,7 +571,7 @@ DIALOG_PAD_PROPERTIES_BASE::DIALOG_PAD_PROPERTIES_BASE( wxWindow* parent, wxWind
 	
 	m_bSizerPanelPrimitives->Add( m_staticTextPrimitivesList, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 5 );
 	
-	m_staticTextPrimitiveListWarning = new wxStaticText( m_panelCustomShapePrimitives, wxID_ANY, _(" Coordinates are relative to anchor pad, orientation 0"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticTextPrimitiveListWarning = new wxStaticText( m_panelCustomShapePrimitives, wxID_ANY, _("Coordinates are relative to anchor pad, orientation 0"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticTextPrimitiveListWarning->Wrap( -1 );
 	m_staticTextPrimitiveListWarning->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 	
@@ -1009,7 +1009,7 @@ DIALOG_PAD_PRIMITIVE_POLY_PROPS_BASE::DIALOG_PAD_PRIMITIVE_POLY_PROPS_BASE( wxWi
 	wxBoxSizer* bSizerMain;
 	bSizerMain = new wxBoxSizer( wxVERTICAL );
 	
-	m_staticTextCornerListWarning = new wxStaticText( this, wxID_ANY, _(" Coordinates are relative to anchor pad, orientation 0"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticTextCornerListWarning = new wxStaticText( this, wxID_ANY, _("Coordinates are relative to anchor pad, orientation 0"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticTextCornerListWarning->Wrap( -1 );
 	m_staticTextCornerListWarning->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 	

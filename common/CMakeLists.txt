@@ -252,6 +252,7 @@ set( COMMON_SRCS
     filter_reader.cpp
     footprint_info.cpp
     footprint_filter.cpp
+    hash_eda.cpp
     lib_id.cpp
     lib_table_keywords.cpp
 #    findkicadhelppath.cpp.notused      deprecated, use searchhelpfilefullpath.cpp
@@ -403,6 +404,7 @@ set( PCB_COMMON_SRCS
     ../pcbnew/eagle_plugin.cpp
     ../pcbnew/legacy_plugin.cpp
     ../pcbnew/kicad_plugin.cpp
+    ../pcbnew/kicad_clipboard.cpp
     ../pcbnew/gpcb_plugin.cpp
     ../pcbnew/pcb_netlist.cpp
     widgets/widget_net_selector.cpp

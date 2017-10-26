@@ -46,6 +46,8 @@ set( EESCHEMA_DLGS
     dialogs/dialog_eeschema_options.cpp
     dialogs/dialog_erc.cpp
     dialogs/dialog_erc_base.cpp
+    dialogs/dialog_global_sym_lib_table_config.cpp
+    dialogs/dialog_global_sym_lib_table_config_base.cpp
     dialogs/dialog_lib_edit_draw_item.cpp
     dialogs/dialog_lib_edit_draw_item_base.cpp
     dialogs/dialog_libedit_options_base.cpp
@@ -74,8 +76,8 @@ set( EESCHEMA_DLGS
     dialogs/dialog_sym_lib_table_base.cpp
     dialogs/dialog_symbol_remap.cpp
     dialogs/dialog_symbol_remap_base.cpp
-    dialogs/dialog_global_sym_lib_table_config.cpp
-    dialogs/dialog_global_sym_lib_table_config_base.cpp
+    dialogs/dialog_update_fields.cpp
+    dialogs/dialog_update_fields_base.cpp
     )
 
 set( EESCHEMA_WIDGETS
@@ -166,6 +168,7 @@ set( EESCHEMA_SRCS
     sch_bus_entry.cpp
     sch_collectors.cpp
     sch_component.cpp
+    sch_eagle_plugin.cpp
     sch_field.cpp
     sch_io_mgr.cpp
     sch_item_struct.cpp
@@ -298,7 +301,7 @@ target_link_libraries( eeschema
     )
 
 # the DSO (KIFACE) housing the main eeschema code:
-add_library( eeschema_kiface MODULE
+add_library( eeschema_kiface SHARED
     ${EESCHEMA_SRCS}
     ${EESCHEMA_COMMON_SRCS}
     )
@@ -436,3 +439,4 @@ add_custom_target(
 add_dependencies( eeschema_kiface dialog_bom_cfg_lexer_source_files )
 
 add_subdirectory( plugins )
+add_subdirectory( qa )

@@ -152,6 +152,7 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway,
 
     ReCreateHToolbar();
     ReCreateVToolbar();
+    SetActiveLayer( F_Cu );
 
     // Creates the parameter pages list
     m_pageList = new wxListBox( this, ID_FOOTPRINT_WIZARD_PAGE_LIST,
@@ -532,8 +533,6 @@ void FOOTPRINT_WIZARD_FRAME::OnActivate( wxActivateEvent& event )
 
 bool FOOTPRINT_WIZARD_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPosition, EDA_KEY aHotKey )
 {
-    bool eventHandled = true;
-
     // Filter out the 'fake' mouse motion after a keyboard movement
     if( !aHotKey && m_movingCursorWithKeyboard )
     {
@@ -546,41 +545,47 @@ bool FOOTPRINT_WIZARD_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPosition
 
     wxPoint pos = aPosition;
     wxPoint oldpos = GetCrossHairPosition();
-    GeneralControlKeyMovement( aHotKey, &pos, true );
+    bool keyHandled = GeneralControlKeyMovement( aHotKey, &pos, true );
 
     switch( aHotKey )
     {
     case WXK_F1:
         cmd.SetId( ID_POPUP_ZOOM_IN );
         GetEventHandler()->ProcessEvent( cmd );
+        keyHandled = true;
         break;
 
     case WXK_F2:
         cmd.SetId( ID_POPUP_ZOOM_OUT );
         GetEventHandler()->ProcessEvent( cmd );
+        keyHandled = true;
         break;
 
     case WXK_F3:
         cmd.SetId( ID_ZOOM_REDRAW );
         GetEventHandler()->ProcessEvent( cmd );
+        keyHandled = true;
         break;
 
     case WXK_F4:
         cmd.SetId( ID_POPUP_ZOOM_CENTER );
         GetEventHandler()->ProcessEvent( cmd );
+        keyHandled = true;
         break;
 
     case WXK_HOME:
         cmd.SetId( ID_ZOOM_PAGE );
         GetEventHandler()->ProcessEvent( cmd );
+        keyHandled = true;
         break;
 
     case ' ':
         GetScreen()->m_O_Curseur = GetCrossHairPosition();
+        keyHandled = true;
         break;
 
     default:
-        eventHandled = false;
+        break;
     }
 
     SetCrossHairPosition( pos );
@@ -588,7 +593,7 @@ bool FOOTPRINT_WIZARD_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPosition
 
     UpdateStatusBar();    // Display new cursor coordinates
 
-    return eventHandled;
+    return keyHandled;
 }
 
 
@@ -650,7 +655,7 @@ void FOOTPRINT_WIZARD_FRAME::ReCreateHToolbar()
     if( !m_mainToolBar )
     {
         m_mainToolBar = new wxAuiToolBar( this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                                          wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_HORZ_LAYOUT );
+                                          KICAD_AUI_TB_STYLE | wxAUI_TB_HORZ_LAYOUT );
 
         // Set up toolbar
         m_mainToolBar->AddTool( ID_FOOTPRINT_WIZARD_SELECT_WIZARD, wxEmptyString,

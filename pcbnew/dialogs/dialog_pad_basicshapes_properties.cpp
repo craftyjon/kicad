@@ -37,6 +37,7 @@
 #include <macros.h>
 #include <wxBasePcbFrame.h>
 #include <base_units.h>
+#include <unit_format.h>
 #include <gr_basic.h>
 
 #include <class_board.h>
@@ -274,7 +275,7 @@ bool DIALOG_PAD_PRIMITIVE_POLY_PROPS::Validate()
 {
     if( m_currshape.m_Poly.size() < 3 )
     {
-        m_staticTextValidate->SetLabel( _(" Incorrect polygon: less than 3 corners" ) );
+        m_staticTextValidate->SetLabel( _("Incorrect polygon: less than 3 corners" ) );
         m_staticTextValidate->Show( true );
         return false;
     }

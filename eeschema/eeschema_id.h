@@ -60,6 +60,7 @@ enum id_eeschema_frm
 {
     ID_UPDATE_ONE_SHEET = ID_END_LIST,
     ID_SAVE_ONE_SHEET_UNDER_NEW_NAME,
+    ID_IMPORT_NON_KICAD_SCH,
 
     /* Schematic editor main menubar IDs. */
     ID_RESCUE_CACHED,
@@ -71,6 +72,7 @@ enum id_eeschema_frm
     ID_GET_ANNOTATE,
     ID_GET_ERC,
     ID_BACKANNO_ITEMS,
+    ID_UPDATE_FIELDS,
     ID_GEN_PLOT_SCHEMATIC,
 
     /* Schematic editor veritcal toolbar IDs */

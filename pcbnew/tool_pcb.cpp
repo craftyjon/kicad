@@ -209,7 +209,7 @@ void PCB_EDIT_FRAME::ReCreateHToolbar()
     wxWindowUpdateLocker dummy( this );
 
     m_mainToolBar = new wxAuiToolBar( this, ID_H_TOOLBAR, wxDefaultPosition, wxDefaultSize,
-                                      wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_HORZ_LAYOUT );
+                                      KICAD_AUI_TB_STYLE | wxAUI_TB_HORZ_LAYOUT );
 
     // Set up toolbar
     if( Kiface().IsSingle() )
@@ -330,7 +330,7 @@ void PCB_EDIT_FRAME::ReCreateOptToolbar()
     wxWindowUpdateLocker dummy( this );
 
     m_optionsToolBar = new wxAuiToolBar( this, ID_OPT_TOOLBAR, wxDefaultPosition, wxDefaultSize,
-                                         wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_VERTICAL );
+                                         KICAD_AUI_TB_STYLE | wxAUI_TB_VERTICAL );
 
     m_optionsToolBar->AddTool( ID_TB_OPTIONS_DRC_OFF, wxEmptyString, KiBitmap( drc_off_xpm ),
                                _( "Enable design rule checking" ), wxITEM_CHECK );
@@ -419,7 +419,7 @@ void PCB_EDIT_FRAME::ReCreateVToolbar()
     wxWindowUpdateLocker dummy( this );
 
     m_drawToolBar = new wxAuiToolBar( this, ID_V_TOOLBAR, wxDefaultPosition, wxDefaultSize,
-                                      wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_VERTICAL );
+                                      KICAD_AUI_TB_STYLE | wxAUI_TB_VERTICAL );
 
     // Set up toolbar
     m_drawToolBar->AddTool( ID_NO_TOOL_SELECTED, wxEmptyString, KiBitmap( cursor_xpm ),
@@ -452,14 +452,18 @@ void PCB_EDIT_FRAME::ReCreateVToolbar()
                             _( "Add keepout areas" ), wxITEM_CHECK );
 
     m_drawToolBar->AddSeparator();
-    m_drawToolBar->AddTool( ID_PCB_ADD_LINE_BUTT, wxEmptyString, KiBitmap( add_dashed_line_xpm ),
-                            _( "Add graphic line or polygon" ), wxITEM_CHECK );
+
+    m_drawToolBar->AddTool( ID_PCB_ADD_LINE_BUTT, wxEmptyString, KiBitmap( add_graphical_segments_xpm ),
+                            _( "Add graphic lines" ), wxITEM_CHECK );
 
     m_drawToolBar->AddTool( ID_PCB_CIRCLE_BUTT, wxEmptyString, KiBitmap( add_circle_xpm ),
                             _( "Add graphic circle" ), wxITEM_CHECK );
 
     m_drawToolBar->AddTool( ID_PCB_ARC_BUTT, wxEmptyString, KiBitmap( add_arc_xpm ),
                             _( "Add graphic arc" ), wxITEM_CHECK );
+
+    m_drawToolBar->AddTool( ID_PCB_ADD_POLYGON_BUTT, wxEmptyString, KiBitmap( add_graphical_polygon_xpm ),
+                            _( "Add graphic polygon" ), wxITEM_CHECK );
 
     m_drawToolBar->AddTool( ID_PCB_ADD_TEXT_BUTT, wxEmptyString, KiBitmap( text_xpm ),
                             _( "Add text on copper layers or graphic text" ), wxITEM_CHECK );
@@ -505,8 +509,7 @@ void PCB_EDIT_FRAME::ReCreateMicrowaveVToolbar()
     wxWindowUpdateLocker dummy(this);
 
     m_microWaveToolBar = new wxAuiToolBar( this, ID_MICROWAVE_V_TOOLBAR, wxDefaultPosition,
-                                           wxDefaultSize,
-                                           wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_VERTICAL );
+                                           wxDefaultSize, KICAD_AUI_TB_STYLE | wxAUI_TB_VERTICAL );
 
     // Set up toolbar
     m_microWaveToolBar->AddTool( ID_PCB_MUWAVE_TOOL_SELF_CMD, wxEmptyString,
@@ -561,7 +564,7 @@ void PCB_EDIT_FRAME::ReCreateAuxiliaryToolbar()
     }
 
     m_auxiliaryToolBar = new wxAuiToolBar( this, ID_AUX_TOOLBAR, wxDefaultPosition, wxDefaultSize,
-                                           wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_HORZ_LAYOUT );
+                                           KICAD_AUI_TB_STYLE | wxAUI_TB_HORZ_LAYOUT );
 
     /* Set up toolbar items */
 

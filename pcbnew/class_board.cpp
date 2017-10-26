@@ -66,6 +66,12 @@
  */
 wxPoint BOARD_ITEM::ZeroOffset( 0, 0 );
 
+// this is a dummy colors settings (defined colors are the vdefulat values)
+// used to initialize the board.
+// these settings will be overriden later, depending on the draw frame that displays the board.
+// However, when a board is created by a python script, outside a frame, the colors must be set
+// so dummyColorsSettings provide this default initialization
+static COLORS_DESIGN_SETTINGS dummyColorsSettings( FRAME_PCB );
 
 BOARD::BOARD() :
     BOARD_ITEM_CONTAINER( (BOARD_ITEM*) NULL, PCB_T ),
@@ -74,6 +80,7 @@ BOARD::BOARD() :
     // we have not loaded a board yet, assume latest until then.
     m_fileFormatVersionAtLoad = LEGACY_BOARD_FILE_VERSION;
 
+    m_colorsSettings = &dummyColorsSettings;
     m_Status_Pcb    = 0;                    // Status word: bit 1 = calculate.
     m_CurrentZoneContour = NULL;            // This ZONE_CONTAINER handle the
                                             // zone contour currently in progress
@@ -103,7 +110,6 @@ BOARD::BOARD() :
 
     // Initialize ratsnest
     m_connectivity.reset( new CONNECTIVITY_DATA() );
-    m_connectivity->Build( this );
 }
 
 
@@ -740,17 +746,17 @@ int BOARD::GetVisibleElements() const
 }
 
 
-bool BOARD::IsElementVisible( GAL_LAYER_ID LAYER_aPCB ) const
+bool BOARD::IsElementVisible( GAL_LAYER_ID aLayer ) const
 {
-    return m_designSettings.IsElementVisible( LAYER_aPCB );
+    return m_designSettings.IsElementVisible( aLayer );
 }
 
 
-void BOARD::SetElementVisibility( GAL_LAYER_ID LAYER_aPCB, bool isEnabled )
+void BOARD::SetElementVisibility( GAL_LAYER_ID aLayer, bool isEnabled )
 {
-    m_designSettings.SetElementVisibility( LAYER_aPCB, isEnabled );
+    m_designSettings.SetElementVisibility( aLayer, isEnabled );
 
-    switch( LAYER_aPCB )
+    switch( aLayer )
     {
     case LAYER_RATSNEST:
     {
@@ -792,9 +798,9 @@ void BOARD::SetElementVisibility( GAL_LAYER_ID LAYER_aPCB, bool isEnabled )
 }
 
 
-bool BOARD::IsModuleLayerVisible( PCB_LAYER_ID layer )
+bool BOARD::IsModuleLayerVisible( PCB_LAYER_ID aLayer )
 {
-    switch( layer )
+    switch( aLayer )
     {
     case F_Cu:
         return IsElementVisible( LAYER_MOD_FR );
@@ -2903,4 +2909,18 @@ D_PAD* BOARD::GetPad( unsigned aIndex ) const
     }
 
     return nullptr;
+}
+
+void BOARD::ClearAllNetCodes()
+{
+    for ( auto zone : Zones() )
+        zone->SetNetCode( 0 );
+
+    for ( auto mod : Modules() )
+        for ( auto pad : mod->Pads() )
+            pad->SetNetCode( 0 );
+
+    for ( auto track : Tracks() )
+        track->SetNetCode( 0 );
+
 }

@@ -115,6 +115,9 @@ bool COLOR4D_PICKER_DLG::TransferDataToWindow()
     SetEditVals( ALL_CHANGED );
     drawAll();
 
+    // Now the bitmaps are built, fix the minsizes:
+    GetSizer()->SetSizeHints( this );
+
     return true;
 }
 
@@ -209,7 +212,7 @@ void COLOR4D_PICKER_DLG::createRGBBitmap()
     double inc = 1.0 / half_size;
     #define SLOPE_AXIS 50.0
     double slope = SLOPE_AXIS/half_size;
-    color.g = 0;
+    color.g = 0.0;
 
     for( int xx = 0; xx < half_size; xx++ ) // blue axis
     {
@@ -226,7 +229,7 @@ void COLOR4D_PICKER_DLG::createRGBBitmap()
     }
 
     // Red green area in y Z 3d axis
-    color.b = 0;
+    color.b = 0.0;
     for( int xx = 0; xx < half_size; xx++ )     // green axis
     {
         color.g = inc * xx;
@@ -242,7 +245,7 @@ void COLOR4D_PICKER_DLG::createRGBBitmap()
     }
 
     // Blue green area in x y 3d axis
-    color.r = 0;
+    color.r = 0.0;
     for( int xx = 0; xx < half_size; xx++ )     // green axis
     {
         color.g = inc * xx;

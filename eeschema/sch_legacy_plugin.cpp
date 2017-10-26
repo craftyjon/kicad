@@ -3037,7 +3037,7 @@ LIB_PIN* SCH_LEGACY_PLUGIN_CACHE::loadPin( std::unique_ptr< LIB_PART >& aPart,
     parseUnquotedString( name, aReader, line, &line );
     parseUnquotedString( number, aReader, line, &line );
 
-    pin->SetName( name );
+    pin->SetName( name, false );
     pin->SetNumber( number );
 
     wxPoint pos;
@@ -3045,10 +3045,10 @@ LIB_PIN* SCH_LEGACY_PLUGIN_CACHE::loadPin( std::unique_ptr< LIB_PART >& aPart,
     pos.x = parseInt( aReader, line, &line );
     pos.y = parseInt( aReader, line, &line );
     pin->SetPosition( pos );
-    pin->SetLength( parseInt( aReader, line, &line ) );
-    pin->SetOrientation( parseChar( aReader, line, &line ) );
-    pin->SetNumberTextSize( parseInt( aReader, line, &line ) );
-    pin->SetNameTextSize( parseInt( aReader, line, &line ) );
+    pin->SetLength( parseInt( aReader, line, &line ), false );
+    pin->SetOrientation( parseChar( aReader, line, &line ), false );
+    pin->SetNumberTextSize( parseInt( aReader, line, &line ), false );
+    pin->SetNameTextSize( parseInt( aReader, line, &line ), false );
     pin->SetUnit( parseInt( aReader, line, &line ) );
     pin->SetConvert( parseInt( aReader, line, &line ) );
 
@@ -3062,47 +3062,47 @@ LIB_PIN* SCH_LEGACY_PLUGIN_CACHE::loadPin( std::unique_ptr< LIB_PART >& aPart,
     switch( type )
     {
     case 'I':
-        pin->SetType( PIN_INPUT );
+        pin->SetType( PIN_INPUT, false );
         break;
 
     case 'O':
-        pin->SetType( PIN_OUTPUT );
+        pin->SetType( PIN_OUTPUT, false );
         break;
 
     case 'B':
-        pin->SetType( PIN_BIDI );
+        pin->SetType( PIN_BIDI, false );
         break;
 
     case 'T':
-        pin->SetType( PIN_TRISTATE );
+        pin->SetType( PIN_TRISTATE, false );
         break;
 
     case 'P':
-        pin->SetType( PIN_PASSIVE );
+        pin->SetType( PIN_PASSIVE, false );
         break;
 
     case 'U':
-        pin->SetType( PIN_UNSPECIFIED );
+        pin->SetType( PIN_UNSPECIFIED, false );
         break;
 
     case 'W':
-        pin->SetType( PIN_POWER_IN );
+        pin->SetType( PIN_POWER_IN, false );
         break;
 
     case 'w':
-        pin->SetType( PIN_POWER_OUT );
+        pin->SetType( PIN_POWER_OUT, false );
         break;
 
     case 'C':
-        pin->SetType( PIN_OPENCOLLECTOR );
+        pin->SetType( PIN_OPENCOLLECTOR, false );
         break;
 
     case 'E':
-        pin->SetType( PIN_OPENEMITTER );
+        pin->SetType( PIN_OPENEMITTER, false );
         break;
 
     case 'N':
-        pin->SetType( PIN_NC );
+        pin->SetType( PIN_NC, false );
         break;
 
     default:
@@ -3614,6 +3614,20 @@ void SCH_LEGACY_PLUGIN::SaveLibrary( const wxString& aLibraryPath, const PROPERT
     m_cache->SetFileName( oldFileName );
 }
 
+
+bool SCH_LEGACY_PLUGIN::CheckHeader( const wxString& aFileName )
+{
+    // Open file and check first line
+    wxTextFile tempFile;
+
+    tempFile.Open( aFileName );
+    wxString firstline;
+    // read the first line
+    firstline = tempFile.GetFirstLine();
+    tempFile.Close();
+
+    return firstline.StartsWith( "EESchema" );
+}
 
 const char* SCH_LEGACY_PLUGIN::PropBuffering = "buffering";
 const char* SCH_LEGACY_PLUGIN::PropNoDocFile = "no_doc_file";

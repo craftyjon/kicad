@@ -39,9 +39,6 @@
 #include <plot_auxiliary_data.h>
 #include <html_messagebox.h>
 
-extern int ReadInt( char*& text, bool aSkipSeparator = true );
-extern double ReadDouble( char*& text, bool aSkipSeparator = true );
-extern bool GetEndOfBlock( char* buff, char*& text, FILE* gerber_file );
 
 /**
  * this class read and parse a Gerber job file to extract useful info
@@ -109,7 +106,9 @@ bool GERBER_JOBFILE_READER::ReadGerberJobFile()
         text.Trim( false );
 
         // Search for lines starting by '%', others are not usefull
-        if( text.StartsWith( "%TJ.L.", &data ) )
+        if( text.StartsWith( "%TJ.L.", &data )  // First job file syntax
+            || text.StartsWith( "%TJ.L_", &data )   // current job file syntax
+            )
         {
             parseTJLayerString( data );
             continue;
@@ -142,7 +141,7 @@ bool GERBER_JOBFILE_READER::parseTJLayerString( wxString& aText )
 
 bool GERBVIEW_FRAME::LoadGerberJobFile( const wxString& aFullFileName )
 {
-#define jobFileWildcard  _( "Gerber job file (*.gbj)|*.gbj;.gbj" )
+#define jobFileWildcard  _( "Gerber job file (*.gbrjob)|*.gbrjob;.gbrjob" )
     wxFileName filename = aFullFileName;
     wxString currentPath;
 

@@ -68,6 +68,10 @@ boost::optional<TOOL_EVENT> PCB_ACTIONS::TranslateLegacyId( int aId )
     case ID_MODEDIT_LINE_TOOL:
         return PCB_ACTIONS::drawLine.MakeEvent();
 
+    case ID_PCB_ADD_POLYGON_BUTT:
+    case ID_MODEDIT_POLYGON_TOOL:
+        return PCB_ACTIONS::drawGraphicPolygon.MakeEvent();
+
     case ID_PCB_CIRCLE_BUTT:
     case ID_MODEDIT_CIRCLE_TOOL:
         return PCB_ACTIONS::drawCircle.MakeEvent();
@@ -184,6 +188,15 @@ boost::optional<TOOL_EVENT> PCB_ACTIONS::TranslateLegacyId( int aId )
 
     case ID_PCB_MUWAVE_TOOL_SELF_CMD:
         return PCB_ACTIONS::microwaveCreateLine.MakeEvent();
+
+    case ID_EDIT_CUT:
+        return PCB_ACTIONS::cutToClipboard.MakeEvent();
+
+    case ID_EDIT_COPY:
+        return PCB_ACTIONS::copyToClipboard.MakeEvent();
+
+    case ID_EDIT_PASTE:
+        return PCB_ACTIONS::pasteFromClipboard.MakeEvent();
     }
 
     return boost::optional<TOOL_EVENT>();

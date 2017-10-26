@@ -79,9 +79,9 @@ void DRAWSEGMENT::Rotate( const wxPoint& aRotCentre, double aAngle )
         break;
 
     case S_POLYGON:
-        for( unsigned ii = 0; ii < m_PolyPoints.size(); ii++ )
+        for( auto iter = m_Poly.Iterate(); iter; iter++ )
         {
-            RotatePoint( &m_PolyPoints[ii], aRotCentre, aAngle);
+            RotatePoint( *iter, VECTOR2I(aRotCentre), aAngle);
         }
         break;
 
@@ -186,7 +186,8 @@ double DRAWSEGMENT::GetArcAngleStart() const
 
 void DRAWSEGMENT::SetAngle( double aAngle )
 {
-    m_Angle = NormalizeAngle360( aAngle );
+    // m_Angle must be >= -360 and <= +360 degrees
+    m_Angle = NormalizeAngle360Max( aAngle );
 }
 
 
@@ -408,13 +409,16 @@ const EDA_RECT DRAWSEGMENT::GetBoundingBox() const
         break;
 
     case S_POLYGON:
+        if( m_Poly.IsEmpty() )
+            break;
     {
         wxPoint p_end;
         MODULE* module = GetParentModule();
+        bool first = true;
 
-        for( unsigned ii = 0; ii < m_PolyPoints.size(); ii++ )
+        for( auto iter = m_Poly.CIterate(); iter; iter++ )
         {
-            wxPoint pt = m_PolyPoints[ii];
+            wxPoint pt ( iter->x, iter->y );
 
             if( module ) // Transform, if we belong to a module
             {
@@ -422,19 +426,28 @@ const EDA_RECT DRAWSEGMENT::GetBoundingBox() const
                 pt += module->GetPosition();
             }
 
-            if( ii == 0 )
-                p_end = pt;
 
-            bbox.SetX( std::min( bbox.GetX(), pt.x ) );
-            bbox.SetY( std::min( bbox.GetY(), pt.y ) );
-            p_end.x   = std::max( p_end.x, pt.x );
-            p_end.y   = std::max( p_end.y, pt.y );
+            if( first )
+            {
+                p_end = pt;
+                bbox.SetX( pt.x );
+                bbox.SetY( pt.y );
+                first = false;
+            }
+            else
+            {
+
+                bbox.SetX( std::min( bbox.GetX(), pt.x ) );
+                bbox.SetY( std::min( bbox.GetY(), pt.y ) );
+
+                p_end.x   = std::max( p_end.x, pt.x );
+                p_end.y   = std::max( p_end.y, pt.y );
+            }
         }
 
         bbox.SetEnd( p_end );
-    }
         break;
-
+	}
     default:
         break;
     }
@@ -508,6 +521,18 @@ bool DRAWSEGMENT::HitTest( const wxPoint& aPosition ) const
         break;
 
     case S_POLYGON:     // not yet handled
+        {
+            #define MAX_DIST_IN_MM 0.25
+            int distmax = Millimeter2iu( 0.25 );
+            SHAPE_POLY_SET::VERTEX_INDEX dummy;
+            auto poly = m_Poly;
+
+            if( poly.CollideVertex( VECTOR2I( aPosition ), dummy, distmax ) )
+                return true;
+
+            if( poly.CollideEdge( VECTOR2I( aPosition ), dummy, distmax ) )
+                return true;
+        }
         break;
 
     default:
@@ -709,4 +734,30 @@ void DRAWSEGMENT::computeArcBBox( EDA_RECT& aBBox ) const
         quarter %= 4;
         angle -= 900;
     }
+}
+
+void DRAWSEGMENT::SetPolyPoints( const std::vector<wxPoint>& aPoints )
+{
+    m_Poly.RemoveAllContours();
+    m_Poly.NewOutline();
+
+    for ( auto p : aPoints )
+    {
+        m_Poly.Append( p.x, p.y );
+    }
+}
+
+const std::vector<wxPoint> DRAWSEGMENT::GetPolyPoints() const
+{
+    std::vector<wxPoint> rv;
+
+    if( !m_Poly.IsEmpty() )
+    {
+        for ( auto iter = m_Poly.CIterate(); iter; iter++ )
+        {
+            rv.push_back( wxPoint( iter->x, iter->y ) );
+        }
+    }
+
+    return rv;
 }

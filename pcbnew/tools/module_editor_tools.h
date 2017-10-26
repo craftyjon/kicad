@@ -62,20 +62,6 @@ public:
     int EnumeratePads( const TOOL_EVENT& aEvent );
 
     /**
-     * Function CopyItems()
-     *
-     * Copies selected items to the clipboard. Works only in "edit modules" mode.
-     */
-    int CopyItems( const TOOL_EVENT& aEvent );
-
-    /**
-     * Function PastePad()
-     *
-     * Pastes items from the clipboard. Works only in "edit modules" mode.
-     */
-    int PasteItems( const TOOL_EVENT& aEvent );
-
-    /**
      * Function CreateArray
      *
      * Creates an array of objects using settings from a dialog
@@ -95,6 +81,21 @@ public:
      * Toggles display mode for module edges (outline/filled).
      */
     int ModuleEdgeOutlines( const TOOL_EVENT& aEvent );
+
+    /**
+     * Function CreatePadFromShapes()
+     *
+     * Creates a custom-shaped pad from a set of selected graphical shapes
+     */
+    int CreatePadFromShapes( const TOOL_EVENT& aEvent );
+
+    /**
+     * Function ExplodePadToShapes()
+     *
+     * Breaks apart a complex-shaped part into a set of graphical shapes
+     */
+    int ExplodePadToShapes( const TOOL_EVENT& aEvent );
+
 
     ///> Sets up handlers for various events.
     void setTransitions() override;

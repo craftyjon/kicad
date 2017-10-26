@@ -38,6 +38,7 @@
 #include <pcbnew.h>
 #include <wxBasePcbFrame.h>
 #include <base_units.h>
+#include <unit_format.h>
 #include <board_commit.h>
 
 #include <class_board.h>
@@ -126,15 +127,15 @@ DIALOG_PAD_PROPERTIES::DIALOG_PAD_PROPERTIES( PCB_BASE_FRAME* aParent, D_PAD* aP
     else    // We are editing a "master" pad, i.e. a template to create new pads
         *m_dummyPad = *m_padMaster;
 
-    // Initialize canvas to be able to display the dummy pad:
-    prepareCanvas();
-
     initValues();
 
     // Usually, TransferDataToWindow is called by OnInitDialog
     // calling it here fixes all widgets sizes, and FinishDialogSettings can
     // safely fix minsizes
     TransferDataToWindow();
+
+    // Initialize canvas to be able to display the dummy pad:
+    prepareCanvas();
 
     m_sdbSizerOK->SetDefault();
     m_canUpdate = true;
@@ -329,7 +330,7 @@ void DIALOG_PAD_PROPERTIES::OnPaintShowPanel( wxPaintEvent& event )
 
         case S_POLYGON:         // polygon
         {
-            std::vector<wxPoint>& poly = dummySegment.GetPolyPoints();
+            std::vector<wxPoint> poly = dummySegment.GetPolyPoints();
             GRClosedPoly( NULL, &dc, poly.size(), &poly[0], /* filled */ true,
                           primitive.m_Thickness, hcolor, hcolor );
         }
@@ -1004,6 +1005,21 @@ bool DIALOG_PAD_PROPERTIES::padValuesOK()
                                 // is incorrect the offset prm is always seen as incorrect, even if it is 0
     }
 
+    if( m_dummyPad->GetLocalClearance() < 0 )
+    {
+        error_msgs.Add( _( "Pad local clearance must be zero or greater than zero" ) );
+    }
+
+    if( m_dummyPad->GetLocalSolderMaskMargin() < 0 )
+    {
+        error_msgs.Add( _( "Pad local solder mask clearance must be zero or greater than zero" ) );
+    }
+
+    if( m_dummyPad->GetLocalSolderPasteMargin() > 0 )
+    {
+        error_msgs.Add( _( "Pad local solder paste clearance must be zero or less than zero" ) );
+    }
+
     LSET padlayers_mask = m_dummyPad->GetLayerSet();
 
     if( padlayers_mask == 0 )
@@ -1160,11 +1176,9 @@ void DIALOG_PAD_PROPERTIES::redraw()
 
             case S_POLYGON:         // polygon
             {
-                std::vector<wxPoint>& poly = dummySegment->GetPolyPoints();
-
-                for( unsigned ii = 0; ii < poly.size(); ii++ )
+                for( auto iter = dummySegment->GetPolyShape().Iterate(); iter; iter++ )
                 {
-                    poly[ii] += m_dummyPad->GetPosition();
+                    (*iter) += VECTOR2I( m_dummyPad->GetPosition() );
                 }
             }
                 break;
@@ -1801,7 +1815,7 @@ void DIALOG_PAD_PROPERTIES::onAddPrimitive( wxCommandEvent& event )
         _( "Segment" ), _( "Arc" ), _( "ring/circle" ), _( "polygon" )
     };
 
-    int type = wxGetSingleChoiceIndex( wxEmptyString, _( " Select shape type:" ),
+    int type = wxGetSingleChoiceIndex( wxEmptyString, _( "Select shape type:" ),
                     DIM( shapelist ), shapelist, 0 );
 
     STROKE_T listtype[] =

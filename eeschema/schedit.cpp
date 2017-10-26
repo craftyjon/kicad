@@ -287,7 +287,6 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_POPUP_SCH_EDIT_CONVERT_CMP:
-
         // Ensure the struct is a component (could be a struct of a component, like Field, text..)
         if( item && item->Type() == SCH_COMPONENT_T )
         {
@@ -298,21 +297,14 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_POPUP_SCH_DISPLAYDOC_CMP:
-
         // Ensure the struct is a component (could be a piece of a component, like Field, text..)
         if( item && item->Type() == SCH_COMPONENT_T )
         {
-            if( PART_LIBS* libs = Prj().SchLibs() )
-            {
-                LIB_ALIAS* entry = libs->FindLibraryAlias( ( (SCH_COMPONENT*) item )->GetLibId() );
+            wxString text = static_cast<SCH_COMPONENT*>( item )->
+                                    GetField( DATASHEET )->GetFullyQualifiedText();
 
-                if( entry && !!entry->GetDocFileName() )
-                {
-                    SEARCH_STACK* lib_search = Prj().SchSearchS();
-
-                    GetAssociatedDocument( this, entry->GetDocFileName(), lib_search );
-                }
-            }
+            if( !text.IsEmpty() )
+                GetAssociatedDocument( this, text );
         }
         break;
 

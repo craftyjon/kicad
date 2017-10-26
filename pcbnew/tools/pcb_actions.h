@@ -132,6 +132,9 @@ public:
     /// Activation of the drawing tool (line)
     static TOOL_ACTION drawLine;
 
+    // Activation of the drawing tool (graphic polygons)
+    static TOOL_ACTION drawGraphicPolygon;
+
     /// Activation of the drawing tool (circle)
     static TOOL_ACTION drawCircle;
 
@@ -288,17 +291,23 @@ public:
     /// Activation of the drawing tool (placing a PAD)
     static TOOL_ACTION placePad;
 
+    static TOOL_ACTION createPadFromShapes;
+    static TOOL_ACTION explodePadToShapes;
+
     /// Tool for quick pad enumeration
     static TOOL_ACTION enumeratePads;
 
     /// Tool for creating an array of objects
     static TOOL_ACTION createArray;
 
-    /// Copying module items to clipboard
-    static TOOL_ACTION copyItems;
+    /// Copy selected items to clipboard
+    static TOOL_ACTION copyToClipboard;
 
-    /// Pasting module items from clipboard
-    static TOOL_ACTION pasteItems;
+    /// Paste from clipboard
+    static TOOL_ACTION pasteFromClipboard;
+
+    /// Paste from clipboard
+    static TOOL_ACTION cutToClipboard;
 
     /// Display module edges as outlines
     static TOOL_ACTION moduleEdgeOutlines;

@@ -116,6 +116,8 @@ set( BMAPS_MID
     add_dimension
     add_entry
     add_glabel
+    add_graphical_segments
+    add_graphical_polygon
     add_hierarchical_label
     add_hierar_pin
     add_hierarchical_subsheet
@@ -171,6 +173,7 @@ set( BMAPS_MID
     copper_layers_setup
     cursor_shape
     cursor
+    custom_pad_to_primitives
     cut
     cvpcb
     dashline
@@ -257,6 +260,7 @@ set( BMAPS_MID
     help
     hidden_pin
     hierarchy_nav
+    highlight_remove
     hotkeys
     hotkeys_import
     hotkeys_export
@@ -429,6 +433,7 @@ set( BMAPS_MID
     post_drill
     post_module
     preference
+    primitives_to_custom_pad
     print_button
     ps_router
     ps_diff_pair
@@ -514,8 +519,9 @@ set( BMAPS_MID
     unknown
     unlocked
     unzip
-    update_module_board
     up
+    update_fields
+    update_module_board
     use_3D_copper_thickness
     via
     via_buried

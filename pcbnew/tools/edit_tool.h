@@ -139,6 +139,27 @@ public:
     ///> Sets up handlers for various events.
     void setTransitions() override;
 
+    /**
+     * Function copyToClipboard()
+     * Sends the current selection to the clipboard by formatting it as a fake pcb
+     * see AppendBoardFromClipboard for importing
+     * @return True if it was sent succesfully
+     */
+    int copyToClipboard( const TOOL_EVENT& aEvent );
+
+    /**
+     * Function cutToClipboard()
+     * Cuts the current selection to the clipboard by formatting it as a fake pcb
+     * see AppendBoardFromClipboard for importing
+     * @return True if it was sent succesfully
+     */
+    int cutToClipboard( const TOOL_EVENT& aEvent );
+
+    BOARD_COMMIT* GetCurrentCommit() const
+    {
+        return m_commit.get();
+    }
+
 private:
     ///> Selection tool used for obtaining selected items
     SELECTION_TOOL* m_selectionTool;
@@ -146,16 +167,13 @@ private:
     ///> Flag determining if anything is being dragged right now
     bool m_dragging;
 
-    ///> Offset from the dragged item's center (anchor)
-    wxPoint m_offset;
-
     ///> Last cursor position (needed for getModificationPoint() to avoid changes
     ///> of edit reference point).
     VECTOR2I m_cursor;
 
     ///> Returns the right modification point (e.g. for rotation), depending on the number of
     ///> selected items.
-    wxPoint getModificationPoint( const SELECTION& aSelection );
+    bool updateModificationPoint( SELECTION& aSelection );
 
     int editFootprintInFpEditor( const TOOL_EVENT& aEvent );
 
@@ -163,6 +181,7 @@ private:
     bool isInteractiveDragEnabled() const;
 
     bool changeTrackWidthOnClick( const SELECTION& selection );
+    bool pickCopyReferencePoint( VECTOR2I& aP );
 
 
     /**
