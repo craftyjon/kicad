@@ -524,6 +524,11 @@ void prepareToolsMenu( wxMenu* aParentMenu )
                  HELP_GENERATE_BOM,
                  KiBitmap( bom_xpm ) );
 
+    AddMenuItem( aParentMenu,
+                 ID_BUS_MANAGER,
+                 _( "Bus &Definitions" ),
+                 HELP_BUS_MANAGER,
+                 KiBitmap( bom_xpm ) );     // TODO(JE) new icon?
 
 
     aParentMenu->AppendSeparator();

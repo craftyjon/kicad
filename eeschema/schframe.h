@@ -856,6 +856,7 @@ private:
     void OnSimulate( wxCommandEvent& event );
     void OnCreateBillOfMaterials( wxCommandEvent& event );
     void OnLaunchBomManager( wxCommandEvent& event );
+    void OnLaunchBusManager( wxCommandEvent& event );
     void OnFindItems( wxCommandEvent& event );
     void OnFindDialogClose( wxFindDialogEvent& event );
     void OnFindDrcMarker( wxFindDialogEvent& event );

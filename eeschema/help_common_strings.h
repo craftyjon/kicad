@@ -77,6 +77,7 @@
 #define HELP_RUN_LIB_EDITOR _( "Library Editor - Create/edit components" )
 #define HELP_RUN_LIB_VIEWER _( "Library Browser - Browse components" )
 #define HELP_GENERATE_BOM _( "Generate bill of materials" )
+#define HELP_BUS_MANAGER _( "Manage bus definitions" )
 #define HELP_IMPORT_FOOTPRINTS \
     _( "Back-import component footprint association fields from the .cmp back import file created by Pcbnew" )
 

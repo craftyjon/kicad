@@ -270,6 +270,7 @@ BEGIN_EVENT_TABLE( SCH_EDIT_FRAME, EDA_DRAW_FRAME )
     EVT_TOOL( ID_UPDATE_PCB_FROM_SCH, SCH_EDIT_FRAME::OnUpdatePCB )
     EVT_TOOL( ID_GET_TOOLS, SCH_EDIT_FRAME::OnCreateBillOfMaterials )
     EVT_TOOL( ID_OPEN_CMP_TABLE, SCH_EDIT_FRAME::OnLaunchBomManager )
+    EVT_TOOL( ID_BUS_MANAGER, SCH_EDIT_FRAME::OnLaunchBusManager )
     EVT_TOOL( ID_FIND_ITEMS, SCH_EDIT_FRAME::OnFindItems )
     EVT_TOOL( wxID_REPLACE, SCH_EDIT_FRAME::OnFindItems )
     EVT_TOOL( ID_BACKANNO_ITEMS, SCH_EDIT_FRAME::OnLoadCmpToFootprintLinkFile )
@@ -931,6 +932,11 @@ void SCH_EDIT_FRAME::OnLaunchBomManager( wxCommandEvent& event )
         return;
 
     InvokeDialogCreateBOMEditor( this );
+}
+
+void SCH_EDIT_FRAME::OnLaunchBusManager( wxCommandEvent& )
+{
+    InvokeDialogBusManager( this );
 }
 
 void SCH_EDIT_FRAME::OnFindItems( wxCommandEvent& aEvent )

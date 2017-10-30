@@ -84,6 +84,9 @@ int InvokeDialogCreateBOM( SCH_EDIT_FRAME* aCaller );
 /// Create and show DIALOG_BOM_EDITOR
 void InvokeDialogCreateBOMEditor( SCH_EDIT_FRAME* aCaller );
 
+/// Create and show DIALOG_BUS_MANAGER
+void InvokeDialogBusManager( SCH_EDIT_FRAME* aCaller );
+
 /// Update symbol fields
 int InvokeDialogUpdateFields( SCH_EDIT_FRAME* aCaller,
         const std::list<SCH_COMPONENT*> aComponents, bool aCreateUndoEntry );

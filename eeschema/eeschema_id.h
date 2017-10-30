@@ -65,6 +65,7 @@ enum id_eeschema_frm
     /* Schematic editor main menubar IDs. */
     ID_RESCUE_CACHED,
     ID_EDIT_SYM_LIB_TABLE,
+    ID_BUS_MANAGER,
 
     /* Schematic editor horizontal toolbar IDs */
     ID_HIERARCHY,

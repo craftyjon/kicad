@@ -28,6 +28,7 @@ set( EESCHEMA_DLGS
     dialogs/dialog_bom_editor.cpp
     dialogs/dialog_bom_editor_base.cpp
     dialogs/dialog_bom_cfg_keywords.cpp
+    dialogs/dialog_bus_manager.cpp
     dialogs/dialog_choose_component.cpp
     dialogs/dialog_lib_edit_text.cpp
     dialogs/dialog_lib_edit_text_base.cpp
