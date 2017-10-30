@@ -52,6 +52,17 @@ enum PINSHEETLABEL_SHAPE {
 };
 
 
+/**
+ * For text objects that support connections (labels, heirarchical pins, etc),
+ * this property stores whether the item is connected to a net or bus.
+ */
+enum LABEL_CONNECTION_TYPE {
+    CONNECTION_NONE,
+    CONNECTION_NET,
+    CONNECTION_BUS
+};
+
+
 extern const char* SheetLabelType[];    /* names of types of labels */
 
 
@@ -63,6 +74,8 @@ protected:
     /// True if not connected to another object if the object derive from SCH_TEXT
     /// supports connections.
     bool m_isDangling;
+
+    LABEL_CONNECTION_TYPE m_connectionType;
 
     /**
      * The orientation of text and any associated drawing elements of derived objects.

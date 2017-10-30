@@ -112,6 +112,7 @@ SCH_TEXT::SCH_TEXT( const wxPoint& pos, const wxString& text, KICAD_T aType ) :
     m_Layer = LAYER_NOTES;
     SetTextPos( pos );
     m_isDangling = false;
+    m_connectionType = CONNECTION_NONE;
     m_spin_style = 0;
 
     SetMultilineAllowed( true );
@@ -516,6 +517,7 @@ bool SCH_TEXT::IsDanglingStateChanged( std::vector< DANGLING_END_ITEM >& aItemLi
 
     bool previousState = m_isDangling;
     m_isDangling = true;
+    m_connectionType = CONNECTION_NONE;
 
     for( unsigned ii = 0; ii < aItemList.size(); ii++ )
     {
@@ -534,8 +536,12 @@ bool SCH_TEXT::IsDanglingStateChanged( std::vector< DANGLING_END_ITEM >& aItemLi
 
             break;
 
-        case WIRE_START_END:
+
         case BUS_START_END:
+            m_connectionType = CONNECTION_BUS;
+            // fall through
+
+        case WIRE_START_END:
         {
             // These schematic items have created 2 DANGLING_END_ITEM one per end.  But being
             // a paranoid programmer, I'll check just in case.
@@ -546,6 +552,16 @@ bool SCH_TEXT::IsDanglingStateChanged( std::vector< DANGLING_END_ITEM >& aItemLi
 
             DANGLING_END_ITEM & nextItem = aItemList[ii];
             m_isDangling = !IsPointOnSegment( item.GetPosition(), nextItem.GetPosition(), GetTextPos() );
+
+            if( !m_isDangling )
+            {
+                if( m_connectionType != CONNECTION_BUS )
+                    m_connectionType = CONNECTION_NET;
+            }
+            else
+            {
+                m_connectionType = CONNECTION_NONE;
+            }
         }
             break;
 
@@ -1648,7 +1664,9 @@ void SCH_HIERLABEL::Draw( EDA_DRAW_PANEL* panel,
     if( Color != COLOR4D::UNSPECIFIED )
         color = Color;
     else
-        color = GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED : m_Layer );
+        color = GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED :
+                               ( m_connectionType == CONNECTION_BUS ) ?
+                               LAYER_BUS : m_Layer );
 
     GRSetDrawMode( DC, DrawMode );
 
