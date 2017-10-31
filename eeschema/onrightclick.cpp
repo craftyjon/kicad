@@ -732,6 +732,19 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
 
     AddMenuItem( PopMenu, ID_POPUP_SCH_BREAK_WIRE, _( "Break Bus" ), KiBitmap( break_bus_xpm ) );
 
+    wxMenu* bus_unfolding_menu = new wxMenu;
+    // TODO(JE) proper bitmap
+    AddMenuItem( PopMenu, bus_unfolding_menu, ID_POPUP_SCH_UNFOLD_BUS,
+                 _( "Unfold Bus" ), KiBitmap( add_bus_xpm ) );
+
+    for( int i = 0; i < 32; i++ )
+    {
+        msg.Printf( wxT( "%d" ), i );
+
+        bus_unfolding_menu->Append( ID_POPUP_SCH_UNFOLD_BUS_START + i,
+                                    _( "Unfold: " ) + msg, wxEmptyString );
+    }
+
     PopMenu->AppendSeparator();
     msg = AddHotkeyName( _( "Add Junction" ), g_Schematic_Hokeys_Descr, HK_ADD_JUNCTION );
     AddMenuItem( PopMenu, ID_POPUP_SCH_ADD_JUNCTION, msg, KiBitmap( add_junction_xpm ) );
