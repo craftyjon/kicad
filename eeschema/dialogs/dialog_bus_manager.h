@@ -24,6 +24,7 @@
 #include "dialog_shim.h"
 
 #include <schframe.h>
+#include <wx/listctrl.h>
 
 class DIALOG_BUS_MANAGER : public DIALOG_SHIM
 {
@@ -37,6 +38,19 @@ protected:
     void OnInitDialog( wxInitDialogEvent& aEvent );
 
     SCH_EDIT_FRAME* m_parent;
+
+    wxListView* m_bus_list_view;
+    wxListView* m_signal_list_view;
+    wxTextCtrl* m_bus_edit;
+    wxTextCtrl* m_signal_edit;
+
+    wxButton* m_btn_add_bus;
+    wxButton* m_btn_rename_bus;
+    wxButton* m_btn_remove_bus;
+
+    wxButton* m_btn_add_signal;
+    wxButton* m_btn_rename_signal;
+    wxButton* m_btn_remove_signal;
 };
 
 

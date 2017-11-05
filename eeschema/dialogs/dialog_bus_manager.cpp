@@ -25,14 +25,71 @@
 
 DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
         : DIALOG_SHIM( aParent, wxID_ANY, _( "Bus Definitions" ),
-                       wxDefaultPosition, wxSize( 800, 650 ),
+                       wxDefaultPosition, wxSize( 640, 480 ),
                        wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER ),
           m_parent( aParent )
 {
     auto sizer = new wxBoxSizer( wxVERTICAL );
+    auto buttons = new wxStdDialogButtonSizer();
 
+    buttons->AddButton( new wxButton( this, wxID_OK ) );
+    buttons->AddButton( new wxButton( this, wxID_CANCEL ) );
+    buttons->Realize();
+
+    auto top_container = new wxBoxSizer( wxHORIZONTAL );
+    auto left_pane = new wxBoxSizer( wxVERTICAL );
+    auto right_pane = new wxBoxSizer( wxVERTICAL );
+
+    // Left pane: alias list
+    m_bus_list_view = new wxListView( this, wxID_ANY, wxDefaultPosition,
+                                      wxSize( 300, 300 ), wxLC_ALIGN_LEFT |
+                                      wxLC_NO_HEADER | wxLC_REPORT |
+                                      wxLC_SINGLE_SEL );
+    m_bus_edit = new wxTextCtrl( this, wxID_ANY );
+    
+    auto left_button_sizer = new wxBoxSizer( wxHORIZONTAL );
+    
+    m_btn_add_bus = new wxButton( this, wxID_ANY, _( "Add" ) );
+    m_btn_rename_bus = new wxButton( this, wxID_ANY, _( "Rename" ) );
+    m_btn_remove_bus = new wxButton( this, wxID_ANY, _( "Remove" ) );
+
+    left_button_sizer->Add( m_btn_add_bus );
+    left_button_sizer->Add( m_btn_rename_bus );
+    left_button_sizer->Add( m_btn_remove_bus );
+
+    left_pane->Add( m_bus_list_view, 1, wxEXPAND | wxALL, 5 );
+    left_pane->Add( m_bus_edit, 0, wxEXPAND | wxALL, 5 );
+    left_pane->Add( left_button_sizer, 0, wxEXPAND | wxALL, 5 );
+
+    // Right pane: signal list
+    m_signal_list_view = new wxListView( this, wxID_ANY, wxDefaultPosition,
+                                         wxSize( 300, 300 ), wxLC_ALIGN_LEFT |
+                                         wxLC_NO_HEADER | wxLC_REPORT |
+                                         wxLC_SINGLE_SEL );
+    m_signal_edit = new wxTextCtrl( this, wxID_ANY );
+
+    auto right_button_sizer = new wxBoxSizer( wxHORIZONTAL );
+
+    m_btn_add_signal = new wxButton( this, wxID_ANY, _( "Add" ) );
+    m_btn_rename_signal = new wxButton( this, wxID_ANY, _( "Rename" ) );
+    m_btn_remove_signal = new wxButton( this, wxID_ANY, _( "Remove" ) );
+
+    right_button_sizer->Add( m_btn_add_signal );
+    right_button_sizer->Add( m_btn_rename_signal );
+    right_button_sizer->Add( m_btn_remove_signal );
+
+    right_pane->Add( m_signal_list_view, 1, wxEXPAND | wxALL, 5 );
+    right_pane->Add( m_signal_edit, 0, wxEXPAND | wxALL, 5 );
+    right_pane->Add( right_button_sizer, 0, wxEXPAND | wxALL, 5 );
+
+    top_container->Add( left_pane, 1, wxEXPAND );
+    top_container->Add( right_pane, 1, wxEXPAND );
+
+    sizer->Add( top_container, 1, wxEXPAND | wxALL, 5 );
+    sizer->Add( buttons, 0, wxEXPAND | wxBOTTOM, 10 );
     SetSizer( sizer );
 
+    Bind( wxEVT_INIT_DIALOG, &DIALOG_BUS_MANAGER::OnInitDialog, this );
 
     Layout();
 }
