@@ -35,7 +35,7 @@
 #include <class_draw_panel_gal.h>
 #include <pcbnew_id.h>
 
-#include <boost/optional.hpp>
+#include <core/optional.h>
 
 ///> Stores information about a mouse button state
 struct TOOL_DISPATCHER::BUTTON_STATE
@@ -146,7 +146,7 @@ void TOOL_DISPATCHER::ResetState()
 
 KIGFX::VIEW* TOOL_DISPATCHER::getView()
 {
-    return static_cast<EDA_DRAW_FRAME*>( m_toolMgr->GetEditFrame() )->GetGalCanvas()->GetView();
+    return m_toolMgr->GetView();
 }
 
 
@@ -154,7 +154,7 @@ bool TOOL_DISPATCHER::handleMouseButton( wxEvent& aEvent, int aIndex, bool aMoti
 {
     BUTTON_STATE* st = m_buttons[aIndex];
     wxEventType type = aEvent.GetEventType();
-    boost::optional<TOOL_EVENT> evt;
+    OPT<TOOL_EVENT> evt;
     bool isClick = false;
 
 //    bool up = type == st->upEvent;
@@ -307,11 +307,18 @@ int translateSpecialCode( int aKeyCode )
 void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
 {
     bool motion = false, buttonEvents = false;
-    boost::optional<TOOL_EVENT> evt;
+    OPT<TOOL_EVENT> evt;
     int key = 0;    // key = 0 if the event is not a key event
     bool keyIsSpecial = false;  // True if the key is a special key code
 
     int type = aEvent.GetEventType();
+
+    // Sometimes there is no window that has the focus (it happens when an other PCB_BASE_FRAME
+    // is opened and is iconized on Windows).
+    // In this case, gives the focus to the parent PCB_BASE_FRAME (for an obscure reason,
+    // when happens, the GAL canvas itself does not accept the focus)
+    if( wxWindow::FindFocus() == nullptr )
+        static_cast<PCB_BASE_FRAME*>( m_toolMgr->GetEditFrame() )->SetFocus();
 
     // Mouse handling
     // Note: wxEVT_LEFT_DOWN event must always be skipped.
@@ -429,7 +436,7 @@ void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
 
 void TOOL_DISPATCHER::DispatchWxCommand( wxCommandEvent& aEvent )
 {
-    boost::optional<TOOL_EVENT> evt = m_actions->TranslateLegacyId( aEvent.GetId() );
+    OPT<TOOL_EVENT> evt = m_actions->TranslateLegacyId( aEvent.GetId() );
 
     if( evt )
         m_toolMgr->ProcessEvent( *evt );
@@ -444,7 +451,11 @@ void TOOL_DISPATCHER::updateUI()
 {
     // TODO I don't feel it is the right place for updating UI,
     // but at the moment I cannot think of a better one..
-    EDA_DRAW_FRAME* frame = static_cast<EDA_DRAW_FRAME*>( m_toolMgr->GetEditFrame() );
-    frame->UpdateStatusBar();
-    //frame->UpdateMsgPanel();
+
+    auto frame = dynamic_cast<EDA_DRAW_FRAME*>( m_toolMgr->GetEditFrame() );
+    if( frame )
+    {
+        frame->UpdateStatusBar();
+        //frame->UpdateMsgPanel();
+    }
 }

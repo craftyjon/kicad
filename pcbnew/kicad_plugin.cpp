@@ -37,7 +37,7 @@
 #include <class_track.h>
 #include <class_zone.h>
 #include <class_drawsegment.h>
-#include <class_mire.h>
+#include <class_pcb_target.h>
 #include <class_edge_mod.h>
 #include <pcb_plot_params.h>
 #include <zones.h>
@@ -532,8 +532,6 @@ void PCB_IO::formatSetup( BOARD* aBoard, int aNestLevel ) const
 {
     const BOARD_DESIGN_SETTINGS& dsnSettings = aBoard->GetDesignSettings();
 
-    m_out->Print( 0, "\n" );
-
     // Setup
     m_out->Print( aNestLevel, "(setup\n" );
 
@@ -764,9 +762,9 @@ void PCB_IO::formatNetInformation( BOARD* aBoard, int aNestLevel ) const
 
 void PCB_IO::formatHeader( BOARD* aBoard, int aNestLevel ) const
 {
-    formatGeneral( aBoard );
+    formatGeneral( aBoard, aNestLevel );
     // Layers.
-    formatBoardLayers( aBoard );
+    formatBoardLayers( aBoard, aNestLevel );
     // Setup
     formatSetup( aBoard, aNestLevel );
     // Save net codes and names
@@ -775,7 +773,7 @@ void PCB_IO::formatHeader( BOARD* aBoard, int aNestLevel ) const
 
 void PCB_IO::format( BOARD* aBoard, int aNestLevel ) const
 {
-    formatHeader( aBoard );
+    formatHeader( aBoard, aNestLevel );
 
     // Save the modules.
     for( MODULE* module = aBoard->m_Modules;  module;  module = module->Next() )
@@ -1133,8 +1131,8 @@ void PCB_IO::format( MODULE* aModule, int aNestLevel ) const
         format( pad, aNestLevel+1 );
 
     // Save 3D info.
-    std::list<S3D_INFO>::const_iterator bs3D = aModule->Models().begin();
-    std::list<S3D_INFO>::const_iterator es3D = aModule->Models().end();
+    auto bs3D = aModule->Models().begin();
+    auto es3D = aModule->Models().end();
 
     while( bs3D != es3D )
     {

@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2016 CERN
+ * Copyright (C) 2016-2017 CERN
  * @author Maciej Suminski <maciej.suminski@cern.ch>
  *
  * This program is free software; you can redistribute it and/or
@@ -54,12 +54,12 @@ private:
     bool generatePowerSource( wxString& aTarget ) const;
 
     /**
-     * Loads a list of components from a file and adds them to a combo box.
+     * Loads a list of components (.model and .subckt) from a spice library
+     * file and adds them to a combo box.
      * @param aComboBox is the target combo box
-     * @param aFilePath is the file to be processed
-     * @param aKeyword is the keyword to select the type of components (e.g. "subckt" or "model")
+     * @param aFilePath is path to the library file
      */
-    void updateFromFile( wxComboBox* aComboBox, const wxString& aFilePath, const wxString& aKeyword );
+    void loadLibrary( const wxString& aFilePath );
 
     /**
      * Returns or creates a field in the edited schematic fields vector.
@@ -98,8 +98,8 @@ private:
     }
 
     // Event handlers
-    void onSemiSelectLib( wxCommandEvent& event ) override;
-    void onSelectIcLib( wxCommandEvent& event ) override;
+    void onSelectLibrary( wxCommandEvent& event ) override;
+    void onModelSelected( wxCommandEvent& event ) override;
     void onPwlAdd( wxCommandEvent& event ) override;
     void onPwlRemove( wxCommandEvent& event ) override;
 
@@ -111,6 +111,26 @@ private:
 
     ///> Temporary field values
     std::map<int, wxString> m_fieldsTmp;
+
+    struct MODEL
+    {
+        ///> Line number in the library file
+        int line;
+
+        ///> Type of the device
+        enum TYPE { UNKNOWN = -1, SUBCKT, BJT, MOSFET, DIODE } model;
+
+        ///> Convert string to model
+        static TYPE parseModelType( const wxString& aValue );
+
+        MODEL( int aLine, enum TYPE aModel )
+            : line( aLine ), model( aModel )
+        {
+        }
+    };
+
+    ///> Models available in the selected library file
+    std::map<wxString, MODEL> m_models;
 
     ///> Column identifiers for PWL power source value list
     long m_pwlTimeCol, m_pwlValueCol;

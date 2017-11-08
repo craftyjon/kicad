@@ -327,7 +327,7 @@ void DIMENSION::Draw( EDA_DRAW_PANEL* panel, wxDC* DC, GR_DRAWMODE mode_color,
     auto gcolor = frame->Settings().Colors().GetLayerColor( m_Layer );
 
     GRSetDrawMode( DC, mode_color );
-    DISPLAY_OPTIONS* displ_opts = (DISPLAY_OPTIONS*)panel->GetDisplayOptions();
+    auto displ_opts = (PCB_DISPLAY_OPTIONS*)( panel->GetDisplayOptions() );
     bool filled = displ_opts ? displ_opts->m_DisplayDrawItemsFill : FILLED;
     int width   = m_Width;
 
@@ -504,4 +504,11 @@ const BOX2I DIMENSION::ViewBBox() const
 EDA_ITEM* DIMENSION::Clone() const
 {
     return new DIMENSION( *this );
+}
+
+void DIMENSION::SwapData( BOARD_ITEM* aImage )
+{
+    assert( aImage->Type() == PCB_DIMENSION_T );
+
+    std::swap( *((DIMENSION*) this), *((DIMENSION*) aImage) );
 }

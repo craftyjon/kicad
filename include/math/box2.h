@@ -30,7 +30,7 @@
 #include <math/vector2d.h>
 #include <limits>
 
-#include <boost/optional.hpp>
+#include <core/optional.h>
 
 /**
  * Class BOX2
@@ -47,7 +47,7 @@ private:
 public:
     typedef typename Vec::coord_type                 coord_type;
     typedef typename Vec::extended_type              ecoord_type;
-    typedef typename std::numeric_limits<coord_type> coord_limits;
+    typedef std::numeric_limits<coord_type>          coord_limits;
 
     BOX2() {};
 
@@ -468,7 +468,7 @@ public:
 typedef BOX2<VECTOR2I>    BOX2I;
 typedef BOX2<VECTOR2D>    BOX2D;
 
-typedef boost::optional<BOX2I> OPT_BOX2I;
+typedef OPT<BOX2I> OPT_BOX2I;
 
 // FIXME should be removed to avoid multiple typedefs for the same type
 typedef BOX2D             DBOX;

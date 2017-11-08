@@ -46,6 +46,7 @@
 #include <geometry/shape_convex.h>
 #include <geometry/convex_hull.h>
 
+#include "tools/pcb_tool.h"
 
 #include "pns_kicad_iface.h"
 #include "pns_routing_settings.h"
@@ -470,7 +471,7 @@ PNS_KICAD_IFACE::PNS_KICAD_IFACE()
 {
     m_ruleResolver = nullptr;
     m_board = nullptr;
-    m_frame = nullptr;
+    m_tool = nullptr;
     m_view = nullptr;
     m_previewItems = nullptr;
     m_world = nullptr;
@@ -898,9 +899,9 @@ void PNS_KICAD_IFACE::DisplayItem( const PNS::ITEM* aItem, int aColor, int aClea
         if( m_dispOptions )
         {
             auto clearanceDisp = m_dispOptions->m_ShowTrackClearanceMode;
-            pitem->ShowTrackClearance( clearanceDisp != DO_NOT_SHOW_CLEARANCE );
-            pitem->ShowViaClearance( clearanceDisp != DO_NOT_SHOW_CLEARANCE
-                    && clearanceDisp != SHOW_CLEARANCE_NEW_TRACKS );
+            pitem->ShowTrackClearance( clearanceDisp != PCB_DISPLAY_OPTIONS::DO_NOT_SHOW_CLEARANCE );
+            pitem->ShowViaClearance( clearanceDisp != PCB_DISPLAY_OPTIONS::DO_NOT_SHOW_CLEARANCE
+                    && clearanceDisp != PCB_DISPLAY_OPTIONS::SHOW_CLEARANCE_NEW_TRACKS );
         }
     }
 
@@ -989,7 +990,7 @@ void PNS_KICAD_IFACE::Commit()
 {
     EraseView();
     m_commit->Push( wxT( "Added a track" ) );
-    m_commit.reset( new BOARD_COMMIT( m_frame ) );
+    m_commit.reset( new BOARD_COMMIT( m_tool ) );
 }
 
 
@@ -1032,10 +1033,13 @@ void PNS_KICAD_IFACE::SetRouter( PNS::ROUTER* aRouter )
 }
 
 
-void PNS_KICAD_IFACE::SetHostFrame( PCB_EDIT_FRAME* aFrame )
+void PNS_KICAD_IFACE::SetHostTool( PCB_TOOL* aTool )
 {
-    m_frame = aFrame;
+    m_tool = aTool;
+    m_commit.reset( new BOARD_COMMIT( m_tool ) );
+}
 
-    m_commit.reset( new BOARD_COMMIT( m_frame ) );
-    m_dispOptions = (DISPLAY_OPTIONS*) m_frame->GetDisplayOptions();
+void PNS_KICAD_IFACE::SetDisplayOptions( PCB_DISPLAY_OPTIONS *aDispOptions )
+{
+    m_dispOptions = aDispOptions;
 }

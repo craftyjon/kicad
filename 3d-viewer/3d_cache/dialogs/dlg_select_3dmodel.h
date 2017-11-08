@@ -38,16 +38,15 @@
 #include <wx/sizer.h>
 #include <wx/frame.h>
 
-struct S3D_INFO;
+class MODULE_3D_SETTINGS;
 class  S3D_CACHE;
 class  S3D_FILENAME_RESOLVER;
 class  C3D_MODEL_VIEWER;
-//class  wxGenericDirCtrl;
 
 class DLG_SELECT_3DMODEL : public wxDialog
 {
 private:
-    S3D_INFO* m_model;                  // data for the selected model
+    MODULE_3D_SETTINGS* m_model;                  // data for the selected model
     S3D_CACHE* m_cache;                 // cache manager
     S3D_FILENAME_RESOLVER*  m_resolver; // 3D filename resolver
 
@@ -61,7 +60,7 @@ private:
     void updateDirChoiceList( void );
 
 public:
-    DLG_SELECT_3DMODEL( wxWindow* aParent, S3D_CACHE* aCacheManager, S3D_INFO* aModelItem,
+    DLG_SELECT_3DMODEL( wxWindow* aParent, S3D_CACHE* aCacheManager, MODULE_3D_SETTINGS* aModelItem,
         wxString& prevModelSelectDir, int& prevModelWildcard );
 
     bool TransferDataFromWindow() override;

@@ -23,7 +23,7 @@
  */
 
 #include "pcb_draw_panel_gal.h"
-#include <view/view.h>
+#include <pcb_view.h>
 #include <view/wx_view_controls.h>
 #include <pcb_painter.h>
 #include <worksheet_viewitem.h>
@@ -104,11 +104,18 @@ PCB_DRAW_PANEL_GAL::PCB_DRAW_PANEL_GAL( wxWindow* aParentWindow, wxWindowID aWin
                                         KIGFX::GAL_DISPLAY_OPTIONS& aOptions, GAL_TYPE aGalType ) :
 EDA_DRAW_PANEL_GAL( aParentWindow, aWindowId, aPosition, aSize, aOptions, aGalType )
 {
+    m_view = new KIGFX::PCB_VIEW( true );
+    m_view->SetGAL( m_gal );
+
+    m_painter.reset( new KIGFX::PCB_PAINTER( m_gal ) );
+    m_view->SetPainter( m_painter.get() );
+
     setDefaultLayerOrder();
     setDefaultLayerDeps();
 
-    m_painter = new KIGFX::PCB_PAINTER( m_gal );
-    m_view->SetPainter( m_painter );
+    // View controls is the first in the event handler chain, so the Tool Framework operates
+    // on updated viewport data.
+    m_viewControls = new KIGFX::WX_VIEW_CONTROLS( m_view, this );
 
     // Load display options (such as filled/outline display of items).
     // Can be made only if the parent window is an EDA_DRAW_FRAME (or a derived class)
@@ -117,15 +124,14 @@ EDA_DRAW_PANEL_GAL( aParentWindow, aWindowId, aPosition, aSize, aOptions, aGalTy
 
     if( frame )
     {
-        DISPLAY_OPTIONS* displ_opts = (DISPLAY_OPTIONS*) frame->GetDisplayOptions();
-        static_cast<KIGFX::PCB_RENDER_SETTINGS*>( m_view->GetPainter()->GetSettings() )->LoadDisplayOptions( displ_opts );
+        auto opts = (PCB_DISPLAY_OPTIONS*) frame->GetDisplayOptions();
+        static_cast<KIGFX::PCB_VIEW*>( m_view )->UpdateDisplayOptions( opts );
     }
 }
 
 
 PCB_DRAW_PANEL_GAL::~PCB_DRAW_PANEL_GAL()
 {
-    delete m_painter;
 }
 
 
@@ -147,10 +153,7 @@ void PCB_DRAW_PANEL_GAL::DisplayBoard( const BOARD* aBoard )
 
     // Load modules and its additional elements
     for( MODULE* module = aBoard->m_Modules; module; module = module->Next() )
-    {
-        module->RunOnChildren( std::bind( &KIGFX::VIEW::Add, m_view, _1, -1 ) );
         m_view->Add( module );
-    }
 
     // Segzones (equivalent of ZONE_CONTAINER for legacy boards)
     for( SEGZONE* zone = aBoard->m_Zone; zone; zone = zone->Next() )
@@ -346,7 +349,7 @@ void PCB_DRAW_PANEL_GAL::OnShow()
     if( frame )
     {
         SetTopLayer( frame->GetActiveLayer() );
-        DISPLAY_OPTIONS* displ_opts = (DISPLAY_OPTIONS*) frame->GetDisplayOptions();
+        PCB_DISPLAY_OPTIONS* displ_opts = (PCB_DISPLAY_OPTIONS*) frame->GetDisplayOptions();
         static_cast<KIGFX::PCB_RENDER_SETTINGS*>(
             m_view->GetPainter()->GetSettings() )->LoadDisplayOptions( displ_opts );
     }
@@ -442,4 +445,10 @@ void PCB_DRAW_PANEL_GAL::setDefaultLayerDeps()
     m_view->SetLayerDisplayOnly( LAYER_WORKSHEET ) ;
     m_view->SetLayerDisplayOnly( LAYER_GRID );
     m_view->SetLayerDisplayOnly( LAYER_DRC );
+}
+
+
+KIGFX::PCB_VIEW* PCB_DRAW_PANEL_GAL::view() const
+{
+    return static_cast<KIGFX::PCB_VIEW*>( m_view );
 }

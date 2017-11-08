@@ -23,13 +23,12 @@
  */
 
 /**
- * @file class_mire.h
+ * @file class_pcb_target.h
  * @brief PCB_TARGET class definition.  (targets for photo plots).
  */
 
-#ifndef MIRE_H
-#define MIRE_H
-
+#ifndef PCB_TARGET_H_
+#define PCB_TARGET_H_
 
 #include <class_board_item.h>
 
@@ -104,10 +103,12 @@ public:
 
     EDA_ITEM* Clone() const override;
 
+    virtual void SwapData( BOARD_ITEM* aImage ) override;
+
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override { ShowDummy( os ); }
 #endif
 };
 
 
-#endif  // #define MIRE_H
+#endif

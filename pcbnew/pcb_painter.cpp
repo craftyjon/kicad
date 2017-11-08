@@ -33,11 +33,13 @@
 #include <class_colors_design_settings.h>
 #include <class_marker_pcb.h>
 #include <class_dimension.h>
-#include <class_mire.h>
+#include <class_pcb_target.h>
 #include <class_marker_pcb.h>
 
 #include <layers_id_colors_and_visibility.h>
 #include <pcb_painter.h>
+#include <pcb_display_options.h>
+
 #include <gal/graphics_abstraction_layer.h>
 #include <convert_basic_shapes_to_polygon.h>
 
@@ -60,6 +62,9 @@ PCB_RENDER_SETTINGS::PCB_RENDER_SETTINGS()
     {
         m_sketchMode[i] = false;
     }
+
+    COLORS_DESIGN_SETTINGS dummyCds( FRAME_PCB );
+    ImportLegacyColors( &dummyCds );
 
     update();
 }
@@ -118,7 +123,7 @@ void PCB_RENDER_SETTINGS::ImportLegacyColors( const COLORS_DESIGN_SETTINGS* aSet
 }
 
 
-void PCB_RENDER_SETTINGS::LoadDisplayOptions( const DISPLAY_OPTIONS* aOptions )
+void PCB_RENDER_SETTINGS::LoadDisplayOptions( const PCB_DISPLAY_OPTIONS* aOptions )
 {
     if( aOptions == NULL )
         return;
@@ -178,23 +183,23 @@ void PCB_RENDER_SETTINGS::LoadDisplayOptions( const DISPLAY_OPTIONS* aOptions )
     // Clearance settings
     switch( aOptions->m_ShowTrackClearanceMode )
     {
-        case DO_NOT_SHOW_CLEARANCE:
+        case PCB_DISPLAY_OPTIONS::DO_NOT_SHOW_CLEARANCE:
             m_clearance = CL_NONE;
             break;
 
-        case SHOW_CLEARANCE_NEW_TRACKS:
+        case PCB_DISPLAY_OPTIONS::SHOW_CLEARANCE_NEW_TRACKS:
             m_clearance = CL_NEW | CL_TRACKS;
             break;
 
-        case SHOW_CLEARANCE_NEW_TRACKS_AND_VIA_AREAS:
+        case PCB_DISPLAY_OPTIONS::SHOW_CLEARANCE_NEW_TRACKS_AND_VIA_AREAS:
             m_clearance = CL_NEW | CL_TRACKS | CL_VIAS;
             break;
 
-        case SHOW_CLEARANCE_NEW_AND_EDITED_TRACKS_AND_VIA_AREAS:
+        case PCB_DISPLAY_OPTIONS::SHOW_CLEARANCE_NEW_AND_EDITED_TRACKS_AND_VIA_AREAS:
             m_clearance = CL_NEW | CL_EDITED | CL_TRACKS | CL_VIAS;
             break;
 
-        case SHOW_CLEARANCE_ALWAYS:
+        case PCB_DISPLAY_OPTIONS::SHOW_CLEARANCE_ALWAYS:
             m_clearance = CL_NEW | CL_EDITED | CL_EXISTING | CL_TRACKS | CL_VIAS;
             break;
     }

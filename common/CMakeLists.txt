@@ -365,6 +365,8 @@ set( PCB_COMMON_SRCS
     class_page_info.cpp
     lset.cpp
     ../pcbnew/basepcbframe.cpp
+    ../pcbnew/board_items_to_polygon_shape_transform.cpp
+    ../pcbnew/board_commit.cpp
     ../pcbnew/class_board.cpp
     ../pcbnew/class_board_connected_item.cpp
     ../pcbnew/class_board_design_settings.cpp
@@ -377,7 +379,7 @@ set( PCB_COMMON_SRCS
     ../pcbnew/class_netinfo_item.cpp
     ../pcbnew/class_netinfolist.cpp
     ../pcbnew/class_marker_pcb.cpp
-    ../pcbnew/class_mire.cpp
+    ../pcbnew/class_pcb_target.cpp
     ../pcbnew/class_module.cpp
     ../pcbnew/class_pad.cpp
     ../pcbnew/class_pad_custom_shape_functions.cpp
@@ -393,6 +395,7 @@ set( PCB_COMMON_SRCS
     ../pcbnew/convert_drawsegment_list_to_polygon.cpp
     ../pcbnew/ratsnest_data.cpp
     ../pcbnew/ratsnest_viewitem.cpp
+    ../pcbnew/pcb_general_settings.cpp
     ../pcbnew/collectors.cpp
     ../pcbnew/netlist_reader.cpp
     ../pcbnew/legacy_netlist_reader.cpp
@@ -407,6 +410,10 @@ set( PCB_COMMON_SRCS
     ../pcbnew/kicad_clipboard.cpp
     ../pcbnew/gpcb_plugin.cpp
     ../pcbnew/pcb_netlist.cpp
+    ../pcbnew/pcb_display_options.cpp
+    ../pcbnew/pcb_draw_panel_gal.cpp
+    ../pcbnew/pcb_view.cpp
+    ../pcbnew/pcb_painter.cpp
     widgets/widget_net_selector.cpp
     pcb_plot_params_keywords.cpp
     pcb_keywords.cpp
@@ -532,7 +539,7 @@ target_link_libraries( dsntest common ${wxWidgets_LIBRARIES} rt )
 
 add_dependencies( dsntest lib-dependencies )
 
-target_link_libraries( pcbcommon 3d-viewer )
+target_link_libraries( pcbcommon )
 
 
 # _kiway.so

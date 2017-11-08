@@ -156,7 +156,7 @@ void DIALOG_ENV_VAR_CONFIG::PopulatePathList()
 
 bool DIALOG_ENV_VAR_CONFIG::GetPathAtIndex( unsigned int aIndex, wxString& aEnvVar, wxString& aEnvPath )
 {
-    if( aIndex < 0 || aIndex > m_envVarMap.size() )
+    if( aIndex > m_envVarMap.size() )
     {
         return false;
     }
@@ -407,7 +407,7 @@ DIALOG_ENV_VAR_SINGLE::DIALOG_ENV_VAR_SINGLE( wxWindow* parent,
 
 void DIALOG_ENV_VAR_SINGLE::OnSelectPath( wxCommandEvent& event )
 {
-    wxString title = _( "Set path for ENV_VAR" );
+    wxString title = _( "Set path for environment variable" );
     wxString path;  // Currently the first opened path is not initialized
 
     wxDirDialog dlg( nullptr, title, path, wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST );

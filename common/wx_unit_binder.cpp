@@ -29,8 +29,6 @@
 #include <base_units.h>
 #include <wx/valnum.h>
 
-#include <boost/optional.hpp>
-
 #include "wx_unit_binder.h"
 
 WX_UNIT_BINDER::WX_UNIT_BINDER( wxWindow* aParent, wxTextEntry* aTextInput,
@@ -81,8 +79,14 @@ bool WX_UNIT_BINDER::Valid() const
 
 void WX_UNIT_BINDER::Enable( bool aEnable )
 {
-    wxWindow* wxWin = dynamic_cast<wxWindow*> ( m_textEntry );
-    wxWin->Enable( aEnable );
+    wxWindow* wxWin = dynamic_cast<wxWindow*>( m_textEntry );
+    wxASSERT( wxWin );
+
+    // Most text input entry widgets inherit from wxTextEntry and wxWindow, so it should be fine.
+    // Still, it is better to be safe than sorry.
+    if( wxWin )
+        wxWin->Enable( aEnable );
+
     m_unitLabel->Enable( aEnable );
 }
 

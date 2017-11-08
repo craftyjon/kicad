@@ -69,7 +69,12 @@ void TEXTE_PCB::SetTextAngle( double aAngle )
 void TEXTE_PCB::Draw( EDA_DRAW_PANEL* panel, wxDC* DC,
                       GR_DRAWMODE DrawMode, const wxPoint& offset )
 {
-    BOARD* brd = GetBoard();
+     wxASSERT( panel );
+
+    if( !panel )
+        return;
+
+   BOARD* brd = GetBoard();
 
     if( brd->IsLayerVisible( m_Layer ) == false )
         return;
@@ -78,8 +83,12 @@ void TEXTE_PCB::Draw( EDA_DRAW_PANEL* panel, wxDC* DC,
     auto color = frame->Settings().Colors().GetLayerColor( m_Layer );
 
     EDA_DRAW_MODE_T fillmode = FILLED;
-    DISPLAY_OPTIONS* displ_opts =
-        panel ? (DISPLAY_OPTIONS*)panel->GetDisplayOptions() : NULL;
+    PCB_DISPLAY_OPTIONS* displ_opts = nullptr;
+
+    if( panel )
+    {
+        displ_opts = (PCB_DISPLAY_OPTIONS*)( panel->GetDisplayOptions() );
+    }
 
     if( displ_opts && displ_opts->m_DisplayDrawItemsFill == SKETCH )
         fillmode = SKETCH;
@@ -196,4 +205,11 @@ BITMAP_DEF TEXTE_PCB::GetMenuImage() const
 EDA_ITEM* TEXTE_PCB::Clone() const
 {
     return new TEXTE_PCB( *this );
+}
+
+void TEXTE_PCB::SwapData( BOARD_ITEM* aImage )
+{
+    assert( aImage->Type() == PCB_TEXT_T );
+
+    std::swap( *((TEXTE_PCB*) this), *((TEXTE_PCB*) aImage) );
 }

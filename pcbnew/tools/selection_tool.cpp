@@ -202,7 +202,12 @@ bool SELECTION_TOOL::Init()
     // only show separator if there is a Select menu to show above it
     menu.AddSeparator( SELECTION_CONDITIONS::NotEmpty, 1000 );
 
-    m_menu.AddStandardSubMenus( *getEditFrame<PCB_BASE_FRAME>() );
+    auto frame = getEditFrame<PCB_BASE_FRAME>();
+
+    if( frame )
+    {
+        m_menu.AddStandardSubMenus( *frame );
+    }
 
     return true;
 }
@@ -226,8 +231,8 @@ void SELECTION_TOOL::Reset( RESET_REASON aReason )
         clearSelection();
 
     // Reinsert the VIEW_GROUP, in case it was removed from the VIEW
-    getView()->Remove( &m_selection );
-    getView()->Add( &m_selection );
+    view()->Remove( &m_selection );
+    view()->Add( &m_selection );
 }
 
 
@@ -399,14 +404,35 @@ void SELECTION_TOOL::toggleSelection( BOARD_ITEM* aItem )
         }
     }
 
-    m_frame->GetGalCanvas()->ForceRefresh();
+    if( m_frame )
+    {
+        m_frame->GetGalCanvas()->ForceRefresh();
+    }
 }
 
+const GENERAL_COLLECTORS_GUIDE SELECTION_TOOL::getCollectorsGuide() const
+{
+    GENERAL_COLLECTORS_GUIDE guide( board()->GetVisibleLayers(),
+                                    (PCB_LAYER_ID) view()->GetTopLayer() );
+
+    // account for the globals
+    guide.SetIgnoreMTextsMarkedNoShow( ! board()->IsElementVisible( LAYER_MOD_TEXT_INVISIBLE ) );
+    guide.SetIgnoreMTextsOnBack( ! board()->IsElementVisible( LAYER_MOD_TEXT_BK ) );
+    guide.SetIgnoreMTextsOnFront( ! board()->IsElementVisible( LAYER_MOD_TEXT_FR ) );
+    guide.SetIgnoreModulesOnBack( ! board()->IsElementVisible( LAYER_MOD_BK ) );
+    guide.SetIgnoreModulesOnFront( ! board()->IsElementVisible( LAYER_MOD_FR ) );
+    guide.SetIgnorePadsOnBack( ! board()->IsElementVisible( LAYER_PAD_BK ) );
+    guide.SetIgnorePadsOnFront( ! board()->IsElementVisible( LAYER_PAD_FR ) );
+    guide.SetIgnoreModulesVals( ! board()->IsElementVisible( LAYER_MOD_VALUES ) );
+    guide.SetIgnoreModulesRefs( ! board()->IsElementVisible( LAYER_MOD_REFERENCES ) );
+
+    return guide;
+}
 
 bool SELECTION_TOOL::selectPoint( const VECTOR2I& aWhere, bool aOnDrag )
 {
     BOARD_ITEM* item;
-    GENERAL_COLLECTORS_GUIDE guide = m_frame->GetCollectorsGuide();
+    auto guide = getCollectorsGuide();
     GENERAL_COLLECTOR collector;
 
     collector.Collect( board(),
@@ -574,10 +600,13 @@ bool SELECTION_TOOL::selectMultiple()
                 }
             }
 
-            if( m_selection.Size() == 1 )
-                m_frame->SetCurItem( static_cast<BOARD_ITEM*>( m_selection.Front() ) );
-            else
-                m_frame->SetCurItem( NULL );
+            if( m_frame )
+            {
+                if( m_selection.Size() == 1 )
+                    m_frame->SetCurItem( static_cast<BOARD_ITEM*>( m_selection.Front() ) );
+                else
+                    m_frame->SetCurItem( NULL );
+            }
 
             // Inform other potentially interested tools
             if( !m_selection.Empty() )
@@ -1264,8 +1293,12 @@ void SELECTION_TOOL::clearSelection()
     m_selection.Clear();
     m_selection.SetIsHover( false );
     m_selection.ClearReferencePoint();
-    
-    m_frame->SetCurItem( NULL );
+
+    if( m_frame )
+    {
+        m_frame->SetCurItem( NULL );
+    }
+
     m_locked = true;
 
     // Inform other potentially interested tools
@@ -1328,7 +1361,7 @@ BOARD_ITEM* SELECTION_TOOL::disambiguationMenu( GENERAL_COLLECTOR* aCollector )
         }
         else if( evt->Action() == TA_CONTEXT_MENU_CHOICE )
         {
-            boost::optional<int> id = evt->GetCommandId();
+            OPT<int> id = evt->GetCommandId();
 
             // User has selected an item, so this one will be returned
             if( id && ( *id > 0 ) )
@@ -1539,16 +1572,18 @@ void SELECTION_TOOL::select( BOARD_ITEM* aItem )
     m_selection.Add( aItem );
     selectVisually( aItem );
 
-
-    if( m_selection.Size() == 1 )
+    if( m_frame )
     {
-        // Set as the current item, so the information about selection is displayed
-        m_frame->SetCurItem( aItem, true );
-    }
-    else if( m_selection.Size() == 2 )  // Check only for 2, so it will not be
-    {                                   // called for every next selected item
-        // If multiple items are selected, do not show the information about the selected item
-        m_frame->SetCurItem( NULL, true );
+        if( m_selection.Size() == 1 )
+        {
+            // Set as the current item, so the information about selection is displayed
+            m_frame->SetCurItem( aItem, true );
+        }
+        else if( m_selection.Size() == 2 )  // Check only for 2, so it will not be
+        {                                   // called for every next selected item
+            // If multiple items are selected, do not show the information about the selected item
+            m_frame->SetCurItem( NULL, true );
+        }
     }
 }
 
@@ -1563,7 +1598,10 @@ void SELECTION_TOOL::unselect( BOARD_ITEM* aItem )
 
     if( m_selection.Empty() )
     {
-        m_frame->SetCurItem( NULL );
+        if( m_frame )
+        {
+            m_frame->SetCurItem( NULL );
+        }
         m_locked = true;
     }
 }
@@ -1726,7 +1764,7 @@ void SELECTION_TOOL::guessSelectionCandidates( GENERAL_COLLECTOR& aCollector ) c
     // its unique area).
     const double commonAreaRatio = 0.6;
 
-    PCB_LAYER_ID actLayer = m_frame->GetActiveLayer();
+    PCB_LAYER_ID actLayer = (PCB_LAYER_ID) view()->GetTopLayer();
 
     LSET silkLayers( 2, B_SilkS, F_SilkS );
 
@@ -1993,121 +2031,6 @@ bool SELECTION_TOOL::SanitizeSelection()
     }
 
     return true;
-}
-
-
-// TODO(JE) Only works for BOARD_ITEM
-VECTOR2I SELECTION::GetPosition() const
-{
-    return static_cast<VECTOR2I>( GetBoundingBox().GetPosition() );
-}
-
-
-VECTOR2I SELECTION::GetCenter() const
-{
-    return static_cast<VECTOR2I>( GetBoundingBox().Centre() );
-}
-
-
-EDA_RECT SELECTION::GetBoundingBox() const
-{
-    EDA_RECT bbox;
-
-    bbox = Front()->GetBoundingBox();
-    auto i = m_items.begin();
-    ++i;
-
-    for( ; i != m_items.end(); ++i )
-    {
-        bbox.Merge( (*i)->GetBoundingBox() );
-    }
-
-    return bbox;
-}
-
-
-EDA_ITEM* SELECTION::GetTopLeftItem( bool onlyModules ) const
-{
-    BOARD_ITEM* topLeftItem = nullptr;
-    BOARD_ITEM* currentItem;
-
-    wxPoint pnt;
-
-    // find the leftmost (smallest x coord) and highest (smallest y with the smallest x) item in the selection
-    for( auto item : m_items )
-    {
-        currentItem = static_cast<BOARD_ITEM*>( item );
-        pnt = currentItem->GetPosition();
-
-        if( ( currentItem->Type() != PCB_MODULE_T ) && onlyModules )
-        {
-            continue;
-        }
-        else
-        {
-            if( topLeftItem == nullptr )
-            {
-                topLeftItem = currentItem;
-            }
-            else if( ( pnt.x < topLeftItem->GetPosition().x ) ||
-                     ( ( topLeftItem->GetPosition().x == pnt.x ) &&
-                     ( pnt.y < topLeftItem->GetPosition().y ) ) )
-            {
-                topLeftItem = currentItem;
-            }
-        }
-    }
-
-    return static_cast<EDA_ITEM*>( topLeftItem );
-}
-
-
-EDA_ITEM* SELECTION::GetTopLeftModule() const
-{
-    return GetTopLeftItem( true );
-}
-
-
-const BOX2I SELECTION::ViewBBox() const
-{
-    EDA_RECT eda_bbox;
-
-    if( Size() == 1 )
-    {
-        eda_bbox = Front()->GetBoundingBox();
-    }
-    else if( Size() > 1 )
-    {
-        eda_bbox = Front()->GetBoundingBox();
-        auto i = m_items.begin();
-        ++i;
-
-        for( ; i != m_items.end(); ++i )
-        {
-            eda_bbox.Merge( (*i)->GetBoundingBox() );
-        }
-    }
-
-    return BOX2I( eda_bbox.GetOrigin(), eda_bbox.GetSize() );
-}
-
-
-const KIGFX::VIEW_GROUP::ITEMS SELECTION::updateDrawList() const
-{
-    std::vector<VIEW_ITEM*> items;
-
-    for( auto item : m_items )
-    {
-        items.push_back( item );
-
-        if( item->Type() == PCB_MODULE_T )
-        {
-            MODULE* module = static_cast<MODULE*>( item );
-            module->RunOnChildren( [&] ( BOARD_ITEM* bitem ) { items.push_back( bitem ); } );
-        }
-    }
-
-    return items;
 }
 
 

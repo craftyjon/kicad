@@ -34,7 +34,9 @@
 #include <pcbnew.h>
 #include <class_board_item.h>
 #include <class_board_connected_item.h>
-#include <PolyLine.h>
+#include <pcb_display_options.h>
+
+//#include <PolyLine.h>
 #include <trigo.h>
 
 
@@ -42,7 +44,7 @@ class TRACK;
 class VIA;
 class D_PAD;
 class MSG_PANEL_ITEM;
-
+class SHAPE_POLY_SET;
 
 // Via types
 // Note that this enum must be synchronized to GAL_LAYER_ID
@@ -300,6 +302,8 @@ public:
 
     virtual unsigned int ViewGetLOD( int aLayer, KIGFX::VIEW* aView ) const override;
 
+    virtual void SwapData( BOARD_ITEM* aImage ) override;
+
 #if defined (DEBUG)
     virtual void Show( int nestLevel, std::ostream& os ) const override { ShowDummy( os ); }
 
@@ -472,6 +476,8 @@ public:
      * @return true if the drill value is default value (-1)
     */
     bool IsDrillDefault() const { return m_Drill <= 0; }
+
+    virtual void SwapData( BOARD_ITEM* aImage ) override;
 
 protected:
     virtual void GetMsgPanelInfoBase( std::vector< MSG_PANEL_ITEM >& aList ) override;

@@ -44,7 +44,7 @@ BOARD_COMMIT::BOARD_COMMIT( PCB_TOOL* aTool )
 }
 
 
-BOARD_COMMIT::BOARD_COMMIT( PCB_BASE_FRAME* aFrame )
+BOARD_COMMIT::BOARD_COMMIT( EDA_DRAW_FRAME* aFrame )
 {
     m_toolMgr = aFrame->GetToolManager();
     m_editModules = aFrame->IsType( FRAME_PCB_MODULE_EDITOR );
@@ -121,13 +121,6 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
                     if( !( changeFlags & CHT_DONE ) )
                         board->Add( boardItem );
 
-                    //ratsnest->Add( boardItem );       // TODO currently done by BOARD::Add()
-
-                    if( boardItem->Type() == PCB_MODULE_T )
-                    {
-                        MODULE* mod = static_cast<MODULE*>( boardItem );
-                        mod->RunOnChildren( std::bind( &KIGFX::VIEW::Add, view, _1, -1 ) );
-                    }
                 }
                 else
                 {
@@ -229,7 +222,6 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
 
                     MODULE* module = static_cast<MODULE*>( boardItem );
                     module->ClearFlags();
-                    module->RunOnChildren( std::bind( &KIGFX::VIEW::Remove, view, _1 ) );
 
                     view->Remove( module );
 
@@ -258,15 +250,16 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry )
                     undoList.PushItem( itemWrapper );
                 }
 
-                if( boardItem->Type() == PCB_MODULE_T )
-                {
-                    MODULE* module = static_cast<MODULE*>( boardItem );
-                    module->RunOnChildren( [&view] ( BOARD_ITEM* aItem ) { view->Update( aItem ); } );
-                }
+                if( ent.m_copy )
+                    connectivity->MarkItemNetAsDirty( static_cast<BOARD_ITEM*>( ent.m_copy ) );
 
-                view->Update ( boardItem );
-                connectivity->MarkItemNetAsDirty( static_cast<BOARD_ITEM*>( ent.m_copy ) );
                 connectivity->Update( boardItem );
+                view->Update( boardItem );
+
+                // if no undo entry is needed, the copy would create a memory leak
+                if( !aCreateUndoEntry )
+                    delete ent.m_copy;
+
                 break;
             }
 
@@ -328,11 +321,6 @@ void BOARD_COMMIT::Revert()
         switch( ent.m_type )
         {
         case CHT_ADD:
-            if( item->Type() == PCB_MODULE_T )
-            {
-                MODULE* oldModule = static_cast<MODULE*>( item );
-                oldModule->RunOnChildren( std::bind( &KIGFX::VIEW::Remove, view, _1 ) );
-            }
 
             view->Remove( item );
             connectivity->Remove( item );
@@ -343,7 +331,6 @@ void BOARD_COMMIT::Revert()
             {
                 MODULE* newModule = static_cast<MODULE*>( item );
                 newModule->RunOnChildren( std::bind( &EDA_ITEM::ClearFlags, _1, SELECTED ) );
-                newModule->RunOnChildren( std::bind( &KIGFX::VIEW::Add, view, _1, -1 ) );
             }
 
             view->Add( item );
@@ -352,12 +339,6 @@ void BOARD_COMMIT::Revert()
 
         case CHT_MODIFY:
         {
-            if( item->Type() == PCB_MODULE_T )
-            {
-                MODULE* oldModule = static_cast<MODULE*>( item );
-                oldModule->RunOnChildren( std::bind( &KIGFX::VIEW::Remove, view, _1 ) );
-            }
-
             view->Remove( item );
             connectivity->Remove( item );
 
@@ -371,7 +352,6 @@ void BOARD_COMMIT::Revert()
             {
                 MODULE* newModule = static_cast<MODULE*>( item );
                 newModule->RunOnChildren( std::bind( &EDA_ITEM::ClearFlags, _1, SELECTED ) );
-                newModule->RunOnChildren( std::bind( &KIGFX::VIEW::Add, view, _1, -1 ) );
             }
 
             view->Add( item );

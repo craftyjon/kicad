@@ -740,7 +740,7 @@ unsigned MODULE::GetUniquePadCount( INCLUDE_NPTH_T aIncludeNPTH ) const
 }
 
 
-void MODULE::Add3DModel( S3D_INFO* a3DModel )
+void MODULE::Add3DModel( MODULE_3D_SETTINGS* a3DModel )
 {
     if( NULL == a3DModel )
         return;
@@ -1303,4 +1303,11 @@ bool MODULE::BuildPolyCourtyard()
     }
 
     return success;
+}
+
+void MODULE::SwapData( BOARD_ITEM* aImage )
+{
+    assert( aImage->Type() == PCB_MODULE_T );
+
+    std::swap( *((MODULE*) this), *((MODULE*) aImage) );
 }

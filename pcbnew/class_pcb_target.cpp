@@ -25,8 +25,8 @@
  */
 
 /**
- * @file class_mire.cpp
- * MIRE class definition (targets for photo plots)
+ * @file class_pcb_target.cpp
+ * PCB_TARGET class definition - targets for photo plots, formerly called MIRE (from French 'mire optique')
  */
 
 #include <fctsys.h>
@@ -41,7 +41,7 @@
 #include <wxPcbStruct.h>
 
 #include <class_board.h>
-#include <class_mire.h>
+#include <class_pcb_target.h>
 #include <base_units.h>
 
 
@@ -93,7 +93,7 @@ void PCB_TARGET::Draw( EDA_DRAW_PANEL* panel, wxDC* DC, GR_DRAWMODE mode_color,
     auto gcolor = frame->Settings().Colors().GetLayerColor( m_Layer );
 
     GRSetDrawMode( DC, mode_color );
-    DISPLAY_OPTIONS* displ_opts = (DISPLAY_OPTIONS*)panel->GetDisplayOptions();
+    auto displ_opts = (PCB_DISPLAY_OPTIONS*)( panel->GetDisplayOptions() );
     bool filled = displ_opts ? displ_opts->m_DisplayDrawItemsFill : FILLED;
     width   = m_Width;
 
@@ -199,10 +199,17 @@ wxString PCB_TARGET::GetSelectMenuText() const
 
 BITMAP_DEF PCB_TARGET::GetMenuImage() const
 {
-    return  add_mires_xpm;
+    return  add_pcb_target_xpm;
 }
 
 EDA_ITEM* PCB_TARGET::Clone() const
 {
     return new PCB_TARGET( *this );
+}
+
+void PCB_TARGET::SwapData( BOARD_ITEM* aImage )
+{
+    assert( aImage->Type() == PCB_TARGET_T );
+
+    std::swap( *((PCB_TARGET*) this), *((PCB_TARGET*) aImage) );
 }

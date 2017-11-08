@@ -111,7 +111,6 @@ void PCB_EDIT_FRAME::ReadPcbNetlist( const wxString& aNetlistFileName,
         // Remove old modules
         for( MODULE* module = board->m_Modules; module; module = module->Next() )
         {
-            module->RunOnChildren( std::bind( &KIGFX::VIEW::Remove, view, _1 ) );
             view->Remove( module );
         }
     }
@@ -158,7 +157,6 @@ void PCB_EDIT_FRAME::ReadPcbNetlist( const wxString& aNetlistFileName,
     // Reload modules
     for( MODULE* module = board->m_Modules; module; module = module->Next() )
     {
-        module->RunOnChildren( std::bind( &KIGFX::VIEW::Add, view, _1, -1 ) );
         view->Add( module );
     }
 
@@ -284,9 +282,10 @@ void PCB_EDIT_FRAME::LoadFootprints( NETLIST& aNetlist, REPORTER* aReporter )
         if( !aNetlist.GetReplaceFootprints() )
             footprintMisMatch = false;
 
-        bool loadFootprint = (fpOnBoard == NULL) || footprintMisMatch;
+        if( fpOnBoard && !footprintMisMatch )   // nothing else to do here
+            continue;
 
-        if( loadFootprint && (component->GetFPID() != lastFPID) )
+        if( component->GetFPID() != lastFPID )
         {
             module = NULL;
 
@@ -340,7 +339,7 @@ void PCB_EDIT_FRAME::LoadFootprints( NETLIST& aNetlist, REPORTER* aReporter )
             module = new MODULE( *module );
         }
 
-        if( loadFootprint && module != NULL )
+        if( module )
             component->SetModule( module );
     }
 }

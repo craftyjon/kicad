@@ -278,7 +278,10 @@ static void eagleToKicadAlignment( EDA_TEXT* aText, int aEagleAlignment,
 
 SCH_EAGLE_PLUGIN::SCH_EAGLE_PLUGIN()
 {
+    m_kiway = nullptr;
     m_rootSheet = nullptr;
+    m_currentSheet = nullptr;
+    m_partlib = nullptr;
 }
 
 
@@ -480,7 +483,6 @@ void SCH_EAGLE_PLUGIN::loadSchematic( wxXmlNode* aSchematicNode )
     int sheet_count = countChildren( schematicChildren["sheets"], "sheet" );
 
     // If eagle schematic has multiple sheets.
-
     if( sheet_count > 1 )
     {
         int x, y, i;
@@ -497,20 +499,19 @@ void SCH_EAGLE_PLUGIN::loadSchematic( wxXmlNode* aSchematicNode )
             sheet->SetTimeStamp( GetNewTimeStamp() - i );    // minus the sheet index to make it unique.
             sheet->SetParent( m_rootSheet->GetScreen() );
             sheet->SetScreen( screen );
+            sheet->GetScreen()->SetFileName( sheet->GetFileName() );
 
             m_currentSheet = sheet.get();
-            sheet->GetScreen()->SetFileName( sheet->GetFileName() );
-            m_rootSheet->GetScreen()->Append( sheet.release() );
             loadSheet( sheetNode, i );
-
+            m_rootSheet->GetScreen()->Append( sheet.release() );
 
             sheetNode = sheetNode->GetNext();
             x += 2;
 
-            if( x > 10 )
+            if( x > 10 )    // start next row
             {
-                x   = 1;
-                y   += 2;
+                x = 1;
+                y += 2;
             }
 
             i++;
@@ -1671,7 +1672,17 @@ LIB_TEXT* SCH_EAGLE_PLUGIN::loadSymbolText( std::unique_ptr<LIB_PART>& aPart,
 
     libtext->SetUnit( aGateNumber );
     libtext->SetPosition( wxPoint( etext.x.ToSchUnits(), etext.y.ToSchUnits() ) );
-    libtext->SetText( aLibText->GetNodeContent().IsEmpty() ? "~~" : aLibText->GetNodeContent() );
+
+    // Eagle supports multiple line text in library symbols.  Legacy library symbol text cannot
+    // contain CRs or LFs.
+    //
+    // @todo Split this into multiple text objects and offset the Y position so that it looks
+    //       more like the original Eagle schematic.
+    wxString text = aLibText->GetNodeContent();
+    std::replace( text.begin(), text.end(), '\n', '_' );
+    std::replace( text.begin(), text.end(), '\r', '_' );
+
+    libtext->SetText( text.IsEmpty() ? "~~" : text );
     loadTextAttributes( libtext.get(), etext );
 
     return libtext.release();

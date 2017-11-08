@@ -27,7 +27,7 @@
 #include <pcbnew_id.h>
 
 
-boost::optional<TOOL_EVENT> PCB_ACTIONS::TranslateLegacyId( int aId )
+OPT<TOOL_EVENT> PCB_ACTIONS::TranslateLegacyId( int aId )
 {
     switch( aId )
     {
@@ -87,7 +87,7 @@ boost::optional<TOOL_EVENT> PCB_ACTIONS::TranslateLegacyId( int aId )
     case ID_PCB_DIMENSION_BUTT:
         return PCB_ACTIONS::drawDimension.MakeEvent();
 
-    case ID_PCB_MIRE_BUTT:
+    case ID_PCB_TARGET_BUTT:
         return PCB_ACTIONS::placeTarget.MakeEvent();
 
     case ID_MODEDIT_PAD_TOOL:
@@ -199,5 +199,5 @@ boost::optional<TOOL_EVENT> PCB_ACTIONS::TranslateLegacyId( int aId )
         return PCB_ACTIONS::pasteFromClipboard.MakeEvent();
     }
 
-    return boost::optional<TOOL_EVENT>();
+    return OPT<TOOL_EVENT>();
 }

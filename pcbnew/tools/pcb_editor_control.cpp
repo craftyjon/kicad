@@ -41,7 +41,7 @@
 #include <class_zone.h>
 #include <pcb_draw_panel_gal.h>
 #include <class_module.h>
-#include <class_mire.h>
+#include <class_pcb_target.h>
 #include <connectivity.h>
 #include <collectors.h>
 #include <zones_functions_for_undo_redo.h>
@@ -153,7 +153,6 @@ TOOL_ACTION PCB_ACTIONS::highlightNetCursor( "pcbnew.EditorControl.highlightNetC
 TOOL_ACTION PCB_ACTIONS::showLocalRatsnest( "pcbnew.Control.showLocalRatsnest",
         AS_GLOBAL, 0,
         "", "" );
-
 
 class ZONE_CONTEXT_MENU : public CONTEXT_MENU
 {
@@ -596,7 +595,7 @@ int PCB_EDITOR_CONTROL::PlaceTarget( const TOOL_EVENT& aEvent )
     controls->SetSnapping( true );
 
     Activate();
-    m_frame->SetToolID( ID_PCB_MIRE_BUTT, wxCURSOR_PENCIL, _( "Add layer alignment target" ) );
+    m_frame->SetToolID( ID_PCB_TARGET_BUTT, wxCURSOR_PENCIL, _( "Add layer alignment target" ) );
 
     // Main loop: keep receiving events
     while( OPT_TOOL_EVENT evt = Wait() )

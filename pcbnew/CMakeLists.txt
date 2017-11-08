@@ -194,7 +194,6 @@ set( PCBNEW_MICROWAVE_SRCS
 set( PCBNEW_CLASS_SRCS
     autorouter/rect_placement/rect_placement.cpp
     autorouter/spread_footprints.cpp
-    board_commit.cpp
     tool_modview.cpp
     modview_frame.cpp
     pcbframe.cpp
@@ -202,7 +201,6 @@ set( PCBNEW_CLASS_SRCS
     append_board_to_current.cpp
     array_creator.cpp
     attribut.cpp
-    board_items_to_polygon_shape_transform.cpp
     board_netlist_updater.cpp
     block.cpp
     block_module_editor.cpp
@@ -262,8 +260,8 @@ set( PCBNEW_CLASS_SRCS
     pad_edition_functions.cpp
     pcbnew_config.cpp
     pcbplot.cpp
-    pcb_draw_panel_gal.cpp
-    pcb_general_settings.cpp
+#    pcb_draw_panel_gal.cpp
+#    pcb_view.cpp
     plot_board_layers.cpp
     plot_brditems_plotter.cpp
     print_board_functions.cpp
@@ -315,8 +313,8 @@ set( PCBNEW_CLASS_SRCS
     tools/zone_create_helper.cpp
     tools/tools_common.cpp
     tools/tool_event_utils.cpp
-
     tools/size_menu.cpp
+    tools/selection.cpp
 
     footprint_preview_panel.cpp
     )
@@ -444,7 +442,7 @@ if( KICAD_SCRIPTING )   # Generate pcbnew.py and pcbnew_wrap.cxx using swig
         DEPENDS swig/drawsegment.i
         DEPENDS swig/edge_mod.i
         DEPENDS swig/marker_pcb.i
-        DEPENDS swig/mire.i
+        DEPENDS swig/pcb_target.i
         DEPENDS swig/module.i
         DEPENDS swig/netclass.i
         DEPENDS swig/netinfo.i
