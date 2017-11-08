@@ -145,23 +145,35 @@ bool DIALOG_BUS_MANAGER::TransferDataFromWindow()
 
 void DIALOG_BUS_MANAGER::OnSelectBus( wxListEvent& event )
 {
-    if( event.GetEventType() != wxEVT_COMMAND_LIST_ITEM_SELECTED )
-        return;
-
-    auto members = m_aliases[ ( unsigned )event.GetIndex() ]->GetMembers();
-
+    m_bus_edit->Clear();
+    m_signal_edit->Clear();
     m_signal_list_view->DeleteAllItems();
 
-    for( unsigned i = 0; i < members.size(); i++ )
+    if( event.GetEventType() == wxEVT_COMMAND_LIST_ITEM_SELECTED )
     {
-        m_signal_list_view->InsertItem( i, members[i] );
+        auto alias = m_aliases[ ( unsigned )event.GetIndex() ];
+        m_activeAlias = alias;
+
+        m_bus_edit->AppendText( alias->GetName() );
+
+        auto members = alias->GetMembers();
+
+        for( unsigned i = 0; i < members.size(); i++ )
+        {
+            m_signal_list_view->InsertItem( i, members[i] );
+        }
     }
 }
 
 
 void DIALOG_BUS_MANAGER::OnSelectSignal( wxListEvent& event )
 {
+    m_signal_edit->Clear();
 
+    if( event.GetEventType() == wxEVT_COMMAND_LIST_ITEM_SELECTED )
+    {
+        m_signal_edit->AppendText( event.GetText() );
+    }
 }
 
 

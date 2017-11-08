@@ -65,6 +65,7 @@ protected:
 private:
 
     std::vector< SCH_BUS_ALIAS* > m_aliases;
+    SCH_BUS_ALIAS* m_activeAlias;
 };
 
 
