@@ -1303,7 +1303,7 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
  * Function SortByTimeStamp
  * sorts a list of schematic items by time stamp and type.
  */
-static bool SortByTimeStamp( const EDA_ITEM* item1, const EDA_ITEM* item2 )
+        static bool SortByTimeStamp( const EDA_ITEM* item1, const EDA_ITEM* item2 )
 {
     int ii = item1->GetTimeStamp() - item2->GetTimeStamp();
 

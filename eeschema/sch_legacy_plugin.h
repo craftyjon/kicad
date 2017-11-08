@@ -140,7 +140,7 @@ private:
     SCH_BUS_ENTRY_BASE* loadBusEntry( FILE_LINE_READER& aReader );
     SCH_TEXT* loadText( FILE_LINE_READER& aReader );
     SCH_COMPONENT* loadComponent( FILE_LINE_READER& aReader );
-    SCH_BUS_ALIAS* loadBusAlias( FILE_LINE_READER& aReader, SCH_SCREEN* aScreen );
+    SCH_BUS_ALIAS* loadBusAlias( FILE_LINE_READER& aReader );
 
     void saveComponent( SCH_COMPONENT* aComponent );
     void saveField( SCH_FIELD* aField );

@@ -38,6 +38,7 @@
 #include <class_page_info.h>
 #include <kiway_player.h>
 #include <sch_marker.h>
+#include <sch_bus_alias.h>
 
 #include <../eeschema/general.h>
 
@@ -49,6 +50,7 @@ class SCH_SHEET_PIN;
 class SCH_LINE;
 class SCH_TEXT;
 class PLOTTER;
+class SCH_BUS_ALIAS;
 
 
 enum SCH_LINE_TEST_T
@@ -84,6 +86,8 @@ private:
 
     int     m_modification_sync;        ///< inequality with PART_LIBS::GetModificationHash()
                                         ///< will trigger ResolveAll().
+
+    std::vector< SCH_BUS_ALIAS* > m_busAliases;
 
     /**
      * Function addConnectedItemsToBlock
@@ -519,6 +523,16 @@ public:
      * @return The number of items in the pick list.
      */
     int UpdatePickList();
+
+    /**
+     * Adds a bus alias definition
+     */
+    void AddBusAlias( SCH_BUS_ALIAS* aAlias ) { m_busAliases.push_back( aAlias ); }
+
+    /**
+     * Returns a list of bus aliases defined in this screen
+     */
+    std::vector< SCH_BUS_ALIAS* > GetBusAliases() { return m_busAliases; }
 
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override;

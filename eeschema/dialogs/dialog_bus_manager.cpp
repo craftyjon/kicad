@@ -21,6 +21,7 @@
 #include "dialog_bus_manager.h"
 
 #include <invoke_sch_dialog.h>
+#include <sch_sheet_path.h>
 
 
 DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
@@ -45,6 +46,7 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
                                       wxSize( 300, 300 ), wxLC_ALIGN_LEFT |
                                       wxLC_NO_HEADER | wxLC_REPORT |
                                       wxLC_SINGLE_SEL );
+    m_bus_list_view->InsertColumn( 0, "" );
     m_bus_edit = new wxTextCtrl( this, wxID_ANY );
     
     auto left_button_sizer = new wxBoxSizer( wxHORIZONTAL );
@@ -66,6 +68,7 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
                                          wxSize( 300, 300 ), wxLC_ALIGN_LEFT |
                                          wxLC_NO_HEADER | wxLC_REPORT |
                                          wxLC_SINGLE_SEL );
+    m_signal_list_view->InsertColumn( 0, "" );
     m_signal_edit = new wxTextCtrl( this, wxID_ANY );
 
     auto right_button_sizer = new wxBoxSizer( wxHORIZONTAL );
@@ -97,10 +100,43 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
 
 void DIALOG_BUS_MANAGER::OnInitDialog( wxInitDialogEvent& aEvent )
 {
+    TransferDataToWindow();
 }
 
 
+bool DIALOG_BUS_MANAGER::TransferDataToWindow()
+{
+    // TODO(JE) Unclear whether we should reach straight into g_RootSheet here.
+    m_aliases.clear();
 
+    SCH_SHEET_LIST aSheets( g_RootSheet );
+
+    for( unsigned i = 0; i < aSheets.size(); i++ )
+    {
+        auto sheet_aliases = aSheets[i].LastScreen()->GetBusAliases();
+
+        m_aliases.insert( m_aliases.end(),
+                          sheet_aliases.begin(), sheet_aliases.end() );
+    }
+
+    for( unsigned i = 0; i < m_aliases.size(); i++ )
+    {
+        m_aliases[i]->Show();
+        m_bus_list_view->InsertItem( i, m_aliases[i]->GetName() );
+    }
+
+    return true;
+}
+
+
+bool DIALOG_BUS_MANAGER::TransferDataFromWindow()
+{
+    std::cout << "TransferDataFromWindow" << std::endl;
+    return true;
+}
+
+
+// see invoke_sch_dialog.h
 void InvokeDialogBusManager( SCH_EDIT_FRAME* aCaller )
 {
     DIALOG_BUS_MANAGER dlg( aCaller );

@@ -707,7 +707,7 @@ void SCH_LEGACY_PLUGIN::loadFile( const wxString& aFileName, SCH_SCREEN* aScreen
         else if( strCompare( "Text", line ) )
             aScreen->Append( loadText( reader ) );
         else if( strCompare( "BusAlias", line ) )
-            loadBusAlias( reader, aScreen );
+            aScreen->AddBusAlias( loadBusAlias( reader ) );
         else if( strCompare( "$EndSCHEMATC", line ) )
             return;
     }
@@ -1565,9 +1565,26 @@ SCH_COMPONENT* SCH_LEGACY_PLUGIN::loadComponent( FILE_LINE_READER& aReader )
 }
 
 
-SCH_BUS_ALIAS* SCH_LEGACY_PLUGIN::loadBusAlias( FILE_LINE_READER& aReader, SCH_SCREEN* aScreen )
+SCH_BUS_ALIAS* SCH_LEGACY_PLUGIN::loadBusAlias( FILE_LINE_READER& aReader )
 {
-    std::unique_ptr< SCH_BUS_ALIAS > busAlias;
+    std::unique_ptr< SCH_BUS_ALIAS > busAlias( new SCH_BUS_ALIAS() );
+    const char* line = aReader.Line();
+
+    wxCHECK( strCompare( "BusAlias", line, &line ), NULL );
+
+    wxString buf;
+    parseUnquotedString( buf, aReader, line, &line );
+    busAlias->SetName( buf );
+
+    while( *line != '\0' )
+    {
+        buf.clear();
+        parseUnquotedString( buf, aReader, line, &line, true );
+        if( buf.Len() > 0 )
+        {
+            busAlias->AddMember( buf );
+        }
+    }
 
     return busAlias.release();
 }

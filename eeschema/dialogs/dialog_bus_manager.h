@@ -26,12 +26,18 @@
 #include <schframe.h>
 #include <wx/listctrl.h>
 
+#include <sch_bus_alias.h>
+
 class DIALOG_BUS_MANAGER : public DIALOG_SHIM
 {
 public:
     DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent );
 
     ~DIALOG_BUS_MANAGER() {}
+
+    bool TransferDataFromWindow() override;
+
+    bool TransferDataToWindow() override;
 
 protected:
 
@@ -51,6 +57,10 @@ protected:
     wxButton* m_btn_add_signal;
     wxButton* m_btn_rename_signal;
     wxButton* m_btn_remove_signal;
+
+private:
+
+    std::vector< SCH_BUS_ALIAS* > m_aliases;
 };
 
 

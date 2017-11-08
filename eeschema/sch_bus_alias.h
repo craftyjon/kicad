@@ -23,6 +23,10 @@
 #include <wxstruct.h>
 #include <vector>
 
+#include <class_sch_screen.h>
+
+class SCH_SCREEN;
+
 
 class SCH_BUS_ALIAS
 {
@@ -34,14 +38,33 @@ public:
 
     void SetName( const wxString& aName ) { m_name = aName; }
 
+    void AddMember( const wxString& aName ) { m_members.push_back( aName ); }
+
     int GetMemberCount() { return m_members.size(); }
 
+    std::vector< wxString > GetMembers() { return m_members; }
+
     bool Contains( const wxString& aName );
+
+    void Show()
+    {
+        std::cout << "Bus Alias: " << m_name << std::endl;
+        for( auto member : m_members )
+            std::cout << "    " << member << std::endl;
+    }
 
 private:
 
     wxString m_name;
+
     std::vector< wxString > m_members;
+
+    /**
+     * The bus alias editor dialog can edit aliases from all open sheets.
+     * This means we have to store a reference back to our parent so that
+     * the dialog can update the parent if aliases are changed or removed.
+     */
+    SCH_SCREEN* m_parentScreen;
 };
 
 #endif
