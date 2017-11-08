@@ -43,6 +43,10 @@ protected:
 
     void OnInitDialog( wxInitDialogEvent& aEvent );
 
+    void OnSelectBus( wxListEvent& event );
+
+    void OnSelectSignal( wxListEvent& event );
+
     SCH_EDIT_FRAME* m_parent;
 
     wxListView* m_bus_list_view;

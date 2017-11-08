@@ -93,6 +93,14 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
     SetSizer( sizer );
 
     Bind( wxEVT_INIT_DIALOG, &DIALOG_BUS_MANAGER::OnInitDialog, this );
+    m_bus_list_view->Connect( wxEVT_COMMAND_LIST_ITEM_DESELECTED,
+            wxListEventHandler( DIALOG_BUS_MANAGER::OnSelectBus ), NULL, this );
+    m_bus_list_view->Connect( wxEVT_COMMAND_LIST_ITEM_SELECTED,
+            wxListEventHandler( DIALOG_BUS_MANAGER::OnSelectBus ), NULL, this );
+    m_signal_list_view->Connect( wxEVT_COMMAND_LIST_ITEM_DESELECTED,
+            wxListEventHandler( DIALOG_BUS_MANAGER::OnSelectSignal ), NULL, this );
+    m_signal_list_view->Connect( wxEVT_COMMAND_LIST_ITEM_SELECTED,
+            wxListEventHandler( DIALOG_BUS_MANAGER::OnSelectSignal ), NULL, this );
 
     Layout();
 }
@@ -121,7 +129,6 @@ bool DIALOG_BUS_MANAGER::TransferDataToWindow()
 
     for( unsigned i = 0; i < m_aliases.size(); i++ )
     {
-        m_aliases[i]->Show();
         m_bus_list_view->InsertItem( i, m_aliases[i]->GetName() );
     }
 
@@ -134,6 +141,29 @@ bool DIALOG_BUS_MANAGER::TransferDataFromWindow()
     std::cout << "TransferDataFromWindow" << std::endl;
     return true;
 }
+
+
+void DIALOG_BUS_MANAGER::OnSelectBus( wxListEvent& event )
+{
+    if( event.GetEventType() != wxEVT_COMMAND_LIST_ITEM_SELECTED )
+        return;
+
+    auto members = m_aliases[ ( unsigned )event.GetIndex() ]->GetMembers();
+
+    m_signal_list_view->DeleteAllItems();
+
+    for( unsigned i = 0; i < members.size(); i++ )
+    {
+        m_signal_list_view->InsertItem( i, members[i] );
+    }
+}
+
+
+void DIALOG_BUS_MANAGER::OnSelectSignal( wxListEvent& event )
+{
+
+}
+
 
 
 // see invoke_sch_dialog.h
