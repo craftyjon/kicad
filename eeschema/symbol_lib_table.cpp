@@ -40,6 +40,11 @@ using namespace LIB_TABLE_T;
 static const wxString global_tbl_name( "sym-lib-table" );
 
 
+const char* SYMBOL_LIB_TABLE::PropPowerSymsOnly = "pwr_sym_only";
+const char* SYMBOL_LIB_TABLE::PropNonPowerSymsOnly = "non_pwr_sym_only";
+int SYMBOL_LIB_TABLE::m_modifyHash = 1;     // starts at 1 and goes up
+
+
 /// The global symbol library table.  This is not dynamically allocated because
 /// in a multiple project environment we must keep its address constant (since it is
 /// the fallback table for multiple projects).
@@ -220,15 +225,58 @@ void SYMBOL_LIB_TABLE::Format( OUTPUTFORMATTER* aOutput, int aIndentLevel ) cons
 }
 
 
-void SYMBOL_LIB_TABLE::EnumerateSymbolLib( const wxString& aNickname, wxArrayString& aAliasNames )
+int SYMBOL_LIB_TABLE::GetModifyHash()
 {
-    const SYMBOL_LIB_TABLE_ROW* row = FindRow( aNickname );
-    wxASSERT( (SCH_PLUGIN*) row->plugin );
-    row->plugin->EnumerateSymbolLib( aAliasNames, row->GetFullURI( true ), row->GetProperties() );
+    int                     hash = 0;
+    std::vector< wxString > libNames = GetLogicalLibs();
+
+    for( auto libName : libNames )
+    {
+        const SYMBOL_LIB_TABLE_ROW* row = FindRow( libName );
+
+        if( !row || !row->plugin )
+        {
+            wxFAIL;
+            continue;
+        }
+
+        hash += row->plugin->GetModifyHash();
+    }
+
+    hash += m_modifyHash;
+
+    return hash;
 }
 
 
-const SYMBOL_LIB_TABLE_ROW* SYMBOL_LIB_TABLE::FindRow( const wxString& aNickname )
+size_t SYMBOL_LIB_TABLE::GetSymbolCount( const wxString& aNickname )
+{
+    SYMBOL_LIB_TABLE_ROW* row = dynamic_cast< SYMBOL_LIB_TABLE_ROW* >( findRow( aNickname ) );
+    wxCHECK( row && row->plugin, 0 );
+
+    return row->plugin->GetSymbolLibCount( row->GetFullURI( true ) );
+}
+
+
+void SYMBOL_LIB_TABLE::EnumerateSymbolLib( const wxString& aNickname, wxArrayString& aAliasNames,
+                                           bool aPowerSymbolsOnly )
+{
+    SYMBOL_LIB_TABLE_ROW* row = FindRow( aNickname );
+    wxCHECK( row && row->plugin, /* void */ );
+
+    wxString options = row->GetOptions();
+
+    if( aPowerSymbolsOnly )
+        row->SetOptions( row->GetOptions() + " " + PropPowerSymsOnly );
+
+    row->plugin->EnumerateSymbolLib( aAliasNames, row->GetFullURI( true ), row->GetProperties() );
+
+    if( aPowerSymbolsOnly )
+        row->SetOptions( options );
+}
+
+
+SYMBOL_LIB_TABLE_ROW* SYMBOL_LIB_TABLE::FindRow( const wxString& aNickname )
 
 {
     SYMBOL_LIB_TABLE_ROW* row = dynamic_cast< SYMBOL_LIB_TABLE_ROW* >( findRow( aNickname ) );
@@ -255,7 +303,7 @@ const SYMBOL_LIB_TABLE_ROW* SYMBOL_LIB_TABLE::FindRow( const wxString& aNickname
 LIB_ALIAS* SYMBOL_LIB_TABLE::LoadSymbol( const wxString& aNickname, const wxString& aAliasName )
 {
     const SYMBOL_LIB_TABLE_ROW* row = FindRow( aNickname );
-    wxASSERT( (SCH_PLUGIN*) row->plugin );
+    wxCHECK( row && row->plugin, nullptr );
 
     LIB_ALIAS* ret = row->plugin->LoadSymbol( row->GetFullURI( true ), aAliasName,
                                               row->GetProperties() );
@@ -270,12 +318,6 @@ LIB_ALIAS* SYMBOL_LIB_TABLE::LoadSymbol( const wxString& aNickname, const wxStri
         // having to copy the LIB_ID and its two strings, twice each.
         LIB_ID& id = (LIB_ID&) ret->GetPart()->GetLibId();
 
-        // Catch any misbehaving plugin, which should be setting internal alias name properly:
-        wxASSERT( aAliasName == id.GetLibItemName().wx_str() );
-
-        // and clearing nickname
-        wxASSERT( !id.GetLibNickname().size() );
-
         id.SetLibNickname( row->GetNickName() );
     }
 
@@ -287,7 +329,7 @@ SYMBOL_LIB_TABLE::SAVE_T SYMBOL_LIB_TABLE::SaveSymbol( const wxString& aNickname
                                                        const LIB_PART* aSymbol, bool aOverwrite )
 {
     const SYMBOL_LIB_TABLE_ROW* row = FindRow( aNickname );
-    wxASSERT( (SCH_PLUGIN*) row->plugin );
+    wxCHECK( row && row->plugin, SAVE_SKIPPED );
 
     if( !aOverwrite )
     {
@@ -313,7 +355,7 @@ SYMBOL_LIB_TABLE::SAVE_T SYMBOL_LIB_TABLE::SaveSymbol( const wxString& aNickname
 void SYMBOL_LIB_TABLE::DeleteSymbol( const wxString& aNickname, const wxString& aSymbolName )
 {
     const SYMBOL_LIB_TABLE_ROW* row = FindRow( aNickname );
-    wxASSERT( (SCH_PLUGIN*) row->plugin );
+    wxCHECK( row && row->plugin, /* void */ );
     return row->plugin->DeleteSymbol( row->GetFullURI( true ), aSymbolName,
                                       row->GetProperties() );
 }
@@ -322,7 +364,7 @@ void SYMBOL_LIB_TABLE::DeleteSymbol( const wxString& aNickname, const wxString& 
 void SYMBOL_LIB_TABLE::DeleteAlias( const wxString& aNickname, const wxString& aAliasName )
 {
     const SYMBOL_LIB_TABLE_ROW* row = FindRow( aNickname );
-    wxASSERT( (SCH_PLUGIN*) row->plugin );
+    wxCHECK( row && row->plugin, /* void */ );
     return row->plugin->DeleteAlias( row->GetFullURI( true ), aAliasName,
                                      row->GetProperties() );
 }
@@ -331,7 +373,7 @@ void SYMBOL_LIB_TABLE::DeleteAlias( const wxString& aNickname, const wxString& a
 bool SYMBOL_LIB_TABLE::IsSymbolLibWritable( const wxString& aNickname )
 {
     const SYMBOL_LIB_TABLE_ROW* row = FindRow( aNickname );
-    wxASSERT( (SCH_PLUGIN*) row->plugin );
+    wxCHECK( row && row->plugin, false );
     return row->plugin->IsSymbolLibWritable( row->GetFullURI( true ) );
 }
 
@@ -339,7 +381,7 @@ bool SYMBOL_LIB_TABLE::IsSymbolLibWritable( const wxString& aNickname )
 void SYMBOL_LIB_TABLE::DeleteSymbolLib( const wxString& aNickname )
 {
     const SYMBOL_LIB_TABLE_ROW* row = FindRow( aNickname );
-    wxASSERT( (SCH_PLUGIN*) row->plugin );
+    wxCHECK( row && row->plugin, /* void */ );
     row->plugin->DeleteSymbolLib( row->GetFullURI( true ), row->GetProperties() );
 }
 
@@ -347,7 +389,7 @@ void SYMBOL_LIB_TABLE::DeleteSymbolLib( const wxString& aNickname )
 void SYMBOL_LIB_TABLE::CreateSymbolLib( const wxString& aNickname )
 {
     const SYMBOL_LIB_TABLE_ROW* row = FindRow( aNickname );
-    wxASSERT( (SCH_PLUGIN*) row->plugin );
+    wxCHECK( row && row->plugin, /* void */ );
     row->plugin->CreateSymbolLib( row->GetFullURI( true ), row->GetProperties() );
 }
 

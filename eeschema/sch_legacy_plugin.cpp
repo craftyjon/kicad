@@ -58,7 +58,8 @@
 #include <lib_polyline.h>
 #include <lib_rectangle.h>
 #include <lib_text.h>
-#include <eeschema_id.h>    // for MAX_UNIT_COUNT_PER_PACKAGE definition
+#include <eeschema_id.h>       // for MAX_UNIT_COUNT_PER_PACKAGE definition
+#include <symbol_lib_table.h>  // for PropPowerSymsOnly definintion.
 
 
 // Must be the first line of part library document (.dcm) files.
@@ -479,12 +480,13 @@ static void parseQuotedString( wxString& aString, FILE_LINE_READER& aReader,
  */
 class SCH_LEGACY_PLUGIN_CACHE
 {
+    static int      m_modHash;      // Keep track of the modification status of the library.
+
     wxFileName      m_libFileName;  // Absolute path and file name is required here.
     wxDateTime      m_fileModTime;
     LIB_ALIAS_MAP   m_aliases;      // Map of names of LIB_ALIAS pointers.
     bool            m_isWritable;
     bool            m_isModified;
-    int             m_modHash;      // Keep track of the modification status of the library.
     int             m_versionMajor;
     int             m_versionMinor;
     int             m_libType;      // Is this cache a component or symbol library.
@@ -1315,7 +1317,9 @@ SCH_COMPONENT* SCH_LEGACY_PLUGIN::loadComponent( FILE_LINE_READER& aReader )
             parseUnquotedString( libName, aReader, line, &line );
             libName.Replace( "~", " " );
 
-            LIB_ID libId( wxEmptyString, libName );
+            LIB_ID libId;
+
+            libId.Parse( libName );
 
             component->SetLibId( libId );
 
@@ -1715,7 +1719,7 @@ void SCH_LEGACY_PLUGIN::saveComponent( SCH_COMPONENT* aComponent )
             name1 = toUTFTildaText( aComponent->GetField( REFERENCE )->GetText() );
     }
 
-    wxString part_name = aComponent->GetLibId().GetLibItemName();
+    wxString part_name = aComponent->GetLibId().Format();
 
     if( part_name.size() )
     {
@@ -2056,11 +2060,13 @@ void SCH_LEGACY_PLUGIN::saveText( SCH_TEXT* aText )
 }
 
 
+int SCH_LEGACY_PLUGIN_CACHE::m_modHash = 1;     // starts at 1 and goes up
+
+
 SCH_LEGACY_PLUGIN_CACHE::SCH_LEGACY_PLUGIN_CACHE( const wxString& aFullPathAndFileName ) :
     m_libFileName( aFullPathAndFileName ),
     m_isWritable( true ),
-    m_isModified( false ),
-    m_modHash( 1 )
+    m_isModified( false )
 {
     m_versionMajor = -1;
     m_versionMinor = -1;
@@ -2437,6 +2443,9 @@ LIB_PART* SCH_LEGACY_PLUGIN_CACHE::loadPart( FILE_LINE_READER& aReader )
         value.SetText( name );
         value.SetVisible( false );
     }
+
+    // Don't set the library alias, this is determined by the symbol library table.
+    part->SetLibId( LIB_ID( wxEmptyString, part->GetName() ) );
 
     // There are some code paths in SetText() that do not set the root alias to the
     // alias list so add it here if it didn't get added by SetText().
@@ -3479,12 +3488,17 @@ void SCH_LEGACY_PLUGIN::EnumerateSymbolLib( wxArrayString&    aAliasNameList,
 
     m_props = aProperties;
 
+    bool powerSymbolsOnly = ( aProperties &&
+                              aProperties->find( SYMBOL_LIB_TABLE::PropPowerSymsOnly ) != aProperties->end() );
     cacheLib( aLibraryPath );
 
     const LIB_ALIAS_MAP& aliases = m_cache->m_aliases;
 
     for( LIB_ALIAS_MAP::const_iterator it = aliases.begin();  it != aliases.end();  ++it )
-        aAliasNameList.Add( it->first );
+    {
+        if( !powerSymbolsOnly || it->second->GetPart()->IsPower() )
+            aAliasNameList.Add( it->first );
+    }
 }
 
 
@@ -3496,12 +3510,17 @@ void SCH_LEGACY_PLUGIN::EnumerateSymbolLib( std::vector<LIB_ALIAS*>& aAliasList,
 
     m_props = aProperties;
 
+    bool powerSymbolsOnly = ( aProperties &&
+                              aProperties->find( SYMBOL_LIB_TABLE::PropPowerSymsOnly ) != aProperties->end() );
     cacheLib( aLibraryPath );
 
     const LIB_ALIAS_MAP& aliases = m_cache->m_aliases;
 
     for( LIB_ALIAS_MAP::const_iterator it = aliases.begin();  it != aliases.end();  ++it )
-        aAliasList.push_back( it->second );
+    {
+        if( !powerSymbolsOnly || it->second->GetPart()->IsPower() )
+            aAliasList.push_back( it->second );
+    }
 }
 
 
@@ -3645,6 +3664,13 @@ bool SCH_LEGACY_PLUGIN::CheckHeader( const wxString& aFileName )
 
     return firstline.StartsWith( "EESchema" );
 }
+
+
+bool SCH_LEGACY_PLUGIN::IsSymbolLibWritable( const wxString& aLibraryPath )
+{
+    return wxFileName::IsFileWritable( aLibraryPath );
+}
+
 
 const char* SCH_LEGACY_PLUGIN::PropBuffering = "buffering";
 const char* SCH_LEGACY_PLUGIN::PropNoDocFile = "no_doc_file";

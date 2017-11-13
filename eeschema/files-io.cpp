@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2013 Jean-Pierre Charras, jp.charras at wanadoo.fr
- * Copyright (C) 2013-2017 Wayne Stambaugh <stambaughw@verizon.net>
+ * Copyright (C) 2013 Wayne Stambaugh <stambaughw@gmail.com>
  * Copyright (C) 2013 CERN (www.cern.ch)
  * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
@@ -48,9 +48,8 @@
 #include <eeschema_config.h>
 #include <sch_legacy_plugin.h>
 #include <sch_eagle_plugin.h>
-
-
-//#define USE_SCH_LEGACY_IO_PLUGIN
+#include <symbol_lib_table.h>
+#include <dialog_symbol_remap.h>
 
 
 bool SCH_EDIT_FRAME::SaveEEFile( SCH_SCREEN* aScreen, bool aSaveUnderNewName,
@@ -74,7 +73,7 @@ bool SCH_EDIT_FRAME::SaveEEFile( SCH_SCREEN* aScreen, bool aSaveUnderNewName,
     {
         wxFileDialog dlg( this, _( "Schematic Files" ),
                           wxPathOnly( Prj().GetProjectFullName() ),
-                          schematicFileName.GetFullName(), SchematicFileWildcard,
+                          schematicFileName.GetFullName(), SchematicFileWildcard(),
                           wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
 
         if( dlg.ShowModal() == wxID_CANCEL )
@@ -330,18 +329,35 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
 
         UpdateFileHistory( fullFileName );
 
-        // Check to see whether some old library parts need to be rescued
-        // Only do this if RescueNeverShow was not set.
-        wxConfigBase *config = Kiface().KifaceSettings();
-        bool rescueNeverShow = false;
-        config->Read( RescueNeverShowEntry, &rescueNeverShow, false );
-
-        if( !rescueNeverShow )
-        {
-            RescueProject( false );
-        }
-
         SCH_SCREENS schematic;
+
+        // Convert old projects over to use symbol library table.
+        if( schematic.HasNoFullyDefinedLibIds() )
+        {
+            // Ignore the never show rescue setting for one last rescue of legacy symbol
+            // libraries before remapping to the symbol library table.  This ensures the
+            // best remapping results.
+            RescueLegacyProject( false );
+
+            // Make backups of current schematics just in case something goes wrong.
+            for( SCH_SCREEN* screen = schematic.GetFirst(); screen; screen = schematic.GetNext() )
+                SaveEEFile( screen, false, CREATE_BACKUP_FILE );
+
+            DIALOG_SYMBOL_REMAP dlgRemap( this );
+
+            dlgRemap.ShowQuasiModal();
+        }
+        else
+        {
+            // Check to see whether some old library parts need to be rescued
+            // Only do this if RescueNeverShow was not set.
+            wxConfigBase *config = Kiface().KifaceSettings();
+            bool rescueNeverShow = false;
+            config->Read( RescueNeverShowEntry, &rescueNeverShow, false );
+
+            if( !rescueNeverShow )
+                RescueSymbolLibTableProject( false );
+        }
 
         schematic.UpdateSymbolLinks();      // Update all symbol library links for all sheets.
         GetScreen()->TestDanglingEnds();    // Only perform the dangling end test on root sheet.
@@ -372,7 +388,7 @@ bool SCH_EDIT_FRAME::AppendOneEEProject()
     wxString path = wxPathOnly( Prj().GetProjectFullName() );
 
     wxFileDialog dlg( this, _( "Append Schematic" ), path,
-                      wxEmptyString, SchematicFileWildcard,
+                      wxEmptyString, SchematicFileWildcard(),
                       wxFD_OPEN | wxFD_FILE_MUST_EXIST );
 
     if( dlg.ShowModal() == wxID_CANCEL )
@@ -513,7 +529,7 @@ void SCH_EDIT_FRAME::OnImportProject( wxCommandEvent& aEvent )
     wxString path = wxPathOnly( Prj().GetProjectFullName() );
 
     wxFileDialog dlg( this, _( "Import Schematic" ), path,
-                      wxEmptyString, EagleSchematicFileWildcard,
+                      wxEmptyString, EagleSchematicFileWildcard(),
                       wxFD_OPEN | wxFD_FILE_MUST_EXIST );
 
     if( dlg.ShowModal() == wxID_CANCEL )

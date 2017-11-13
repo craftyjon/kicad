@@ -96,7 +96,7 @@ void DIALOG_CONFIG_EQUFILES::OnEditEquFile( wxCommandEvent& event )
 
     if( editorname.IsEmpty() )
     {
-        wxMessageBox( _( "No editor defined in Kicad. Please chose it" ) );
+        wxMessageBox( _( "No editor defined in Kicad. Please choose it." ) );
         return;
     }
 
@@ -229,16 +229,11 @@ void DIALOG_CONFIG_EQUFILES::OnRemoveFiles( wxCommandEvent& event )
 }
 
 
-/* Insert or add a library to the library list:
- *   The new library is put in list before (insert button) the selection,
- *   or added (add button) to end of list
- */
 void DIALOG_CONFIG_EQUFILES::OnAddFiles( wxCommandEvent& event )
 {
-    wxString   equFilename, wildcard;
+    wxString   equFilename;
     wxFileName fn;
 
-    wildcard = EquFilesWildcard;
     wxListBox* list = m_ListEquiv;
 
     // Get a default path to open the file dialog:
@@ -250,8 +245,8 @@ void DIALOG_CONFIG_EQUFILES::OnAddFiles( wxCommandEvent& event )
 
     libpath = m_gridEnvVars->GetCellValue( wxGridCellCoords( row, 1 ) );
 
-    wxFileDialog FilesDialog( this, _( "Equ files:" ), libpath,
-                              wxEmptyString, wildcard,
+    wxFileDialog FilesDialog( this, _( "Footprint Association File" ), libpath,
+                              wxEmptyString, EquFileWildcard(),
                               wxFD_DEFAULT_STYLE | wxFD_MULTIPLE );
 
     if( FilesDialog.ShowModal() != wxID_OK )

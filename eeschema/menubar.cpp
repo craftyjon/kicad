@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2016 Jean-Pierre Charras, jp.charras at wanadoo.fr
- * Copyright (C) 2009-2016 Wayne Stambaugh <stambaughw@verizon.net>
+ * Copyright (C) 2009 Wayne Stambaugh <stambaughw@gmail.com>
  * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
@@ -489,8 +489,14 @@ void prepareToolsMenu( wxMenu* aParentMenu )
 
     AddMenuItem( aParentMenu,
                  ID_RESCUE_CACHED,
-                 _( "&Rescue Old Component" ),
-                 _( "Find old components in project and rename/rescue them" ),
+                 _( "&Rescue Symbols" ),
+                 _( "Find old symbols in project and rename/rescue them" ),
+                 KiBitmap( rescue_xpm ) );
+
+    AddMenuItem( aParentMenu,
+                 ID_REMAP_SYMBOLS,
+                 _( "Remap Symbols" ),
+                 _( "Remap legacy library symbols to symbol library table" ),
                  KiBitmap( rescue_xpm ) );
 
     aParentMenu->AppendSeparator();
@@ -621,15 +627,9 @@ static void preparePreferencesMenu( SCH_EDIT_FRAME* aFrame, wxMenu* aParentMenu 
 {
     // Library
     AddMenuItem( aParentMenu,
-                 ID_CONFIG_REQ,
-                 _( "Component &Libraries" ),
-                 _( "Configure component libraries and paths" ),
-                 KiBitmap( library_xpm ) );
-
-    AddMenuItem( aParentMenu,
                  ID_EDIT_SYM_LIB_TABLE,
-                 _( "Manage Symbol Library" ),
-                 _( "Manage the symbol library" ),
+                 _( "Manage Symbol Libraries" ),
+                 _( "Edit the global and project symbol library tables." ),
                  KiBitmap( library_table_xpm ) );
 
     // Options (Preferences on WXMAC)

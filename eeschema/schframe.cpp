@@ -45,6 +45,7 @@
 #include <class_library.h>
 #include <schframe.h>
 #include <sch_component.h>
+#include <symbol_lib_table.h>
 
 #include <dialog_helpers.h>
 #include <libeditframe.h>
@@ -57,6 +58,7 @@
 
 #include <invoke_sch_dialog.h>
 #include <dialogs/dialog_schematic_find.h>
+#include <dialog_symbol_remap.h>
 
 #include <wx/display.h>
 #include <build_version.h>
@@ -238,7 +240,6 @@ BEGIN_EVENT_TABLE( SCH_EDIT_FRAME, EDA_DRAW_FRAME )
 
     EVT_MENU( ID_POPUP_SCH_DUPLICATE_ITEM, SCH_EDIT_FRAME::OnCopySchematicItemRequest )
 
-    EVT_MENU( ID_CONFIG_REQ, SCH_EDIT_FRAME::InstallConfigFrame )
     EVT_MENU( ID_CONFIG_SAVE, SCH_EDIT_FRAME::Process_Config )
     EVT_MENU( ID_CONFIG_READ, SCH_EDIT_FRAME::Process_Config )
     EVT_MENU_RANGE( ID_PREFERENCES_HOTKEY_START, ID_PREFERENCES_HOTKEY_END,
@@ -250,6 +251,7 @@ BEGIN_EVENT_TABLE( SCH_EDIT_FRAME, EDA_DRAW_FRAME )
     EVT_TOOL( ID_POPUP_SCH_CALL_LIBEDIT_AND_LOAD_CMP, SCH_EDIT_FRAME::OnOpenLibraryEditor )
     EVT_TOOL( ID_TO_LIBVIEW, SCH_EDIT_FRAME::OnOpenLibraryViewer )
     EVT_TOOL( ID_RESCUE_CACHED, SCH_EDIT_FRAME::OnRescueProject )
+    EVT_MENU( ID_REMAP_SYMBOLS, SCH_EDIT_FRAME::OnRemapSymbols )
 
     EVT_TOOL( ID_RUN_PCB, SCH_EDIT_FRAME::OnOpenPcbnew )
     EVT_TOOL( ID_RUN_PCB_MODULE_EDITOR, SCH_EDIT_FRAME::OnOpenPcbModuleEditor )
@@ -333,6 +335,7 @@ BEGIN_EVENT_TABLE( SCH_EDIT_FRAME, EDA_DRAW_FRAME )
     EVT_UPDATE_UI( ID_SAVE_PROJECT, SCH_EDIT_FRAME::OnUpdateSave )
     EVT_UPDATE_UI( ID_UPDATE_ONE_SHEET, SCH_EDIT_FRAME::OnUpdateSaveSheet )
     EVT_UPDATE_UI( ID_POPUP_SCH_LEAVE_SHEET, SCH_EDIT_FRAME::OnUpdateHierarchySheet )
+    EVT_UPDATE_UI( ID_REMAP_SYMBOLS, SCH_EDIT_FRAME::OnUpdateRemapSymbols )
 
     /* Search dialog events. */
     EVT_FIND_CLOSE( wxID_ANY, SCH_EDIT_FRAME::OnFindDialogClose )
@@ -823,6 +826,15 @@ void SCH_EDIT_FRAME::OnUpdateSave( wxUpdateUIEvent& aEvent )
 }
 
 
+void SCH_EDIT_FRAME::OnUpdateRemapSymbols( wxUpdateUIEvent& aEvent )
+{
+    SCH_SCREENS schematic;
+
+    // The remapping can only be performed on legacy projects.
+    aEvent.Enable( schematic.HasNoFullyDefinedLibIds() );
+}
+
+
 void SCH_EDIT_FRAME::OnUpdateSaveSheet( wxUpdateUIEvent& aEvent )
 {
     aEvent.Enable( GetScreen()->IsModify() );
@@ -853,6 +865,7 @@ void SCH_EDIT_FRAME::OnErc( wxCommandEvent& event )
     else
         InvokeDialogERC( this );
 }
+
 
 void SCH_EDIT_FRAME::OnUpdatePCB( wxCommandEvent& event )
 {
@@ -896,7 +909,7 @@ void SCH_EDIT_FRAME::OnUpdatePCB( wxCommandEvent& event )
         return;
 
     NETLIST_OBJECT_LIST* net_atoms = BuildNetListBase();
-    NETLIST_EXPORTER_KICAD exporter( net_atoms, Prj().SchLibs() );
+    NETLIST_EXPORTER_KICAD exporter( net_atoms, Prj().SchSymbolLibTable() );
     STRING_FORMATTER formatter;
 
     exporter.Format( &formatter, GNL_ALL );
@@ -905,6 +918,7 @@ void SCH_EDIT_FRAME::OnUpdatePCB( wxCommandEvent& event )
     Kiway().ExpressMail( FRAME_PCB, MAIL_SCH_PCB_UPDATE,
                          formatter.GetString(), this );
 }
+
 
 void SCH_EDIT_FRAME::OnCreateNetlist( wxCommandEvent& event )
 {
@@ -925,6 +939,7 @@ void SCH_EDIT_FRAME::OnCreateBillOfMaterials( wxCommandEvent& )
     InvokeDialogCreateBOM( this );
 }
 
+
 void SCH_EDIT_FRAME::OnLaunchBomManager( wxCommandEvent& event )
 {
     // First ensure that entire schematic is annotated
@@ -934,10 +949,12 @@ void SCH_EDIT_FRAME::OnLaunchBomManager( wxCommandEvent& event )
     InvokeDialogCreateBOMEditor( this );
 }
 
+
 void SCH_EDIT_FRAME::OnLaunchBusManager( wxCommandEvent& )
 {
     InvokeDialogBusManager( this );
 }
+
 
 void SCH_EDIT_FRAME::OnFindItems( wxCommandEvent& aEvent )
 {
@@ -1028,11 +1045,10 @@ void SCH_EDIT_FRAME::OnUpdateFields( wxCommandEvent& event )
 
 void SCH_EDIT_FRAME::OnNewProject( wxCommandEvent& event )
 {
-//  wxString pro_dir = wxPathOnly( Prj().GetProjectFullName() );
     wxString pro_dir = m_mruPath;
 
     wxFileDialog dlg( this, _( "New Schematic" ), pro_dir,
-                      wxEmptyString, SchematicFileWildcard,
+                      wxEmptyString, SchematicFileWildcard(),
                       wxFD_SAVE );
 
     if( dlg.ShowModal() != wxID_CANCEL )
@@ -1066,7 +1082,7 @@ void SCH_EDIT_FRAME::OnLoadProject( wxCommandEvent& event )
     wxString pro_dir = m_mruPath;
 
     wxFileDialog dlg( this, _( "Open Schematic" ), pro_dir,
-                      wxEmptyString, SchematicFileWildcard,
+                      wxEmptyString, SchematicFileWildcard(),
                       wxFD_OPEN | wxFD_FILE_MUST_EXIST );
 
     if( dlg.ShowModal() != wxID_CANCEL )
@@ -1220,17 +1236,27 @@ void SCH_EDIT_FRAME::OnOpenLibraryEditor( wxCommandEvent& event )
 
     if( component )
     {
-        if( PART_LIBS* libs = Prj().SchLibs() )
+        LIB_ID id = component->GetLibId();
+        LIB_ALIAS* entry = nullptr;
+
+        try
         {
-            LIB_ALIAS* entry = libs->FindLibraryAlias( component->GetLibId() );
-
-            if( !entry )     // Should not occur
-                return;
-
-            PART_LIB* library = entry->GetLib();
-
-            libeditFrame->LoadComponentAndSelectLib( entry, library );
+            entry = Prj().SchSymbolLibTable()->LoadSymbol( id );
         }
+        catch( const IO_ERROR& ioe )
+        {
+            wxString msg;
+
+            msg.Printf( _( "Error occurred loading symbol '%s' from library '%s'." ),
+                        id.GetLibItemName().wx_str(), id.GetLibNickname().wx_str() );
+            DisplayErrorMessage( this, msg, ioe.What() );
+            return;
+        }
+
+        if( !entry )     // Should not occur
+            return;
+
+        libeditFrame->LoadComponentAndSelectLib( id );
     }
 
     GetScreen()->SchematicCleanUp();
@@ -1240,7 +1266,22 @@ void SCH_EDIT_FRAME::OnOpenLibraryEditor( wxCommandEvent& event )
 
 void SCH_EDIT_FRAME::OnRescueProject( wxCommandEvent& event )
 {
-    RescueProject( true );
+    SCH_SCREENS schematic;
+
+    if( schematic.HasNoFullyDefinedLibIds() )
+        RescueLegacyProject( true );
+    else
+        RescueSymbolLibTableProject( true );
+}
+
+
+void SCH_EDIT_FRAME::OnRemapSymbols( wxCommandEvent& event )
+{
+    DIALOG_SYMBOL_REMAP dlgRemap( this );
+
+    dlgRemap.ShowQuasiModal();
+
+    m_canvas->Refresh( true );
 }
 
 

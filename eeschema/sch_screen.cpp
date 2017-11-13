@@ -4,7 +4,7 @@
  * Copyright (C) 2013 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2012 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
  * Copyright (C) 2008-2016 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 1992-2016 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -53,6 +53,7 @@
 #include <sch_component.h>
 #include <sch_text.h>
 #include <lib_pin.h>
+#include <symbol_lib_table.h>
 
 
 #define EESCHEMA_FILE_STAMP   "EESchema"
@@ -65,9 +66,6 @@ static double SchematicZoomList[] =
     0.5, 0.7, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 11.0,
     13.0, 16.0, 20.0, 26.0, 32.0, 48.0, 64.0, 80.0, 128.0
 };
-
-#define MM_TO_SCH_UNITS 1000.0 / 25.4       //schematic internal unites are mils
-
 
 /* Default grid sizes for the schematic editor.
  * Do NOT add others values (mainly grid values in mm), because they
@@ -529,7 +527,7 @@ bool SCH_SCREEN::Save( FILE* aFile ) const
 }
 
 
-void SCH_SCREEN::CheckComponentsToPartsLinks()
+void SCH_SCREEN::UpdateSymbolLinks( bool aForce )
 {
     // Initialize or reinitialize the pointer to the LIB_PART for each component
     // found in m_drawList, but only if needed (change in lib or schematic)
@@ -537,17 +535,17 @@ void SCH_SCREEN::CheckComponentsToPartsLinks()
 
     if( m_drawList.GetCount() )
     {
-        PART_LIBS*  libs = Prj().SchLibs();
-        int         mod_hash = libs->GetModifyHash();
+        SYMBOL_LIB_TABLE* libs = Prj().SchSymbolLibTable();
+        int mod_hash = libs->GetModifyHash();
 
         // Must we resolve?
-        if( m_modification_sync != mod_hash )
+        if( (m_modification_sync != mod_hash) || aForce )
         {
             SCH_TYPE_COLLECTOR c;
 
             c.Collect( GetDrawItems(), SCH_COLLECTOR::ComponentsOnly );
 
-            SCH_COMPONENT::ResolveAll( c, libs );
+            SCH_COMPONENT::ResolveAll( c, *libs, Prj().SchLibs()->GetCacheLibrary() );
 
             m_modification_sync = mod_hash;     // note the last mod_hash
         }
@@ -561,19 +559,26 @@ void SCH_SCREEN::Draw( EDA_DRAW_PANEL* aCanvas, wxDC* aDC, GR_DRAWMODE aDrawMode
      * library editor and library viewer do not use m_drawList, and therefore
      * their SCH_SCREEN::Draw() draws nothing
      */
+    std::vector< SCH_ITEM* > junctions;
 
     // Ensure links are up to date, even if a library was reloaded for some reason:
-    CheckComponentsToPartsLinks();
+    UpdateSymbolLinks();
 
     for( SCH_ITEM* item = m_drawList.begin(); item; item = item->Next() )
     {
         if( item->IsMoving() || item->IsResized() )
             continue;
 
-        // uncomment line below when there is a virtual EDA_ITEM::GetBoundingBox()
-        // if( panel->GetClipBox().Intersects( item->GetBoundingBox() ) )
-        item->Draw( aCanvas, aDC, wxPoint( 0, 0 ), aDrawMode, aColor );
+        if( item->Type() == SCH_JUNCTION_T )
+            junctions.push_back( item );
+        else
+            // uncomment line below when there is a virtual EDA_ITEM::GetBoundingBox()
+            // if( panel->GetClipBox().Intersects( item->GetBoundingBox() ) )
+            item->Draw( aCanvas, aDC, wxPoint( 0, 0 ), aDrawMode, aColor );
     }
+
+    for( auto item : junctions )
+        item->Draw( aCanvas, aDC, wxPoint( 0, 0 ), aDrawMode, aColor );
 }
 
 
@@ -584,7 +589,7 @@ void SCH_SCREEN::Draw( EDA_DRAW_PANEL* aCanvas, wxDC* aDC, GR_DRAWMODE aDrawMode
 void SCH_SCREEN::Plot( PLOTTER* aPlotter )
 {
     // Ensure links are up to date, even if a library was reloaded for some reason:
-    CheckComponentsToPartsLinks();
+    UpdateSymbolLinks();
 
     for( SCH_ITEM* item = m_drawList.begin();  item;  item = item->Next() )
     {
@@ -599,22 +604,13 @@ void SCH_SCREEN::ClearUndoORRedoList( UNDO_REDO_CONTAINER& aList, int aItemCount
     if( aItemCount == 0 )
         return;
 
-    unsigned icnt = aList.m_CommandsList.size();
-
-    if( aItemCount > 0 )
-        icnt = aItemCount;
-
-    for( unsigned ii = 0; ii < icnt; ii++ )
+    for( auto& command : aList.m_CommandsList )
     {
-        if( aList.m_CommandsList.size() == 0 )
-            break;
-
-        PICKED_ITEMS_LIST* curr_cmd = aList.m_CommandsList[0];
-        aList.m_CommandsList.erase( aList.m_CommandsList.begin() );
-
-        curr_cmd->ClearListAndDeleteItems();
-        delete curr_cmd;    // Delete command
+        command->ClearListAndDeleteItems();
+        delete command;
     }
+
+    aList.m_CommandsList.clear();
 }
 
 
@@ -1519,10 +1515,10 @@ int SCH_SCREENS::GetMarkerCount( enum MARKER_BASE::TYPEMARKER aMarkerType,
 }
 
 
-void SCH_SCREENS::UpdateSymbolLinks()
+void SCH_SCREENS::UpdateSymbolLinks( bool aForce )
 {
     for( SCH_SCREEN* screen = GetFirst(); screen; screen = GetNext() )
-        screen->CheckComponentsToPartsLinks();
+        screen->UpdateSymbolLinks( aForce );
 }
 
 
@@ -1539,6 +1535,7 @@ bool SCH_SCREENS::HasNoFullyDefinedLibIds()
     SCH_ITEM* item;
     SCH_ITEM* nextItem;
     SCH_SCREEN* screen;
+    unsigned cnt = 0;
 
     for( screen = GetFirst(); screen; screen = GetNext() )
     {
@@ -1549,12 +1546,16 @@ bool SCH_SCREENS::HasNoFullyDefinedLibIds()
             if( item->Type() != SCH_COMPONENT_T )
                 continue;
 
+            cnt += 1;
             symbol = dynamic_cast< SCH_COMPONENT* >( item );
 
             if( !symbol->GetLibId().GetLibNickname().empty() )
                 return false;
         }
     }
+
+    if( cnt == 0 )
+        return false;
 
     return true;
 }

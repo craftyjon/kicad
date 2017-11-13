@@ -47,10 +47,8 @@ class SCH_BUS_ALIAS;
 
 
 /**
- * Class SCH_LEGACY_PLUGIN
- *
- * is a #SCH_PLUGIN derivation for loading schematic files created before the new
- * s-expression file format.
+ * A #SCH_PLUGIN derivation for loading schematic files created before the new s-expression
+ * file format.
  *
  * The legacy parser and formatter attempt to be compatible with the legacy file format.
  * The original parser was very forgiving in that it would parse only part of a keyword.
@@ -126,6 +124,7 @@ public:
     void SaveLibrary( const wxString& aLibraryPath, const PROPERTIES* aProperties = NULL ) override;
 
     bool CheckHeader( const wxString& aFileName ) override;
+    bool IsSymbolLibWritable( const wxString& aLibraryPath ) override;
 
 private:
     void loadHierarchy( SCH_SHEET* aSheet );

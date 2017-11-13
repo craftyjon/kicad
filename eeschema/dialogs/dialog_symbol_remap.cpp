@@ -35,12 +35,13 @@
 #include <sch_sheet.h>
 #include <sch_component.h>
 #include <class_sch_screen.h>
+#include <schframe.h>
 #include <symbol_lib_table.h>
 
 #include <dialog_symbol_remap.h>
 
 
-DIALOG_SYMBOL_REMAP::DIALOG_SYMBOL_REMAP( wxWindow* aParent ) :
+DIALOG_SYMBOL_REMAP::DIALOG_SYMBOL_REMAP( SCH_EDIT_FRAME* aParent ) :
     DIALOG_SYMBOL_REMAP_BASE( aParent )
 {
 }
@@ -48,6 +49,8 @@ DIALOG_SYMBOL_REMAP::DIALOG_SYMBOL_REMAP( wxWindow* aParent ) :
 
 void DIALOG_SYMBOL_REMAP::OnRemapSymbols( wxCommandEvent& aEvent )
 {
+    wxBusyCursor busy;
+
     // The schematic is fully loaded, any legacy library symbols have been rescued.  Now
     // check to see if the schematic has not been converted to the symbol library table
     // method for looking up symbols.
@@ -62,6 +65,16 @@ void DIALOG_SYMBOL_REMAP::OnRemapSymbols( wxCommandEvent& aEvent )
     }
 
     remapSymbolsToLibTable( m_messagePanel->Reporter() );
+
+    // Remove all of the libraries from the legacy library list.
+    wxString paths;
+    wxArrayString libNames;
+
+    PART_LIBS::LibNamesAndPaths( &Prj(), true, &paths, &libNames );
+
+    // Reload the the cache symbol library.
+    Prj().SetElem( PROJECT::ELEM_SCH_PART_LIBS, NULL );
+    Prj().SchLibs();
 }
 
 
@@ -150,7 +163,6 @@ void DIALOG_SYMBOL_REMAP::createProjectSymbolLibTable( REPORTER& aReporter )
                         fullFileName += tmp;
 
                     fullFileName += fn.GetFullName();
-                    break;
                 }
             }
 
@@ -158,25 +170,43 @@ void DIALOG_SYMBOL_REMAP::createProjectSymbolLibTable( REPORTER& aReporter )
             if( fullFileName.IsEmpty() )
                 fullFileName = lib->GetFullFileName();
 
-            msg.Printf( _( "Adding library '%s', file '%s' to project symbol library table." ),
-                        libName, fullFileName );
-            aReporter.Report( msg, REPORTER::RPT_INFO );
+            wxFileName tmpFn = fullFileName;
 
-            prjLibTable.InsertRow( new SYMBOL_LIB_TABLE_ROW( libName, fullFileName, pluginType ) );
+            // Don't add symbol libraries that do not exist.
+            if( tmpFn.Normalize() && tmpFn.FileExists() )
+            {
+                msg.Printf( _( "Adding library '%s', file '%s' to project symbol library table." ),
+                            libName, fullFileName );
+                aReporter.Report( msg, REPORTER::RPT_INFO );
+
+                prjLibTable.InsertRow( new SYMBOL_LIB_TABLE_ROW( libName, fullFileName,
+                                                                 pluginType ) );
+            }
+            else
+            {
+                msg.Printf( _( "Library '%s' not found." ), fullFileName );
+                aReporter.Report( msg, REPORTER::RPT_WARNING );
+            }
         }
 
-        wxFileName fn( Prj().GetProjectPath(), SYMBOL_LIB_TABLE::GetSymbolLibTableFileName() );
+        // Don't save empty project symbol library table.
+        if( !prjLibTable.IsEmpty() )
+        {
+            wxFileName fn( Prj().GetProjectPath(), SYMBOL_LIB_TABLE::GetSymbolLibTableFileName() );
 
-        try
-        {
-            FILE_OUTPUTFORMATTER formatter( fn.GetFullPath() );
-            prjLibTable.Format( &formatter, 0 );
-        }
-        catch( const IO_ERROR& ioe )
-        {
-            msg.Printf( _( "Failed to write project symbol library table. Error:\n  %s" ),
-                        ioe.What() );
-            aReporter.Report( msg, REPORTER::RPT_ERROR );
+            try
+            {
+                FILE_OUTPUTFORMATTER formatter( fn.GetFullPath() );
+                prjLibTable.Format( &formatter, 0 );
+            }
+            catch( const IO_ERROR& ioe )
+            {
+                msg.Printf( _( "Failed to write project symbol library table. Error:\n  %s" ),
+                            ioe.What() );
+                aReporter.Report( msg, REPORTER::RPT_ERROR );
+            }
+
+            aReporter.Report( _( "Created project symbol library table.\n" ), REPORTER::RPT_INFO );
         }
     }
 }
@@ -204,7 +234,7 @@ void DIALOG_SYMBOL_REMAP::remapSymbolsToLibTable( REPORTER& aReporter )
 
             if( !remapSymbolToLibTable( symbol ) )
             {
-                msg.Printf( _( "No symbol '%s' founded in symbol library table." ),
+                msg.Printf( _( "No symbol '%s' found in symbol library table." ),
                             symbol->GetLibId().GetLibItemName().wx_str() );
                 aReporter.Report( msg, REPORTER::RPT_WARNING );
             }
@@ -214,9 +244,13 @@ void DIALOG_SYMBOL_REMAP::remapSymbolsToLibTable( REPORTER& aReporter )
                             symbol->GetLibId().GetLibItemName().wx_str(),
                             symbol->GetLibId().GetLibNickname().wx_str() );
                 aReporter.Report( msg, REPORTER::RPT_ACTION );
+                screen->SetModify();
             }
         }
     }
+
+    aReporter.Report( _( "Symbol library table mapping complete!" ), REPORTER::RPT_INFO );
+    schematic.UpdateSymbolLinks( true );
 }
 
 
@@ -253,7 +287,9 @@ bool DIALOG_SYMBOL_REMAP::remapSymbolToLibTable( SCH_COMPONENT* aSymbol )
                 LIB_ID id = aSymbol->GetLibId();
 
                 id.SetLibNickname( row->GetNickName() );
-                aSymbol->SetLibId( id, Prj().SchSymbolLibTable() );
+
+                // Don't resolve symbol library links now.
+                aSymbol->SetLibId( id, nullptr, nullptr );
                 return true;
             }
         }

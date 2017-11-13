@@ -28,6 +28,7 @@
 #include <class_board.h>
 #include <project.h>
 #include <confirm.h>
+#include <wildcards_and_files_ext.h>
 
 #include <wx/statline.h>
 #include <wx/button.h>
@@ -129,7 +130,9 @@ void DIALOG_GENCAD_EXPORT_OPTIONS::createOptCheckboxes()
     {
         { FLIP_BOTTOM_PADS,         _( "Flip bottom components padstacks" ) },
         { UNIQUE_PIN_NAMES,         _( "Generate unique pin names" ) },
-        { INDIVIDUAL_SHAPES,        _( "Generate a new shape for each component (do not reuse shapes)" ) }
+        { INDIVIDUAL_SHAPES,        _( "Generate a new shape for each component instance (do not reuse shapes)" ) },
+        { USE_AUX_ORIGIN,           _( "Use auxiliary axis as origin" ) },
+        { STORE_ORIGIN_COORDS,      _( "Save the origin coordinates in the file" ) }
     };
 
     for( const auto& option : opts )
@@ -144,10 +147,10 @@ void DIALOG_GENCAD_EXPORT_OPTIONS::createOptCheckboxes()
 void DIALOG_GENCAD_EXPORT_OPTIONS::onBrowse( wxCommandEvent& aEvent )
 {
     wxFileDialog dlg( this, _( "Save GenCAD Board File" ),
-        wxPathOnly( Prj().GetProjectFullName() ),
-        m_filePath->GetValue(),
-        _( "GenCAD 1.4 board files (.cad)|*.cad" ),
-        wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
+                      wxPathOnly( Prj().GetProjectFullName() ),
+                      m_filePath->GetValue(),
+                      GencadFileWildcard(),
+                      wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
 
     if( dlg.ShowModal() == wxID_CANCEL )
         return;

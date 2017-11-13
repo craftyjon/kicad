@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2004 Jean-Pierre Charras, jp.charras ar wanadoo.fr
- * Copyright (C) 2008-2017 Wayne Stambaugh <stambaughw@verizon.net>
+ * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
  * Copyright (C) 2004-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
@@ -30,14 +30,15 @@
 
 #include <fctsys.h>
 #include <confirm.h>
-#include <class_sch_screen.h>
 #include <wxstruct.h>
-#include <schframe.h>
+#include <wildcards_and_files_ext.h>
 
+#include <class_sch_screen.h>
+#include <schframe.h>
+#include <symbol_lib_table.h>
 #include <class_library.h>
 #include <sch_component.h>
 #include <sch_sheet.h>
-#include <wildcards_and_files_ext.h>
 
 
 bool SCH_EDIT_FRAME::CreateArchiveLibraryCacheFile( bool aUseCurrentSheetFilename )
@@ -65,9 +66,9 @@ bool SCH_EDIT_FRAME::CreateArchiveLibraryCacheFile( bool aUseCurrentSheetFilenam
 
 bool SCH_EDIT_FRAME::CreateArchiveLibrary( const wxString& aFileName )
 {
-    wxString        msg;
-    SCH_SCREENS     screens;
-    PART_LIBS*      libs = Prj().SchLibs();
+    wxString          tmp;
+    wxString          errorMsg;
+    SCH_SCREENS       screens;
 
     // Create a new empty library to archive components:
     std::unique_ptr<PART_LIB> archLib( new PART_LIB( LIBRARY_TYPE_EESCHEMA, aFileName ) );
@@ -87,32 +88,58 @@ bool SCH_EDIT_FRAME::CreateArchiveLibrary( const wxString& aFileName )
             if( item->Type() != SCH_COMPONENT_T )
                 continue;
 
+            LIB_PART* part = nullptr;
             SCH_COMPONENT* component = (SCH_COMPONENT*) item;
 
-            if( !archLib->FindAlias( component->GetLibId().GetLibItemName() ) )
+            try
             {
-                LIB_PART* part = NULL;
+                if( archLib->FindAlias( component->GetLibId().GetLibItemName() ) )
+                    continue;
 
-                try
-                {
-                    part = libs->FindLibPart( component->GetLibId() );
+                part = GetLibPart( component->GetLibId(), true );
+            }
+            catch( const IO_ERROR& ioe )
+            {
+                // Queue up error messages for later.
+                tmp.Printf( _( "Failed to add symbol %s to library file." ),
+                            component->GetLibId().GetLibItemName().wx_str(), aFileName );
 
-                    if( part )
-                    {
-                        // AddPart() does first clone the part before adding.
-                        archLib->AddPart( part );
-                    }
-                }
-                catch( ... /* IO_ERROR ioe */ )
-                {
-                    msg.Printf( _( "Failed to add symbol %s to library file '%s'" ),
-                                component->GetLibId().GetLibItemName().wx_str(), aFileName );
-                    DisplayError( this, msg );
-                    return false;
-                }
+                // Don't bail out here.  Attempt to add as many of the symbols to the library
+                // as possible.
+            }
+            catch( ... )
+            {
+                tmp = _( "Unexpected exception occurred." );
+            }
+
+            if( part )
+            {
+                // AddPart() does first clone the part before adding.
+                archLib->AddPart( part );
+            }
+            else
+            {
+                tmp.Printf( _( "Symbol %s not found in any library or cache." ),
+                            component->GetLibId().Format().wx_str() );
+            }
+
+            if( !tmp.empty() )
+            {
+                if( errorMsg.empty() )
+                    errorMsg += tmp;
+                else
+                    errorMsg += "\n" + tmp;
             }
         }
     }
+
+    if( !errorMsg.empty() )
+    {
+        tmp.Printf( _( "Errors occurred creating symbol library %s." ), aFileName );
+        DisplayErrorMessage( this, tmp, errorMsg );
+    }
+
+    archLib->EnableBuffering( false );
 
     try
     {
@@ -120,8 +147,8 @@ bool SCH_EDIT_FRAME::CreateArchiveLibrary( const wxString& aFileName )
     }
     catch( ... /* IO_ERROR ioe */ )
     {
-        msg.Printf( _( "Failed to save symbol library file '%s'" ), aFileName );
-        DisplayError( this, msg );
+        errorMsg.Printf( _( "Failed to save symbol library file '%s'" ), aFileName );
+        DisplayError( this, errorMsg );
         return false;
     }
 

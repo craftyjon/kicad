@@ -251,6 +251,27 @@ const wxString LIB_TABLE::GetDescription( const wxString& aNickname )
 }
 
 
+bool LIB_TABLE::HasLibrary( const wxString& aNickname ) const
+{
+    const LIB_TABLE_ROW* row = findRow( aNickname );
+
+    return row != nullptr;
+}
+
+
+wxString LIB_TABLE::GetFullURI( const wxString& aNickname, bool aExpandEnvVars ) const
+{
+    const LIB_TABLE_ROW* row = findRow( aNickname );
+
+    wxString retv;
+
+    if( row )
+        retv = row->GetFullURI( aExpandEnvVars );
+
+    return retv;
+}
+
+
 LIB_TABLE_ROW* LIB_TABLE::findRow( const wxString& aNickName ) const
 {
     LIB_TABLE* cur = (LIB_TABLE*) this;
@@ -260,6 +281,28 @@ LIB_TABLE_ROW* LIB_TABLE::findRow( const wxString& aNickName ) const
         cur->ensureIndex();
 
         INDEX_CITER it = cur->nickIndex.find( aNickName );
+
+        if( it != cur->nickIndex.end() )
+        {
+            return &cur->rows[it->second];  // found
+        }
+
+        // not found, search fall back table(s), if any
+    } while( ( cur = cur->fallBack ) != 0 );
+
+    return NULL;   // not found
+}
+
+
+LIB_TABLE_ROW* LIB_TABLE::findRow( const wxString& aNickName )
+{
+    LIB_TABLE* cur = (LIB_TABLE*) this;
+
+    do
+    {
+        cur->ensureIndex();
+
+        INDEX_ITER it = cur->nickIndex.find( aNickName );
 
         if( it != cur->nickIndex.end() )
         {

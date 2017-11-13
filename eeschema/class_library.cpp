@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2004-2016 Jean-Pierre Charras, jp.charras at wanadoo.fr
- * Copyright (C) 2008-2017 Wayne Stambaugh <stambaughw@verizon.net>
+ * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
  * Copyright (C) 2004-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
@@ -358,6 +358,18 @@ PART_LIB* PART_LIBS::FindLibrary( const wxString& aName )
 }
 
 
+PART_LIB* PART_LIBS::GetCacheLibrary()
+{
+    for( PART_LIBS::iterator it = begin();  it!=end();  ++it )
+    {
+        if( it->IsCache() )
+            return &*it;
+    }
+
+    return NULL;
+}
+
+
 PART_LIB* PART_LIBS::FindLibraryByFullFileName( const wxString& aFullFileName )
 {
     for( PART_LIBS::iterator it = begin();  it!=end();  ++it )
@@ -432,9 +444,6 @@ LIB_ALIAS* PART_LIBS::FindLibraryAlias( const LIB_ID& aLibId, const wxString& aL
 }
 
 
-/* searches all libraries in the list for an entry, using a case insensitive comparison.
- * Used to find an entry, when the normal (case sensitive) search fails.
-  */
 void PART_LIBS::FindLibraryNearEntries( std::vector<LIB_ALIAS*>& aCandidates,
                                         const wxString& aEntryName,
                                         const wxString& aLibraryName )
@@ -565,6 +574,7 @@ void PART_LIBS::LoadAllLibraries( PROJECT* aProject, bool aShowProgress )
 
     LibNamesAndPaths( aProject, false, NULL, &lib_names );
 
+    // Post symbol library table, this should be empty.  Only the cache library should get loaded.
     if( !lib_names.empty() )
     {
         wxProgressDialog lib_dialog( _( "Loading Symbol Libraries" ),

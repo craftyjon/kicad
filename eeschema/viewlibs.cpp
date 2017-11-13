@@ -33,8 +33,8 @@
 #include <class_drawpanel.h>
 #include <confirm.h>
 #include <eda_doc.h>
-#include <class_sch_screen.h>
 
+#include <class_sch_screen.h>
 #include <general.h>
 #include <viewlib_frame.h>
 #include <eeschema_id.h>
@@ -42,19 +42,24 @@
 #include <dialog_helpers.h>
 #include <dialog_choose_component.h>
 #include <cmp_tree_model_adapter.h>
+#include <symbol_lib_table.h>
 
 
 void LIB_VIEW_FRAME::OnSelectSymbol( wxCommandEvent& aEvent )
 {
     wxString   dialogTitle;
-    PART_LIBS* libs = Prj().SchLibs();
+    SYMBOL_LIB_TABLE* libs = Prj().SchSymbolLibTable();
 
     // Container doing search-as-you-type.
     auto adapter( CMP_TREE_MODEL_ADAPTER::Create( libs ) );
 
-    for( PART_LIB& lib : *libs )
+    std::vector< wxString > libNicknames;
+
+    libNicknames = libs->GetLogicalLibs();
+
+    for( auto nickname : libNicknames )
     {
-        adapter->AddLibrary( lib );
+        adapter->AddLibrary( nickname );
     }
 
     dialogTitle.Printf( _( "Choose Component (%d items loaded)" ),
@@ -66,21 +71,24 @@ void LIB_VIEW_FRAME::OnSelectSymbol( wxCommandEvent& aEvent )
 
     /// @todo: The unit selection gets reset to 1 by SetSelectedComponent() so the unit
     ///        selection feature of the choose symbol dialog doesn't work.
-    LIB_ALIAS* const alias = dlg.GetSelectedAlias( &m_unit );
+    LIB_ID id = dlg.GetSelectedLibId( &m_unit );
 
-    if( !alias || !alias->GetLib() )
+    if( !id.IsValid() || id.GetLibNickname().empty() )
         return;
 
-    if( m_libraryName == alias->GetLib()->GetName() )
+    if( m_libraryName == id.GetLibNickname() )
     {
-        if( m_entryName != alias->GetName() )
-            SetSelectedComponent( alias->GetName() );
+        if( m_entryName != id.GetLibItemName() )
+            SetSelectedComponent( id.GetLibItemName() );
     }
     else
     {
-        m_entryName = alias->GetName();
-        SetSelectedLibrary( alias->GetLib()->GetName() );
+        m_entryName = id.GetLibItemName();
+        SetSelectedLibrary( id.GetLibNickname() );
+        SetSelectedComponent( id.GetLibItemName() );
     }
+
+    Zoom_Automatique( false );
 }
 
 
@@ -114,8 +122,8 @@ void LIB_VIEW_FRAME::onSelectPreviousSymbol( wxCommandEvent& aEvent )
 
 void LIB_VIEW_FRAME::onViewSymbolDocument( wxCommandEvent& aEvent )
 {
-    LIB_ID id( wxEmptyString, m_entryName );
-    LIB_ALIAS* entry = Prj().SchLibs()->FindLibraryAlias( id, m_libraryName );
+    LIB_ID id( m_libraryName, m_entryName );
+    LIB_ALIAS* entry = Prj().SchSymbolLibTable()->LoadSymbol( id );
 
     if( entry && !entry->GetDocFileName().IsEmpty() )
     {
@@ -171,14 +179,12 @@ bool LIB_VIEW_FRAME::OnRightClick( const wxPoint& MousePos, wxMenu* PopMenu )
 
 void LIB_VIEW_FRAME::DisplayLibInfos()
 {
-    PART_LIBS*  libs = Prj().SchLibs();
-
-    if( libs )
+    if( m_libList && !m_libList->IsEmpty() && !m_libraryName.IsEmpty() )
     {
-        PART_LIB* lib = libs->FindLibrary( m_libraryName );
+        const SYMBOL_LIB_TABLE_ROW* row = Prj().SchSymbolLibTable()->FindRow( m_libraryName );
 
-        wxString title = wxString::Format( L"Library Browser \u2014 %s",
-            lib ? lib->GetFullFileName() : "no library selected" );
+        wxString title = wxString::Format( L"Symbol Library Browser \u2014 %s",
+            row ? row->GetFullURI() : "no library selected" );
         SetTitle( title );
     }
 }
@@ -186,8 +192,14 @@ void LIB_VIEW_FRAME::DisplayLibInfos()
 
 void LIB_VIEW_FRAME::RedrawActiveWindow( wxDC* DC, bool EraseBg )
 {
-    LIB_ID id( wxEmptyString, m_entryName );
-    LIB_ALIAS* entry = Prj().SchLibs()->FindLibraryAlias( id, m_libraryName );
+    LIB_ID id( m_libraryName, m_entryName );
+    LIB_ALIAS* entry = nullptr;
+
+    try
+    {
+        entry = Prj().SchSymbolLibTable()->LoadSymbol( id );
+    }
+    catch( const IO_ERROR& e ) {} // ignore, it is handled below
 
     if( !entry )
         return;
