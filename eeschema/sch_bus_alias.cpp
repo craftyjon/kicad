@@ -20,15 +20,14 @@
 #include "sch_bus_alias.h"
 
 
-SCH_BUS_ALIAS::SCH_BUS_ALIAS()
+SCH_BUS_ALIAS::SCH_BUS_ALIAS( SCH_SCREEN* aParent ) :
+    m_parentScreen( aParent )
 {
-
 }
 
 
 SCH_BUS_ALIAS::~SCH_BUS_ALIAS()
 {
-
 }
 
 

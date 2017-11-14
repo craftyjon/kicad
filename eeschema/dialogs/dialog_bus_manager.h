@@ -39,6 +39,14 @@ public:
 
     bool TransferDataToWindow() override;
 
+    void OnAddBus( wxCommandEvent& aEvent );
+    void OnRenameBus( wxCommandEvent& aEvent );
+    void OnRemoveBus( wxCommandEvent& aEvent );
+
+    void OnAddSignal( wxCommandEvent& aEvent );
+    void OnRenameSignal( wxCommandEvent& aEvent );
+    void OnRemoveSignal( wxCommandEvent& aEvent );
+
 protected:
 
     void OnInitDialog( wxInitDialogEvent& aEvent );
@@ -63,9 +71,14 @@ protected:
     wxButton* m_btn_remove_signal;
 
 private:
+    virtual void OnOkClick( wxCommandEvent& aEvent );
+
+    virtual void OnCancelClick( wxCommandEvent& aEvent );
 
     std::vector< SCH_BUS_ALIAS* > m_aliases;
     SCH_BUS_ALIAS* m_activeAlias;
+
+    DECLARE_EVENT_TABLE()
 };
 
 

@@ -31,7 +31,7 @@ class SCH_SCREEN;
 class SCH_BUS_ALIAS
 {
 public:
-    SCH_BUS_ALIAS();
+    SCH_BUS_ALIAS( SCH_SCREEN* aParent );
     ~SCH_BUS_ALIAS();
 
     wxString GetName() { return m_name; }
@@ -45,6 +45,10 @@ public:
     std::vector< wxString > GetMembers() { return m_members; }
 
     bool Contains( const wxString& aName );
+
+    SCH_SCREEN* GetParent() { return m_parentScreen; }
+
+    void SetParent( SCH_SCREEN* aParent ) { m_parentScreen = aParent; }
 
     void Show()
     {

@@ -22,6 +22,7 @@
 
 #include <ctype.h>
 #include <algorithm>
+#include <boost/algorithm/string/join.hpp>
 
 #include <wx/mstream.h>
 #include <wx/filename.h>
@@ -709,7 +710,7 @@ void SCH_LEGACY_PLUGIN::loadFile( const wxString& aFileName, SCH_SCREEN* aScreen
         else if( strCompare( "Text", line ) )
             aScreen->Append( loadText( reader ) );
         else if( strCompare( "BusAlias", line ) )
-            aScreen->AddBusAlias( loadBusAlias( reader ) );
+            aScreen->AddBusAlias( loadBusAlias( reader, aScreen ) );
         else if( strCompare( "$EndSCHEMATC", line ) )
             return;
     }
@@ -1569,9 +1570,9 @@ SCH_COMPONENT* SCH_LEGACY_PLUGIN::loadComponent( FILE_LINE_READER& aReader )
 }
 
 
-SCH_BUS_ALIAS* SCH_LEGACY_PLUGIN::loadBusAlias( FILE_LINE_READER& aReader )
+SCH_BUS_ALIAS* SCH_LEGACY_PLUGIN::loadBusAlias( FILE_LINE_READER& aReader, SCH_SCREEN* aScreen )
 {
-    std::unique_ptr< SCH_BUS_ALIAS > busAlias( new SCH_BUS_ALIAS() );
+    std::unique_ptr< SCH_BUS_ALIAS > busAlias( new SCH_BUS_ALIAS( aScreen ) );
     const char* line = aReader.Line();
 
     wxCHECK( strCompare( "BusAlias", line, &line ), NULL );
@@ -1655,6 +1656,11 @@ void SCH_LEGACY_PLUGIN::Format( SCH_SCREEN* aScreen )
     m_out->Print( 0, "Comment3 %s\n", EscapedUTF8( tb.GetComment3() ).c_str() );
     m_out->Print( 0, "Comment4 %s\n", EscapedUTF8( tb.GetComment4() ).c_str() );
     m_out->Print( 0, "$EndDescr\n" );
+
+    for( auto alias : aScreen->GetBusAliases() )
+    {
+        saveBusAlias( alias );
+    }
 
     for( SCH_ITEM* item = aScreen->GetDrawItems(); item; item = item->Next() )
     {
@@ -2057,6 +2063,17 @@ void SCH_LEGACY_PLUGIN::saveText( SCH_TEXT* aText )
                       italics,
                       aText->GetThickness(), TO_UTF8( text ) );
     }
+}
+
+
+void SCH_LEGACY_PLUGIN::saveBusAlias( SCH_BUS_ALIAS* aAlias )
+{
+    wxCHECK_RET( aAlias != NULL, "SCH_BUS_ALIAS* is NULL" );
+
+    wxString members = boost::algorithm::join( aAlias->GetMembers(), " " );
+
+    m_out->Print( 0, "BusAlias %s %s\n",
+                  TO_UTF8( aAlias->GetName() ), TO_UTF8( members ) );
 }
 
 
