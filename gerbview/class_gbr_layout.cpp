@@ -370,8 +370,6 @@ void GBR_LAYOUT::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, GR_DRAWMODE aDrawMode,
 void GBR_LAYOUT::DrawItemsDCodeID( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
                                    GR_DRAWMODE aDrawMode, COLOR4D aDrawColor )
 {
-    wxPoint     pos;
-    int         width;
     wxString    Line;
 
     GRSetDrawMode( aDC, aDrawMode );
@@ -388,52 +386,27 @@ void GBR_LAYOUT::DrawItemsDCodeID( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
 
         for( GERBER_DRAW_ITEM* item = gerber->GetItemsList(); item != NULL; item = item->Next() )
         {
+            wxPoint pos;
+            int     size;
+            double  orient;
 
-            if( item->m_DCode <= 0 )
+            if( ! item->GetTextD_CodePrms( size, pos, orient ) )
                 continue;
-
-            if( item->m_Flashed || item->m_Shape == GBR_ARC )
-            {
-                pos = item->m_Start;
-            }
-            else
-            {
-                pos.x = (item->m_Start.x + item->m_End.x) / 2;
-                pos.y = (item->m_Start.y + item->m_End.y) / 2;
-            }
-
-            pos = item->GetABPosition( pos );
 
             Line.Printf( wxT( "D%d" ), item->m_DCode );
 
-            if( item->GetDcodeDescr() )
-                width = item->GetDcodeDescr()->GetShapeDim( item );
-            else
-                width = std::min( item->m_Size.x, item->m_Size.y );
+            // Avoid to draw text, if it is too small (size in pixel < 5 pixels)
+            // to be readable:
+            int size_pixel = aDC->LogicalToDeviceXRel( size );
+            const int threshold = 5;
 
-            double orient = TEXT_ANGLE_HORIZ;
-
-            if( item->m_Flashed )
+            if( size_pixel >= threshold )
             {
-                // A reasonable size for text is width/3 because most of time this text has 3 chars.
-                width /= 3;
+                DrawGraphicText( aPanel->GetClipBox(), aDC, pos, aDrawColor, Line,
+                                 orient, wxSize( size, size ),
+                                 GR_TEXT_HJUSTIFY_CENTER, GR_TEXT_VJUSTIFY_CENTER,
+                                 0, false, false );
             }
-            else        // this item is a line
-            {
-                wxPoint delta = item->m_Start - item->m_End;
-
-                if( abs( delta.x ) < abs( delta.y ) )
-                    orient = TEXT_ANGLE_VERT;
-
-                // A reasonable size for text is width/2 because text needs margin below and above it.
-                // a margin = width/4 seems good
-                width /= 2;
-            }
-
-            DrawGraphicText( aPanel->GetClipBox(), aDC, pos, aDrawColor, Line,
-                             orient, wxSize( width, width ),
-                             GR_TEXT_HJUSTIFY_CENTER, GR_TEXT_VJUSTIFY_CENTER,
-                             0, false, false );
         }
     }
 }
