@@ -1570,9 +1570,10 @@ SCH_COMPONENT* SCH_LEGACY_PLUGIN::loadComponent( FILE_LINE_READER& aReader )
 }
 
 
-SCH_BUS_ALIAS* SCH_LEGACY_PLUGIN::loadBusAlias( FILE_LINE_READER& aReader, SCH_SCREEN* aScreen )
+std::shared_ptr< SCH_BUS_ALIAS > SCH_LEGACY_PLUGIN::loadBusAlias( FILE_LINE_READER& aReader,
+                                                                  SCH_SCREEN* aScreen )
 {
-    std::unique_ptr< SCH_BUS_ALIAS > busAlias( new SCH_BUS_ALIAS( aScreen ) );
+    auto busAlias = std::make_shared< SCH_BUS_ALIAS >( aScreen );
     const char* line = aReader.Line();
 
     wxCHECK( strCompare( "BusAlias", line, &line ), NULL );
@@ -1591,7 +1592,7 @@ SCH_BUS_ALIAS* SCH_LEGACY_PLUGIN::loadBusAlias( FILE_LINE_READER& aReader, SCH_S
         }
     }
 
-    return busAlias.release();
+    return busAlias;
 }
 
 
@@ -2066,11 +2067,11 @@ void SCH_LEGACY_PLUGIN::saveText( SCH_TEXT* aText )
 }
 
 
-void SCH_LEGACY_PLUGIN::saveBusAlias( SCH_BUS_ALIAS* aAlias )
+void SCH_LEGACY_PLUGIN::saveBusAlias( std::shared_ptr< SCH_BUS_ALIAS > aAlias )
 {
     wxCHECK_RET( aAlias != NULL, "SCH_BUS_ALIAS* is NULL" );
 
-    wxString members = boost::algorithm::join( aAlias->GetMembers(), " " );
+    wxString members = boost::algorithm::join( aAlias->Members(), " " );
 
     m_out->Print( 0, "BusAlias %s %s\n",
                   TO_UTF8( aAlias->GetName() ), TO_UTF8( members ) );

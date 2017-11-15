@@ -75,8 +75,11 @@ private:
 
     virtual void OnCancelClick( wxCommandEvent& aEvent );
 
-    std::vector< SCH_BUS_ALIAS* > m_aliases;
-    SCH_BUS_ALIAS* m_activeAlias;
+    wxString getAliasDisplayText( std::shared_ptr< SCH_BUS_ALIAS > aAlias );
+
+    std::vector< std::shared_ptr< SCH_BUS_ALIAS > > m_aliases;
+
+    std::shared_ptr< SCH_BUS_ALIAS > m_active_alias;
 
     DECLARE_EVENT_TABLE()
 };

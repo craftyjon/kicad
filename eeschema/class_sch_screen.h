@@ -30,6 +30,8 @@
 #ifndef CLASS_SCREEN_H
 #define CLASS_SCREEN_H
 
+#include <unordered_set>
+
 #include <macros.h>
 #include <dlist.h>
 #include <sch_item_struct.h>
@@ -87,7 +89,7 @@ private:
     int     m_modification_sync;        ///< inequality with PART_LIBS::GetModificationHash()
                                         ///< will trigger ResolveAll().
 
-    std::vector< SCH_BUS_ALIAS* > m_busAliases;
+    std::unordered_set< std::shared_ptr< SCH_BUS_ALIAS > > m_aliases;
 
     /**
      * Function addConnectedItemsToBlock
@@ -528,14 +530,28 @@ public:
     int UpdatePickList();
 
     /**
-     * Adds a bus alias definition
+     * Adds a bus alias definition (and transfers ownership of the pointer)
      */
-    void AddBusAlias( SCH_BUS_ALIAS* aAlias ) { m_busAliases.push_back( aAlias ); }
+    void AddBusAlias( std::shared_ptr< SCH_BUS_ALIAS > aAlias )
+    {
+        m_aliases.insert( aAlias );
+    }
+
+    /**
+     * Removes all bus alias definitions
+     */
+    void ClearBusAliases()
+    {
+        m_aliases.clear();
+    }
 
     /**
      * Returns a list of bus aliases defined in this screen
      */
-    std::vector< SCH_BUS_ALIAS* > GetBusAliases() { return m_busAliases; }
+    std::unordered_set< std::shared_ptr< SCH_BUS_ALIAS > > GetBusAliases()
+    {
+        return m_aliases;
+    }
 
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override;

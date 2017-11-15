@@ -18,10 +18,12 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "dialog_bus_manager.h"
+#include <wx/tokenzr.h>
 
 #include <invoke_sch_dialog.h>
 #include <sch_sheet_path.h>
+
+#include "dialog_bus_manager.h"
 
 
 BEGIN_EVENT_TABLE( DIALOG_BUS_MANAGER, DIALOG_SHIM )
@@ -145,6 +147,9 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
     m_btn_rename_signal->Disable();
     m_btn_remove_signal->Disable();
 
+    m_bus_edit->SetHint( _T( "Bus Alias Name" ) );
+    m_signal_edit->SetHint( _T( "Net or Bus Name" ) );
+
     Layout();
 }
 
@@ -161,16 +166,25 @@ bool DIALOG_BUS_MANAGER::TransferDataToWindow()
     m_aliases.clear();
 
     SCH_SHEET_LIST aSheets( g_RootSheet );
+    std::vector< std::shared_ptr< SCH_BUS_ALIAS > > original_aliases;
 
+    // collect aliases from each open sheet
     for( unsigned i = 0; i < aSheets.size(); i++ )
     {
         auto sheet_aliases = aSheets[i].LastScreen()->GetBusAliases();
-        m_aliases.insert( m_aliases.end(), sheet_aliases.begin(), sheet_aliases.end() );
+        original_aliases.insert( original_aliases.end(), sheet_aliases.begin(),
+                                 sheet_aliases.end() );
     }
-
-    for( unsigned i = 0; i < m_aliases.size(); i++ )
+    
+    // clone into a temporary working set
+    int idx = 0;
+    for( auto alias : original_aliases )
     {
-        m_bus_list_view->InsertItem( i, m_aliases[i]->GetName() );
+        m_aliases.push_back( alias->Clone() );
+        auto text = getAliasDisplayText( alias );
+        m_bus_list_view->InsertItem( idx, text );
+        m_bus_list_view->SetItemPtrData( idx,  wxUIntPtr( m_aliases[idx].get() ) );
+        idx++;
     }
 
     m_bus_list_view->SetColumnWidth( 0, -1 );
@@ -197,14 +211,24 @@ void DIALOG_BUS_MANAGER::OnCancelClick( wxCommandEvent& aEvent )
 
 bool DIALOG_BUS_MANAGER::TransferDataFromWindow()
 {
-    for( unsigned i = 0; i < m_aliases.size(); i++ )
+    // Since we have a clone of all the data, and it is from potentially
+    // multiple screens, the way this works is to rebuild each screen's aliases.
+    // A list of screens is stored here so that the screen's alias list is only
+    // cleared once.
+
+    std::unordered_set< SCH_SCREEN* > cleared_list;
+
+    for( auto alias : m_aliases )
     {
-        auto screen = m_aliases[i]->GetParent();
-        if( !screen )
+        auto screen = alias->GetParent();
+
+        if( cleared_list.count( screen ) == 0 )
         {
-            m_aliases[i]->SetParent( g_RootSheet->GetScreen() );
-            g_RootSheet->GetScreen()->AddBusAlias( m_aliases[i] );
+            screen->ClearBusAliases();
+            cleared_list.insert( screen );
         }
+
+        screen->AddBusAlias( alias );
     }
 
     return true;
@@ -217,18 +241,19 @@ void DIALOG_BUS_MANAGER::OnSelectBus( wxListEvent& event )
     {
         auto alias = m_aliases[ event.GetIndex() ];
 
-        if( m_activeAlias != alias )
+        if( m_active_alias != alias )
         {
-            m_activeAlias = alias;
+            m_active_alias = alias;
 
-            m_bus_edit->Clear();
-            m_bus_edit->AppendText( alias->GetName() );
+            m_bus_edit->ChangeValue( alias->GetName() );
 
             m_btn_rename_bus->Enable();
             m_btn_remove_bus->Enable();
 
-            auto members = alias->GetMembers();
+            auto members = alias->Members();
 
+            // TODO(JE) Clear() seems to be clearing the hint, contrary to 
+            // the wx documentation.
             m_signal_edit->Clear();
             m_signal_list_view->DeleteAllItems();
 
@@ -246,7 +271,7 @@ void DIALOG_BUS_MANAGER::OnSelectBus( wxListEvent& event )
     }
     else
     {
-        m_activeAlias = NULL;
+        m_active_alias = NULL;
         m_bus_edit->Clear();
         m_signal_edit->Clear();
         m_signal_list_view->DeleteAllItems();
@@ -263,11 +288,17 @@ void DIALOG_BUS_MANAGER::OnSelectBus( wxListEvent& event )
 
 void DIALOG_BUS_MANAGER::OnSelectSignal( wxListEvent& event )
 {
-    m_signal_edit->Clear();
-
     if( event.GetEventType() == wxEVT_COMMAND_LIST_ITEM_SELECTED )
     {
-        m_signal_edit->AppendText( event.GetText() );
+        m_signal_edit->ChangeValue( event.GetText() );
+        m_btn_rename_signal->Enable();
+        m_btn_remove_signal->Enable();
+    }
+    else
+    {
+        m_signal_edit->Clear();
+        m_btn_rename_signal->Disable();
+        m_btn_remove_signal->Disable();
     }
 }
 
@@ -277,16 +308,27 @@ void DIALOG_BUS_MANAGER::OnAddBus( wxCommandEvent& aEvent )
     // If there is an active alias, then check that the user actually
     // changed the text in the edit box (we can't have duplicate aliases)
 
-    if( !m_activeAlias ||
-        ( m_activeAlias && m_activeAlias->GetName().Cmp( m_bus_edit->GetValue() ) ) )
+    auto new_name = m_bus_edit->GetValue();
+
+    if( new_name.Length() == 0 )
+    {
+        return;
+    }
+
+    if( !m_active_alias ||
+        ( m_active_alias && m_active_alias->GetName().Cmp( new_name ) ) )
     {
         // The values are different; create a new alias
         // Parent will be set to the root screen when saved
-        auto alias = new SCH_BUS_ALIAS( NULL );
-        alias->SetName( m_bus_edit->GetValue() );
+        auto alias = std::make_shared< SCH_BUS_ALIAS >();
+        alias->SetName( new_name );
+
+        // New aliases get stored on the root sheet
+        alias->SetParent( g_RootSheet->GetScreen() );
+        auto text = getAliasDisplayText( alias );
 
         m_aliases.push_back( alias );
-        long idx = m_bus_list_view->InsertItem( m_aliases.size() - 1, alias->GetName() );
+        long idx = m_bus_list_view->InsertItem( m_aliases.size() - 1, text );
         m_bus_list_view->SetColumnWidth( 0, -1 );
         m_bus_list_view->Select( idx );
     }
@@ -301,35 +343,109 @@ void DIALOG_BUS_MANAGER::OnAddBus( wxCommandEvent& aEvent )
 void DIALOG_BUS_MANAGER::OnRenameBus( wxCommandEvent& aEvent )
 {
     // We should only get here if there is an active alias
-    wxASSERT( m_activeAlias );
+    wxASSERT( m_active_alias );
+
+    m_active_alias->SetName( m_bus_edit->GetValue() );
+    long idx = m_bus_list_view->FindItem( -1, wxUIntPtr( m_active_alias.get() ) );
+
+    wxASSERT( idx >= 0 );
+
+    m_bus_list_view->SetItemText( idx, m_bus_edit->GetValue() );
 }
 
 
 void DIALOG_BUS_MANAGER::OnRemoveBus( wxCommandEvent& aEvent )
 {
     // We should only get here if there is an active alias
-    wxASSERT( m_activeAlias );
+    wxASSERT( m_active_alias );
+    long i = m_bus_list_view->GetFirstSelected();
+    wxASSERT(  m_active_alias == m_aliases[ i ] );
+
+    m_bus_list_view->DeleteItem( i );
+    m_aliases.erase( m_aliases.begin() + i );
+    m_bus_edit->Clear();
+
+    m_active_alias = NULL;
 }
 
 
 void DIALOG_BUS_MANAGER::OnAddSignal( wxCommandEvent& aEvent )
 {
     // We should only get here if there is an active alias
-    wxASSERT( m_activeAlias );
+    wxASSERT( m_active_alias );
+
+    auto name_list = m_signal_edit->GetValue();
+
+    if( name_list.Length() == 0 )
+    {
+        return;
+    }
+
+    // Parse a space-separated list and add each one
+    wxStringTokenizer tok( name_list, " " );
+    while( tok.HasMoreTokens() )
+    {
+        auto name = tok.GetNextToken();
+        if( !m_active_alias->Contains( name ) )
+        {
+            m_active_alias->AddMember( name );
+
+            long idx = m_signal_list_view->InsertItem(
+                    m_active_alias->GetMemberCount() - 1, name );
+            m_signal_list_view->SetColumnWidth( 0, -1 );
+            m_signal_list_view->Select( idx );
+        }
+    }
 }
 
 
 void DIALOG_BUS_MANAGER::OnRenameSignal( wxCommandEvent& aEvent )
 {
     // We should only get here if there is an active alias
-    wxASSERT( m_activeAlias );
+    wxASSERT( m_active_alias );
+
+    auto new_name = m_signal_edit->GetValue();
+    long idx = m_signal_list_view->GetFirstSelected();
+    wxASSERT( idx >= 0 );
+    auto old_name = m_active_alias->Members()[ idx ];
+
+    // User could have typed a space here, so check first
+    if( new_name.Find( " " ) != wxNOT_FOUND )
+    {
+        // TODO(JE) error feedback
+        m_signal_edit->ChangeValue( old_name );
+        return;
+    }
+
+    m_active_alias->Members()[ idx ] = new_name;
+    m_signal_list_view->SetItemText( idx, new_name );
+    m_signal_list_view->SetColumnWidth( 0, -1 );
 }
 
 
 void DIALOG_BUS_MANAGER::OnRemoveSignal( wxCommandEvent& aEvent )
 {
     // We should only get here if there is an active alias
-    wxASSERT( m_activeAlias );
+    wxASSERT( m_active_alias );
+
+    long idx = m_signal_list_view->GetFirstSelected();
+    wxASSERT( idx >= 0 );
+
+    m_active_alias->Members().erase( m_active_alias->Members().begin() + idx );
+
+    m_signal_list_view->DeleteItem( idx );
+    m_signal_edit->Clear();
+    m_btn_rename_signal->Disable();
+    m_btn_remove_signal->Disable();
+}
+
+
+wxString DIALOG_BUS_MANAGER::getAliasDisplayText( std::shared_ptr< SCH_BUS_ALIAS > aAlias )
+{
+    wxString name = aAlias->GetName();
+    wxFileName sheet_name( aAlias->GetParent()->GetFileName() );
+    name += _T( " (" ) + sheet_name.GetFullName() + _T( ")" );
+    return name;
 }
 
 

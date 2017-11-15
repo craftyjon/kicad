@@ -20,10 +20,11 @@
 #ifndef _SCH_BUS_ALIAS_H
 #define _SCH_BUS_ALIAS_H
 
-#include <wxstruct.h>
-#include <vector>
+#include <algorithm>
 
-#include <class_sch_screen.h>
+#include <wx/string.h>
+#include <wxstruct.h>
+
 
 class SCH_SCREEN;
 
@@ -31,33 +32,71 @@ class SCH_SCREEN;
 class SCH_BUS_ALIAS
 {
 public:
-    SCH_BUS_ALIAS( SCH_SCREEN* aParent );
+    SCH_BUS_ALIAS( SCH_SCREEN* aParent = NULL );
+
     ~SCH_BUS_ALIAS();
 
-    wxString GetName() { return m_name; }
+    std::shared_ptr< SCH_BUS_ALIAS > Clone() const
+    {
+        return std::make_shared< SCH_BUS_ALIAS >( *this );
+    }
 
-    void SetName( const wxString& aName ) { m_name = aName; }
+    wxString GetName()
+    {
+        return m_name;
+    }
 
-    void AddMember( const wxString& aName ) { m_members.push_back( aName ); }
+    void SetName( const wxString& aName )
+    {
+        m_name = aName;
+    }
 
-    int GetMemberCount() { return m_members.size(); }
+    void ClearMembers()
+    {
+        m_members.clear();
+    }
 
-    std::vector< wxString > GetMembers() { return m_members; }
+    void AddMember( const wxString& aName )
+    {
+        m_members.push_back( aName );
+    }
 
-    bool Contains( const wxString& aName );
+    int GetMemberCount()
+    {
+        return m_members.size();
+    }
 
-    SCH_SCREEN* GetParent() { return m_parentScreen; }
+    std::vector< wxString >& Members()
+    {
+        return m_members;
+    }
 
-    void SetParent( SCH_SCREEN* aParent ) { m_parentScreen = aParent; }
+    bool Contains( const wxString& aName )
+    {
+        return ( std::find( m_members.begin(), m_members.end(), aName )
+                 != m_members.end() );
+    }
+
+    SCH_SCREEN* GetParent()
+    {
+        return m_parent;
+    }
+
+    void SetParent( SCH_SCREEN* aParent )
+    {
+        m_parent = aParent;
+    }
 
     void Show()
     {
+#ifdef DEBUG
         std::cout << "Bus Alias: " << m_name << std::endl;
-        for( auto member : m_members )
+        for( const auto& member : m_members )
             std::cout << "    " << member << std::endl;
+#endif
     }
 
-private:
+protected:
 
     wxString m_name;
 
@@ -68,7 +107,7 @@ private:
      * This means we have to store a reference back to our parent so that
      * the dialog can update the parent if aliases are changed or removed.
      */
-    SCH_SCREEN* m_parentScreen;
+    SCH_SCREEN* m_parent;
 };
 
 #endif

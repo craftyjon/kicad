@@ -21,17 +21,11 @@
 
 
 SCH_BUS_ALIAS::SCH_BUS_ALIAS( SCH_SCREEN* aParent ) :
-    m_parentScreen( aParent )
+    m_parent( aParent )
 {
 }
 
 
 SCH_BUS_ALIAS::~SCH_BUS_ALIAS()
 {
-}
-
-
-bool SCH_BUS_ALIAS::Contains( const wxString& aName )
-{
-    return false;
 }

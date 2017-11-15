@@ -23,6 +23,7 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <memory>
 #include <sch_io_mgr.h>
 
 
@@ -139,7 +140,7 @@ private:
     SCH_BUS_ENTRY_BASE* loadBusEntry( FILE_LINE_READER& aReader );
     SCH_TEXT* loadText( FILE_LINE_READER& aReader );
     SCH_COMPONENT* loadComponent( FILE_LINE_READER& aReader );
-    SCH_BUS_ALIAS* loadBusAlias( FILE_LINE_READER& aReader, SCH_SCREEN* aScreen );
+    std::shared_ptr< SCH_BUS_ALIAS > loadBusAlias( FILE_LINE_READER& aReader, SCH_SCREEN* aScreen );
 
     void saveComponent( SCH_COMPONENT* aComponent );
     void saveField( SCH_FIELD* aField );
@@ -150,7 +151,7 @@ private:
     void saveBusEntry( SCH_BUS_ENTRY_BASE* aBusEntry );
     void saveLine( SCH_LINE* aLine );
     void saveText( SCH_TEXT* aText );
-    void saveBusAlias( SCH_BUS_ALIAS* aAlias );
+    void saveBusAlias( std::shared_ptr< SCH_BUS_ALIAS > aAlias );
 
     void cacheLib( const wxString& aLibraryFileName );
     bool writeDocFile( const PROPERTIES* aProperties );
