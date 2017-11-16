@@ -45,8 +45,14 @@ class SCH_LINE : public SCH_ITEM
     bool    m_endIsDangling;    ///< True if end point is not connected.
     wxPoint m_start;            ///< Line start point
     wxPoint m_end;              ///< Line end point
+    int     m_size;             ///< Line pensize
+    int     m_style;            ///< Line style
+    COLOR4D m_color;            ///< Line color
 
 public:
+
+    static const enum wxPenStyle PenStyle[];
+
     SCH_LINE( const wxPoint& pos = wxPoint( 0, 0 ), int layer = LAYER_NOTES );
 
     SCH_LINE( const SCH_LINE& aLine );
@@ -75,6 +81,34 @@ public:
     wxPoint GetEndPoint() const { return m_end; }
 
     void SetEndPoint( const wxPoint& aPosition ) { m_end = aPosition; }
+
+    int GetDefaultStyle() const;
+
+    void SetLineStyle( const int aStyle );
+
+    int GetLineStyle() const;
+
+    /// @return the style name from the style id
+    /// (mainly to write it in .sch file
+    static const char* GetLineStyleName( int aStyle );
+
+    /// @return the style id from the style  name
+    /// (mainly to read style from .sch file
+    static int GetLineStyleInternalId( const wxString& aStyleName );
+
+    void SetLineColor( const COLOR4D aColor );
+
+    void SetLineColor( const double r, const double g, const double b, const double a );
+
+    COLOR4D GetLineColor() const;
+
+    COLOR4D GetDefaultColor() const;
+
+    int GetDefaultWidth() const;
+
+    void SetLineWidth( const int aSize );
+
+    int GetLineSize() const { return m_size; }
 
     const EDA_RECT GetBoundingBox() const override;
 
@@ -146,6 +180,8 @@ public:
     wxPoint MidPoint();
 
     EDA_ITEM* Clone() const override;
+
+    void SwapData( SCH_ITEM* aItem ) override;
 
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override;
