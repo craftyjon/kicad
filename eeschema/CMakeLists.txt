@@ -186,6 +186,7 @@ set( EESCHEMA_SRCS
     sch_text.cpp
     sch_validators.cpp
     sch_bus_alias.cpp
+    sch_connection.cpp
     schedit.cpp
     schematic_undo_redo.cpp
     schframe.cpp

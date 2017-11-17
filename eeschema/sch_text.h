@@ -34,6 +34,7 @@
 #include <macros.h>
 #include <eda_text.h>
 #include <sch_item_struct.h>
+#include <sch_connection.h>   // for CONNECTION_TYPE
 
 
 class LINE_READER;
@@ -52,17 +53,6 @@ enum PINSHEETLABEL_SHAPE {
 };
 
 
-/**
- * For text objects that support connections (labels, heirarchical pins, etc),
- * this property stores whether the item is connected to a net or bus.
- */
-enum LABEL_CONNECTION_TYPE {
-    CONNECTION_NONE,
-    CONNECTION_NET,
-    CONNECTION_BUS
-};
-
-
 extern const char* SheetLabelType[];    /* names of types of labels */
 
 
@@ -75,7 +65,7 @@ protected:
     /// supports connections.
     bool m_isDangling;
 
-    LABEL_CONNECTION_TYPE m_connectionType;
+    CONNECTION_TYPE m_connectionType;
 
     /**
      * The orientation of text and any associated drawing elements of derived objects.

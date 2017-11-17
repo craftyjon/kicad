@@ -33,6 +33,7 @@
 #include <vector>
 #include <class_base_screen.h>
 #include <general.h>
+#include <sch_connection.h>
 
 #include <boost/ptr_container/ptr_vector.hpp>
 
@@ -118,6 +119,9 @@ public:
  */
 class SCH_ITEM : public EDA_ITEM
 {
+public:
+    boost::optional<SCH_CONNECTION> m_connection;   ///< Connection info
+    
 protected:
     SCH_LAYER_ID   m_Layer;
     EDA_ITEMS      m_connections;   ///< List of items connected to this item.

@@ -276,7 +276,7 @@ bool NETLIST_OBJECT::IsLabelConnected( NETLIST_OBJECT* aNetItem )
 }
 
 
-void NETLIST_OBJECT::parseBusVector( wxString vector, wxString* name, long* begin, long* end )
+void NETLIST_OBJECT::ParseBusVector( wxString vector, wxString* name, long* begin, long* end )
 {
     wxCHECK_RET( IsBusLabel( vector ),
                  wxT( "<" ) + vector + wxT( "> is not a valid bus vector." ) );
@@ -359,7 +359,7 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
                 wxString vecName, tmpMember;
                 long begin, end, member;
 
-                parseBusVector( tmp, &vecName, &begin, &end );
+                ParseBusVector( tmp, &vecName, &begin, &end );
 
                 if( !selfSet )
                 {
@@ -407,7 +407,7 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
         wxString busName, tmp;
         long begin, end, member;
 
-        parseBusVector( m_Label, &busName, &begin, &end );
+        ParseBusVector( m_Label, &busName, &begin, &end );
 
         member = begin;
         tmp = busName;

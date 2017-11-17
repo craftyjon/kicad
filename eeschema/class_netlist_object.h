@@ -128,17 +128,6 @@ private:
                                          * default net name.
                                          */
 
-    /**
-     * Parses a bus vector (e.g. A[7..0]) into name, begin, and end.
-     * Ensures that begin and end are positive and that end > begin.
-     *
-     * @param vector is a bus vector label string
-     * @param name output of the name portion of the label
-     * @param begin is the first entry in the vector
-     * @param end is the last entry in the vector
-     */
-    void parseBusVector( wxString vector, wxString* name, long* begin, long* end );
-
 public:
 
 #if defined(DEBUG)
@@ -275,6 +264,17 @@ public:
      *                      the bus label NETLIST_OBJECTs.
      */
     void ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItems );
+
+    /**
+     * Parses a bus vector (e.g. A[7..0]) into name, begin, and end.
+     * Ensures that begin and end are positive and that end > begin.
+     *
+     * @param vector is a bus vector label string
+     * @param name output of the name portion of the label
+     * @param begin is the first entry in the vector
+     * @param end is the last entry in the vector
+     */
+    static void ParseBusVector( wxString vector, wxString* name, long* begin, long* end );
 };
 
 
