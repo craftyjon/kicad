@@ -39,7 +39,7 @@
 #include <class_drawpanel.h>
 #include <sch_item_struct.h>
 #include <schframe.h>
-#include <plot_common.h>
+#include <class_plotter.h>
 
 #include <netlist.h>
 #include <class_netlist_object.h>
@@ -832,10 +832,10 @@ void SCH_SCREEN::addConnectedItemsToBlock( const wxPoint& position )
 {
     SCH_ITEM* item;
     ITEM_PICKER picker;
-    bool addinlist = true;
 
     for( item = m_drawList.begin(); item; item = item->Next() )
     {
+        bool addinlist = true;
         picker.SetItem( item );
 
         if( !item->IsConnectable() || !item->IsConnected( position )

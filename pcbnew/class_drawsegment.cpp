@@ -1,10 +1,10 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2004 Jean-Pierre Charras, jean-pierre.charras@gipsa-lab.inpg.fr
+ * Copyright (C) 2017 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2012 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
  * Copyright (C) 2011 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 1992-2011 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -57,7 +57,8 @@ DRAWSEGMENT::DRAWSEGMENT( BOARD_ITEM* aParent, KICAD_T idtype ) :
     m_Angle = 0;
     m_Flags = 0;
     m_Shape = S_SEGMENT;
-    m_Width = Millimeter2iu( 0.15 );    // Gives a decent width
+    // Gives a decent pen size to draw shape:
+    m_Width = m_Shape == S_POLYGON ? 0 : Millimeter2iu( 0.15 );
 }
 
 
@@ -315,6 +316,23 @@ void DRAWSEGMENT::Draw( EDA_DRAW_PANEL* panel, wxDC* DC, GR_DRAWMODE draw_mode,
             }
         }
 
+        break;
+
+    case S_POLYGON:
+        {
+            SHAPE_POLY_SET& outline = GetPolyShape();
+            // Draw the polygon: only one polygon is expected
+            // However we provide a multi polygon shape drawing
+            // ( for the future or to show a non expected shape )
+            for( int jj = 0; jj < outline.OutlineCount(); ++jj )
+            {
+                SHAPE_LINE_CHAIN& poly = outline.Outline( jj );
+
+                GRClosedPoly( panel->GetClipBox(), DC, poly.PointCount(),
+                        (wxPoint*)&poly.Point( 0 ), FILLED, GetWidth(),
+                        color, color );
+            }
+        }
         break;
 
     default:

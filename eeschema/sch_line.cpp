@@ -1,8 +1,8 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2015 Jean-Pierre Charras, jaen-pierre.charras@gipsa-lab.inpg.com
- * Copyright (C) 1992-2016 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2015 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -31,7 +31,7 @@
 #include <gr_basic.h>
 #include <macros.h>
 #include <class_drawpanel.h>
-#include <plot_common.h>
+#include <class_plotter.h>
 #include <base_units.h>
 #include <eeschema_config.h>
 #include <general.h>
@@ -783,7 +783,7 @@ int SCH_EDIT_FRAME::EditLine( SCH_LINE* aLine, bool aRedraw )
         return wxID_CANCEL;
 
     DIALOG_EDIT_LINE_STYLE dlg( this );
-    wxString units = GetUnitsLabel( g_UserUnit );
+    wxString units = GetAbbreviatedUnitsLabel( g_UserUnit );
     int old_style = aLine->GetLineStyle();
     int old_width = aLine->GetPenSize();
     COLOR4D old_color = aLine->GetLineColor();
