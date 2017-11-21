@@ -267,6 +267,13 @@ public:
     void Process_Config( wxCommandEvent& event );
     void OnSelectTool( wxCommandEvent& aEvent );
 
+    /**
+     * Processes an "Unfold Bus" command from the right-click menu.
+     * Depending on what the user clicked, this can result in the creation
+     * of one or more new objects.
+     */
+    void OnUnfoldBus( wxCommandEvent& event );
+
     bool GeneralControl( wxDC* aDC, const wxPoint& aPosition, EDA_KEY aHotKey = 0 ) override;
 
     /**

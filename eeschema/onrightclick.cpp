@@ -755,16 +755,26 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
         wxMenu* bus_unfolding_menu = new wxMenu;
 
         // TODO(JE) proper bitmap
-        AddMenuItem( PopMenu, bus_unfolding_menu, ID_POPUP_SCH_UNFOLD_BUS,
-                    _( "Unfold Bus" ), KiBitmap( add_bus_xpm ) );
+        PopMenu->AppendSubMenu( bus_unfolding_menu, _( "Unfold Bus" ) );
 
         if( connection->m_bus_type == BUS_TYPE_VECTOR )
         {
             for( auto member : connection->m_members )
             {
-                bus_unfolding_menu->Append( ID_POPUP_SCH_UNFOLD_BUS_START + member->m_vector_index,
-                                            member->m_name,
-                                            wxEmptyString );
+                int id = ID_POPUP_SCH_UNFOLD_BUS + member->m_vector_index;
+                auto item = bus_unfolding_menu->Append( id, member->m_name,
+                                                        wxEmptyString );
+
+                // Because Bind() takes ownership of the user data item, we
+                // make a new menu item here and set its label.  Why create a
+                // menu item instead of just a wxString or something? Because
+                // Bind() requires a pointer to wxObject rather than a void
+                // pointer.  Maybe at some point I'll think of a better way...
+                auto item_clone = new wxMenuItem();
+                item_clone->SetText( member->m_name );
+
+                frame->Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
+                             frame, id, id, item_clone );
             }
         }
         else if( connection->m_bus_type == BUS_TYPE_GROUP )

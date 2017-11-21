@@ -1581,6 +1581,8 @@ bool SCH_SCREENS::HasNoFullyDefinedLibIds()
 }
 
 
+// TODO(JE) This should live elsewhere
+// Define a hash operator for wxPoint so it can be used as a std::map key
 namespace std {
 
     template <>

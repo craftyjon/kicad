@@ -410,6 +410,13 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 }
 
 
+void SCH_EDIT_FRAME::OnUnfoldBus( wxCommandEvent& event )
+{
+    auto item = static_cast< wxMenuItem* >( event.GetEventUserData() );
+    std::cout << item->GetLabel() << std::endl;
+}
+
+
 void SCH_EDIT_FRAME::OnMoveItem( wxCommandEvent& aEvent )
 {
     SCH_SCREEN* screen = GetScreen();
