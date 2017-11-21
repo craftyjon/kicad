@@ -23,48 +23,40 @@
 
 void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
 {
-    if( m_type == CONNECTION_NET )
+    if( IsBusVectorLabel( aLabel ) )
     {
+        // TODO(JE) Is storing the whole name right? (vs. the prefix)
         m_name = aLabel;
+        m_type = CONNECTION_BUS;
+        m_bus_type = BUS_TYPE_VECTOR;
+
+        wxString prefix;
+        NETLIST_OBJECT::ParseBusVector( aLabel, &prefix,
+                                        &m_vector_start, &m_vector_end );
+
+        for( long i = m_vector_start; i <= m_vector_end; ++i )
+        {
+            auto member = std::make_shared< SCH_CONNECTION >( m_parent );
+            wxString name = prefix;
+            name << i;
+            member->m_name = name;
+            member->m_vector_index = i;
+            m_members.push_back( member );
+        }
     }
+    else if( IsHeteroBusLabel( aLabel ) )
+    {
+        std::cout << "Hetero bus label " << aLabel << " not handled yet." << std::endl;
+        m_type = CONNECTION_BUS;
+        m_bus_type = BUS_TYPE_GROUP;
+    }
+    // else if( IsBusAlias( aLabel ) )
+    // {
+
+    // }
     else
     {
-        if( IsBusVectorLabel( aLabel ) )
-        {
-            // TODO(JE) Is storing the whole name right? (vs. the prefix)
-            m_name = aLabel;
-
-            wxString prefix;
-            NETLIST_OBJECT::ParseBusVector( aLabel, &prefix,
-                                            &m_vector_start, &m_vector_end );
-
-            std::cout << "Configuring connection from label: " << aLabel << std::endl;
-            std::cout << "prefix " << prefix << " start " << m_vector_start
-                      << " end " << m_vector_end << std::endl;
-
-            for( long i = m_vector_start; i <= m_vector_end; ++i )
-            {
-                auto member = std::make_shared< SCH_CONNECTION >( m_parent );
-                wxString name = prefix;
-                name << i;
-                member->m_name = name;
-                member->m_vector_index = i;
-                m_members.push_back( member );
-                std::cout << "    member: " << name << std::endl;
-            }
-        }
-        else if( IsHeteroBusLabel( aLabel ) )
-        {
-            std::cout << "Hetero bus label " << aLabel << " not handled yet." << std::endl;
-        }
-        // else if( IsBusAlias( aLabel ) )
-        // {
-
-        // }
-        else
-        {
-            wxASSERT_MSG( false,
-                          _( "Connection is a bus type, but label doesn't match!" ) );
-        }
+        m_name = aLabel;
+        m_type = CONNECTION_NET;
     }
 }

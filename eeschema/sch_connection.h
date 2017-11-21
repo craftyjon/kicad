@@ -17,8 +17,8 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _SCH_CONNECTIVITY_H
-#define _SCH_CONNECTIVITY_H
+#ifndef _SCH_CONNECTION_H
+#define _SCH_CONNECTION_H
 
 #include <memory>
 
@@ -48,7 +48,7 @@ enum BUS_TYPE
  * Each graphical item can have a SCH_CONNECTION describing its logical
  * connection (to a bus or net).  These are generated when netlisting, or when
  * editing operations that can change the netlist are performed.
- * 
+ *
  * These objects are used to implement the bus unfolding and net highlighting
  * features, not the final netlist (at least for now).
  */
@@ -81,13 +81,13 @@ public:
     wxString m_name;        ///< Name of the bus.
 
     int m_net_code;
-    
+
     int m_bus_code;         // TODO(JE) is this actually necessary?
 
     long m_vector_index;    ///< Index of bus vector member nets
-    
+
     long m_vector_start;    ///< Highest member of a vector bus
-    
+
     long m_vector_end;      ///< Lowest member of a vector bus
 
     // For bus connections, store a list of member connections
@@ -96,4 +96,4 @@ public:
 };
 
 #endif
- 
+

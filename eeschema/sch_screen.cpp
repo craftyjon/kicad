@@ -40,6 +40,7 @@
 #include <sch_item_struct.h>
 #include <schframe.h>
 #include <class_plotter.h>
+#include <drawtxt.h>
 
 #include <netlist.h>
 #include <class_netlist_object.h>
@@ -54,6 +55,11 @@
 #include <sch_text.h>
 #include <lib_pin.h>
 #include <symbol_lib_table.h>
+
+#include <connection_graph.h>
+
+// TODO(JE) Debugging only
+#include <profile.h>
 
 
 #define EESCHEMA_FILE_STAMP   "EESchema"
@@ -575,6 +581,20 @@ void SCH_SCREEN::Draw( EDA_DRAW_PANEL* aCanvas, wxDC* aDC, GR_DRAWMODE aDrawMode
             // uncomment line below when there is a virtual EDA_ITEM::GetBoundingBox()
             // if( panel->GetClipBox().Intersects( item->GetBoundingBox() ) )
             item->Draw( aCanvas, aDC, wxPoint( 0, 0 ), aDrawMode, aColor );
+
+        // TODO(JE) Remove debugging code
+        if( item->m_connection )
+        {
+            auto pos = item->GetBoundingBox().Centre();
+            wxString net = _( "" );
+            int sz = Mils2iu( 15 );
+
+            net = item->m_connection->m_name;
+
+            auto text = SCH_TEXT( pos, net, SCH_TEXT_T );
+            text.SetTextSize( wxSize( sz, sz ) );
+            text.Draw( aCanvas, aDC, wxPoint( 0, 0 ), aDrawMode, COLOR4D( LIGHTRED ) );
+        }
     }
 
     for( auto item : junctions )
@@ -1558,6 +1578,214 @@ bool SCH_SCREENS::HasNoFullyDefinedLibIds()
         return false;
 
     return true;
+}
+
+
+namespace std {
+
+    template <>
+    struct hash<wxPoint>
+    {
+        std::size_t operator() ( const wxPoint& k ) const
+        {
+            using std::hash;
+
+            return ( ( hash<int>()( k.x )
+                     ^ ( hash<int>()( k.y ) << 1 ) ) >> 1 );
+        }
+    };
+}
+
+
+void SCH_SCREENS::RecalculateConnections()
+{
+    // TODO(JE) This is a prototype that always recalculates the whole schematic
+    // At some point there should be some kind of mechanism for marking
+    // individual items as dirty, so that the propagation can only happen
+    // through the tree of related items.
+
+    std::cout << "RecalculateConnections" << std::endl;
+
+    PROF_COUNTER phase1;
+
+    // Phase 1: update m_connected_items
+    // TODO(JE) This doesn't cross the heirarchy boundaries.  Should it?
+    // TODO(JE) This doesn't work for labels that aren't at the endpoints of lines
+    for( auto screen = GetFirst(); screen; screen = GetNext() )
+    {
+        std::unordered_map< wxPoint, std::vector< SCH_ITEM* > > connection_map;
+        std::vector< SCH_ITEM* > items;
+
+        for( auto item = screen->GetDrawItems(); item; item = item->Next() )
+        {
+            if( item->IsConnectable() )
+            {
+                items.push_back( item );
+
+                std::vector< wxPoint > points;
+                item->GetConnectionPoints( points );
+                item->m_connected_items.clear();
+                for( auto point : points )
+                {
+                    connection_map[ point ].push_back( item );
+                }
+            }
+        }
+
+        for( auto& it : connection_map )
+        {
+            // std::cout << "Connection map for " << it.first << std::endl;
+            auto connection_vec = it.second;
+            for( auto connected_item : connection_vec )
+            {
+                // std::cout << "    " << connected_item->GetClass() << " " << connected_item << std::endl;
+                for( auto test_item : connection_vec )
+                {
+                    if( test_item != connected_item )
+                    {
+                        connected_item->m_connected_items.insert( test_item );
+                    }
+                }
+            }
+        }
+    }
+
+    phase1.Stop();
+    std::cout << "Phase 1 " << phase1.msecs() << " ms" << std::endl;
+
+    PROF_COUNTER phase2;
+
+    CONNECTION_GRAPH graph;
+
+    // TODO(JE): Move to CONNECTION_GRAPH?
+    VERTEX_MAP_T::iterator pos;
+    bool inserted;
+    CONNECTION_VERTEX vertex;
+
+    // Phase 2: build graphs of connections
+    std::vector<SCH_ITEM*> items_list;
+    for( auto screen = GetFirst(); screen; screen = GetNext() )
+    {
+        for( auto item = screen->GetDrawItems(); item; item = item->Next() )
+        {
+            if( item->IsConnectable() )
+            {
+                // Skip non-power components
+                if( item->Type() == SCH_COMPONENT_T )
+                {
+                    if( auto part = static_cast< SCH_COMPONENT* >( item )->GetPartRef().lock() )
+                    {
+                        if( !part->IsPower() )
+                            continue;
+                    }
+                }
+
+                if( !item->m_connection )
+                {
+                    // no connection data yet, let's try to generate one
+                    item->m_connection = SCH_CONNECTION( item );
+                }
+                item->m_connection->m_name = "<NO NET>";
+                item->m_connection_dirty = true;
+
+                items_list.push_back( item );
+
+                // Add item to connection graph
+                // TODO(JE) Move to CONNECTION_GRAPH
+                boost::tie( pos, inserted ) = graph.m_vertex_map.insert(
+                    std::make_pair( item, CONNECTION_VERTEX() ) );
+
+                if( inserted )
+                {
+                    vertex = boost::add_vertex( graph.m_graph );
+                    graph.m_graph[ vertex ].item = item;
+                    pos->second = vertex;
+                }
+            }
+        }
+    }
+
+    // Add connection edges
+    // TODO(JE) move to CONNECTION_GRAPH
+    for( auto item : items_list )
+    {
+        auto first = graph.m_vertex_map[ item ];
+        for( auto connected_item : item->m_connected_items )
+        {
+            auto second = graph.m_vertex_map[ connected_item ];
+
+            if( second )
+                boost::add_edge( first, second, graph.m_graph );
+        }
+    }
+
+    // Create vertex index map
+    size_t vertex_index = 0;
+
+    CONNECTION_VERTEX_ITERATOR vertex_it, vertex_end;
+    for( boost::tie( vertex_it, vertex_end ) = boost::vertices( graph.m_graph );
+         vertex_it != vertex_end; ++vertex_it )
+    {
+        boost::put( graph.m_vertex_index_property_map, *vertex_it, vertex_index++ );
+    }
+
+    // Look for "forcing" items that define a net (labels, power components, ...)
+    // and propagate them to connected wires/junctions
+
+    for( boost::tie( vertex_it, vertex_end ) = boost::vertices( graph.m_graph );
+         vertex_it != vertex_end; ++vertex_it )
+    {
+        auto item = graph.m_graph[ *vertex_it ].item;
+
+        switch( item->Type() )
+        {
+        case SCH_LABEL_T:
+        case SCH_GLOBAL_LABEL_T:
+        case SCH_HIERARCHICAL_LABEL_T:
+        case SCH_COMPONENT_T:
+        {
+            if( item->Type() == SCH_COMPONENT_T )
+            {
+                // Check for power pins and assign net accordingly
+                if( auto part = static_cast< SCH_COMPONENT* >( item )->GetPartRef().lock() )
+                {
+                    if( part->IsPower() )
+                    {
+                        // TODO(JE) this doesn't really make sense; shouldn't we assume
+                        // that there is only one pin on a power component?
+                        for( auto pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
+                        {
+                            if( pin->IsPowerConnection() )
+                            {
+                                item->m_connection->m_name = pin->GetName();
+                                item->m_connection_dirty = false;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                item->m_connection->ConfigureFromLabel( static_cast<SCH_TEXT*>( item )->GetText() );
+                item->m_connection_dirty = false;
+            }
+
+            auto visitor = CONNECTION_VISITOR( *( item->m_connection ) );
+
+            boost::breadth_first_search( graph.m_graph, *vertex_it,
+                                         boost::visitor( visitor ).vertex_index_map(
+                                            graph.m_vertex_index_property_map ) );
+        }
+
+        default:
+            item->m_connection_dirty = false;
+            break;
+        }
+
+    }
+
+    phase2.Stop();
+    std::cout << "Phase 2 " <<  phase2.msecs() << " ms" << std::endl;
 }
 
 

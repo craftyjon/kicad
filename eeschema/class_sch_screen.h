@@ -642,6 +642,16 @@ public:
      */
     bool HasNoFullyDefinedLibIds();
 
+    // TODO(JE) is this the right home for this?
+    /**
+     * Generates the connection data for the entire schematic heirarchy.
+     * Note that connection data is not (currently) the same as a netlist.
+     * For example, a netlist has no concept of buses (bus members are stored as
+     * individual nets) but in the connectivity objects, buses are stored
+     * separately from individual nets.
+     */
+    void RecalculateConnections();
+
 private:
     void AddScreenToList( SCH_SCREEN* aScreen );
     void BuildScreenList( EDA_ITEM* aItem );

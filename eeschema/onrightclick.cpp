@@ -748,45 +748,32 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
 
     AddMenuItem( PopMenu, ID_POPUP_SCH_BREAK_WIRE, _( "Break Bus" ), KiBitmap( break_bus_xpm ) );
 
-    // Rebuild the netlist to assign connection information
-    // TODO(JE) This is debug code; should be done elsewhere.
-    std::unique_ptr<NETLIST_OBJECT_LIST> objects( frame->BuildNetListBase() );
-    for( auto obj : *objects )
-    {
-        auto comp = static_cast<SCH_ITEM*>( obj->m_Comp );
-        if( comp )
-        {
-            if( !comp->m_connection )
-            {
-                std::cout << "Creating connection obj for " << obj << " connected to comp " << comp << std::endl;
-                std::cout << "Short net name is: " << obj->GetShortNetName() << std::endl;
-                comp->m_connection = SCH_CONNECTION( comp );
-                comp->m_connection->ConfigureFromLabel( obj->GetShortNetName() );
-            }
-            else
-            {
-                std::cout << "Comp " << comp << " has connection obj: " << comp->m_connection->m_name << std::endl;
-            }
-        }
-    }
-
     // Bus unfolding menu (only available if bus is properly defined)
     auto connection = Bus->m_connection;
     if( connection )
     {
         wxMenu* bus_unfolding_menu = new wxMenu;
 
-        auto bus_name = connection->m_name;
-
         // TODO(JE) proper bitmap
         AddMenuItem( PopMenu, bus_unfolding_menu, ID_POPUP_SCH_UNFOLD_BUS,
-                    _( "Unfold Bus " ) + bus_name, KiBitmap( add_bus_xpm ) );
+                    _( "Unfold Bus" ), KiBitmap( add_bus_xpm ) );
 
-        for( auto member : connection->m_members )
+        if( connection->m_bus_type == BUS_TYPE_VECTOR )
         {
-            bus_unfolding_menu->Append( ID_POPUP_SCH_UNFOLD_BUS_START + member->m_vector_index,
-                                        member->m_name,
-                                        wxEmptyString );
+            for( auto member : connection->m_members )
+            {
+                bus_unfolding_menu->Append( ID_POPUP_SCH_UNFOLD_BUS_START + member->m_vector_index,
+                                            member->m_name,
+                                            wxEmptyString );
+            }
+        }
+        else if( connection->m_bus_type == BUS_TYPE_GROUP )
+        {
+            // TODO(JE) Recursive unpacking of bus groups
+        }
+        else
+        {
+            wxFAIL_MSG( _( "Trying to unfold bus but connection isn't a bus!" ) );
         }
     }
 

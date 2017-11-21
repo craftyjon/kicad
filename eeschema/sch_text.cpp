@@ -678,8 +678,6 @@ void SCH_TEXT::GetNetListItem( NETLIST_OBJECT_LIST& aNetListItems,
 
         item->ConvertBusToNetListItems( aNetListItems );
     }
-
-    m_connection->ConfigureFromLabel( m_Text );
 }
 
 

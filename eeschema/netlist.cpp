@@ -710,35 +710,8 @@ void NETLIST_OBJECT_LIST::propagateNetCode( int aOldNetCode, int aNewNetCode, bo
         {
             NETLIST_OBJECT* object = GetItem( jj );
 
-            // TODO(JE) I think this is where I have to insert the code
-            // but the key question is: does it propagate from the label first,
-            // label last, or unknown?
-
-            // I need to figure out how this process works and how labels are
-            // assigned.
-
-            // It's probably a good idea to study plain nets (not buses) first.
-
-            // If net codes are assigned before labels are known, we have to
-            // figure out where labels are assigned, and set the connection info
-            // at that point.
-            
-            // Now that I think about it, this is probably the wrong place.
-
             if( object->m_BusNetCode == aOldNetCode )
-            {
                 object->m_BusNetCode = aNewNetCode;
-
-                // // Propagate the connection info
-                // auto comp = static_cast<SCH_ITEM*>( Label->m_Comp );
-                // auto comp_tst = static_cast<SCH_ITEM*>( LabelInTst->m_Comp );
-                // wxASSERT( comp );
-                // wxASSERT( comp_tst );
-                // if( !comp_tst->m_connection )
-                // {
-                //     comp_tst->m_connection = comp->m_connection;
-                // }
-            }
         }
     }
 }

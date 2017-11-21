@@ -34,6 +34,7 @@
 #include <class_base_screen.h>
 #include <general.h>
 #include <sch_connection.h>
+#include <unordered_set>
 
 #include <boost/ptr_container/ptr_vector.hpp>
 
@@ -121,7 +122,9 @@ class SCH_ITEM : public EDA_ITEM
 {
 public:
     boost::optional<SCH_CONNECTION> m_connection;   ///< Connection info
-    
+    std::unordered_set<SCH_ITEM*> m_connected_items;
+    bool m_connection_dirty;
+
 protected:
     SCH_LAYER_ID   m_Layer;
     EDA_ITEMS      m_connections;   ///< List of items connected to this item.

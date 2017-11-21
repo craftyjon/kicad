@@ -357,7 +357,7 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
             if( IsBusLabel( tmp ) )
             {
                 wxString vecName, tmpMember;
-                long begin, end, member;
+                long begin = 0, end = 0, member = 0;
 
                 ParseBusVector( tmp, &vecName, &begin, &end );
 

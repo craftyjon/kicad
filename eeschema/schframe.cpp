@@ -779,6 +779,9 @@ void SCH_EDIT_FRAME::OnModify()
 
     m_foundItems.SetForceSearch();
 
+    SCH_SCREENS schematic;
+    schematic.RecalculateConnections();
+
     m_canvas->Refresh();
 }
 
@@ -1441,7 +1444,11 @@ void SCH_EDIT_FRAME::addCurrentItemToList( bool aRedraw )
     m_canvas->EndMouseCapture();
 
     if( item->IsConnectable() )
+    {
         screen->TestDanglingEnds();
+        SCH_SCREENS schematic;
+        schematic.RecalculateConnections();
+    }
 
     if( aRedraw )
         GetCanvas()->Refresh();
