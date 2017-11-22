@@ -532,7 +532,10 @@ bool SCH_TEXT::IsDanglingStateChanged( std::vector< DANGLING_END_ITEM >& aItemLi
         case LABEL_END:
         case SHEET_LABEL_END:
             if( GetTextPos() == item.GetPosition() )
+            {
                 m_isDangling = false;
+                m_connected_items.insert( static_cast< SCH_ITEM* >( item.GetItem() ) );
+            }
 
             break;
 
@@ -557,10 +560,15 @@ bool SCH_TEXT::IsDanglingStateChanged( std::vector< DANGLING_END_ITEM >& aItemLi
             {
                 if( m_connectionType != CONNECTION_BUS )
                     m_connectionType = CONNECTION_NET;
+
+                // Add the line to the connected items, since it won't be picked
+                // up by a search of intersecting connection points
+                m_connected_items.insert( static_cast< SCH_ITEM* >( item.GetItem() ) );
             }
             else
             {
                 m_connectionType = CONNECTION_NONE;
+                m_connected_items.clear();
             }
         }
             break;

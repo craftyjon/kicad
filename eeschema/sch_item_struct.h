@@ -89,7 +89,7 @@ class DANGLING_END_ITEM
 {
 private:
     /// A pointer to the connectable object.
-    const EDA_ITEM* m_item;
+    EDA_ITEM* m_item;
 
     /// The position of the connection point.
     wxPoint        m_pos;
@@ -98,7 +98,7 @@ private:
     DANGLING_END_T m_type;
 
 public:
-    DANGLING_END_ITEM( DANGLING_END_T aType, const EDA_ITEM* aItem, const wxPoint& aPosition )
+    DANGLING_END_ITEM( DANGLING_END_T aType, EDA_ITEM* aItem, const wxPoint& aPosition )
     {
         m_item = aItem;
         m_type = aType;
@@ -106,7 +106,7 @@ public:
     }
 
     wxPoint GetPosition() const { return m_pos; }
-    const EDA_ITEM* GetItem() const { return m_item; }
+    EDA_ITEM* GetItem() const { return m_item; }
     DANGLING_END_T GetType() const { return m_type; }
 };
 

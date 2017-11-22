@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2017 CERN
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -64,16 +64,14 @@ public:
         auto source_item = aGraph[ boost::source( aEdge, aGraph ) ].item;
         auto target_item = aGraph[ boost::target( aEdge, aGraph ) ].item;
 
-        //if( source_item->m_connection_dirty )
+        if( source_item->m_connection_dirty )
         {
-            //std::cout << "Updating " << source_item->GetClass() << std::endl;
             source_item->m_connection = m_connection;
             source_item->m_connection_dirty = false;
         }
 
-        //if( target_item->m_connection_dirty )
+        if( target_item->m_connection_dirty )
         {
-            //std::cout << "Updating " << target_item->GetClass() << std::endl;
             target_item->m_connection = m_connection;
             target_item->m_connection_dirty = false;
         }

@@ -1626,7 +1626,25 @@ void SCH_SCREENS::RecalculateConnections()
 
                 std::vector< wxPoint > points;
                 item->GetConnectionPoints( points );
-                item->m_connected_items.clear();
+
+                switch( item->Type() )
+                {
+                case SCH_TEXT_T:
+                case SCH_LABEL_T:
+                case SCH_GLOBAL_LABEL_T:
+                case SCH_HIERARCHICAL_LABEL_T:
+                    // Don't clear connected items for text; they may be
+                    // pre-populated from IsDanglingStateChanged()
+                    // Note that we still add them to the connection map because
+                    // it's not guaranteed that all connections will be added
+                    // by IsDanglingStateChanged()
+                    break;
+
+                default:
+                    item->m_connected_items.clear();
+                    break;
+                }
+
                 for( auto point : points )
                 {
                     connection_map[ point ].push_back( item );
@@ -1664,7 +1682,7 @@ void SCH_SCREENS::RecalculateConnections()
     bool inserted;
     CONNECTION_VERTEX vertex;
 
-    // Phase 2: build graphs of connections
+    // Phase 2: build graph of connections
     std::vector<SCH_ITEM*> items_list;
     for( auto screen = GetFirst(); screen; screen = GetNext() )
     {
@@ -1764,6 +1782,10 @@ void SCH_SCREENS::RecalculateConnections()
                             }
                         }
                     }
+                    else
+                    {
+                        std::cout << "Non-power component " << part->GetNextPin()->GetName() << std::endl;
+                    }
                 }
             }
             else
@@ -1780,7 +1802,6 @@ void SCH_SCREENS::RecalculateConnections()
         }
 
         default:
-            item->m_connection_dirty = false;
             break;
         }
 
