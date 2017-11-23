@@ -28,56 +28,95 @@
 #include <utility>
 #include <algorithm>
 
+#include <sch_item_struct.h>
 
+
+/**
+ * Define a hash operator for wxPoint so it can be used as a std::map key
+ */
+namespace std {
+
+    template <>
+    struct hash<wxPoint>
+    {
+        std::size_t operator() ( const wxPoint& k ) const
+        {
+            return ( ( std::hash<int>()( k.x )
+                     ^ ( std::hash<int>()( k.y ) << 1 ) ) >> 1 );
+        }
+    };
+}
+
+
+/**
+ * Properties to attach to each connection graph vertex
+ * Right now, we just hold a pointer back to the item the vertex refers to
+ */
 struct CONNECTION_VERTEX_PROPS
 {
     SCH_ITEM* item;
 };
 
+
+/**
+ * Properties to attach to each connection graph edge
+ * NOTE: this data is not currently used
+ */
 struct CONNECTION_EDGE_PROPS
 {
     wxString name;
 };
 
+
 typedef boost::adjacency_list< boost::listS, boost::listS, boost::undirectedS,
                                CONNECTION_VERTEX_PROPS,
                                CONNECTION_EDGE_PROPS > CONNECTION_GRAPH_T;
 
+
 typedef boost::graph_traits< CONNECTION_GRAPH_T >::vertex_descriptor CONNECTION_VERTEX;
+
 
 typedef boost::graph_traits< CONNECTION_GRAPH_T >::vertex_iterator CONNECTION_VERTEX_ITERATOR;
 
+
 typedef boost::graph_traits< CONNECTION_GRAPH_T >::edge_iterator CONNECTION_EDGE_ITERATOR;
 
+
+/**
+ * A map to look up graph vertices by item
+ */
 typedef std::map< SCH_ITEM*, CONNECTION_VERTEX > VERTEX_MAP_T;
 
+
+/**
+ * An index map for BFS to keep track of visited vertices
+ */
 typedef std::map< CONNECTION_VERTEX, size_t > VERTEX_INDEX_MAP_T;
 
+
+/**
+ * This visitor is responsible for propagating connection updates through the
+ * graph when information changes.
+ */
 class CONNECTION_VISITOR : public boost::default_bfs_visitor
 {
 public:
+
     CONNECTION_VISITOR( SCH_CONNECTION aConnection ) : m_connection( aConnection ) {}
 
+    /**
+     * Visitor function called for each edge during the search.
+     * @param aEdge is the edge (source->target) to visit
+     * @param aGraph is the graph being searched
+     */
     void tree_edge( const CONNECTION_GRAPH_T::edge_descriptor aEdge,
-                    const CONNECTION_GRAPH_T& aGraph ) const
-    {
-        auto source_item = aGraph[ boost::source( aEdge, aGraph ) ].item;
-        auto target_item = aGraph[ boost::target( aEdge, aGraph ) ].item;
-
-        if( source_item->m_connection_dirty )
-        {
-            source_item->m_connection = m_connection;
-            source_item->m_connection_dirty = false;
-        }
-
-        if( target_item->m_connection_dirty )
-        {
-            target_item->m_connection = m_connection;
-            target_item->m_connection_dirty = false;
-        }
-    }
+                    const CONNECTION_GRAPH_T& aGraph ) const;
 
 private:
+
+    /**
+     * This connection is the "template" to propagate through the graph
+     */
     SCH_CONNECTION m_connection;
 };
 

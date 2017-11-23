@@ -107,6 +107,7 @@ set( EESCHEMA_SRCS
     cmp_library_lexer.cpp
     component_references_lister.cpp
     controle.cpp
+    connection_graph.cpp
     cross-probing.cpp
     ${EESCHEMA_DLGS}
     ${EESCHEMA_WIDGETS}

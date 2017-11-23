@@ -1581,24 +1581,6 @@ bool SCH_SCREENS::HasNoFullyDefinedLibIds()
 }
 
 
-// TODO(JE) This should live elsewhere
-// Define a hash operator for wxPoint so it can be used as a std::map key
-namespace std {
-
-    template <>
-    struct hash<wxPoint>
-    {
-        std::size_t operator() ( const wxPoint& k ) const
-        {
-            using std::hash;
-
-            return ( ( hash<int>()( k.x )
-                     ^ ( hash<int>()( k.y ) << 1 ) ) >> 1 );
-        }
-    };
-}
-
-
 void SCH_SCREENS::RecalculateConnections()
 {
     // TODO(JE) This is a prototype that always recalculates the whole schematic
@@ -1705,8 +1687,28 @@ void SCH_SCREENS::RecalculateConnections()
                     // no connection data yet, let's try to generate one
                     item->m_connection = SCH_CONNECTION( item );
                 }
-                item->m_connection->m_name = "<NO NET>";
+                item->m_connection->Reset();
                 item->m_connection_dirty = true;
+
+                // Set bus/net property here so that the propagation code uses it
+                switch( item->Type() )
+                {
+                case SCH_LINE_T:
+                    item->m_connection->m_type = ( item->GetLayer() == LAYER_BUS ) ?
+                                                 CONNECTION_BUS : CONNECTION_NET;
+                    break;
+
+                case SCH_BUS_BUS_ENTRY_T:
+                    item->m_connection->m_type = CONNECTION_BUS;
+                    break;
+
+                case SCH_BUS_WIRE_ENTRY_T:
+                    item->m_connection->m_type = CONNECTION_NET;
+                    break;
+
+                default:
+                    break;
+                }
 
                 items_list.push_back( item );
 

@@ -55,10 +55,11 @@ enum BUS_TYPE
 class SCH_CONNECTION
 {
 public:
-    SCH_CONNECTION( SCH_ITEM* aParent = NULL, CONNECTION_TYPE aType = CONNECTION_NET ) :
-        m_parent( aParent ),
-        m_type( aType )
-    {}
+    SCH_CONNECTION( SCH_ITEM* aParent = NULL ) :
+        m_parent( aParent )
+    {
+        Reset();
+    }
 
     ~SCH_CONNECTION()
     {}
@@ -70,6 +71,23 @@ public:
      * generate a correct list of members.
      */
     void ConfigureFromLabel( wxString aLabel );
+
+    void Reset()
+    {
+        m_type = CONNECTION_NONE;
+        m_bus_type = BUS_TYPE_NONE;
+        m_name = "<NO NET>";
+    }
+
+    bool IsBus() const
+    {
+        return ( m_type == CONNECTION_BUS );
+    }
+
+    bool IsNet() const
+    {
+        return ( m_type == CONNECTION_NET );
+    }
 
     SCH_ITEM* m_parent;
 
