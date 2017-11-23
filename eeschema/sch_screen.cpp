@@ -1614,7 +1614,7 @@ void SCH_SCREENS::RecalculateConnections()
                 // std::cout << "    " << connected_item->GetClass() << " " << connected_item << std::endl;
                 for( auto test_item : connection_vec )
                 {
-                    if( test_item != connected_item )
+                    if( connected_item->ConnectionPropagatesTo( test_item ) )
                     {
                         connected_item->m_connected_items.insert( test_item );
                     }
@@ -1736,6 +1736,7 @@ void SCH_SCREENS::RecalculateConnections()
         case SCH_GLOBAL_LABEL_T:
         case SCH_HIERARCHICAL_LABEL_T:
         case SCH_COMPONENT_T:
+        case SCH_SHEET_PIN_T:
         {
             if( item->Type() == SCH_COMPONENT_T )
             {

@@ -307,6 +307,11 @@ public:
     void ClearConnections() { m_connections.clear(); }
 
     /**
+     * Returns true if this item should propagate connection info to aItem
+     */
+    virtual bool ConnectionPropagatesTo( const SCH_ITEM* aItem ) const { return true; }
+
+    /**
      * Function IsConnected
      * tests the item to see if it is connected to \a aPoint.
      *

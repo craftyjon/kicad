@@ -338,3 +338,16 @@ char SCH_BUS_ENTRY_BASE::GetBusEntryShape() const
     else
         return '\\';
 }
+
+
+bool SCH_BUS_WIRE_ENTRY::ConnectionPropagatesTo( const SCH_ITEM* aItem ) const
+{
+    // Don't generate connections between bus entries and buses, since there is
+    // a connectivity change at that point (e.g. A[7..0] to A7)
+    if( ( aItem->Type() == SCH_LINE_T ) && ( aItem->GetLayer() == LAYER_BUS ) )
+    {
+        return false;
+    }
+
+    return true;
+}

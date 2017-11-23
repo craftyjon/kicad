@@ -68,7 +68,7 @@ struct CONNECTION_EDGE_PROPS
 };
 
 
-typedef boost::adjacency_list< boost::listS, boost::listS, boost::undirectedS,
+typedef boost::adjacency_list< boost::listS, boost::vecS, boost::undirectedS,
                                CONNECTION_VERTEX_PROPS,
                                CONNECTION_EDGE_PROPS > CONNECTION_GRAPH_T;
 
@@ -85,13 +85,13 @@ typedef boost::graph_traits< CONNECTION_GRAPH_T >::edge_iterator CONNECTION_EDGE
 /**
  * A map to look up graph vertices by item
  */
-typedef std::map< SCH_ITEM*, CONNECTION_VERTEX > VERTEX_MAP_T;
+typedef std::unordered_map< SCH_ITEM*, CONNECTION_VERTEX > VERTEX_MAP_T;
 
 
 /**
  * An index map for BFS to keep track of visited vertices
  */
-typedef std::map< CONNECTION_VERTEX, size_t > VERTEX_INDEX_MAP_T;
+typedef std::unordered_map< CONNECTION_VERTEX, size_t > VERTEX_INDEX_MAP_T;
 
 
 /**

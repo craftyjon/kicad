@@ -146,6 +146,8 @@ public:
     wxString GetSelectMenuText() const override;
 
     EDA_ITEM* Clone() const override;
+
+    virtual bool ConnectionPropagatesTo( const SCH_ITEM* aItem ) const override;
 };
 
 /**
