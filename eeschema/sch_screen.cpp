@@ -1762,6 +1762,12 @@ void SCH_SCREENS::RecalculateConnections()
                     }
                 }
             }
+            else if( item->Type() == SCH_SHEET_PIN_T )
+            {
+                item->m_connection->ConfigureFromLabel( static_cast<SCH_SHEET_PIN*>( item )->GetText() );
+                std::cout << "hier pin " << item->m_connection->m_name << std::endl;
+                item->m_connection_dirty = false;
+            }
             else
             {
                 item->m_connection->ConfigureFromLabel( static_cast<SCH_TEXT*>( item )->GetText() );

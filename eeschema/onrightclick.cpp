@@ -762,8 +762,8 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
             for( auto member : connection->m_members )
             {
                 int id = ID_POPUP_SCH_UNFOLD_BUS + member->m_vector_index;
-                auto item = bus_unfolding_menu->Append( id, member->m_name,
-                                                        wxEmptyString );
+                item = bus_unfolding_menu->Append( id, member->m_name,
+                                                   wxEmptyString );
 
                 // Because Bind() takes ownership of the user data item, we
                 // make a new menu item here and set its label.  Why create a

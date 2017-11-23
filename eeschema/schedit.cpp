@@ -412,8 +412,27 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
 void SCH_EDIT_FRAME::OnUnfoldBus( wxCommandEvent& event )
 {
+    auto screen = GetScreen();
     auto item = static_cast< wxMenuItem* >( event.GetEventUserData() );
-    std::cout << item->GetLabel() << std::endl;
+    auto net = item->GetLabel();
+
+    auto pos = GetCrossHairPosition();
+
+    // TODO(JE) use s_LastShape from busentry.cpp?
+    auto bus_entry = new SCH_BUS_WIRE_ENTRY( pos, '\\' );
+    auto label = new SCH_LABEL( bus_entry->m_End(), net );
+
+    SetSchItemParent( bus_entry, screen );
+    SetSchItemParent( label, screen );
+
+    screen->Append( bus_entry );
+    screen->Append( label );
+
+    INSTALL_UNBUFFERED_DC( dc, m_canvas );
+
+    SetCrossHairPosition( bus_entry->m_End() );
+    BeginSegment( &dc, LAYER_WIRE );
+    m_canvas->SetAutoPanRequest( true );
 }
 
 

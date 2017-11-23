@@ -72,12 +72,7 @@ public:
      */
     void ConfigureFromLabel( wxString aLabel );
 
-    void Reset()
-    {
-        m_type = CONNECTION_NONE;
-        m_bus_type = BUS_TYPE_NONE;
-        m_name = "<NO NET>";
-    }
+    void Reset();
 
     bool IsBus() const
     {

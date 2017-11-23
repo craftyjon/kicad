@@ -60,3 +60,12 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
         m_type = CONNECTION_NET;
     }
 }
+
+
+void SCH_CONNECTION::Reset()
+{
+    m_type = CONNECTION_NONE;
+    m_bus_type = BUS_TYPE_NONE;
+    m_name = "<NO NET>";
+    m_members.clear();
+}
