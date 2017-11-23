@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2013 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2012 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
- * Copyright (C) 2008-2016 Wayne Stambaugh <stambaughw@verizon.net>
+ * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
  * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
@@ -139,6 +139,20 @@ void SCH_SCREEN::DecRefCount()
     wxCHECK_RET( m_refCount != 0,
                  wxT( "Screen reference count already zero.  Bad programmer!" ) );
     m_refCount--;
+}
+
+
+void SCH_SCREEN::Append( SCH_SCREEN* aScreen )
+{
+    wxCHECK_RET( aScreen, "Invalid screen object." );
+
+    // No need to decend the hierarchy.  Once the top level screen is copied, all of it's
+    // children are copied as well.
+    m_drawList.Append( aScreen->m_drawList );
+
+    // This screen owns the objects now.  This prevents the object from being delete when
+    // aSheet is deleted.
+    aScreen->m_drawList.SetOwnership( false );
 }
 
 
@@ -476,63 +490,6 @@ bool SCH_SCREEN::SchematicCleanUp()
 }
 
 
-bool SCH_SCREEN::Save( FILE* aFile ) const
-{
-    // Creates header
-    if( fprintf( aFile, "%s %s %d\n", EESCHEMA_FILE_STAMP,
-                 SCHEMATIC_HEAD_STRING, EESCHEMA_VERSION ) < 0 )
-        return false;
-
-    for( const PART_LIB& lib : *Prj().SchLibs() )
-    {
-        if( fprintf( aFile, "LIBS:%s\n", TO_UTF8( lib.GetName() ) ) < 0 )
-            return false;
-    }
-
-    // This section is not used, but written for file compatibility
-    if( fprintf( aFile, "EELAYER %d %d\n", SCH_LAYER_ID_COUNT, 0 ) < 0
-        || fprintf( aFile, "EELAYER END\n" ) < 0 )
-        return false;
-
-    /* Write page info, ScreenNumber and NumberOfScreen; not very meaningful for
-     * SheetNumber and Sheet Count in a complex hierarchy, but useful in
-     * simple hierarchy and flat hierarchy.  Used also to search the root
-     * sheet ( ScreenNumber = 1 ) within the files
-     */
-    const TITLE_BLOCK& tb = GetTitleBlock();
-
-    if( fprintf( aFile, "$Descr %s %d %d%s\n", TO_UTF8( m_paper.GetType() ),
-                 m_paper.GetWidthMils(),
-                 m_paper.GetHeightMils(),
-                 !m_paper.IsCustom() && m_paper.IsPortrait() ?
-                    " portrait" : ""
-                 ) < 0
-        || fprintf( aFile, "encoding utf-8\n") < 0
-        || fprintf( aFile, "Sheet %d %d\n", m_ScreenNumber, m_NumberOfScreens ) < 0
-        || fprintf( aFile, "Title %s\n",    EscapedUTF8( tb.GetTitle() ).c_str() ) < 0
-        || fprintf( aFile, "Date %s\n",     EscapedUTF8( tb.GetDate() ).c_str() ) < 0
-        || fprintf( aFile, "Rev %s\n",      EscapedUTF8( tb.GetRevision() ).c_str() ) < 0
-        || fprintf( aFile, "Comp %s\n",     EscapedUTF8( tb.GetCompany() ).c_str() ) < 0
-        || fprintf( aFile, "Comment1 %s\n", EscapedUTF8( tb.GetComment1() ).c_str() ) < 0
-        || fprintf( aFile, "Comment2 %s\n", EscapedUTF8( tb.GetComment2() ).c_str() ) < 0
-        || fprintf( aFile, "Comment3 %s\n", EscapedUTF8( tb.GetComment3() ).c_str() ) < 0
-        || fprintf( aFile, "Comment4 %s\n", EscapedUTF8( tb.GetComment4() ).c_str() ) < 0
-        || fprintf( aFile, "$EndDescr\n" ) < 0 )
-        return false;
-
-    for( SCH_ITEM* item = m_drawList.begin(); item; item = item->Next() )
-    {
-        if( !item->Save( aFile ) )
-            return false;
-    }
-
-    if( fprintf( aFile, "$EndSCHEMATC\n" ) < 0 )
-        return false;
-
-    return true;
-}
-
-
 void SCH_SCREEN::UpdateSymbolLinks( bool aForce )
 {
     // Initialize or reinitialize the pointer to the LIB_PART for each component
@@ -602,10 +559,6 @@ void SCH_SCREEN::Draw( EDA_DRAW_PANEL* aCanvas, wxDC* aDC, GR_DRAWMODE aDrawMode
 }
 
 
-/* note: SCH_SCREEN::Plot is useful only for schematic.
- * library editor and library viewer do not use a draw list, and therefore
- * SCH_SCREEN::Plot plots nothing
- */
 void SCH_SCREEN::Plot( PLOTTER* aPlotter )
 {
     // Ensure links are up to date, even if a library was reloaded for some reason:
@@ -787,6 +740,14 @@ void SCH_SCREEN::GetHierarchicalItems( EDA_ITEMS& aItems )
 
 void SCH_SCREEN::SelectBlockItems()
 {
+    auto addConnections = [ this ]( SCH_ITEM* item ) -> void
+    {
+        std::vector< wxPoint > connections;
+        item->GetConnectionPoints( connections );
+        for( auto conn : connections )
+            addConnectedItemsToBlock( conn );
+    };
+
     PICKED_ITEMS_LIST* pickedlist = &m_BlockLocate.GetItems();
 
     if( pickedlist->GetCount() == 0 )
@@ -824,23 +785,27 @@ void SCH_SCREEN::SelectBlockItems()
                 // so we must keep it selected and select items connected to it
                 // Note: an other option could be: remove it from drag list
                 item->SetFlags( SELECTED | SKIP_STRUCT );
-                std::vector< wxPoint > connections;
-                item->GetConnectionPoints( connections );
-
-                for( size_t i = 0; i < connections.size(); i++ )
-                    addConnectedItemsToBlock( connections[i] );
+                addConnections( item );
             }
 
             pickedlist->SetPickerFlags( item->GetFlags(), ii );
         }
         else if( item->IsConnectable() )
         {
-            std::vector< wxPoint > connections;
+            addConnections( item );
+        }
+    }
 
-            item->GetConnectionPoints( connections );
+    // Select the items that are connected to a component that was added
+    // to our selection list in the last step.
+    for( unsigned ii = last_select_id; ii < pickedlist->GetCount(); ii++ )
+    {
+        SCH_ITEM* item = (SCH_ITEM*)pickedlist->GetPickedItem( ii );
 
-            for( size_t jj = 0; jj < connections.size(); jj++ )
-                addConnectedItemsToBlock( connections[jj] );
+        if( item->Type() == SCH_COMPONENT_T )
+        {
+            item->SetFlags( IS_DRAGGED );
+            addConnections( item );
         }
     }
 
@@ -1311,13 +1276,24 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
 }
 
 
-/******************************************************************/
-/* Class SCH_SCREENS to handle the list of screens in a hierarchy */
-/******************************************************************/
+#if defined(DEBUG)
+void SCH_SCREEN::Show( int nestLevel, std::ostream& os ) const
+{
+    // for now, make it look like XML, expand on this later.
+    NestedSpace( nestLevel, os ) << '<' << GetClass().Lower().mb_str() << ">\n";
+
+    for( EDA_ITEM* item = m_drawList.begin();  item;  item = item->Next() )
+    {
+        item->Show( nestLevel+1, os );
+    }
+
+    NestedSpace( nestLevel, os ) << "</" << GetClass().Lower().mb_str() << ">\n";
+}
+#endif
+
 
 /**
- * Function SortByTimeStamp
- * sorts a list of schematic items by time stamp and type.
+ * Sort a list of schematic items by time stamp and type.
  */
         static bool SortByTimeStamp( const EDA_ITEM* item1, const EDA_ITEM* item2 )
 {
@@ -1334,10 +1310,10 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
 }
 
 
-SCH_SCREENS::SCH_SCREENS()
+SCH_SCREENS::SCH_SCREENS( SCH_SHEET* aSheet )
 {
     m_index = 0;
-    BuildScreenList( g_RootSheet );
+    buildScreenList( ( !aSheet ) ? g_RootSheet : aSheet );
 }
 
 
@@ -1375,7 +1351,7 @@ SCH_SCREEN* SCH_SCREENS::GetScreen( unsigned int aIndex ) const
 }
 
 
-void SCH_SCREENS::AddScreenToList( SCH_SCREEN* aScreen )
+void SCH_SCREENS::addScreenToList( SCH_SCREEN* aScreen )
 {
     if( aScreen == NULL )
         return;
@@ -1390,26 +1366,21 @@ void SCH_SCREENS::AddScreenToList( SCH_SCREEN* aScreen )
 }
 
 
-void SCH_SCREENS::BuildScreenList( EDA_ITEM* aItem )
+void SCH_SCREENS::buildScreenList( SCH_SHEET* aSheet )
 {
-    if( aItem && aItem->Type() == SCH_SHEET_T )
+    if( aSheet && aSheet->Type() == SCH_SHEET_T )
     {
-        SCH_SHEET* ds = (SCH_SHEET*) aItem;
-        aItem = ds->GetScreen();
-    }
+        SCH_SCREEN* screen = aSheet->GetScreen();
 
-    if( aItem && aItem->Type() == SCH_SCREEN_T )
-    {
-        SCH_SCREEN*     screen = (SCH_SCREEN*) aItem;
+        addScreenToList( screen );
 
-        AddScreenToList( screen );
         EDA_ITEM* strct = screen->GetDrawItems();
 
         while( strct )
         {
             if( strct->Type() == SCH_SHEET_T )
             {
-                BuildScreenList( strct );
+                buildScreenList( ( SCH_SHEET* )strct );
             }
 
             strct = strct->Next();
@@ -1814,17 +1785,64 @@ void SCH_SCREENS::RecalculateConnections()
 }
 
 
-#if defined(DEBUG)
-void SCH_SCREEN::Show( int nestLevel, std::ostream& os ) const
+size_t SCH_SCREENS::GetLibNicknames( wxArrayString& aLibNicknames )
 {
-    // for now, make it look like XML, expand on this later.
-    NestedSpace( nestLevel, os ) << '<' << GetClass().Lower().mb_str() << ">\n";
+    SCH_COMPONENT* symbol;
+    SCH_ITEM* item;
+    SCH_ITEM* nextItem;
+    SCH_SCREEN* screen;
+    wxString nickname;
 
-    for( EDA_ITEM* item = m_drawList.begin();  item;  item = item->Next() )
+    for( screen = GetFirst(); screen; screen = GetNext() )
     {
-        item->Show( nestLevel+1, os );
+        for( item = screen->GetDrawItems(); item; item = nextItem )
+        {
+            nextItem = item->Next();
+
+            if( item->Type() != SCH_COMPONENT_T )
+                continue;
+
+            symbol = dynamic_cast< SCH_COMPONENT* >( item );
+
+            nickname = symbol->GetLibId().GetLibNickname();
+
+            if( !nickname.empty() && ( aLibNicknames.Index( nickname ) == wxNOT_FOUND ) )
+                aLibNicknames.Add( nickname );;
+        }
     }
 
-    NestedSpace( nestLevel, os ) << "</" << GetClass().Lower().mb_str() << ">\n";
+    return aLibNicknames.GetCount();
 }
-#endif
+
+
+int SCH_SCREENS::ChangeSymbolLibNickname( const wxString& aFrom, const wxString& aTo )
+{
+    SCH_COMPONENT* symbol;
+    SCH_ITEM* item;
+    SCH_ITEM* nextItem;
+    SCH_SCREEN* screen;
+    int cnt = 0;
+
+    for( screen = GetFirst(); screen; screen = GetNext() )
+    {
+        for( item = screen->GetDrawItems(); item; item = nextItem )
+        {
+            nextItem = item->Next();
+
+            if( item->Type() != SCH_COMPONENT_T )
+                continue;
+
+            symbol = dynamic_cast< SCH_COMPONENT* >( item );
+
+            if( symbol->GetLibId().GetLibNickname() != aFrom )
+                continue;
+
+            LIB_ID id = symbol->GetLibId();
+            id.SetLibNickname( aTo );
+            symbol->SetLibId( id );
+            cnt++;
+        }
+    }
+
+    return cnt;
+}

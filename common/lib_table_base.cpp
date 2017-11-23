@@ -87,12 +87,20 @@ void LIB_TABLE_ROW::Format( OUTPUTFORMATTER* out, int nestLevel ) const
     wxString uri = GetFullURI();
     uri.Replace( '\\', '/' );
 
-    out->Print( nestLevel, "(lib (name %s)(type %s)(uri %s)(options %s)(descr %s))\n",
+    wxString extraOptions;
+
+    if( !GetIsEnabled() )
+    {
+        extraOptions += "(disabled)";
+    }
+
+    out->Print( nestLevel, "(lib (name %s)(type %s)(uri %s)(options %s)(descr %s)%s)\n",
                 out->Quotew( GetNickName() ).c_str(),
                 out->Quotew( GetType() ).c_str(),
                 out->Quotew( uri ).c_str(),
                 out->Quotew( GetOptions() ).c_str(),
-                out->Quotew( GetDescr() ).c_str()
+                out->Quotew( GetDescr() ).c_str(),
+                extraOptions.ToStdString().c_str()
                 );
 }
 
@@ -203,7 +211,8 @@ bool LIB_TABLE_ROW::operator==( const LIB_TABLE_ROW& r ) const
     return nickName == r.nickName
         && uri_user == r.uri_user
         && options == r.options
-        && description == r.description;
+        && description == r.description
+        && enabled == r.enabled;
 }
 
 
@@ -359,7 +368,10 @@ std::vector<wxString> LIB_TABLE::GetLogicalLibs()
     {
         for( LIB_TABLE_ROWS_CITER it = cur->rows.begin();  it!=cur->rows.end();  ++it )
         {
-            unique.insert( it->GetNickName() );
+            if( it->GetIsEnabled() )
+            {
+                unique.insert( it->GetNickName() );
+            }
         }
 
     } while( ( cur = cur->fallBack ) != 0 );

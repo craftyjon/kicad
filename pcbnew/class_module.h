@@ -82,14 +82,22 @@ enum MODULE_ATTR_T
 class MODULE_3D_SETTINGS
 {
     public:
+        MODULE_3D_SETTINGS() :
+            // Initialize with sensible values
+            m_Scale { 1, 1, 1 },
+            m_Rotation { 0, 0, 0 },
+            m_Offset { 0, 0, 0 }
+        {
+        }
+
         struct VECTOR3D
         {
             double x, y, z;
         };
 
-        VECTOR3D m_Scale;
-        VECTOR3D m_Rotation;
-        VECTOR3D m_Offset;
+        VECTOR3D m_Scale;       ///< 3D model scaling factor (dimensionless)
+        VECTOR3D m_Rotation;    ///< 3D model rotation (degrees)
+        VECTOR3D m_Offset;      ///< 3D model offset (mm)
         wxString m_Filename;    ///< The 3D shape filename in 3D library
 };
 

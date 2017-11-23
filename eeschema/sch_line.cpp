@@ -35,7 +35,7 @@
 #include <base_units.h>
 #include <eeschema_config.h>
 #include <general.h>
-#include <protos.h>
+#include <list_operations.h>
 #include <sch_line.h>
 #include <schframe.h>
 #include <class_netlist_object.h>
@@ -201,72 +201,6 @@ double SCH_LINE::GetLength() const
 }
 
 
-bool SCH_LINE::Save( FILE* aFile ) const
-{
-    bool        success = true;
-
-    const char* layer = "Notes";
-    const char* width = "Line";
-
-    if( GetLayer() == LAYER_WIRE )
-        layer = "Wire";
-
-    if( GetLayer() == LAYER_BUS )
-        layer = "Bus";
-
-    if( fprintf( aFile, "Wire %s %s\n", layer, width ) == EOF )
-    {
-        success = false;
-    }
-
-    if( fprintf( aFile, "\t%-4d %-4d %-4d %-4d\n", m_start.x, m_start.y,
-                 m_end.x, m_end.y ) == EOF )
-    {
-        success = false;
-    }
-
-    return success;
-}
-
-
-bool SCH_LINE::Load( LINE_READER& aLine, wxString& aErrorMsg )
-{
-    char  Name1[256];
-    char  Name2[256];
-    char* line = (char*) aLine;
-
-    while( (*line != ' ' ) && *line )
-        line++;
-
-    if( sscanf( line, "%255s %255s", Name1, Name2 ) != 2  )
-    {
-        aErrorMsg.Printf( wxT( "Eeschema file segment error at line %d, aborted" ),
-                          aLine.LineNumber() );
-        aErrorMsg << wxT( "\n" ) << FROM_UTF8( (char*) aLine );
-        return false;
-    }
-
-    m_Layer = LAYER_NOTES;
-
-    if( Name1[0] == 'W' )
-        m_Layer = LAYER_WIRE;
-
-    if( Name1[0] == 'B' )
-        m_Layer = LAYER_BUS;
-
-    if( !aLine.ReadLine() || sscanf( (char*) aLine, "%d %d %d %d ",
-                                      &m_start.x, &m_start.y, &m_end.x, &m_end.y ) != 4 )
-    {
-        aErrorMsg.Printf( wxT( "Eeschema file Segment struct error at line %d, aborted" ),
-                          aLine.LineNumber() );
-        aErrorMsg << wxT( "\n" ) << FROM_UTF8( (char*) aLine );
-        return false;
-    }
-
-    return true;
-}
-
-
 COLOR4D SCH_LINE::GetDefaultColor() const
 {
     return GetLayerColor( m_Layer );
@@ -418,86 +352,94 @@ void SCH_LINE::Rotate( wxPoint aPosition )
 }
 
 
-/*
- * MergeOverlap try to merge 2 lines that are colinear.
- * this function expects these 2 lines have at least a common end
- */
 bool SCH_LINE::MergeOverlap( SCH_LINE* aLine )
 {
+    auto less = []( const wxPoint& lhs, const wxPoint& rhs ) -> bool
+    {
+        if( lhs.x == rhs.x )
+            return lhs.y < rhs.y;
+        return lhs.x < rhs.x;
+    };
+
     wxCHECK_MSG( aLine != NULL && aLine->Type() == SCH_LINE_T, false,
                  wxT( "Cannot test line segment for overlap." ) );
 
     if( this == aLine || GetLayer() != aLine->GetLayer() )
         return false;
 
-    // Search for a common end:
-    if( m_start == aLine->m_start )
+    SCH_LINE leftmost = SCH_LINE( *aLine );
+    SCH_LINE rightmost = SCH_LINE( *this );
+
+    // We place the start to the left and below the end of both lines
+    if( leftmost.m_start != std::min( { leftmost.m_start, leftmost.m_end }, less ) )
+        std::swap( leftmost.m_start, leftmost.m_end );
+    if( rightmost.m_start != std::min( { rightmost.m_start, rightmost.m_end }, less ) )
+        std::swap( rightmost.m_start, rightmost.m_end );
+
+    // -leftmost is the line that starts farthest to the left
+    // -other is the line that is _not_ leftmost
+    // -rightmost is the line that ends farthest to the right.  This may or
+    //   may not be 'other' as the second line may be completely covered by
+    //   the first.
+    if( less( rightmost.m_start, leftmost.m_start ) )
+        std::swap( leftmost, rightmost );
+
+    SCH_LINE other = SCH_LINE( rightmost );
+
+    if( less( rightmost.m_end, leftmost.m_end ) )
+        rightmost = leftmost;
+
+    // If we end one before the beginning of the other, no overlap is possible
+    if( less( leftmost.m_end, other.m_start ) )
     {
-        if( m_end == aLine->m_end )     // Trivial case
-            return true;
-    }
-    else if( m_start == aLine->m_end )
-    {
-        if( m_end == aLine->m_start )     // Trivial case
-            return true;
-    }
-    else if( m_end == aLine->m_end )
-    {
-        std::swap( aLine->m_start, aLine->m_end );
-    }
-    else if( m_end != aLine->m_start )
-    {
-        // No common end point, segments cannot be merged.
         return false;
+    }
+
+    // Search for a common end:
+    if( ( leftmost.m_start == other.m_start )
+            && ( leftmost.m_end == other.m_end ) )     // Trivial case
+    {
+        m_start = leftmost.m_start;
+        m_end = leftmost.m_end;
+        return true;
     }
 
     bool colinear = false;
 
     /* Test alignment: */
-    if( m_start.y == m_end.y )       // Horizontal segment
+    if( ( leftmost.m_start.y == leftmost.m_end.y )
+            && ( other.m_start.y == other.m_end.y ) )       // Horizontal segment
     {
-        if( aLine->m_start.y == aLine->m_end.y )
-        {
-            colinear = true;
-        }
+        colinear = ( leftmost.m_start.y == other.m_start.y );
     }
-    else if( m_start.x == m_end.x )  // Vertical segment
+    else if( ( leftmost.m_start.x == leftmost.m_end.x )
+            && ( other.m_start.x == other.m_end.x ) )  // Vertical segment
     {
-        if( aLine->m_start.x == aLine->m_end.x )
-        {
-            colinear = true;
-        }
+        colinear = ( leftmost.m_start.x == other.m_start.x );
     }
     else
     {
-        if( atan2( (double) ( m_start.x - m_end.x ), (double) ( m_start.y - m_end.y ) )
-            == atan2( (double) ( aLine->m_start.x - aLine->m_end.x ),
-                      (double) ( aLine->m_start.y - aLine->m_end.y ) ) )
-        {
-            colinear = true;
-        }
+        // We use long long here to avoid overflow -- it enforces promotion
+        // Don't use double as we need to make a direct comparison
+        // The slope of the left-most line is dy/dx.  Then we check that the slope
+        // from the left most start to the right most start is the same as well as
+        // the slope from the left most start to right most end.
+        long long dx = leftmost.m_end.x - leftmost.m_start.x;
+        long long dy = leftmost.m_end.y - leftmost.m_start.y;
+        colinear = ( ( ( other.m_start.y - leftmost.m_start.y ) * dx ==
+                ( other.m_start.x - leftmost.m_start.x ) * dy ) &&
+            ( ( other.m_end.y - leftmost.m_start.y ) * dx ==
+                ( other.m_end.x - leftmost.m_start.x ) * dy ) );
     }
 
-    // Make a segment which merge the 2 segments
-    // we must find the extremums
-    // i.e. the more to the left and to the right points, or
-    // for horizontal segments the uppermost and the lowest point
+    // Make a new segment that merges the 2 segments
     if( colinear )
     {
-        auto less = []( const wxPoint& lhs, const wxPoint& rhs ) -> bool
-        {
-            if( lhs.x == rhs.x )
-                return lhs.y < rhs.y;
-            return lhs.x < rhs.x;
-        };
-
-        wxPoint top_left = std::min( { m_start, m_end, aLine->m_start, aLine->m_end }, less );
-        wxPoint bottom_right = std::max( { m_start, m_end, aLine->m_start, aLine->m_end }, less );
-
-        m_start = top_left;
-        m_end = bottom_right;
+        m_start = leftmost.m_start;
+        m_end = rightmost.m_end;
         return true;
     }
+
     return false;
 }
 
@@ -606,9 +548,9 @@ wxString SCH_LINE::GetSelectMenuText() const
     wxString menuText, txtfmt, orient;
 
     if( m_start.x == m_end.x )
-        orient = _("Vert.");
+        orient = _( "Vert." );
     else if( m_start.y == m_end.y )
-        orient = _("Horiz.");
+        orient = _( "Horiz." );
 
     switch( m_Layer )
     {

@@ -454,6 +454,13 @@ void prepareEditMenu( wxMenu* aParentMenu )
                  _( "Update Field Values" ),
                  _( "Sets component fields to original library values" ),
                  KiBitmap( update_fields_xpm ) );
+
+    // Edit components to symbols library links (change LIB_ID values)
+    aParentMenu->AppendSeparator();
+    AddMenuItem( aParentMenu, ID_EDIT_COMPONENTS_TO_SYMBOLS_LIB_ID,
+                 _( "Edit Components to Symbol Library Links" ),
+                 _( "Edit components to symbols library links to switch to an other library link (library IDs)" ),
+                 KiBitmap( update_fields_xpm ) );
 }
 
 
@@ -628,8 +635,8 @@ static void preparePreferencesMenu( SCH_EDIT_FRAME* aFrame, wxMenu* aParentMenu 
     // Library
     AddMenuItem( aParentMenu,
                  ID_EDIT_SYM_LIB_TABLE,
-                 _( "Manage Symbol Libraries" ),
-                 _( "Edit the global and project symbol library tables." ),
+                 _( "Manage Symbol Library Tables" ),
+                 _( "Edit the global and project symbol library tables (list of active libraries)." ),
                  KiBitmap( library_table_xpm ) );
 
     // Options (Preferences on WXMAC)

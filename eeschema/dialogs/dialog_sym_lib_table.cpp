@@ -30,6 +30,8 @@
 #include <grid_tricks.h>
 #include <confirm.h>
 #include <lib_table_grid.h>
+#include <wildcards_and_files_ext.h>
+#include <env_paths.h>
 
 
 /**
@@ -163,18 +165,8 @@ DIALOG_SYMBOL_LIB_TABLE::DIALOG_SYMBOL_LIB_TABLE( wxTopLevelWindow* aParent,
 
     wxArrayString pluginChoices;
 
-    pluginChoices.Add( SCH_IO_MGR::ShowType( SCH_IO_MGR::SCH_KICAD ) );
+//    pluginChoices.Add( SCH_IO_MGR::ShowType( SCH_IO_MGR::SCH_KICAD ) );
     pluginChoices.Add( SCH_IO_MGR::ShowType( SCH_IO_MGR::SCH_LEGACY ) );
-
-    wxGridCellAttr* attr;
-
-    attr = new wxGridCellAttr;
-    attr->SetEditor( new wxGridCellChoiceEditor( pluginChoices ) );
-    m_project_grid->SetColAttr( COL_TYPE, attr );
-
-    attr = new wxGridCellAttr;
-    attr->SetEditor( new wxGridCellChoiceEditor( pluginChoices ) );
-    m_global_grid->SetColAttr( COL_TYPE, attr );
 
     populateEnvironReadOnlyTable();
 
@@ -182,11 +174,24 @@ DIALOG_SYMBOL_LIB_TABLE::DIALOG_SYMBOL_LIB_TABLE( wxTopLevelWindow* aParent,
     {
         wxGrid* g = i==0 ? m_global_grid : m_project_grid;
 
+        // Set special attributes
+        wxGridCellAttr* attr;
+
+        attr = new wxGridCellAttr;
+        attr->SetEditor( new wxGridCellChoiceEditor( pluginChoices ) );
+        g->SetColAttr( COL_TYPE, attr );
+
+        attr = new wxGridCellAttr;
+        attr->SetEditor( new wxGridCellBoolEditor() );
+        attr->SetRenderer( new wxGridCellBoolRenderer() );
+        g->SetColAttr( COL_ENABLED, attr );
+
         // all but COL_OPTIONS, which is edited with Option Editor anyways.
         g->AutoSizeColumn( COL_NICKNAME, false );
         g->AutoSizeColumn( COL_TYPE, false );
         g->AutoSizeColumn( COL_URI, false );
         g->AutoSizeColumn( COL_DESCR, false );
+        g->AutoSizeColumn( COL_ENABLED, false );
 
         // would set this to width of title, if it was easily known.
         g->SetColSize( COL_OPTIONS, 80 );
@@ -340,16 +345,65 @@ void DIALOG_SYMBOL_LIB_TABLE::pageChangedHandler( wxAuiNotebookEvent& event )
 }
 
 
+void DIALOG_SYMBOL_LIB_TABLE::browseLibrariesHandler( wxCommandEvent& event )
+{
+    wxFileDialog dlg( this, _( "Select Library" ), Prj().GetProjectPath(),
+            wxEmptyString, SchematicLibraryFileWildcard(),
+            wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_MULTIPLE );
+
+    if( dlg.ShowModal() == wxID_CANCEL )
+        return;
+
+    wxArrayString files;
+    dlg.GetFilenames( files );
+
+    for( const auto& file : files )
+    {
+        wxString filePath = dlg.GetDirectory() + wxFileName::GetPathSeparator() + file;
+
+        if( m_cur_grid->AppendRows( 1 ) )
+        {
+            int last_row = m_cur_grid->GetNumberRows() - 1;
+            wxFileName fn( filePath );
+
+            m_cur_grid->SetCellValue( last_row, COL_NICKNAME, fn.GetName() );
+
+            // TODO the following code can detect only schematic types, not libs
+            // SCH_IO_MGR needs to provide file extension information for libraries too
+
+            // auto detect the plugin type
+            /*for( auto pluginType : SCH_IO_MGR::SCH_FILE_T_vector )
+            {
+                if( SCH_IO_MGR::GetFileExtension( pluginType ).Lower() == fn.GetExt().Lower() )
+                {
+                    m_cur_grid->SetCellValue( last_row, COL_TYPE,
+                            SCH_IO_MGR::ShowType( pluginType ) );
+                    break;
+                }
+            }*/
+            m_cur_grid->SetCellValue( last_row, COL_TYPE,
+                    SCH_IO_MGR::ShowType( SCH_IO_MGR::SCH_LEGACY ) );
+
+            // try to use path normalized to an environmental variable or project path
+            wxString normalizedPath = NormalizePath( filePath, &Pgm().GetLocalEnvVariables(), &Prj() );
+            m_cur_grid->SetCellValue( last_row, COL_URI,
+                    normalizedPath.IsEmpty() ? fn.GetFullPath() : normalizedPath );
+        }
+    }
+
+    if( !files.IsEmpty() )
+        scrollToRow( m_cur_grid->GetNumberRows() - 1 );  // scroll to the new libraries
+}
+
+
 void DIALOG_SYMBOL_LIB_TABLE::appendRowHandler( wxCommandEvent& event )
 {
     if( m_cur_grid->AppendRows( 1 ) )
     {
-        int last_row = m_cur_grid->GetNumberRows() - 1;
-
-        // wx documentation is wrong, SetGridCursor does not make visible.
-        m_cur_grid->MakeCellVisible( last_row, 0 );
-        m_cur_grid->SetGridCursor( last_row, 0 );
-        m_cur_grid->SelectRow( m_cur_grid->GetGridCursorRow() );
+        int row = m_cur_grid->GetNumberRows() - 1;
+        // Gives a default type (currently, only one type exists):
+        m_cur_grid->SetCellValue( row, COL_TYPE, SCH_IO_MGR::ShowType( SCH_IO_MGR::SCH_LEGACY ) );
+        scrollToRow( row );
     }
 }
 
@@ -577,6 +631,15 @@ void DIALOG_SYMBOL_LIB_TABLE::populateEnvironReadOnlyTable()
     }
 
     m_path_subs_grid->AutoSizeColumns();
+}
+
+
+void DIALOG_SYMBOL_LIB_TABLE::scrollToRow( int aRowNumber )
+{
+    // wx documentation is wrong, SetGridCursor does not make visible.
+    m_cur_grid->MakeCellVisible( aRowNumber, 0 );
+    m_cur_grid->SetGridCursor( aRowNumber, 0 );
+    m_cur_grid->SelectRow( m_cur_grid->GetGridCursorRow() );
 }
 
 
