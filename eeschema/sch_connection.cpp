@@ -18,7 +18,8 @@
  */
 
 #include <sch_connection.h>
-#include <class_netlist_object.h>   // IsBusLabel() etc.
+#include <class_netlist_object.h>   // IsBusVectorLabel() / IsHeteroBusLabel()
+#include <class_sch_screen.h>
 
 
 void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
@@ -50,10 +51,19 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
         m_type = CONNECTION_BUS;
         m_bus_type = BUS_TYPE_GROUP;
     }
-    // else if( IsBusAlias( aLabel ) )
-    // {
+    else if( auto alias = SCH_SCREEN::GetBusAlias( aLabel ) )
+    {
+        m_type = CONNECTION_BUS;
+        m_bus_type = BUS_TYPE_GROUP;
+        m_name = aLabel;
 
-    // }
+        for( auto alias_member : alias->Members() )
+        {
+            auto member = std::make_shared< SCH_CONNECTION >( m_parent );
+            member->m_name = alias_member;
+            m_members.push_back( member );
+        }
+    }
     else
     {
         m_name = aLabel;

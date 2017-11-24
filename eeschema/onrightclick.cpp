@@ -750,11 +750,10 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
 
     // Bus unfolding menu (only available if bus is properly defined)
     auto connection = Bus->m_connection;
-    if( connection )
+    if( connection && connection->IsBus() )
     {
         wxMenu* bus_unfolding_menu = new wxMenu;
 
-        // TODO(JE) proper bitmap
         PopMenu->AppendSubMenu( bus_unfolding_menu, _( "Unfold Bus" ) );
 
         if( connection->m_bus_type == BUS_TYPE_VECTOR )
@@ -762,8 +761,8 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
             for( auto member : connection->m_members )
             {
                 int id = ID_POPUP_SCH_UNFOLD_BUS + member->m_vector_index;
-                item = bus_unfolding_menu->Append( id, member->m_name,
-                                                   wxEmptyString );
+                bus_unfolding_menu->Append( id, member->m_name,
+                                            wxEmptyString );
 
                 // Because Bind() takes ownership of the user data item, we
                 // make a new menu item here and set its label.  Why create a
@@ -780,6 +779,25 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
         else if( connection->m_bus_type == BUS_TYPE_GROUP )
         {
             // TODO(JE) Recursive unpacking of bus groups
+            // For now, this code only does one level
+            int idx = 1;
+            for( auto member : connection->m_members )
+            {
+                int id = ID_POPUP_SCH_UNFOLD_BUS + ( idx++ );
+                bus_unfolding_menu->Append( id, member->m_name,
+                                            wxEmptyString );
+
+                // Because Bind() takes ownership of the user data item, we
+                // make a new menu item here and set its label.  Why create a
+                // menu item instead of just a wxString or something? Because
+                // Bind() requires a pointer to wxObject rather than a void
+                // pointer.  Maybe at some point I'll think of a better way...
+                auto item_clone = new wxMenuItem();
+                item_clone->SetText( member->m_name );
+
+                frame->Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
+                             frame, id, id, item_clone );
+            }
         }
         else
         {

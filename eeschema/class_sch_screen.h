@@ -520,7 +520,7 @@ public:
     /**
      * Adds a bus alias definition (and transfers ownership of the pointer)
      */
-    void AddBusAlias( std::shared_ptr< SCH_BUS_ALIAS > aAlias )
+    void AddBusAlias( std::shared_ptr<SCH_BUS_ALIAS> aAlias )
     {
         m_aliases.insert( aAlias );
     }
@@ -536,10 +536,21 @@ public:
     /**
      * Returns a list of bus aliases defined in this screen
      */
-    std::unordered_set< std::shared_ptr< SCH_BUS_ALIAS > > GetBusAliases()
+    std::unordered_set< std::shared_ptr<SCH_BUS_ALIAS> > GetBusAliases()
     {
         return m_aliases;
     }
+
+    /**
+     * Returns true if the given string is a valid bus alias in a loaded screen
+     */
+    static bool IsBusAlias( const wxString& aLabel );
+
+    /**
+     * Returns a pointer to a bus alias object for the given label,
+     * or null if one doesn't exist
+     */
+    static std::shared_ptr<SCH_BUS_ALIAS> GetBusAlias( const wxString& aLabel );
 
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override;

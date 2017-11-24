@@ -422,6 +422,9 @@ void SCH_EDIT_FRAME::OnUnfoldBus( wxCommandEvent& event )
     auto bus_entry = new SCH_BUS_WIRE_ENTRY( pos, '\\' );
     auto label = new SCH_LABEL( bus_entry->m_End(), net );
 
+    label->SetTextSize( wxSize( GetDefaultTextSize(), GetDefaultTextSize() ) );
+    label->SetLabelSpinStyle( 0 );
+
     SetSchItemParent( bus_entry, screen );
     SetSchItemParent( label, screen );
 

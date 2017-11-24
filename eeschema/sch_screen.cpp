@@ -1276,6 +1276,42 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
 }
 
 
+bool SCH_SCREEN::IsBusAlias( const wxString& aLabel )
+{
+    SCH_SHEET_LIST aSheets( g_RootSheet );
+    for( unsigned i = 0; i < aSheets.size(); i++ )
+    {
+        for( auto alias : aSheets[i].LastScreen()->GetBusAliases() )
+        {
+            if( alias->GetName() == aLabel )
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+
+std::shared_ptr<SCH_BUS_ALIAS> SCH_SCREEN::GetBusAlias( const wxString& aLabel )
+{
+    SCH_SHEET_LIST aSheets( g_RootSheet );
+    for( unsigned i = 0; i < aSheets.size(); i++ )
+    {
+        for( auto alias : aSheets[i].LastScreen()->GetBusAliases() )
+        {
+            if( alias->GetName() == aLabel )
+            {
+                return alias;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+
 #if defined(DEBUG)
 void SCH_SCREEN::Show( int nestLevel, std::ostream& os ) const
 {
