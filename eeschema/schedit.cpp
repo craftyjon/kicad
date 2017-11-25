@@ -456,19 +456,16 @@ void SCH_EDIT_FRAME::CancelBusUnfold()
         delete item;
     }
 
-    m_busUnfoldItems.clear();
-    m_busUnfoldInProgress = false;
+    FinishBusUnfold();
 }
 
 
 void SCH_EDIT_FRAME::FinishBusUnfold()
 {
-//    auto screen = GetScreen();
-
-    // TODO(JE) Undo object
-
     m_busUnfoldItems.clear();
     m_busUnfoldInProgress = false;
+
+    SetToolID( ID_NO_TOOL_SELECTED, m_canvas->GetDefaultCursor(), wxEmptyString );
 }
 
 
