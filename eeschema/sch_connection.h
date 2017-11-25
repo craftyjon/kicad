@@ -64,6 +64,10 @@ public:
     ~SCH_CONNECTION()
     {}
 
+    bool operator==( const SCH_CONNECTION& aOther ) const;
+
+    bool operator!=( const SCH_CONNECTION& aOther ) const;
+
     /**
      * Configures the connection given a label.
      * For CONNECTION_NET, this just sets the name.
@@ -82,6 +86,21 @@ public:
     bool IsNet() const
     {
         return ( m_type == CONNECTION_NET );
+    }
+
+    bool IsDirty() const
+    {
+        return m_dirty;
+    }
+
+    void SetDirty()
+    {
+        m_dirty = true;
+    }
+
+    void ClearDirty()
+    {
+        m_dirty = false;
     }
 
     SCH_ITEM* m_parent;
@@ -105,6 +124,10 @@ public:
 
     // For bus connections, store a list of member connections
     std::vector< std::shared_ptr< SCH_CONNECTION > > m_members;
+
+private:
+
+    bool m_dirty;
 
 };
 

@@ -171,6 +171,12 @@ private:
     /// Use netcodes (net number) as net names when generating spice net lists.
     bool        m_spiceAjustPassiveValues;
 
+    /// Flag to track bus unfolding for cancel/undo management
+    bool        m_busUnfoldInProgress;
+
+    /// Temporary list of new items created as part of bus unfolding
+    std::vector<SCH_ITEM*> m_busUnfoldItems;
+
     /*  these are PROJECT specific, not schematic editor specific
     wxString        m_userLibraryPath;
     wxArrayString   m_componentLibFiles;
@@ -779,6 +785,27 @@ public:
      * operation should be canceled.
      */
     bool AskToSaveChanges();
+
+    /**
+     * Checks if a bus unfolding operation is in progress, so that it can be
+     * properly canceled / commited along with the wire draw operation.
+     */
+    bool IsBusUnfoldInProgress()
+    {
+        return m_busUnfoldInProgress;
+    }
+
+    /**
+     * Cancels a bus unfolding operation, cleaning up the bus entry and label
+     * that were created
+     */
+    void CancelBusUnfold();
+
+    /**
+     * Completes a bus unfolding operation after the user finishes drawing the
+     * unfolded wire
+     */
+    void FinishBusUnfold();
 
 private:
 

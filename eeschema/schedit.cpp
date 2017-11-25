@@ -431,11 +431,43 @@ void SCH_EDIT_FRAME::OnUnfoldBus( wxCommandEvent& event )
     screen->Append( bus_entry );
     screen->Append( label );
 
+    m_busUnfoldItems.push_back( bus_entry );
+    m_busUnfoldItems.push_back( label );
+    m_busUnfoldInProgress = true;
+
+    SetToolID( ID_WIRE_BUTT, wxCURSOR_PENCIL, _( "Add wire" ) );
+
     INSTALL_UNBUFFERED_DC( dc, m_canvas );
 
     SetCrossHairPosition( bus_entry->m_End() );
     BeginSegment( &dc, LAYER_WIRE );
     m_canvas->SetAutoPanRequest( true );
+}
+
+
+void SCH_EDIT_FRAME::CancelBusUnfold()
+{
+    auto screen = GetScreen();
+
+    for( auto item : m_busUnfoldItems )
+    {
+        screen->Remove( item );
+        delete item;
+    }
+
+    m_busUnfoldItems.clear();
+    m_busUnfoldInProgress = false;
+}
+
+
+void SCH_EDIT_FRAME::FinishBusUnfold()
+{
+//    auto screen = GetScreen();
+
+    // TODO(JE) Undo object
+
+    m_busUnfoldItems.clear();
+    m_busUnfoldInProgress = false;
 }
 
 

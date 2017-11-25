@@ -22,6 +22,27 @@
 #include <class_sch_screen.h>
 
 
+bool SCH_CONNECTION::operator==( const SCH_CONNECTION& aOther ) const
+{
+    // NOTE: Not comparing m_dirty
+    if( ( aOther.m_parent == m_parent ) &&
+        ( aOther.m_type == m_type ) &&
+        ( aOther.m_bus_type == m_bus_type ) &&
+        ( aOther.m_name == m_name ) )
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+bool SCH_CONNECTION::operator!=( const SCH_CONNECTION& aOther ) const
+{
+    return !( aOther == *this );
+}
+
+
 void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
 {
     if( IsBusVectorLabel( aLabel ) )
@@ -78,4 +99,5 @@ void SCH_CONNECTION::Reset()
     m_bus_type = BUS_TYPE_NONE;
     m_name = "<NO NET>";
     m_members.clear();
+    m_dirty = true;
 }

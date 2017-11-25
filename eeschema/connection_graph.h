@@ -102,7 +102,7 @@ class CONNECTION_VISITOR : public boost::default_bfs_visitor
 {
 public:
 
-    CONNECTION_VISITOR( SCH_CONNECTION aConnection ) : m_connection( aConnection ) {}
+    CONNECTION_VISITOR( SCH_CONNECTION aConnection );
 
     /**
      * Visitor function called for each edge during the search.
@@ -110,7 +110,7 @@ public:
      * @param aGraph is the graph being searched
      */
     void tree_edge( const CONNECTION_GRAPH_T::edge_descriptor aEdge,
-                    const CONNECTION_GRAPH_T& aGraph ) const;
+                    const CONNECTION_GRAPH_T& aGraph );
 
 private:
 

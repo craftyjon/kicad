@@ -334,6 +334,11 @@ void SCH_EDIT_FRAME::EndSegment( wxDC* DC )
     if( screen->IsJunctionNeeded( startPoint ) )
         screen->Append( AddJunction( DC, startPoint ) );
 
+    if( IsBusUnfoldInProgress() )
+    {
+        FinishBusUnfold();
+    }
+
     m_canvas->Refresh();
 
     OnModify();
@@ -452,6 +457,8 @@ SCH_NO_CONNECT* SCH_EDIT_FRAME::AddNoConnect( wxDC* aDC, const wxPoint& aPositio
 static void AbortCreateNewLine( EDA_DRAW_PANEL* aPanel, wxDC* aDC )
 {
     SCH_SCREEN* screen = (SCH_SCREEN*) aPanel->GetScreen();
+    auto parent = static_cast<SCH_EDIT_FRAME*>( aPanel->GetParent() );
+
 
     if( screen->GetCurItem() )
     {
@@ -461,8 +468,12 @@ static void AbortCreateNewLine( EDA_DRAW_PANEL* aPanel, wxDC* aDC )
     }
     else
     {
-        SCH_EDIT_FRAME* parent = ( SCH_EDIT_FRAME* ) aPanel->GetParent();
         parent->SetRepeatItem( NULL );
+    }
+
+    if( parent->IsBusUnfoldInProgress() )
+    {
+        parent->CancelBusUnfold();
     }
 
     // Clear flags used in edit functions.

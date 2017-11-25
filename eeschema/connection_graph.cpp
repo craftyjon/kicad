@@ -21,29 +21,34 @@
 #include <connection_graph.h>
 
 
-void CONNECTION_VISITOR::tree_edge( const CONNECTION_GRAPH_T::edge_descriptor aEdge,
-                                    const CONNECTION_GRAPH_T& aGraph ) const
+CONNECTION_VISITOR::CONNECTION_VISITOR( SCH_CONNECTION aConnection ) :
+    m_connection( aConnection )
 {
-    // auto source_item = aGraph[ boost::source( aEdge, aGraph ) ].item;
+}
+
+
+void CONNECTION_VISITOR::tree_edge( const CONNECTION_GRAPH_T::edge_descriptor aEdge,
+                                    const CONNECTION_GRAPH_T& aGraph )
+{
+    auto source_item = aGraph[ boost::source( aEdge, aGraph ) ].item;
     auto target_item = aGraph[ boost::target( aEdge, aGraph ) ].item;
 
-    // std::cout << "source " << source_item->m_connection->m_name
-    //           << " isbus " << source_item->m_connection->IsBus()
-    //           << " isnet " << source_item->m_connection->IsNet() << std::endl;
-    // std::cout << "target " << target_item->m_connection->m_name
-    //           << " isbus " << target_item->m_connection->IsBus()
-    //           << " isnet " << target_item->m_connection->IsNet() << std::endl;
-
-    // don't propagate across bus/net boundary
+    // Don't propagate across bus/net boundary
     if( ( m_connection.IsBus() && target_item->m_connection->IsNet() ) ||
         ( m_connection.IsNet() && target_item->m_connection->IsBus() ) )
     {
         return;
     }
 
-    if( target_item->m_connection_dirty )
+    // Don't propagate when the source vertex didn't get set earlier
+    if( ( source_item->m_connection == m_connection ) &&
+        target_item->m_connection->IsDirty() )
     {
         target_item->m_connection = m_connection;
-        target_item->m_connection_dirty = false;
+        target_item->m_connection->ClearDirty();
     }
+
+    // std::cout << "source " << source_item->GetClass() << " " << source_item
+    //           << " target " << target_item->GetClass() << " " << target_item
+    //           << std::endl;
 }

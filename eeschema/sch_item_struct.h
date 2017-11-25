@@ -123,7 +123,6 @@ class SCH_ITEM : public EDA_ITEM
 public:
     boost::optional<SCH_CONNECTION> m_connection;   ///< Connection info
     std::unordered_set<SCH_ITEM*> m_connected_items;
-    bool m_connection_dirty;
 
 protected:
     SCH_LAYER_ID   m_Layer;

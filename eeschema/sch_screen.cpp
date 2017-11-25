@@ -1695,7 +1695,6 @@ void SCH_SCREENS::RecalculateConnections()
                     item->m_connection = SCH_CONNECTION( item );
                 }
                 item->m_connection->Reset();
-                item->m_connection_dirty = true;
 
                 // Set bus/net property here so that the propagation code uses it
                 switch( item->Type() )
@@ -1788,26 +1787,21 @@ void SCH_SCREENS::RecalculateConnections()
                             if( pin->IsPowerConnection() )
                             {
                                 item->m_connection->m_name = pin->GetName();
-                                item->m_connection_dirty = false;
+                                item->m_connection->ClearDirty();
                             }
                         }
-                    }
-                    else
-                    {
-                        std::cout << "Non-power component " << part->GetNextPin()->GetName() << std::endl;
                     }
                 }
             }
             else if( item->Type() == SCH_SHEET_PIN_T )
             {
                 item->m_connection->ConfigureFromLabel( static_cast<SCH_SHEET_PIN*>( item )->GetText() );
-                std::cout << "hier pin " << item->m_connection->m_name << std::endl;
-                item->m_connection_dirty = false;
+                item->m_connection->ClearDirty();
             }
             else
             {
                 item->m_connection->ConfigureFromLabel( static_cast<SCH_TEXT*>( item )->GetText() );
-                item->m_connection_dirty = false;
+                item->m_connection->ClearDirty();
             }
 
             auto visitor = CONNECTION_VISITOR( *( item->m_connection ) );
@@ -1820,7 +1814,6 @@ void SCH_SCREENS::RecalculateConnections()
         default:
             break;
         }
-
     }
 
     phase2.Stop();
