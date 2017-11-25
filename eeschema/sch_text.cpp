@@ -1293,7 +1293,7 @@ void SCH_HIERLABEL::Draw( EDA_DRAW_PANEL* panel,
         color = Color;
     else
         color = GetLayerColor( GetState( BRIGHTENED ) ? LAYER_BRIGHTENED :
-                               ( m_connectionType == CONNECTION_BUS ) ?
+                               ( m_connection && m_connection->IsBus() ) ?
                                LAYER_BUS : m_Layer );
 
     GRSetDrawMode( DC, DrawMode );

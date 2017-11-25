@@ -1634,9 +1634,19 @@ void SCH_SCREENS::RecalculateConnections()
                     break;
                 }
 
-                for( auto point : points )
+                if( item->Type() == SCH_SHEET_T )
                 {
-                    connection_map[ point ].push_back( item );
+                    for( auto& pin : static_cast<SCH_SHEET*>( item )->GetPins() )
+                    {
+                        connection_map[ pin.GetTextPos() ].push_back( &pin );
+                    }
+                }
+                else
+                {
+                    for( auto point : points )
+                    {
+                        connection_map[ point ].push_back( item );
+                    }
                 }
             }
         }
@@ -1693,41 +1703,77 @@ void SCH_SCREENS::RecalculateConnections()
                 {
                     // no connection data yet, let's try to generate one
                     item->m_connection = SCH_CONNECTION( item );
-                }
-                item->m_connection->Reset();
 
-                // Set bus/net property here so that the propagation code uses it
-                switch( item->Type() )
-                {
-                case SCH_LINE_T:
-                    item->m_connection->m_type = ( item->GetLayer() == LAYER_BUS ) ?
-                                                 CONNECTION_BUS : CONNECTION_NET;
-                    break;
-
-                case SCH_BUS_BUS_ENTRY_T:
-                    item->m_connection->m_type = CONNECTION_BUS;
-                    break;
-
-                case SCH_BUS_WIRE_ENTRY_T:
-                    item->m_connection->m_type = CONNECTION_NET;
-                    break;
-
-                default:
-                    break;
+                    if( item->Type() == SCH_SHEET_T )
+                    {
+                        for( auto& pin : static_cast<SCH_SHEET*>( item )->GetPins() )
+                        {
+                            pin.m_connection = SCH_CONNECTION( &pin );
+                        }
+                    }
                 }
 
-                items_list.push_back( item );
-
-                // Add item to connection graph
-                // TODO(JE) Move to CONNECTION_GRAPH
-                boost::tie( pos, inserted ) = graph.m_vertex_map.insert(
-                    std::make_pair( item, CONNECTION_VERTEX() ) );
-
-                if( inserted )
+                if( item->Type() == SCH_SHEET_T )
                 {
-                    vertex = boost::add_vertex( graph.m_graph );
-                    graph.m_graph[ vertex ].item = item;
-                    pos->second = vertex;
+                    for( auto& pin : static_cast<SCH_SHEET*>( item )->GetPins() )
+                    {
+                        if( !pin.m_connection )
+                        {
+                            pin.m_connection = SCH_CONNECTION( &pin );
+                        }
+
+                        pin.m_connection->Reset();
+                        items_list.push_back( &pin );
+                        // Add pin to connection graph
+                        // TODO(JE) Move to CONNECTION_GRAPH
+                        boost::tie( pos, inserted ) = graph.m_vertex_map.insert(
+                            std::make_pair( &pin, CONNECTION_VERTEX() ) );
+
+                        if( inserted )
+                        {
+                            vertex = boost::add_vertex( graph.m_graph );
+                            graph.m_graph[ vertex ].item = &pin;
+                            pos->second = vertex;
+                        }
+                    }
+                }
+                else
+                {
+                    item->m_connection->Reset();
+
+                    // Set bus/net property here so that the propagation code uses it
+                    switch( item->Type() )
+                    {
+                    case SCH_LINE_T:
+                        item->m_connection->m_type = ( item->GetLayer() == LAYER_BUS ) ?
+                                                     CONNECTION_BUS : CONNECTION_NET;
+                        break;
+
+                    case SCH_BUS_BUS_ENTRY_T:
+                        item->m_connection->m_type = CONNECTION_BUS;
+                        break;
+
+                    case SCH_BUS_WIRE_ENTRY_T:
+                        item->m_connection->m_type = CONNECTION_NET;
+                        break;
+
+                    default:
+                        break;
+                    }
+
+                    items_list.push_back( item );
+
+                    // Add item to connection graph
+                    // TODO(JE) Move to CONNECTION_GRAPH
+                    boost::tie( pos, inserted ) = graph.m_vertex_map.insert(
+                        std::make_pair( item, CONNECTION_VERTEX() ) );
+
+                    if( inserted )
+                    {
+                        vertex = boost::add_vertex( graph.m_graph );
+                        graph.m_graph[ vertex ].item = item;
+                        pos->second = vertex;
+                    }
                 }
             }
         }
@@ -1772,6 +1818,7 @@ void SCH_SCREENS::RecalculateConnections()
         case SCH_HIERARCHICAL_LABEL_T:
         case SCH_COMPONENT_T:
         case SCH_SHEET_PIN_T:
+        case SCH_SHEET_T:
         {
             if( item->Type() == SCH_COMPONENT_T )
             {
@@ -1792,11 +1839,6 @@ void SCH_SCREENS::RecalculateConnections()
                         }
                     }
                 }
-            }
-            else if( item->Type() == SCH_SHEET_PIN_T )
-            {
-                item->m_connection->ConfigureFromLabel( static_cast<SCH_SHEET_PIN*>( item )->GetText() );
-                item->m_connection->ClearDirty();
             }
             else
             {

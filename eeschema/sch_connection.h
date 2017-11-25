@@ -31,18 +31,10 @@ class SCH_ITEM;
 enum CONNECTION_TYPE
 {
     CONNECTION_NONE,    ///< No connection to this item
-    CONNECTION_NET,     ///< This item is part of a valid net
-    CONNECTION_BUS,     ///< This item is part of a valid bus
+    CONNECTION_NET,     ///< This item represents a net
+    CONNECTION_BUS,     ///< This item represents a bus vector
+    CONNECTION_BUS_GROUP,   ///< This item represents a bus group
 };
-
-
-enum BUS_TYPE
-{
-    BUS_TYPE_NONE,      ///< Just a net, not a bus
-    BUS_TYPE_VECTOR,    ///< Classic bus, like A[7..0]
-    BUS_TYPE_GROUP,     ///< Bus group, like {DP DM}.  Can contain other buses.
-};
-
 
 /**
  * Each graphical item can have a SCH_CONNECTION describing its logical
@@ -80,7 +72,7 @@ public:
 
     bool IsBus() const
     {
-        return ( m_type == CONNECTION_BUS );
+        return ( m_type == CONNECTION_BUS || m_type == CONNECTION_BUS_GROUP );
     }
 
     bool IsNet() const
@@ -106,8 +98,6 @@ public:
     SCH_ITEM* m_parent;
 
     CONNECTION_TYPE m_type; ///< @see enum CONNECTION_TYPE
-
-    BUS_TYPE m_bus_type;    ///< @see enum BUS_TYPE
 
     // TODO(JE) How to name unnamed buses?
     wxString m_name;        ///< Name of the bus.

@@ -756,7 +756,7 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
 
         PopMenu->AppendSubMenu( bus_unfolding_menu, _( "Unfold Bus" ) );
 
-        if( connection->m_bus_type == BUS_TYPE_VECTOR )
+        if( connection->m_type == CONNECTION_BUS )
         {
             for( auto member : connection->m_members )
             {
@@ -776,7 +776,7 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
                              frame, id, id, item_clone );
             }
         }
-        else if( connection->m_bus_type == BUS_TYPE_GROUP )
+        else if( connection->m_type == CONNECTION_BUS_GROUP )
         {
             // TODO(JE) Recursive unpacking of bus groups
             // For now, this code only does one level

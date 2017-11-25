@@ -27,7 +27,6 @@ bool SCH_CONNECTION::operator==( const SCH_CONNECTION& aOther ) const
     // NOTE: Not comparing m_dirty
     if( ( aOther.m_parent == m_parent ) &&
         ( aOther.m_type == m_type ) &&
-        ( aOther.m_bus_type == m_bus_type ) &&
         ( aOther.m_name == m_name ) )
     {
         return true;
@@ -50,7 +49,6 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
         // TODO(JE) Is storing the whole name right? (vs. the prefix)
         m_name = aLabel;
         m_type = CONNECTION_BUS;
-        m_bus_type = BUS_TYPE_VECTOR;
 
         wxString prefix;
         NETLIST_OBJECT::ParseBusVector( aLabel, &prefix,
@@ -69,8 +67,7 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
     else if( IsBusGroupLabel( aLabel ) )
     {
         m_name = aLabel;
-        m_type = CONNECTION_BUS;
-        m_bus_type = BUS_TYPE_GROUP;
+        m_type = CONNECTION_BUS_GROUP;
 
         wxString name;
         std::vector<wxString> members;
@@ -87,8 +84,7 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
     }
     else if( auto alias = SCH_SCREEN::GetBusAlias( aLabel ) )
     {
-        m_type = CONNECTION_BUS;
-        m_bus_type = BUS_TYPE_GROUP;
+        m_type = CONNECTION_BUS_GROUP;
         m_name = aLabel;
 
         for( auto alias_member : alias->Members() )
@@ -109,7 +105,6 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
 void SCH_CONNECTION::Reset()
 {
     m_type = CONNECTION_NONE;
-    m_bus_type = BUS_TYPE_NONE;
     m_name = "<NO NET>";
     m_members.clear();
     m_dirty = true;
