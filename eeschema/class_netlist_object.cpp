@@ -41,8 +41,8 @@
 
 /**
  *
- * Buses can be defined in multiple ways. A homogenous bus is defined as a
- * vector:
+ * Buses can be defined in multiple ways. A bus vector consists of a prefix and
+ * a numeric range of suffixes:
  *
  *     BUS_NAME[M..N]
  *
@@ -52,26 +52,27 @@
  *
  * Like net names, bus names cannot contain whitespace.
  *
- * A heterogenous bus is just a grouping of signals, separated by spaces, some
- * of which may be vectors.  Heterogenous buses can have names, but do not need to.
+ * A bus group is just a grouping of signals, separated by spaces, some
+ * of which may be bus vectors.  Bus groups can have names, but do not need to.
  *
  *     MEMORY{A[15..0] D[7..0] RW CE OE}
  *
- * In named heterogenous buses, the net names are expanded as <BUS_NAME>.<NET_NAME>
- * In the above example, the nets would be named like MEMORY.A15, MEMORY.D0, MEMORY.OE, etc.
+ * In named bus groups, the net names are expanded as <BUS_NAME>.<NET_NAME>
+ * In the above example, the nets would be named like MEMORY.A15, MEMORY.D0, etc.
  *
  *     {USB_DP USB_DN}
  *
- * In the above example, the bus is unnamed and
+ * In the above example, the bus is unnamed and so the underlying net names are
+ * just USB_DP and USB_DN.
  *
  */
 static wxRegEx busLabelRe( wxT( "^([^[:space:]]+)(\\[[\\d]+\\.+[\\d]+\\])$" ), wxRE_ADVANCED );
-static wxRegEx heteroBusLabelRe( wxT( "^([^[:space:]]+)?\\{((?:[^[:space:]]+(?:\\[[\\d]+\\.+[\\d]+\\])? ?)+)\\}$" ), wxRE_ADVANCED );
+static wxRegEx busGroupLabelRe( wxT( "^([^[:space:]]+)?\\{((?:[^[:space:]]+(?:\\[[\\d]+\\.+[\\d]+\\])? ?)+)\\}$" ), wxRE_ADVANCED );
 
 
 bool IsBusLabel( const wxString& aLabel )
 {
-    return IsBusVectorLabel( aLabel ) || IsHeteroBusLabel( aLabel );
+    return IsBusVectorLabel( aLabel ) || IsBusGroupLabel( aLabel );
 }
 
 
@@ -84,12 +85,12 @@ bool IsBusVectorLabel( const wxString& aLabel )
 }
 
 
-bool IsHeteroBusLabel( const wxString& aLabel )
+bool IsBusGroupLabel( const wxString& aLabel )
 {
-    wxCHECK_MSG( heteroBusLabelRe.IsValid(), false,
-                 wxT( "Invalid regular expression in IsHeteroBusLabel()." ) );
+    wxCHECK_MSG( busGroupLabelRe.IsValid(), false,
+                 wxT( "Invalid regular expression in IsBusGroupLabel()." ) );
 
-    return heteroBusLabelRe.Matches( aLabel );
+    return busGroupLabelRe.Matches( aLabel );
 }
 
 
@@ -323,13 +324,13 @@ void NETLIST_OBJECT::ParseBusVector( wxString vector, wxString* name, long* begi
 bool NETLIST_OBJECT::ParseBusGroup( wxString aGroup, wxString* name,
                                     std::vector<wxString>& aMemberList )
 {
-    if( !IsHeteroBusLabel( aGroup ) )
+    if( !IsBusGroupLabel( aGroup ) )
     {
         return false;
     }
 
-    *name = heteroBusLabelRe.GetMatch( aGroup, 1 );
-    auto contents = heteroBusLabelRe.GetMatch( aGroup, 2 );
+    *name = busGroupLabelRe.GetMatch( aGroup, 1 );
+    auto contents = busGroupLabelRe.GetMatch( aGroup, 2 );
 
     wxStringTokenizer tokenizer( contents, " " );
     while( tokenizer.HasMoreTokens() )
@@ -357,12 +358,8 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
     else
         wxCHECK_RET( false, wxT( "Net list object type is not valid." ) );
 
-    if( IsHeteroBusLabel( m_Label ) )
+    if( IsBusGroupLabel( m_Label ) )
     {
-        // Hetero bus label: first group is the (optional) name,
-        // second group is the contents of the group (space-delimited), e.g.
-        // NET1 NET2 NETVECTOR[M..N] LASTNET
-
         wxString bus_name;
         bool selfSet = false;
         std::vector<wxString> bus_contents;
@@ -371,7 +368,7 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
         {
             for( auto bus_member : bus_contents )
             {
-                // Handle a nested vector bus inside the hetero bus
+                // Handle a nested vector bus inside the bus group
                 if( IsBusLabel( bus_member ) )
                 {
                     wxString vec_name, vec_member;

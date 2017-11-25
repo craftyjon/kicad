@@ -18,7 +18,7 @@
  */
 
 #include <sch_connection.h>
-#include <class_netlist_object.h>   // IsBusVectorLabel() / IsHeteroBusLabel()
+#include <class_netlist_object.h>   // IsBusVectorLabel() / IsBusGroupLabel()
 #include <class_sch_screen.h>
 
 
@@ -66,7 +66,7 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
             m_members.push_back( member );
         }
     }
-    else if( IsHeteroBusLabel( aLabel ) )
+    else if( IsBusGroupLabel( aLabel ) )
     {
         m_name = aLabel;
         m_type = CONNECTION_BUS;

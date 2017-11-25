@@ -532,11 +532,11 @@ extern bool IsBusLabel( const wxString& aLabel );
 extern bool IsBusVectorLabel( const wxString& aLabel );
 
 /**
- * Test if \a aLabel has a heterogenous bus notation.
+ * Test if \a aLabel has a bus group notation.
  *
  * @param aLabel A wxString object containing the label to test.
- * @return true if text is a heterogenous bus notation format otherwise false is returned.
+ * @return true if text is a bus group notation format
  */
-extern bool IsHeteroBusLabel( const wxString& aLabel );
+extern bool IsBusGroupLabel( const wxString& aLabel );
 
 #endif    // _CLASS_NETLIST_OBJECT_H_
