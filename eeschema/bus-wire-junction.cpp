@@ -315,6 +315,18 @@ void SCH_EDIT_FRAME::EndSegment( wxDC* DC )
         oldItems.PushItem( picker );
     }
 
+    if( IsBusUnfoldInProgress() )
+    {
+        PICKED_ITEMS_LIST bus_items;
+        for( auto bus_item : m_busUnfoldItems )
+        {
+            bus_items.PushItem( ITEM_PICKER( bus_item, UR_NEW ) );
+        }
+
+        // TODO(JE) how to merge this with the UR_WIRE_IMAGE below?
+        SaveCopyInUndoList( bus_items, UR_NEW );
+    }
+
     SaveCopyInUndoList( oldItems, UR_WIRE_IMAGE );
 
     // Remove segments backtracking over others

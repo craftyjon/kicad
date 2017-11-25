@@ -431,6 +431,7 @@ void SCH_EDIT_FRAME::OnUnfoldBus( wxCommandEvent& event )
     screen->Append( bus_entry );
     screen->Append( label );
 
+    m_busUnfoldItems.clear();
     m_busUnfoldItems.push_back( bus_entry );
     m_busUnfoldItems.push_back( label );
     m_busUnfoldInProgress = true;
