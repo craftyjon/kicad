@@ -68,9 +68,22 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
     }
     else if( IsHeteroBusLabel( aLabel ) )
     {
-        std::cout << "Hetero bus label " << aLabel << " not handled yet." << std::endl;
+        m_name = aLabel;
         m_type = CONNECTION_BUS;
         m_bus_type = BUS_TYPE_GROUP;
+
+        wxString name;
+        std::vector<wxString> members;
+
+        if( NETLIST_OBJECT::ParseBusGroup( aLabel, &name, members) )
+        {
+            for( auto group_member : members )
+            {
+                auto member = std::make_shared< SCH_CONNECTION >( m_parent );
+                member->m_name = group_member;
+                m_members.push_back( member );
+            }
+        }
     }
     else if( auto alias = SCH_SCREEN::GetBusAlias( aLabel ) )
     {

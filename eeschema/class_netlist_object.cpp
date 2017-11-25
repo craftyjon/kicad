@@ -320,6 +320,27 @@ void NETLIST_OBJECT::ParseBusVector( wxString vector, wxString* name, long* begi
 }
 
 
+bool NETLIST_OBJECT::ParseBusGroup( wxString aGroup, wxString* name,
+                                    std::vector<wxString>& aMemberList )
+{
+    if( !IsHeteroBusLabel( aGroup ) )
+    {
+        return false;
+    }
+
+    *name = heteroBusLabelRe.GetMatch( aGroup, 1 );
+    auto contents = heteroBusLabelRe.GetMatch( aGroup, 2 );
+
+    wxStringTokenizer tokenizer( contents, " " );
+    while( tokenizer.HasMoreTokens() )
+    {
+        aMemberList.push_back( tokenizer.GetNextToken() );
+    }
+
+    return true;
+}
+
+
 void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItems )
 {
     wxCHECK_RET( IsBusLabel( m_Label ),
@@ -342,60 +363,58 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
         // second group is the contents of the group (space-delimited), e.g.
         // NET1 NET2 NETVECTOR[M..N] LASTNET
 
-        wxString tmp, busName, busContents;
+        wxString bus_name;
         bool selfSet = false;
+        std::vector<wxString> bus_contents;
 
-        busName = heteroBusLabelRe.GetMatch( m_Label, 1 );
-        busContents = heteroBusLabelRe.GetMatch( m_Label, 2 );
-
-        wxStringTokenizer tokenizer( busContents, " " );
-        while( tokenizer.HasMoreTokens() )
+        if( ParseBusGroup( m_Label, &bus_name, bus_contents ) )
         {
-            tmp = tokenizer.GetNextToken();
-
-            // Handle a nested vector bus inside the hetero bus
-            if( IsBusLabel( tmp ) )
+            for( auto bus_member : bus_contents )
             {
-                wxString vecName, tmpMember;
-                long begin = 0, end = 0, member = 0;
-
-                ParseBusVector( tmp, &vecName, &begin, &end );
-
-                if( !selfSet )
+                // Handle a nested vector bus inside the hetero bus
+                if( IsBusLabel( bus_member ) )
                 {
-                    member = begin;
-                    tmpMember = vecName;
-                    tmpMember << member;
-                    m_Label = tmpMember;
-                    m_Member = member;
+                    wxString vec_name, vec_member;
+                    long begin = 0, end = 0, member = 0;
 
-                    selfSet = true;
-                }
+                    ParseBusVector( bus_member, &vec_name, &begin, &end );
 
-                for( member++; member <= end; member++ )
-                {
-                    auto item = new NETLIST_OBJECT( *this );
+                    if( !selfSet )
+                    {
+                        member = begin;
+                        vec_member = vec_name;
+                        vec_member << member;
+                        m_Label = vec_member;
+                        m_Member = member;
 
-                    tmpMember = vecName;
-                    tmpMember << member;
-                    item->m_Label = tmpMember;
-                    item->m_Member = member;
+                        selfSet = true;
+                    }
 
-                    aNetListItems.push_back( item );
-                }
-            }
-            else
-            {
-                if( !selfSet )
-                {
-                    m_Label = tmp;
-                    selfSet = true;
+                    for( member++; member <= end; member++ )
+                    {
+                        auto item = new NETLIST_OBJECT( *this );
+
+                        vec_member = vec_name;
+                        vec_member << member;
+                        item->m_Label = vec_member;
+                        item->m_Member = member;
+
+                        aNetListItems.push_back( item );
+                    }
                 }
                 else
                 {
-                    auto item = new NETLIST_OBJECT( *this );
-                    item->m_Label = tmp;
-                    aNetListItems.push_back( item );
+                    if( !selfSet )
+                    {
+                        m_Label = bus_member;
+                        selfSet = true;
+                    }
+                    else
+                    {
+                        auto item = new NETLIST_OBJECT( *this );
+                        item->m_Label = bus_member;
+                        aNetListItems.push_back( item );
+                    }
                 }
             }
         }

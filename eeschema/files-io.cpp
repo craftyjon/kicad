@@ -356,6 +356,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         }
 
         schematic.UpdateSymbolLinks();      // Update all symbol library links for all sheets.
+        schematic.RecalculateConnections(); // Update connectivity graph
         GetScreen()->TestDanglingEnds();    // Only perform the dangling end test on root sheet.
     }
 

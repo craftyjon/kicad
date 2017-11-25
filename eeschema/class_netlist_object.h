@@ -275,6 +275,16 @@ public:
      * @param end is the last entry in the vector
      */
     static void ParseBusVector( wxString vector, wxString* name, long* begin, long* end );
+
+    /**
+     * Parses a bus group label into the name and a list of components
+     *
+     * @param aGroup is the input label, e.g. "USB{DP DM}"
+     * @param name is the output group name, e.g. "USB"
+     * @param aMemberList is a list of member strings, e.g. "DP", "DM"
+     * @return true if aGroup was successfully parsed
+     */
+    static bool ParseBusGroup( wxString aGroup, wxString* name, std::vector<wxString>& aMemberList );
 };
 
 
