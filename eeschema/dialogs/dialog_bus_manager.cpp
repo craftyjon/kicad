@@ -1,8 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2017 Jon Evans <jon@craftyjon.com>
- * Copyright (C) 2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2017 CERN
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -56,9 +55,9 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
                                       wxLC_SINGLE_SEL );
     m_bus_list_view->InsertColumn( 0, "" );
     m_bus_edit = new wxTextCtrl( this, wxID_ANY );
-    
+
     auto left_button_sizer = new wxBoxSizer( wxHORIZONTAL );
-    
+
     m_btn_add_bus = new wxButton( this, wxID_ANY, _( "Add" ) );
     m_btn_rename_bus = new wxButton( this, wxID_ANY, _( "Rename" ) );
     m_btn_remove_bus = new wxButton( this, wxID_ANY, _( "Remove" ) );
@@ -139,7 +138,7 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
             wxCommandEventHandler( DIALOG_BUS_MANAGER::OnRemoveSignal ), NULL, this );
 
     // Set initial UI state
-    
+
     m_btn_rename_bus->Disable();
     m_btn_remove_bus->Disable();
 
@@ -175,7 +174,7 @@ bool DIALOG_BUS_MANAGER::TransferDataToWindow()
         original_aliases.insert( original_aliases.end(), sheet_aliases.begin(),
                                  sheet_aliases.end() );
     }
-    
+
     // clone into a temporary working set
     int idx = 0;
     for( auto alias : original_aliases )
@@ -252,7 +251,7 @@ void DIALOG_BUS_MANAGER::OnSelectBus( wxListEvent& event )
 
             auto members = alias->Members();
 
-            // TODO(JE) Clear() seems to be clearing the hint, contrary to 
+            // TODO(JE) Clear() seems to be clearing the hint, contrary to
             // the wx documentation.
             m_signal_edit->Clear();
             m_signal_list_view->DeleteAllItems();
