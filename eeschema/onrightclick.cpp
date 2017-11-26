@@ -756,11 +756,32 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
 
         PopMenu->AppendSubMenu( bus_unfolding_menu, _( "Unfold Bus" ) );
 
-        if( connection->Type() == CONNECTION_BUS )
+        int idx = 0;
+        for( const auto& member : connection->Members() )
         {
-            for( const auto& member : connection->Members() )
+            int id = ID_POPUP_SCH_UNFOLD_BUS + ( idx++ );
+
+            if( member->Type() == CONNECTION_BUS )
             {
-                int id = ID_POPUP_SCH_UNFOLD_BUS + member->VectorIndex();
+                wxMenu* submenu = new wxMenu;
+                bus_unfolding_menu->AppendSubMenu( submenu, _( member->Name() ) );
+
+                for( const auto& sub_member : member->Members() )
+                {
+                    id = ID_POPUP_SCH_UNFOLD_BUS + ( idx++ );
+
+                    submenu->Append( id, sub_member->Name(), wxEmptyString );
+
+                    // See comment in else clause below
+                    auto sub_item_clone = new wxMenuItem();
+                    sub_item_clone->SetText( sub_member->Name() );
+
+                    frame->Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
+                                 frame, id, id, sub_item_clone );
+                }
+            }
+            else
+            {
                 bus_unfolding_menu->Append( id, member->Name(),
                                             wxEmptyString );
 
@@ -775,34 +796,6 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
                 frame->Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
                              frame, id, id, item_clone );
             }
-        }
-        else if( connection->Type() == CONNECTION_BUS_GROUP )
-        {
-            // TODO(JE) Recursive unpacking of bus groups
-            // For now, this code only does one level
-            // Unify with above code to remove duplication
-            int idx = 1;
-            for( const auto& member : connection->Members() )
-            {
-                int id = ID_POPUP_SCH_UNFOLD_BUS + ( idx++ );
-                bus_unfolding_menu->Append( id, member->Name(),
-                                            wxEmptyString );
-
-                // Because Bind() takes ownership of the user data item, we
-                // make a new menu item here and set its label.  Why create a
-                // menu item instead of just a wxString or something? Because
-                // Bind() requires a pointer to wxObject rather than a void
-                // pointer.  Maybe at some point I'll think of a better way...
-                auto item_clone = new wxMenuItem();
-                item_clone->SetText( member->Name() );
-
-                frame->Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
-                             frame, id, id, item_clone );
-            }
-        }
-        else
-        {
-            wxFAIL_MSG( _( "Trying to unfold bus but connection isn't a bus!" ) );
         }
     }
 

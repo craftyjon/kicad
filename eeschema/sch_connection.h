@@ -100,6 +100,16 @@ public:
         return m_name;
     }
 
+    wxString Prefix()
+    {
+        return m_prefix;
+    }
+
+    void SetPrefix( wxString aPrefix )
+    {
+        m_prefix = aPrefix;
+    }
+
     CONNECTION_TYPE Type()
     {
         return m_type;
@@ -144,6 +154,9 @@ private:
     CONNECTION_TYPE m_type; ///< @see enum CONNECTION_TYPE
 
     wxString m_name;        ///< Name of the bus.
+
+    ///< Prefix if connection is member of a labeled bus group (or "" if not)
+    wxString m_prefix;
 
     int m_net_code;         // TODO(JE) remove if unused
 

@@ -58,7 +58,7 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
             auto member = std::make_shared< SCH_CONNECTION >( m_parent );
             wxString name = prefix;
             name << i;
-            member->m_name = name;
+            member->m_name = m_prefix + name;
             member->m_vector_index = i;
             m_members.push_back( member );
         }
@@ -82,14 +82,16 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
                     for( auto alias_member : alias->Members() )
                     {
                         auto member = std::make_shared< SCH_CONNECTION >( m_parent );
-                        member->m_name = prefix + alias_member;
+                        member->SetPrefix( prefix );
+                        member->ConfigureFromLabel( alias_member );
                         m_members.push_back( member );
                     }
                 }
                 else
                 {
                     auto member = std::make_shared< SCH_CONNECTION >( m_parent );
-                    member->m_name = prefix + group_member;
+                    member->SetPrefix( prefix );
+                    member->ConfigureFromLabel( group_member );
                     m_members.push_back( member );
                 }
             }
@@ -103,13 +105,13 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
         for( auto alias_member : alias->Members() )
         {
             auto member = std::make_shared< SCH_CONNECTION >( m_parent );
-            member->m_name = alias_member;
+            member->ConfigureFromLabel( alias_member );
             m_members.push_back( member );
         }
     }
     else
     {
-        m_name = aLabel;
+        m_name = m_prefix + aLabel;
         m_type = CONNECTION_NET;
     }
 }
@@ -119,6 +121,7 @@ void SCH_CONNECTION::Reset()
 {
     m_type = CONNECTION_NONE;
     m_name = "<NO NET>";
+    m_prefix = "";
     m_members.clear();
     m_dirty = true;
 }
