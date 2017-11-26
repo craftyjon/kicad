@@ -72,11 +72,26 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
 
         if( NETLIST_OBJECT::ParseBusGroup( aLabel, &m_name, members) )
         {
+            auto prefix = ( m_name != "" ) ? ( m_name + "." ) : "";
+
             for( auto group_member : members )
             {
-                auto member = std::make_shared< SCH_CONNECTION >( m_parent );
-                member->m_name = m_name + "." + group_member;
-                m_members.push_back( member );
+                // Handle alias inside bus group label
+                if( auto alias = SCH_SCREEN::GetBusAlias( group_member ) )
+                {
+                    for( auto alias_member : alias->Members() )
+                    {
+                        auto member = std::make_shared< SCH_CONNECTION >( m_parent );
+                        member->m_name = prefix + alias_member;
+                        m_members.push_back( member );
+                    }
+                }
+                else
+                {
+                    auto member = std::make_shared< SCH_CONNECTION >( m_parent );
+                    member->m_name = prefix + group_member;
+                    m_members.push_back( member );
+                }
             }
         }
     }
