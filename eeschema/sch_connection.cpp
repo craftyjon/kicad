@@ -46,7 +46,6 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
 {
     if( IsBusVectorLabel( aLabel ) )
     {
-        // TODO(JE) Is storing the whole name right? (vs. the prefix)
         m_name = aLabel;
         m_type = CONNECTION_BUS;
 
@@ -72,11 +71,12 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
 
         if( NETLIST_OBJECT::ParseBusGroup( aLabel, &m_name, members) )
         {
+            // Named bus groups generate a net prefix, unnamed ones don't
             auto prefix = ( m_name != "" ) ? ( m_name + "." ) : "";
 
             for( auto group_member : members )
             {
-                // Handle alias inside bus group label
+                // Handle alias inside bus group member list
                 if( auto alias = SCH_SCREEN::GetBusAlias( group_member ) )
                 {
                     for( auto alias_member : alias->Members() )

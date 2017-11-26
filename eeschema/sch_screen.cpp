@@ -540,15 +540,13 @@ void SCH_SCREEN::Draw( EDA_DRAW_PANEL* aCanvas, wxDC* aDC, GR_DRAWMODE aDrawMode
             item->Draw( aCanvas, aDC, wxPoint( 0, 0 ), aDrawMode, aColor );
 
         // TODO(JE) Remove debugging code
-        if( item->m_connection )
+        if( item->Connection() )
         {
             auto pos = item->GetBoundingBox().Centre();
-            wxString net = _( "" );
             int sz = Mils2iu( 15 );
+            auto label = item->Connection()->Name();
 
-            net = item->m_connection->m_name;
-
-            auto text = SCH_TEXT( pos, net, SCH_TEXT_T );
+            auto text = SCH_TEXT( pos, label, SCH_TEXT_T );
             text.SetTextSize( wxSize( sz, sz ) );
             text.Draw( aCanvas, aDC, wxPoint( 0, 0 ), aDrawMode, COLOR4D( LIGHTRED ) );
         }
@@ -1599,7 +1597,7 @@ void SCH_SCREENS::RecalculateConnections()
 
     PROF_COUNTER phase1;
 
-    // Phase 1: update m_connected_items
+    // Phase 1: update connected items
     for( auto screen = GetFirst(); screen; screen = GetNext() )
     {
         std::unordered_map< wxPoint, std::vector< SCH_ITEM* > > connection_map;
@@ -1628,7 +1626,7 @@ void SCH_SCREENS::RecalculateConnections()
                     break;
 
                 default:
-                    item->m_connected_items.clear();
+                    item->ConnectedItems().clear();
                     break;
                 }
 
@@ -1660,7 +1658,7 @@ void SCH_SCREENS::RecalculateConnections()
                 {
                     if( connected_item->ConnectionPropagatesTo( test_item ) )
                     {
-                        connected_item->m_connected_items.insert( test_item );
+                        connected_item->ConnectedItems().insert( test_item );
                     }
                 }
             }
@@ -1697,16 +1695,16 @@ void SCH_SCREENS::RecalculateConnections()
                     }
                 }
 
-                if( !item->m_connection )
+                if( !item->Connection() )
                 {
                     // no connection data yet, let's try to generate one
-                    item->m_connection = SCH_CONNECTION( item );
+                    item->Connection() = SCH_CONNECTION( item );
 
                     if( item->Type() == SCH_SHEET_T )
                     {
                         for( auto& pin : static_cast<SCH_SHEET*>( item )->GetPins() )
                         {
-                            pin.m_connection = SCH_CONNECTION( &pin );
+                            pin.Connection() = SCH_CONNECTION( &pin );
                         }
                     }
                 }
@@ -1715,12 +1713,12 @@ void SCH_SCREENS::RecalculateConnections()
                 {
                     for( auto& pin : static_cast<SCH_SHEET*>( item )->GetPins() )
                     {
-                        if( !pin.m_connection )
+                        if( !pin.Connection() )
                         {
-                            pin.m_connection = SCH_CONNECTION( &pin );
+                            pin.Connection() = SCH_CONNECTION( &pin );
                         }
 
-                        pin.m_connection->Reset();
+                        pin.Connection()->Reset();
                         items_list.push_back( &pin );
                         // Add pin to connection graph
                         // TODO(JE) Move to CONNECTION_GRAPH
@@ -1737,22 +1735,22 @@ void SCH_SCREENS::RecalculateConnections()
                 }
                 else
                 {
-                    item->m_connection->Reset();
+                    item->Connection()->Reset();
 
                     // Set bus/net property here so that the propagation code uses it
                     switch( item->Type() )
                     {
                     case SCH_LINE_T:
-                        item->m_connection->m_type = ( item->GetLayer() == LAYER_BUS ) ?
-                                                     CONNECTION_BUS : CONNECTION_NET;
+                        item->Connection()->SetType( ( item->GetLayer() == LAYER_BUS ) ?
+                                                     CONNECTION_BUS : CONNECTION_NET );
                         break;
 
                     case SCH_BUS_BUS_ENTRY_T:
-                        item->m_connection->m_type = CONNECTION_BUS;
+                        item->Connection()->SetType( CONNECTION_BUS );
                         break;
 
                     case SCH_BUS_WIRE_ENTRY_T:
-                        item->m_connection->m_type = CONNECTION_NET;
+                        item->Connection()->SetType( CONNECTION_NET );
                         break;
 
                     default:
@@ -1782,7 +1780,7 @@ void SCH_SCREENS::RecalculateConnections()
     for( auto item : items_list )
     {
         auto first = graph.m_vertex_map[ item ];
-        for( auto connected_item : item->m_connected_items )
+        for( auto connected_item : item->ConnectedItems() )
         {
             auto second = graph.m_vertex_map[ connected_item ];
 
@@ -1831,8 +1829,8 @@ void SCH_SCREENS::RecalculateConnections()
                         {
                             if( pin->IsPowerConnection() )
                             {
-                                item->m_connection->m_name = pin->GetName();
-                                item->m_connection->ClearDirty();
+                                item->Connection()->ConfigureFromLabel( pin->GetName() );
+                                item->Connection()->ClearDirty();
                             }
                         }
                     }
@@ -1840,11 +1838,11 @@ void SCH_SCREENS::RecalculateConnections()
             }
             else
             {
-                item->m_connection->ConfigureFromLabel( static_cast<SCH_TEXT*>( item )->GetText() );
-                item->m_connection->ClearDirty();
+                item->Connection()->ConfigureFromLabel( static_cast<SCH_TEXT*>( item )->GetText() );
+                item->Connection()->ClearDirty();
             }
 
-            auto visitor = CONNECTION_VISITOR( *( item->m_connection ) );
+            auto visitor = CONNECTION_VISITOR( *( item->Connection() ) );
 
             boost::breadth_first_search( graph.m_graph, *vertex_it,
                                          boost::visitor( visitor ).vertex_index_map(

@@ -564,7 +564,7 @@ void SCH_TEXT::GetNetListItem( NETLIST_OBJECT_LIST& aNetListItems,
         // then the info is propagated to the wires connected to the label.
         // It would be nice if labels could know that they are connected to
         // a net wire or bus wire.
-        m_connection->m_type = CONNECTION_BUS;
+        m_connection->SetType( CONNECTION_BUS );
 
         item->ConvertBusToNetListItems( aNetListItems );
     }

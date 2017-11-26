@@ -95,16 +95,59 @@ public:
         m_dirty = false;
     }
 
+    wxString Name()
+    {
+        return m_name;
+    }
+
+    CONNECTION_TYPE Type()
+    {
+        return m_type;
+    }
+
+    void SetType( CONNECTION_TYPE aType )
+    {
+        m_type = aType;
+    }
+
+    long VectorStart()
+    {
+        return m_vector_start;
+    }
+
+    long VectorEnd()
+    {
+        return m_vector_end;
+    }
+
+    long VectorIndex()
+    {
+        return m_vector_index;
+    }
+
+    std::vector< std::shared_ptr< SCH_CONNECTION > >& Members()
+    {
+        return m_members;
+    }
+
+    const std::vector< std::shared_ptr< SCH_CONNECTION > >& Members() const
+    {
+        return m_members;
+    }
+
+private:
+
+    bool m_dirty;
+
     SCH_ITEM* m_parent;
 
     CONNECTION_TYPE m_type; ///< @see enum CONNECTION_TYPE
 
-    // TODO(JE) How to name unnamed buses?
     wxString m_name;        ///< Name of the bus.
 
-    int m_net_code;
+    int m_net_code;         // TODO(JE) remove if unused
 
-    int m_bus_code;         // TODO(JE) is this actually necessary?
+    int m_bus_code;         // TODO(JE) remove if unused
 
     long m_vector_index;    ///< Index of bus vector member nets
 
@@ -114,10 +157,6 @@ public:
 
     // For bus connections, store a list of member connections
     std::vector< std::shared_ptr< SCH_CONNECTION > > m_members;
-
-private:
-
-    bool m_dirty;
 
 };
 
