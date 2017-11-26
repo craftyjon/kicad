@@ -1600,8 +1600,6 @@ void SCH_SCREENS::RecalculateConnections()
     PROF_COUNTER phase1;
 
     // Phase 1: update m_connected_items
-    // TODO(JE) This doesn't cross the heirarchy boundaries.  Should it?
-    // TODO(JE) This doesn't work for labels that aren't at the endpoints of lines
     for( auto screen = GetFirst(); screen; screen = GetNext() )
     {
         std::unordered_map< wxPoint, std::vector< SCH_ITEM* > > connection_map;

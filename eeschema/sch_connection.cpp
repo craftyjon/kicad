@@ -66,18 +66,16 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
     }
     else if( IsBusGroupLabel( aLabel ) )
     {
-        m_name = aLabel;
         m_type = CONNECTION_BUS_GROUP;
 
-        wxString name;
         std::vector<wxString> members;
 
-        if( NETLIST_OBJECT::ParseBusGroup( aLabel, &name, members) )
+        if( NETLIST_OBJECT::ParseBusGroup( aLabel, &m_name, members) )
         {
             for( auto group_member : members )
             {
                 auto member = std::make_shared< SCH_CONNECTION >( m_parent );
-                member->m_name = group_member;
+                member->m_name = m_name + "." + group_member;
                 m_members.push_back( member );
             }
         }
