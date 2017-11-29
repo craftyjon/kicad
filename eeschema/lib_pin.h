@@ -2,8 +2,8 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2015 Jean-Pierre Charras, jaen-pierre.charras at wanadoo.fr
- * Copyright (C) 2015 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 2004-2015 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2015 Wayne Stambaugh <stambaughw@gmail.com>
+ * Copyright (C) 2004-2017 KiCad Developers, see change_log.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -116,8 +116,6 @@ public:
 
     bool Save( OUTPUTFORMATTER& aFormatter ) override;
 
-    bool Load( LINE_READER& aLineReader, wxString& aErrorMsg ) override;
-
     bool HitTest( const wxPoint& aPosition ) const override;
 
     bool HitTest( const wxPoint &aPosRef, int aThreshold, const TRANSFORM& aTransform ) const override;
@@ -200,10 +198,7 @@ public:
      * because each pin has its own number
      * @param aNumber New pin number.
      */
-    void SetNumber( const wxString& aNumber )
-    {
-        m_number = aNumber;
-    }
+    void SetNumber( const wxString& aNumber );
 
     /**
      * Set the size of the pin number text.
