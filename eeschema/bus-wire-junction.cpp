@@ -327,8 +327,7 @@ void SCH_EDIT_FRAME::EndSegment()
             bus_items.PushItem( ITEM_PICKER( bus_item, UR_NEW ) );
         }
 
-        // TODO(JE) how to merge this with the UR_WIRE_IMAGE below?
-        SaveCopyInUndoList( bus_items, UR_NEW );
+        SaveCopyInUndoList( bus_items, UR_NEW, false );
     }
 
     // Get the last non-null wire (this is the last created segment).
@@ -336,7 +335,7 @@ void SCH_EDIT_FRAME::EndSegment()
 
     // Add the new wires
     screen->Append( s_wires );
-    SaveCopyInUndoList(itemList, UR_NEW);
+    SaveCopyInUndoList( itemList, UR_NEW, true );
 
     // Correct and remove segments that need to be merged.
     SchematicCleanUp( true );
