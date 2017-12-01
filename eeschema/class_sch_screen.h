@@ -268,16 +268,7 @@ public:
     bool CheckIfOnDrawList( SCH_ITEM* st );
 
     /**
-     * Perform routine schematic cleaning including breaking wire and buses and
-     * deleting identical objects superimposed on top of each other.
-     *
-     * @return True if any schematic clean up was performed.
-     */
-    bool SchematicCleanUp();
-
-    /**
      * Test all of the connectable objects in the schematic for unused connection points.
-     *
      * @return True if any connection state changes were made.
      */
     bool TestDanglingEnds();
@@ -323,23 +314,6 @@ public:
      */
     int GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aList, bool aFullConnection );
 
-    /**
-     * Checks every wire and bus for a intersection at \a aPoint and break into two segments
-     * at \a aPoint if an intersection is found.
-     *
-     * @param aPoint Test this point for an intersection.
-     * @return True if any wires or buses were broken.
-     */
-    bool BreakSegment( const wxPoint& aPoint );
-
-    /**
-     * Tests all junctions and bus entries in the schematic for intersections with wires and
-     * buses and breaks any intersections into multiple segments.
-     *
-     * @return True if any wires or buses were broken.
-     */
-    bool BreakSegmentsOnJunctions();
-
     /* full undo redo management : */
     // use BASE_SCREEN::PushCommandToUndoList( PICKED_ITEMS_LIST* aItem )
     // use BASE_SCREEN::PushCommandToRedoList( PICKED_ITEMS_LIST* aItem )
@@ -368,19 +342,19 @@ public:
     /**
      * Test if a junction is required for the items at \a aPosition on the screen.
      * <p>
-     * A junction is required at \a aPosition if the following criteria are satisfied:
+     * A junction is required at \a aPosition if one of the following criteria is satisfied:
      * <ul>
-     * <li>one wire midpoint, one or more wire endpoints and no junction.</li>
-     * <li>three or more wire endpoints and no junction.</li>
-     * <li>two wire midpoints and no junction</li>
-     * <li>one wire midpoint, a component pin, and no junction.</li>
-     * <li>three wire endpoints, a component pin, and no junction.</li>
+     * <li>one wire midpoint and one or more wire endpoints;</li>
+     * <li>three or more wire endpoints;</li>
+     * <li>one wire midpoint and a component pin;</li>
+     * <li>two or more wire endpoints and a component pin.</li>
      * </ul>
      * </p>
      * @param aPosition The position to test.
+     * @param aNew Checks if a _new_ junction is needed, i.e. there isn't one already
      * @return True if a junction is required at \a aPosition.
      */
-    bool IsJunctionNeeded( const wxPoint& aPosition );
+    bool IsJunctionNeeded( const wxPoint& aPosition, bool aNew = false );
 
     /**
      * Test if \a aPosition is a connection point on \a aLayer.
@@ -581,11 +555,6 @@ public:
      * Clear the annotation for all components in the hierarchy.
      */
     void ClearAnnotation();
-
-    /**
-     * Merge and break wire segments in the entire schematic hierarchy.
-     */
-    void SchematicCleanUp();
 
     /**
      * Test all sheet and component objects in the schematic for duplicate time stamps

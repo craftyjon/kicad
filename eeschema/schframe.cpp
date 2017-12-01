@@ -1259,7 +1259,7 @@ void SCH_EDIT_FRAME::OnOpenLibraryEditor( wxCommandEvent& event )
         libeditFrame->LoadComponentAndSelectLib( id );
     }
 
-    GetScreen()->SchematicCleanUp();
+    SchematicCleanUp();
     m_canvas->Refresh();
 }
 
@@ -1454,7 +1454,15 @@ void SCH_EDIT_FRAME::addCurrentItemToList( bool aRedraw )
 
     if( item->IsConnectable() )
     {
+        std::vector< wxPoint > pts;
+        item->GetConnectionPoints( pts );
+        for( auto i : pts )
+        {
+            if( screen->IsJunctionNeeded( i, true ) )
+                AddJunction( i, true );
+        }
         screen->TestDanglingEnds();
+
         SCH_SCREENS schematic;
         schematic.RecalculateConnections();
     }

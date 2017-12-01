@@ -55,12 +55,12 @@
 #include <sch_text.h>
 #include <lib_pin.h>
 #include <symbol_lib_table.h>
-
 #include <connection_graph.h>
 
 // TODO(JE) Debugging only
 #include <profile.h>
 
+#include <boost/foreach.hpp>
 
 #define EESCHEMA_FILE_STAMP   "EESchema"
 
@@ -352,19 +352,59 @@ void SCH_SCREEN::MarkConnections( SCH_LINE* aSegment )
 }
 
 
-bool SCH_SCREEN::IsJunctionNeeded( const wxPoint& aPosition )
+bool SCH_SCREEN::IsJunctionNeeded( const wxPoint& aPosition, bool aNew )
 {
-    if( GetItem( aPosition, 0, SCH_JUNCTION_T ) )
-        return false;
+    bool has_line = false;
+    bool has_nonparallel = false;
+    int end_count = 0;
 
-    if( GetWire( aPosition, 0, EXCLUDE_END_POINTS_T ) )
+    std::vector< SCH_LINE* > lines;
+
+    for( SCH_ITEM* item = m_drawList.begin(); item; item = item->Next() )
     {
-        if( GetWire( aPosition, 0, END_POINTS_ONLY_T ) )
-            return true;
+        if( item->GetFlags() & STRUCT_DELETED )
+            continue;
+        if( aNew && ( item->Type() == SCH_JUNCTION_T ) && ( item->HitTest( aPosition ) ) )
+            return false;
 
-        if( GetPin( aPosition, NULL, true ) )
-            return true;
+        if( item->Type() != SCH_LINE_T )
+            continue;
+
+        if( item->GetLayer() != LAYER_WIRE )
+            continue;
+
+        if( item->HitTest( aPosition, 0 ) )
+            lines.push_back( (SCH_LINE*) item );
     }
+
+    BOOST_FOREACH( SCH_LINE* line, lines)
+    {
+        if( !line->IsEndPoint( aPosition ) )
+            has_line = true;
+        else
+            end_count++;
+        BOOST_REVERSE_FOREACH( SCH_LINE* second_line, lines )
+        {
+            if( line == second_line )
+                break;
+            if( line->IsEndPoint( second_line->GetStartPoint() )
+                    && line->IsEndPoint( second_line->GetEndPoint() ) )
+                end_count--;
+            if( !line->IsParallel( second_line ) )
+                has_nonparallel = true;
+        }
+    }
+
+    int has_pin = !!( GetPin( aPosition, NULL, true ) );
+
+    // If there is line intersecting a pin or non-parallel end
+    if( has_pin && ( has_line || end_count > 1 ) )
+        return true;
+
+    // If there is at least one segment that ends on a non-parallel line or
+    // junction of two other lines
+    if( has_nonparallel && (has_line || end_count > 2 ) )
+        return true;
 
     return false;
 }
@@ -438,55 +478,6 @@ bool SCH_SCREEN::IsTerminalPoint( const wxPoint& aPosition, int aLayer )
     }
 
     return false;
-}
-
-
-bool SCH_SCREEN::SchematicCleanUp()
-{
-    bool      modified = false;
-
-    for( SCH_ITEM* item = m_drawList.begin() ; item; item = item->Next() )
-    {
-        if( ( item->Type() != SCH_LINE_T ) && ( item->Type() != SCH_JUNCTION_T ) )
-            continue;
-
-        bool restart;
-
-        for( SCH_ITEM* testItem = item->Next(); testItem; testItem = restart ? m_drawList.begin() : testItem->Next() )
-        {
-            restart = false;
-
-            if( ( item->Type() == SCH_LINE_T ) && ( testItem->Type() == SCH_LINE_T ) )
-            {
-                SCH_LINE* line = (SCH_LINE*) item;
-
-                if( line->MergeOverlap( (SCH_LINE*) testItem ) )
-                {
-                    // Keep the current flags, because the deleted segment can be flagged.
-                    item->SetFlags( testItem->GetFlags() );
-                    DeleteItem( testItem );
-                    restart = true;
-                    modified = true;
-                }
-            }
-            else if ( ( ( item->Type() == SCH_JUNCTION_T )
-                      && ( testItem->Type() == SCH_JUNCTION_T ) ) && ( testItem != item ) )
-            {
-                if ( testItem->HitTest( item->GetPosition() ) )
-                {
-                    // Keep the current flags, because the deleted segment can be flagged.
-                    item->SetFlags( testItem->GetFlags() );
-                    DeleteItem( testItem );
-                    restart = true;
-                    modified = true;
-                }
-            }
-        }
-    }
-
-    TestDanglingEnds();
-
-    return modified;
 }
 
 
@@ -912,64 +903,6 @@ bool SCH_SCREEN::TestDanglingEnds()
 }
 
 
-bool SCH_SCREEN::BreakSegment( const wxPoint& aPoint )
-{
-    SCH_LINE* segment;
-    SCH_LINE* newSegment;
-    bool brokenSegments = false;
-
-    for( SCH_ITEM* item = m_drawList.begin(); item; item = item->Next() )
-    {
-        if( (item->Type() != SCH_LINE_T) || (item->GetLayer() == LAYER_NOTES) )
-            continue;
-
-        segment = (SCH_LINE*) item;
-
-        if( !segment->HitTest( aPoint, 0 ) || segment->IsEndPoint( aPoint ) )
-            continue;
-
-        // Break the segment at aPoint and create a new segment.
-        newSegment = new SCH_LINE( *segment );
-        newSegment->SetStartPoint( aPoint );
-        segment->SetEndPoint( aPoint );
-        m_drawList.Insert( newSegment, segment->Next() );
-        item = newSegment;
-        brokenSegments = true;
-    }
-
-    return brokenSegments;
-}
-
-
-bool SCH_SCREEN::BreakSegmentsOnJunctions()
-{
-    bool brokenSegments = false;
-
-    for( SCH_ITEM* item = m_drawList.begin(); item; item = item->Next() )
-    {
-        if( item->Type() == SCH_JUNCTION_T )
-        {
-            SCH_JUNCTION* junction = ( SCH_JUNCTION* ) item;
-
-            if( BreakSegment( junction->GetPosition() ) )
-                brokenSegments = true;
-        }
-        else
-        {
-            SCH_BUS_ENTRY_BASE* busEntry = dynamic_cast<SCH_BUS_ENTRY_BASE*>( item );
-            if( busEntry )
-            {
-                if( BreakSegment( busEntry->GetPosition() )
-                 || BreakSegment( busEntry->m_End() ) )
-                    brokenSegments = true;
-            }
-        }
-    }
-
-    return brokenSegments;
-}
-
-
 int SCH_SCREEN::GetNode( const wxPoint& aPosition, EDA_ITEMS& aList )
 {
     for( SCH_ITEM* item = m_drawList.begin(); item; item = item->Next() )
@@ -1114,7 +1047,6 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
 
     // Clear flags member for all items.
     ClearDrawingState();
-    BreakSegmentsOnJunctions();
 
     if( GetNode( aPosition, list ) == 0 )
         return 0;
@@ -1224,30 +1156,6 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
             }
         }
 
-        // Get redundant junctions (junctions which connect < 3 end wires
-        // and no pin)
-        for( item = m_drawList.begin(); item; item = item->Next() )
-        {
-            if( item->GetFlags() & STRUCT_DELETED )
-                continue;
-
-            if( !(item->GetFlags() & CANDIDATE) )
-                continue;
-
-            if( item->Type() != SCH_JUNCTION_T )
-                continue;
-
-            SCH_JUNCTION* junction = (SCH_JUNCTION*) item;
-
-            if( CountConnectedItems( junction->GetPosition(), false ) <= 2 )
-            {
-                item->SetFlags( STRUCT_DELETED );
-
-                ITEM_PICKER picker( item, UR_DELETED );
-                aList.PushItem( picker );
-            }
-        }
-
         for( item = m_drawList.begin(); item;  item = item->Next() )
         {
             if( item->GetFlags() & STRUCT_DELETED )
@@ -1258,7 +1166,7 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
 
             tmp = GetWireOrBus( ( (SCH_TEXT*) item )->GetPosition() );
 
-            if( tmp && tmp->GetFlags() & STRUCT_DELETED )
+            if( tmp && ( tmp->GetFlags() & STRUCT_DELETED ) )
             {
                 item->SetFlags( STRUCT_DELETED );
 
@@ -1428,19 +1336,6 @@ void SCH_SCREENS::ClearAnnotation()
     for( size_t i = 0;  i < m_screens.size();  i++ )
         m_screens[i]->ClearAnnotation( NULL );
 }
-
-
-void SCH_SCREENS::SchematicCleanUp()
-{
-    for( size_t i = 0;  i < m_screens.size();  i++ )
-    {
-        // if wire list has changed, delete the undo/redo list to avoid
-        // pointer problems with deleted data.
-        if( m_screens[i]->SchematicCleanUp() )
-            m_screens[i]->ClearUndoRedoList();
-    }
-}
-
 
 int SCH_SCREENS::ReplaceDuplicateTimeStamps()
 {

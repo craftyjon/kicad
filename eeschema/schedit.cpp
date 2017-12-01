@@ -169,7 +169,7 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
     case ID_POPUP_END_LINE:
         m_canvas->MoveCursorToCrossHair();
-        EndSegment( &dc );
+        EndSegment();
         break;
 
     case ID_POPUP_SCH_BEGIN_WIRE:
@@ -190,6 +190,7 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
     case ID_POPUP_SCH_DELETE_CONNECTION:
         m_canvas->MoveCursorToCrossHair();
         DeleteConnection( id == ID_POPUP_SCH_DELETE_CONNECTION );
+        SchematicCleanUp( true );
         screen->SetCurItem( NULL );
         SetRepeatItem( NULL );
 
@@ -200,28 +201,9 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
     case ID_POPUP_SCH_BREAK_WIRE:
         {
-            DLIST< SCH_ITEM > oldWires;
-
-            oldWires.SetOwnership( false );      // Prevent DLIST for deleting items in destructor.
+            SaveWireImage();
             m_canvas->MoveCursorToCrossHair();
-            screen->ExtractWires( oldWires, true );
-            screen->BreakSegment( GetCrossHairPosition() );
-
-            if( oldWires.GetCount() != 0 )
-            {
-                PICKED_ITEMS_LIST oldItems;
-
-                oldItems.m_Status = UR_WIRE_IMAGE;
-
-                while( oldWires.GetCount() != 0 )
-                {
-                    ITEM_PICKER picker = ITEM_PICKER( oldWires.PopFront(), UR_WIRE_IMAGE );
-                    oldItems.PushItem( picker );
-                }
-
-                SaveCopyInUndoList( oldItems, UR_WIRE_IMAGE );
-            }
-
+            BreakSegments( GetCrossHairPosition() );
             if( screen->TestDanglingEnds() )
                 m_canvas->Refresh();
         }
@@ -233,6 +215,7 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
             break;
 
         DeleteItem( item );
+        SchematicCleanUp( true );
         screen->SetCurItem( NULL );
         SetRepeatItem( NULL );
         screen->TestDanglingEnds();
@@ -372,7 +355,7 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
     case ID_POPUP_SCH_ADD_JUNCTION:
         m_canvas->MoveCursorToCrossHair();
-        screen->SetCurItem( AddJunction( &dc, GetCrossHairPosition(), true ) );
+        screen->SetCurItem( AddJunction( GetCrossHairPosition() ) );
 
         if( screen->TestDanglingEnds() )
             m_canvas->Refresh();
@@ -707,7 +690,8 @@ void SCH_EDIT_FRAME::DeleteConnection( bool aFullConnection )
 
     if( screen->GetConnection( pos, pickList, aFullConnection ) != 0 )
     {
-        DeleteItemsInList( m_canvas, pickList );
+        DeleteItemsInList( pickList );
+        SchematicCleanUp( true );
         OnModify();
     }
 }

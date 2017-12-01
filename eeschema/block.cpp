@@ -127,9 +127,8 @@ void SCH_EDIT_FRAME::HandleBlockPlace( wxDC* DC )
         if( m_canvas->IsMouseCaptured() )
             m_canvas->CallMouseCapture( DC, wxDefaultPosition, false );
 
-        SaveCopyInUndoList( block->GetItems(), UR_MOVED, block->GetMoveVector() );
+        SaveCopyInUndoList( block->GetItems(), UR_CHANGED, false, block->GetMoveVector() );
         MoveItemsInList( block->GetItems(), block->GetMoveVector() );
-        block->ClearItemsList();
         break;
 
     case BLOCK_DUPLICATE:           /* Duplicate */
@@ -141,8 +140,6 @@ void SCH_EDIT_FRAME::HandleBlockPlace( wxDC* DC )
 
         SaveCopyInUndoList( block->GetItems(),
                             ( block->GetCommand() == BLOCK_PRESELECT_MOVE ) ? UR_CHANGED : UR_NEW );
-
-        block->ClearItemsList();
         break;
 
     case BLOCK_PASTE:
@@ -150,13 +147,15 @@ void SCH_EDIT_FRAME::HandleBlockPlace( wxDC* DC )
             m_canvas->CallMouseCapture( DC, wxDefaultPosition, false );
 
         PasteListOfItems( DC );
-        block->ClearItemsList();
         break;
 
     default:        // others are handled by HandleBlockEnd()
        break;
     }
 
+    CheckJunctionsInList( block->GetItems(), true );
+    block->ClearItemsList();
+    SchematicCleanUp( true );
     OnModify();
 
     // clear dome flags and pointers
@@ -216,8 +215,10 @@ bool SCH_EDIT_FRAME::HandleBlockEnd( wxDC* aDC )
                 wxPoint rotationPoint = block->Centre();
                 rotationPoint = GetNearestGridPosition( rotationPoint );
                 SetCrossHairPosition( rotationPoint );
-                SaveCopyInUndoList( block->GetItems(), UR_ROTATED, rotationPoint );
+                SaveCopyInUndoList( block->GetItems(), UR_ROTATED, false, rotationPoint );
                 RotateListOfItems( block->GetItems(), rotationPoint );
+                CheckJunctionsInList( block->GetItems(), true );
+                SchematicCleanUp( true );
                 OnModify();
             }
 
@@ -228,9 +229,6 @@ bool SCH_EDIT_FRAME::HandleBlockEnd( wxDC* aDC )
 
         case BLOCK_DRAG:
         case BLOCK_DRAG_ITEM:   // Drag from a drag command
-            GetScreen()->BreakSegmentsOnJunctions();
-            // fall through
-
         case BLOCK_MOVE:
         case BLOCK_DUPLICATE:
             if( block->GetCommand() == BLOCK_DRAG_ITEM &&
@@ -272,7 +270,8 @@ bool SCH_EDIT_FRAME::HandleBlockEnd( wxDC* aDC )
 
             if( block->GetCount() )
             {
-                DeleteItemsInList( m_canvas, block->GetItems() );
+                DeleteItemsInList( block->GetItems() );
+                SchematicCleanUp( true );
                 OnModify();
             }
             block->ClearItemsList();
@@ -303,7 +302,8 @@ bool SCH_EDIT_FRAME::HandleBlockEnd( wxDC* aDC )
                 wxPoint move_vector = -GetScreen()->m_BlockLocate.GetLastCursorPosition();
                 copyBlockItems( block->GetItems() );
                 MoveItemsInList( m_blockItems.GetItems(), move_vector );
-                DeleteItemsInList( m_canvas, block->GetItems() );
+                DeleteItemsInList( block->GetItems() );
+                SchematicCleanUp( true );
                 OnModify();
             }
 
@@ -330,8 +330,9 @@ bool SCH_EDIT_FRAME::HandleBlockEnd( wxDC* aDC )
                 wxPoint mirrorPoint = block->Centre();
                 mirrorPoint = GetNearestGridPosition( mirrorPoint );
                 SetCrossHairPosition( mirrorPoint );
-                SaveCopyInUndoList( block->GetItems(), UR_MIRRORED_X, mirrorPoint );
+                SaveCopyInUndoList( block->GetItems(), UR_MIRRORED_X, false, mirrorPoint );
                 MirrorX( block->GetItems(), mirrorPoint );
+                SchematicCleanUp( true );
                 OnModify();
             }
 
@@ -349,8 +350,9 @@ bool SCH_EDIT_FRAME::HandleBlockEnd( wxDC* aDC )
                 wxPoint mirrorPoint = block->Centre();
                 mirrorPoint = GetNearestGridPosition( mirrorPoint );
                 SetCrossHairPosition( mirrorPoint );
-                SaveCopyInUndoList( block->GetItems(), UR_MIRRORED_Y, mirrorPoint );
+                SaveCopyInUndoList( block->GetItems(), UR_MIRRORED_Y, false, mirrorPoint );
                 MirrorY( block->GetItems(), mirrorPoint );
+                SchematicCleanUp( true );
                 OnModify();
             }
 

@@ -479,6 +479,35 @@ public:
                                     bool            aWarpMouse );
 
     /**
+     * Breaks a single segment into two at the specified point
+     *
+     * @param aSegment Line segment to break
+     * @param aPoint Point at which to break the segment
+     * @param aAppend Add the changes to the previous undo state
+     * @return True if any wires or buses were broken.
+     */
+    bool BreakSegment( SCH_LINE* aSegment, const wxPoint& aPoint, bool aAppend = false );
+
+    /**
+     * Checks every wire and bus for a intersection at \a aPoint and break into two segments
+     * at \a aPoint if an intersection is found.
+     *
+     * @param aPoint Test this point for an intersection.
+     * @param aAppend Add the changes to the previous undo state
+     * @return True if any wires or buses were broken.
+     */
+    bool BreakSegments( const wxPoint& aPoint, bool aAppend = false );
+
+    /**
+     * Tests all junctions and bus entries in the schematic for intersections with wires and
+     * buses and breaks any intersections into multiple segments.
+     *
+     * @param aAppend Add the changes to the previous undo state
+     * @return True if any wires or buses were broken.
+     */
+    bool BreakSegmentsOnJunctions( bool aApped = false );
+
+    /**
      * Send a message to Pcbnew via a socket connection.
      *
      * Commands are:
@@ -932,16 +961,36 @@ private:
     /**
      * Add no connect item to the current schematic sheet at \a aPosition.
      *
-     * @param aDC The device context to draw the no connect to.
      * @param aPosition The position in logical (drawing) units to add the no connect.
      * @return The no connect item added.
      */
-    SCH_NO_CONNECT* AddNoConnect( wxDC* aDC, const wxPoint& aPosition );
+    SCH_NO_CONNECT* AddNoConnect( const wxPoint& aPosition );
 
     /**
      * Add a new junction at \a aPosition.
      */
-    SCH_JUNCTION* AddJunction( wxDC* aDC, const wxPoint& aPosition, bool aPutInUndoList = false );
+    SCH_JUNCTION* AddJunction( const wxPoint& aPosition, bool aPutInUndoList = false );
+
+    /**
+     * Save a copy of the current wire image in the undo list.
+     */
+    void SaveWireImage();
+
+    /**
+     * Collects a unique list of all possible connection points in the schematic.
+     *
+     * @param aConnections vector of connections
+     */
+    void GetSchematicConnections( std::vector< wxPoint >& aConnections );
+
+    /**
+     * Performs routine schematic cleaning including breaking wire and buses and
+     * deleting identical objects superimposed on top of each other.
+     *
+     * @param aAppend The changes to the schematic should be appended to the previous undo
+     * @return True if any schematic clean up was performed.
+     */
+    bool SchematicCleanUp( bool aAppend = false );
 
     /**
      * Start moving \a aItem using the mouse.
@@ -976,7 +1025,7 @@ private:
     /**
      * Terminate a bus, wire, or line creation.
      */
-    void EndSegment( wxDC* DC );
+    void EndSegment();
 
     /**
      * Erase the last segment at the current mouse position.
@@ -1107,8 +1156,27 @@ public:
      * Remove \a aItem from the current screen and saves it in the undo list.
      *
      * @param aItem The item to remove from the current screen.
+     * @param aAppend True if we are updating a previous Undo state
      */
-    void DeleteItem( SCH_ITEM* aItem );
+    void DeleteItem( SCH_ITEM* aItem, bool aAppend = false );
+
+    /**
+     * Removes all items (and unused junctions that connect to them) and saves
+     * each in the undo list
+     *
+     * @param aItemsList The list of items to delete
+     * @param aAppend True if we are updating a previous commit
+     */
+    void DeleteItemsInList( PICKED_ITEMS_LIST& aItemsList, bool aAppend = false );
+
+    /**
+     * Adds junctions if needed to each item in the list after they have been
+     * moved.
+     *
+     * @param aItemsList The list of items to check
+     * @param aAppend True if we are updating a previous commit
+     */
+    void CheckJunctionsInList( PICKED_ITEMS_LIST& aItemsList, bool aAppend = false );
 
     int GetLabelIncrement() const { return m_repeatLabelDelta; }
 
@@ -1196,11 +1264,13 @@ public:
      *
      * @param aItemToCopy = the schematic item modified by the command to undo
      * @param aTypeCommand = command type (see enum UNDO_REDO_T)
+     * @param aAppend = add the item to the previous undo list
      * @param aTransformPoint = the reference point of the transformation,
      *                          for commands like move
      */
     void SaveCopyInUndoList( SCH_ITEM* aItemToCopy,
                              UNDO_REDO_T aTypeCommand,
+                             bool aAppend = false,
                              const wxPoint& aTransformPoint = wxPoint( 0, 0 ) );
 
     /**
@@ -1208,11 +1278,13 @@ public:
      *
      * @param aItemsList = the list of items modified by the command to undo
      * @param aTypeCommand = command type (see enum UNDO_REDO_T)
+     * @param aAppend = add the item to the previous undo list
      * @param aTransformPoint = the reference point of the transformation,
      *                          for commands like move
      */
     void SaveCopyInUndoList( const PICKED_ITEMS_LIST& aItemsList,
                              UNDO_REDO_T aTypeCommand,
+                             bool aAppend = false,
                              const wxPoint& aTransformPoint = wxPoint( 0, 0 ) );
 
 private:

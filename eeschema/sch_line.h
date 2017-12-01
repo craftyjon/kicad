@@ -133,14 +133,26 @@ public:
     /**
      * Check line against \a aLine to see if it overlaps and merge if it does.
      *
-     * This method will change the line to be equivalent of the line and \a aLine if the
+     * This method will return an equivalent of the union of line and \a aLine if the
      * two lines overlap.  This method is used to merge multiple line segments into a single
      * line.
      *
      * @param aLine - Line to compare.
-     * @return True if lines overlap and the line was merged with \a aLine.
+     * @return New line that combines the two or NULL on non-overlapping segments.
      */
-    bool MergeOverlap( SCH_LINE* aLine );
+    EDA_ITEM* MergeOverlap( SCH_LINE* aLine );
+
+    /**
+     * Check if two lines are in the same quadrant as each other, using a reference point as
+     * the origin
+     *
+     * @param aLine - Line to compare
+     * @param aPosition - Point to reference against lines
+     * @return true if lines are mostly in different quadrants of aPosition, false otherwise
+     */
+    bool IsSameQuadrant( SCH_LINE* aLine, const wxPoint& aPosition );
+
+    bool IsParallel( SCH_LINE* aLine );
 
     void GetEndPoints( std::vector<DANGLING_END_ITEM>& aItemList ) override;
 

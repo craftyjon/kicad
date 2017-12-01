@@ -352,7 +352,44 @@ void SCH_LINE::Rotate( wxPoint aPosition )
 }
 
 
-bool SCH_LINE::MergeOverlap( SCH_LINE* aLine )
+bool SCH_LINE::IsSameQuadrant( SCH_LINE* aLine, const wxPoint& aPosition )
+{
+    wxPoint first;
+    wxPoint second;
+
+    if( m_start == aPosition )
+        first = m_end - aPosition;
+    else if( m_end == aPosition )
+        first = m_start - aPosition;
+    else
+        return false;
+
+    if( aLine->m_start == aPosition )
+        second = aLine->m_end - aPosition;
+    else if( aLine->m_end == aPosition )
+        second = aLine->m_start - aPosition;
+    else
+        return false;
+
+    return (std::signbit( first.x ) == std::signbit( second.x ) &&
+            std::signbit( first.y ) == std::signbit( second.y ) );
+}
+
+
+bool SCH_LINE::IsParallel( SCH_LINE* aLine )
+{
+    wxCHECK_MSG( aLine != NULL && aLine->Type() == SCH_LINE_T, false,
+                 wxT( "Cannot test line segment for overlap." ) );
+
+    wxPoint firstSeg   = m_end - m_start;
+    wxPoint secondSeg = aLine->m_end - aLine->m_start;
+
+    // Use long long here to avoid overflow in calculations
+    return !( (long long) firstSeg.x * secondSeg.y - (long long) firstSeg.y * secondSeg.x );
+}
+
+
+EDA_ITEM* SCH_LINE::MergeOverlap( SCH_LINE* aLine )
 {
     auto less = []( const wxPoint& lhs, const wxPoint& rhs ) -> bool
     {
@@ -360,12 +397,11 @@ bool SCH_LINE::MergeOverlap( SCH_LINE* aLine )
             return lhs.y < rhs.y;
         return lhs.x < rhs.x;
     };
-
-    wxCHECK_MSG( aLine != NULL && aLine->Type() == SCH_LINE_T, false,
+    wxCHECK_MSG( aLine != NULL && aLine->Type() == SCH_LINE_T, NULL,
                  wxT( "Cannot test line segment for overlap." ) );
 
     if( this == aLine || GetLayer() != aLine->GetLayer() )
-        return false;
+        return NULL;
 
     SCH_LINE leftmost = SCH_LINE( *aLine );
     SCH_LINE rightmost = SCH_LINE( *this );
@@ -392,16 +428,14 @@ bool SCH_LINE::MergeOverlap( SCH_LINE* aLine )
     // If we end one before the beginning of the other, no overlap is possible
     if( less( leftmost.m_end, other.m_start ) )
     {
-        return false;
+        return NULL;
     }
 
     // Search for a common end:
     if( ( leftmost.m_start == other.m_start )
             && ( leftmost.m_end == other.m_end ) )     // Trivial case
     {
-        m_start = leftmost.m_start;
-        m_end = leftmost.m_end;
-        return true;
+        return new SCH_LINE( leftmost );
     }
 
     bool colinear = false;
@@ -435,12 +469,11 @@ bool SCH_LINE::MergeOverlap( SCH_LINE* aLine )
     // Make a new segment that merges the 2 segments
     if( colinear )
     {
-        m_start = leftmost.m_start;
-        m_end = rightmost.m_end;
-        return true;
+        leftmost.m_end = rightmost.m_end;
+        return new SCH_LINE( leftmost );
     }
 
-    return false;
+    return NULL;
 }
 
 
@@ -660,6 +693,7 @@ bool SCH_LINE::HitTest( const EDA_RECT& aRect, bool aContained, int aAccuracy ) 
     return rect.Intersects( m_start, m_end );
 }
 
+
 void SCH_LINE::SwapData( SCH_ITEM* aItem )
 {
     SCH_LINE* item = (SCH_LINE*) aItem;
@@ -674,6 +708,7 @@ void SCH_LINE::SwapData( SCH_ITEM* aItem )
     std::swap( m_size, item->m_size );
     std::swap( m_color, item->m_color );
 }
+
 
 bool SCH_LINE::doIsConnected( const wxPoint& aPosition ) const
 {

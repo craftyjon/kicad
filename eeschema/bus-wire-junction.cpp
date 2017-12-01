@@ -74,6 +74,12 @@ static void RemoveBacktracks( DLIST<SCH_ITEM>& aWires )
         SCH_LINE *line = static_cast<SCH_LINE*>( p );
         p = line->Next();
 
+        if( line->IsNull() )
+        {
+            delete s_wires.Remove( line );
+            continue;
+        }
+
         if( !last_lines.empty() )
         {
             SCH_LINE* last_line = last_lines[last_lines.size() - 1];
@@ -242,7 +248,7 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
         // Terminate the command if the end point is on a pin, junction, or another wire or bus.
         if( GetScreen()->IsTerminalPoint( cursorpos, segment->GetLayer() ) )
         {
-            EndSegment( DC );
+            EndSegment();
             return;
         }
 
@@ -261,58 +267,56 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
 }
 
 
-void SCH_EDIT_FRAME::EndSegment( wxDC* DC )
+void SCH_EDIT_FRAME::GetSchematicConnections( std::vector< wxPoint >& aConnections )
+{
+    for( SCH_ITEM* item = GetScreen()->GetDrawItems(); item; item = item->Next() )
+        item->GetConnectionPoints( aConnections );
+
+    // We always have some overlapping connection points.  Drop duplicates here
+    std::sort( aConnections.begin(), aConnections.end(),
+            []( wxPoint& a, wxPoint& b ) -> bool
+            { return a.x < b.x || (a.x == b.x && a.y < b.y); } );
+    aConnections.erase( unique( aConnections.begin(), aConnections.end() ), aConnections.end() );
+}
+
+
+void SCH_EDIT_FRAME::EndSegment()
 {
     SCH_SCREEN* screen = GetScreen();
     SCH_LINE* segment = (SCH_LINE*) screen->GetCurItem();
+    PICKED_ITEMS_LIST itemList;
 
     if( segment == NULL || segment->Type() != SCH_LINE_T || !segment->IsNew() )
         return;
 
-    // Delete zero length segments and clear item flags.
-    SCH_ITEM* item = s_wires.begin();
-
-    while( item )
-    {
-        item->ClearFlags();
-
-        wxCHECK_RET( item->Type() == SCH_LINE_T, wxT( "Unexpected object type in wire list." ) );
-
-        segment = (SCH_LINE*) item;
-        item = item->Next();
-
-        if( segment->IsNull() )
-            delete s_wires.Remove( segment );
-    }
+    // Remove segments backtracking over others
+    RemoveBacktracks( s_wires );
 
     if( s_wires.GetCount() == 0 )
         return;
 
-    // Get the last non-null wire (this is the last created segment).
-    SetRepeatItem( segment = (SCH_LINE*) s_wires.GetLast() );
+    // Collect the possible connection points for the new lines
+    std::vector< wxPoint > connections;
+    std::vector< wxPoint > new_ends;
+    GetSchematicConnections( connections );
 
-    screen->SetCurItem( NULL );
-    m_canvas->EndMouseCapture( -1, -1, wxEmptyString, false );
-
-    // store the terminal point of this last segment: a junction could be needed
-    // (the last wire could be merged/deleted/modified, and lost)
-    wxPoint endpoint = segment->GetEndPoint();
-
-    // store the starting point of this first segment: a junction could be needed
-    SCH_LINE* firstsegment = (SCH_LINE*) s_wires.GetFirst();
-    wxPoint startPoint = firstsegment->GetStartPoint();
-
-    // Save the old wires for the undo command
-    DLIST< SCH_ITEM > oldWires;                     // stores here the old wires
-    GetScreen()->ExtractWires( oldWires, true );    // Save them in oldWires list
-    // Put the snap shot of the previous wire, buses, and junctions in the undo/redo list.
-    PICKED_ITEMS_LIST oldItems;
-    oldItems.m_Status = UR_WIRE_IMAGE;
-
-    while( oldWires.GetCount() != 0 )
+    // Check each new segment for possible junctions and add/split if needed
+    for( SCH_ITEM* wire = s_wires.GetFirst(); wire; wire=wire->Next() )
     {
-        ITEM_PICKER picker = ITEM_PICKER( oldWires.PopFront(), UR_WIRE_IMAGE );
-        oldItems.PushItem( picker );
+        SCH_LINE* test_line = (SCH_LINE*) wire;
+        if( wire->GetFlags() & SKIP_STRUCT )
+            continue;
+
+        wire->GetConnectionPoints( new_ends );
+
+        for( auto i : connections )
+        {
+            if( IsPointOnSegment( test_line->GetStartPoint(), test_line->GetEndPoint(), i ) )
+            {
+                new_ends.push_back( i );
+            }
+        }
+        itemList.PushItem( ITEM_PICKER( wire, UR_NEW ) );
     }
 
     if( IsBusUnfoldInProgress() )
@@ -327,32 +331,30 @@ void SCH_EDIT_FRAME::EndSegment( wxDC* DC )
         SaveCopyInUndoList( bus_items, UR_NEW );
     }
 
-    SaveCopyInUndoList( oldItems, UR_WIRE_IMAGE );
-
-    // Remove segments backtracking over others
-    RemoveBacktracks( s_wires );
+    // Get the last non-null wire (this is the last created segment).
+    SetRepeatItem( segment = (SCH_LINE*) s_wires.GetLast() );
 
     // Add the new wires
     screen->Append( s_wires );
+    SaveCopyInUndoList(itemList, UR_NEW);
 
     // Correct and remove segments that need to be merged.
-    screen->SchematicCleanUp();
-
-    // A junction could be needed to connect the end point of the last created segment.
-    if( screen->IsJunctionNeeded( endpoint ) )
-        screen->Append( AddJunction( DC, endpoint ) );
-
-    // A junction could be needed to connect the start point of the set of new created wires
-    if( screen->IsJunctionNeeded( startPoint ) )
-        screen->Append( AddJunction( DC, startPoint ) );
+    SchematicCleanUp( true );
+    for( auto i : new_ends )
+    {
+        if( screen->IsJunctionNeeded( i, true ) )
+            AddJunction( i, true );
+    }
 
     if( IsBusUnfoldInProgress() )
     {
         FinishBusUnfold();
     }
 
-    m_canvas->Refresh();
-
+    screen->TestDanglingEnds();
+    screen->ClearDrawingState();
+    screen->SetCurItem( NULL );
+    m_canvas->EndMouseCapture( -1, -1, wxEmptyString, false );
     OnModify();
 }
 
@@ -428,35 +430,209 @@ void SCH_EDIT_FRAME::DeleteCurrentSegment( wxDC* DC )
 }
 
 
-SCH_JUNCTION* SCH_EDIT_FRAME::AddJunction( wxDC* aDC, const wxPoint& aPosition,
-                                           bool aPutInUndoList )
+void SCH_EDIT_FRAME::SaveWireImage()
 {
-    SCH_JUNCTION* junction = new SCH_JUNCTION( aPosition );
+    DLIST< SCH_ITEM > oldWires;
 
-    SetRepeatItem( junction );
+    oldWires.SetOwnership( false );      // Prevent DLIST for deleting items in destructor.
+    GetScreen()->ExtractWires( oldWires, true );
 
-    m_canvas->CrossHairOff( aDC );     // Erase schematic cursor
-    junction->Draw( m_canvas, aDC, wxPoint( 0, 0 ), GR_DEFAULT_DRAWMODE );
-    m_canvas->CrossHairOn( aDC );      // Display schematic cursor
-
-    if( aPutInUndoList )
+    if( oldWires.GetCount() != 0 )
     {
-        GetScreen()->Append( junction );
-        SaveCopyInUndoList( junction, UR_NEW );
-        OnModify();
+        PICKED_ITEMS_LIST oldItems;
+
+        oldItems.m_Status = UR_WIRE_IMAGE;
+
+        while( oldWires.GetCount() != 0 )
+        {
+            ITEM_PICKER picker = ITEM_PICKER( oldWires.PopFront(), UR_WIRE_IMAGE );
+            oldItems.PushItem( picker );
+        }
+
+        SaveCopyInUndoList( oldItems, UR_WIRE_IMAGE );
+    }
+}
+
+
+bool SCH_EDIT_FRAME::SchematicCleanUp( bool aAppend )
+{
+    SCH_ITEM*           item = NULL;
+    SCH_ITEM*           secondItem = NULL;
+    PICKED_ITEMS_LIST   itemList;
+    SCH_SCREEN*         screen = GetScreen();
+
+    auto remove_item = [ &itemList, screen ]( SCH_ITEM* aItem ) -> void
+    {
+        aItem->SetFlags( STRUCT_DELETED );
+        itemList.PushItem( ITEM_PICKER( aItem, UR_DELETED ) );
+    };
+
+    BreakSegmentsOnJunctions( true );
+
+    for( item = screen->GetDrawItems(); item; item = item->Next() )
+    {
+        if( ( item->Type() != SCH_LINE_T ) &&
+            ( item->Type() != SCH_JUNCTION_T ) &&
+            ( item->Type() != SCH_NO_CONNECT_T ))
+            continue;
+
+        if( item->GetFlags() & STRUCT_DELETED )
+            continue;
+
+        // Remove unneeded junctions
+        if( ( item->Type() == SCH_JUNCTION_T )
+                && ( !screen->IsJunctionNeeded( item->GetPosition() ) ) )
+        {
+            remove_item( item );
+            continue;
+        }
+        // Remove zero-length lines
+        if( item->Type() == SCH_LINE_T
+                && ( (SCH_LINE*) item )->IsNull() )
+        {
+            remove_item( item );
+            continue;
+        }
+
+        for( secondItem = item->Next(); secondItem; secondItem = secondItem->Next() )
+        {
+            if( item->Type() != secondItem->Type() || ( secondItem->GetFlags() & STRUCT_DELETED ) )
+                continue;
+
+            // Merge overlapping lines
+            if( item->Type() == SCH_LINE_T )
+            {
+                SCH_LINE* firstLine = (SCH_LINE*) item;
+                SCH_LINE* secondLine = (SCH_LINE*) secondItem;
+                SCH_LINE* line = NULL;
+                bool needed = false;
+
+                if( !secondLine->IsParallel( firstLine ) )
+                    continue;
+
+                // Check if a junction needs to be kept
+                // This can only happen if:
+                //   1) the endpoints overlap,
+                //   2) the lines are not pointing in the same direction AND
+                //   3) IsJunction Needed is false
+                if( secondLine->IsEndPoint( firstLine->GetStartPoint() )
+                        && !secondLine->IsSameQuadrant( firstLine, firstLine->GetStartPoint() ) )
+                    needed = screen->IsJunctionNeeded( firstLine->GetStartPoint() );
+                else if( secondLine->IsEndPoint( firstLine->GetEndPoint() )
+                        && !secondLine->IsSameQuadrant( firstLine, firstLine->GetEndPoint() ) )
+                    needed = screen->IsJunctionNeeded( firstLine->GetEndPoint() );
+
+                if( !needed && ( line = (SCH_LINE*) secondLine->MergeOverlap( firstLine ) ) )
+                {
+                    remove_item( item );
+                    remove_item( secondItem );
+                    itemList.PushItem( ITEM_PICKER( line, UR_NEW ) );
+                    screen->Append( (SCH_ITEM*) line );
+                    break;
+                }
+            }
+            // Remove duplicate junctions and no-connects
+            else if( secondItem->GetPosition() == item->GetPosition() )
+                remove_item( secondItem );
+        }
+    }
+    for( item = screen->GetDrawItems(); item; item = secondItem )
+    {
+        secondItem = item->Next();
+        if( item->GetFlags() & STRUCT_DELETED )
+            screen->Remove( item );
+    }
+    SaveCopyInUndoList( itemList, UR_CHANGED, aAppend );
+
+    return !!( itemList.GetCount() );
+}
+
+
+bool SCH_EDIT_FRAME::BreakSegment( SCH_LINE *aSegment, const wxPoint& aPoint, bool aAppend )
+{
+    if( !IsPointOnSegment( aSegment->GetStartPoint(), aSegment->GetEndPoint(), aPoint )
+            || aSegment->IsEndPoint( aPoint ) )
+        return false;
+
+    SaveCopyInUndoList( aSegment, UR_CHANGED, aAppend );
+    SCH_LINE* newSegment = new SCH_LINE( *aSegment );
+    SaveCopyInUndoList( newSegment, UR_NEW, true );
+
+    newSegment->SetStartPoint( aPoint );
+    aSegment->SetEndPoint( aPoint );
+    GetScreen()->Append( newSegment );
+
+    return true;
+}
+
+
+bool SCH_EDIT_FRAME::BreakSegments( const wxPoint& aPoint, bool aAppend )
+{
+    bool brokenSegments = false;
+
+    for( SCH_ITEM* segment = GetScreen()->GetDrawItems(); segment; segment = segment->Next() )
+    {
+        if( ( segment->Type() != SCH_LINE_T ) || ( segment->GetLayer() == LAYER_NOTES ) )
+            continue;
+
+        brokenSegments |= BreakSegment( (SCH_LINE*) segment, aPoint, aAppend || brokenSegments );
     }
 
+    return brokenSegments;
+}
+
+
+bool SCH_EDIT_FRAME::BreakSegmentsOnJunctions( bool aAppend )
+{
+    bool brokenSegments = false;
+
+    for( SCH_ITEM* item = GetScreen()->GetDrawItems(); item; item = item->Next() )
+    {
+        if( item->Type() == SCH_JUNCTION_T )
+        {
+            SCH_JUNCTION* junction = ( SCH_JUNCTION* ) item;
+
+            if( BreakSegments( junction->GetPosition(), brokenSegments || aAppend ) )
+                brokenSegments = true;
+        }
+        else
+        {
+            SCH_BUS_ENTRY_BASE* busEntry = dynamic_cast<SCH_BUS_ENTRY_BASE*>( item );
+            if( busEntry )
+            {
+                if( BreakSegments( busEntry->GetPosition(), brokenSegments || aAppend )
+                 || BreakSegments( busEntry->m_End(), brokenSegments || aAppend ) )
+                    brokenSegments = true;
+            }
+        }
+    }
+
+    return brokenSegments;
+}
+
+
+SCH_JUNCTION* SCH_EDIT_FRAME::AddJunction( const wxPoint& aPosition, bool aAppend )
+{
+    SCH_JUNCTION* junction = new SCH_JUNCTION( aPosition );
+    SCH_SCREEN* screen = GetScreen();
+    bool broken_segments = false;
+
+    screen->Append( junction );
+    broken_segments = BreakSegments( aPosition, aAppend );
+    screen->TestDanglingEnds();
+    OnModify();
+    SaveCopyInUndoList( junction, UR_NEW, broken_segments || aAppend );
     return junction;
 }
 
 
-SCH_NO_CONNECT* SCH_EDIT_FRAME::AddNoConnect( wxDC* aDC, const wxPoint& aPosition )
+SCH_NO_CONNECT* SCH_EDIT_FRAME::AddNoConnect( const wxPoint& aPosition )
 {
     SCH_NO_CONNECT* no_connect = new SCH_NO_CONNECT( aPosition );
 
     SetRepeatItem( no_connect );
     GetScreen()->Append( no_connect );
-    GetScreen()->SchematicCleanUp();
+    SchematicCleanUp();
     OnModify();
     m_canvas->Refresh();
     SaveCopyInUndoList( no_connect, UR_NEW );
