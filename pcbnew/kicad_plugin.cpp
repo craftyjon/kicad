@@ -1140,8 +1140,25 @@ void PCB_IO::format( MODULE* aModule, int aNestLevel ) const
             m_out->Print( aNestLevel+1, "(model %s\n",
                           m_out->Quotew( bs3D->m_Filename ).c_str() );
 
-            // Model offset is in mm
-            m_out->Print( aNestLevel+2, "(at (xyz %s %s %s))\n",
+            /* Write 3D model offset in mm
+             * 4.0.x wrote "at" which was actually in inches
+             * 5.0.x onwards, 3D model offset is written using "offset"
+             *
+             * If the offset is all zero, write "at" (fewer file changes)
+             * Otherwise, write "offset"
+             */
+
+            wxString offsetTag = "offset";
+
+            if( bs3D->m_Offset.x == 0 &&
+                bs3D->m_Offset.y == 0 &&
+                bs3D->m_Offset.z == 0 )
+            {
+                offsetTag = "at";
+            }
+
+            m_out->Print( aNestLevel+2, "(%s (xyz %s %s %s))\n",
+                          offsetTag.ToStdString().c_str(),
                           Double2Str( bs3D->m_Offset.x ).c_str(),
                           Double2Str( bs3D->m_Offset.y ).c_str(),
                           Double2Str( bs3D->m_Offset.z ).c_str() );
