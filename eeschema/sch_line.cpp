@@ -750,6 +750,35 @@ wxPoint SCH_LINE::MidPoint()
 }
 
 
+void SCH_LINE::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
+{
+    wxString msg;
+
+    switch( GetLayer() )
+    {
+    case LAYER_WIRE:
+        msg = _( "Net Wire" );
+        break;
+
+    case LAYER_BUS:
+        msg = _( "Bus Wire" );
+        break;
+
+    default:
+        msg = _( "Graphical" );
+        return;
+    }
+
+    aList.push_back( MSG_PANEL_ITEM( _( "Line Type" ), msg, DARKCYAN ) );
+
+    if( m_connection )
+    {
+        msg = m_connection->Name();
+        aList.push_back( MSG_PANEL_ITEM( _( "Net Info" ), msg, BROWN ) );
+    }
+}
+
+
 int SCH_EDIT_FRAME::EditLine( SCH_LINE* aLine, bool aRedraw )
 {
     if( aLine == NULL )
