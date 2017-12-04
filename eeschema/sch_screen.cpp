@@ -1182,6 +1182,12 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
 }
 
 
+void SCH_SCREEN::AddBusAlias( std::shared_ptr<SCH_BUS_ALIAS> aAlias )
+{
+    m_aliases.insert( aAlias );
+}
+
+
 bool SCH_SCREEN::IsBusAlias( const wxString& aLabel )
 {
     SCH_SHEET_LIST aSheets( g_RootSheet );

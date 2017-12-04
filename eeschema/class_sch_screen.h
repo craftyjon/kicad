@@ -89,6 +89,7 @@ private:
     int     m_modification_sync;        ///< inequality with PART_LIBS::GetModificationHash()
                                         ///< will trigger ResolveAll().
 
+    /// List of bus aliases stored in this screen
     std::unordered_set< std::shared_ptr< SCH_BUS_ALIAS > > m_aliases;
 
     /**
@@ -494,10 +495,7 @@ public:
     /**
      * Adds a bus alias definition (and transfers ownership of the pointer)
      */
-    void AddBusAlias( std::shared_ptr<SCH_BUS_ALIAS> aAlias )
-    {
-        m_aliases.insert( aAlias );
-    }
+    void AddBusAlias( std::shared_ptr<SCH_BUS_ALIAS> aAlias );
 
     /**
      * Removes all bus alias definitions

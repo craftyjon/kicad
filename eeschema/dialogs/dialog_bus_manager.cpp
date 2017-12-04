@@ -161,7 +161,6 @@ void DIALOG_BUS_MANAGER::OnInitDialog( wxInitDialogEvent& aEvent )
 
 bool DIALOG_BUS_MANAGER::TransferDataToWindow()
 {
-    // TODO(JE) Unclear whether we should reach straight into g_RootSheet here.
     m_aliases.clear();
 
     SCH_SHEET_LIST aSheets( g_RootSheet );
@@ -174,6 +173,10 @@ bool DIALOG_BUS_MANAGER::TransferDataToWindow()
         original_aliases.insert( original_aliases.end(), sheet_aliases.begin(),
                                  sheet_aliases.end() );
     }
+
+    original_aliases.erase( std::unique( original_aliases.begin(),
+                                         original_aliases.end() ),
+                            original_aliases.end() );
 
     // clone into a temporary working set
     int idx = 0;
@@ -246,6 +249,7 @@ void DIALOG_BUS_MANAGER::OnSelectBus( wxListEvent& event )
 
             m_bus_edit->ChangeValue( alias->GetName() );
 
+            m_btn_add_bus->Disable();
             m_btn_rename_bus->Enable();
             m_btn_remove_bus->Enable();
 
@@ -275,6 +279,7 @@ void DIALOG_BUS_MANAGER::OnSelectBus( wxListEvent& event )
         m_signal_edit->Clear();
         m_signal_list_view->DeleteAllItems();
 
+        m_btn_add_bus->Enable();
         m_btn_rename_bus->Disable();
         m_btn_remove_bus->Disable();
 
@@ -314,16 +319,24 @@ void DIALOG_BUS_MANAGER::OnAddBus( wxCommandEvent& aEvent )
         return;
     }
 
+    for( auto alias : m_aliases )
+    {
+        if( alias->GetName() == new_name )
+        {
+            // TODO(JE) display error?
+            return;
+        }
+    }
+
     if( !m_active_alias ||
         ( m_active_alias && m_active_alias->GetName().Cmp( new_name ) ) )
     {
         // The values are different; create a new alias
-        // Parent will be set to the root screen when saved
-        auto alias = std::make_shared< SCH_BUS_ALIAS >();
+        auto alias = std::make_shared<SCH_BUS_ALIAS>();
         alias->SetName( new_name );
 
-        // New aliases get stored on the root sheet
-        alias->SetParent( g_RootSheet->GetScreen() );
+        // New aliases get stored on the currently visible sheet
+        alias->SetParent( static_cast<SCH_EDIT_FRAME*>( GetParent() )->GetScreen() );
         auto text = getAliasDisplayText( alias );
 
         m_aliases.push_back( alias );
