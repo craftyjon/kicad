@@ -70,6 +70,11 @@ public:
 
     void Reset();
 
+    SCH_ITEM* Parent() const
+    {
+        return m_parent;
+    }
+
     bool IsBus() const
     {
         return ( m_type == CONNECTION_BUS || m_type == CONNECTION_BUS_GROUP );

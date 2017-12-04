@@ -729,6 +729,11 @@ void SCH_TEXT::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
     // Display text size (X or Y value, with are the same value in Eeschema)
     msg = StringFromValue( g_UserUnit, GetTextWidth(), true );
     aList.push_back( MSG_PANEL_ITEM( _( "Size" ), msg, RED ) );
+
+#if defined(DEBUG)
+    msg.Printf( "%p", this );
+    aList.push_back( MSG_PANEL_ITEM( _( "Object Address" ), msg, RED ) );
+#endif
 }
 
 #if defined(DEBUG)

@@ -775,6 +775,12 @@ void SCH_LINE::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
     {
         msg = m_connection->Name();
         aList.push_back( MSG_PANEL_ITEM( _( "Net Info" ), msg, BROWN ) );
+
+#if defined(DEBUG)
+        msg.Printf( "%s at %p", m_connection->Parent()->GetSelectMenuText(),
+                    m_connection->Parent() );
+        aList.push_back( MSG_PANEL_ITEM( _( "Connection Source" ), msg, RED ) );
+#endif
     }
 }
 
