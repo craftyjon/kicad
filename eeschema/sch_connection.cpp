@@ -24,7 +24,7 @@
 
 bool SCH_CONNECTION::operator==( const SCH_CONNECTION& aOther ) const
 {
-    // NOTE: Not comparing m_dirty
+    // NOTE: Not comparing m_dirty or net/bus/subgraph codes
     if( ( aOther.m_parent == m_parent ) &&
         ( aOther.m_type == m_type ) &&
         ( aOther.m_name == m_name ) )
@@ -66,13 +66,15 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
     else if( IsBusGroupLabel( aLabel ) )
     {
         m_type = CONNECTION_BUS_GROUP;
+        m_name = aLabel;
 
         std::vector<wxString> members;
+        wxString group_name;
 
-        if( NETLIST_OBJECT::ParseBusGroup( aLabel, &m_name, members) )
+        if( NETLIST_OBJECT::ParseBusGroup( aLabel, &group_name, members) )
         {
             // Named bus groups generate a net prefix, unnamed ones don't
-            auto prefix = ( m_name != "" ) ? ( m_name + "." ) : "";
+            auto prefix = ( group_name != "" ) ? ( group_name + "." ) : "";
 
             for( auto group_member : members )
             {
@@ -124,4 +126,15 @@ void SCH_CONNECTION::Reset()
     m_prefix = "";
     m_members.clear();
     m_dirty = true;
+    m_net_code = 0;
+    m_bus_code = 0;
+    m_subgraph_code = 0;
+}
+
+
+wxString SCH_CONNECTION::GetInfoString() const
+{
+    wxString msg;
+    msg.Printf( "N: %d B: %d SG: %d", m_net_code, m_bus_code, m_subgraph_code );
+    return msg;
 }

@@ -43,6 +43,10 @@ void CONNECTION_VISITOR::tree_edge( const CONNECTION_GRAPH_T::edge_descriptor aE
         return;
     }
 
+    // TODO(JE) check for "drive strength" here:
+    // if the target has a connection already, but my m_connection is stronger,
+    // override the target.
+
     // Don't propagate when the source vertex didn't get set earlier
     if( ( source_item->Connection() == m_connection ) &&
         target_item->Connection()->IsDirty() )

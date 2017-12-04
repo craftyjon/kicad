@@ -100,12 +100,12 @@ public:
         m_dirty = false;
     }
 
-    wxString Name()
+    wxString Name() const
     {
         return m_name;
     }
 
-    wxString Prefix()
+    wxString Prefix() const
     {
         return m_prefix;
     }
@@ -115,7 +115,7 @@ public:
         m_prefix = aPrefix;
     }
 
-    CONNECTION_TYPE Type()
+    CONNECTION_TYPE Type() const
     {
         return m_type;
     }
@@ -125,20 +125,52 @@ public:
         m_type = aType;
     }
 
-    long VectorStart()
+    int NetCode() const
+    {
+        return m_net_code;
+    }
+
+    void SetNetCode( int aCode )
+    {
+        m_net_code = aCode;
+    }
+
+    int BusCode() const
+    {
+        return m_bus_code;
+    }
+
+    void SetBusCode( int aCode )
+    {
+        m_bus_code = aCode;
+    }
+
+    int SubgraphCode() const
+    {
+        return m_subgraph_code;
+    }
+
+    void SetSubgraphCode( int aCode )
+    {
+        m_subgraph_code = aCode;
+    }
+
+    long VectorStart() const
     {
         return m_vector_start;
     }
 
-    long VectorEnd()
+    long VectorEnd() const
     {
         return m_vector_end;
     }
 
-    long VectorIndex()
+    long VectorIndex() const
     {
         return m_vector_index;
     }
+
+    wxString GetInfoString() const;
 
     std::vector< std::shared_ptr< SCH_CONNECTION > >& Members()
     {
@@ -166,6 +198,8 @@ private:
     int m_net_code;         // TODO(JE) remove if unused
 
     int m_bus_code;         // TODO(JE) remove if unused
+
+    int m_subgraph_code;    ///< Groups directly-connected items
 
     long m_vector_index;    ///< Index of bus vector member nets
 

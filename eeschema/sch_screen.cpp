@@ -1703,10 +1703,17 @@ void SCH_SCREENS::RecalculateConnections()
     // Look for "forcing" items that define a net (labels, power components, ...)
     // and propagate them to connected wires/junctions
 
+    int net_code = 0, bus_code = 0, subgraph_code = 0;
+
+    // TODO: Switch to wxString once wxWidgets 3.1.0 is in use
+    std::unordered_map< std::wstring, int > net_code_map;
+    std::unordered_map< std::wstring, int > bus_code_map;
+
     for( boost::tie( vertex_it, vertex_end ) = boost::vertices( graph.m_graph );
          vertex_it != vertex_end; ++vertex_it )
     {
         auto item = graph.m_graph[ *vertex_it ].item;
+        auto& connection = item->Connection();
 
         switch( item->Type() )
         {
@@ -1730,8 +1737,8 @@ void SCH_SCREENS::RecalculateConnections()
                         {
                             if( pin->IsPowerConnection() )
                             {
-                                item->Connection()->ConfigureFromLabel( pin->GetName() );
-                                item->Connection()->ClearDirty();
+                                connection->ConfigureFromLabel( pin->GetName() );
+                                connection->ClearDirty();
                             }
                         }
                     }
@@ -1739,8 +1746,42 @@ void SCH_SCREENS::RecalculateConnections()
             }
             else
             {
-                item->Connection()->ConfigureFromLabel( static_cast<SCH_TEXT*>( item )->GetText() );
-                item->Connection()->ClearDirty();
+                connection->ConfigureFromLabel( static_cast<SCH_TEXT*>( item )->GetText() );
+                connection->ClearDirty();
+            }
+
+            connection->SetSubgraphCode( ++subgraph_code );
+
+            // std::cout << "Visiting subgraph " << subgraph_code << " for item "
+            //           << item->GetSelectMenuText() << " at " << item << std::endl;
+
+            if( connection->IsBus() )
+            {
+                auto name = connection->Name().ToStdWstring();
+                auto search = bus_code_map.find( name );
+                if( search != bus_code_map.end() )
+                {
+                    connection->SetBusCode( search->second );
+                }
+                else
+                {
+                    connection->SetBusCode( ++bus_code );
+                    bus_code_map[ name ] = bus_code;
+                }
+            }
+            else
+            {
+                auto name = connection->Name().ToStdWstring();
+                auto search = net_code_map.find( name );
+                if( search != net_code_map.end() )
+                {
+                    connection->SetNetCode( search->second );
+                }
+                else
+                {
+                    connection->SetNetCode( ++net_code );
+                    net_code_map[ name ] = net_code;
+                }
             }
 
             auto visitor = CONNECTION_VISITOR( *( item->Connection() ) );

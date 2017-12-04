@@ -114,10 +114,11 @@ public:
 
 private:
 
-    /**
-     * This connection is the "template" to propagate through the graph
-     */
+    /// This connection is the "template" to propagate through the graph
     SCH_CONNECTION m_connection;
+
+    /// This ID will represent a directly-connected portion of the graph
+    int m_subgraph_code;
 };
 
 
