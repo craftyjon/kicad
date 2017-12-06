@@ -110,6 +110,24 @@ enum SCH_SEARCH_T {
 };
 
 
+/// Collection of data related to the bus unfolding tool
+struct BUS_UNFOLDING_T {
+    bool in_progress;   ///< True if bus unfold operation is running
+
+    bool offset;        ///< True if the bus entry should be offset from origin
+
+    bool label_placed;  ///< True if user has placed the net label
+
+    wxPoint origin;     ///< Origin (on the bus) of the unfold
+
+    wxString net_name;  ///< Net label for the unfolding operation
+
+    SCH_BUS_WIRE_ENTRY* entry;
+
+    SCH_LABEL* label;
+};
+
+
 #define SCH_EDIT_FRAME_NAME wxT( "SchematicFrame" )
 
 /**
@@ -171,11 +189,12 @@ private:
     /// Use netcodes (net number) as net names when generating spice net lists.
     bool        m_spiceAjustPassiveValues;
 
-    /// Flag to track bus unfolding for cancel/undo management
-    bool        m_busUnfoldInProgress;
+public: // TODO(JE) Debugging only
 
-    /// Temporary list of new items created as part of bus unfolding
-    std::vector<SCH_ITEM*> m_busUnfoldItems;
+    /// Data related to bus unfolding tool
+    BUS_UNFOLDING_T m_busUnfold;
+
+private:
 
     /*  these are PROJECT specific, not schematic editor specific
     wxString        m_userLibraryPath;
@@ -823,7 +842,7 @@ public:
      */
     bool IsBusUnfoldInProgress()
     {
-        return m_busUnfoldInProgress;
+        return m_busUnfold.in_progress;
     }
 
     /**

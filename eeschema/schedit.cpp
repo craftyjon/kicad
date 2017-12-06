@@ -401,29 +401,33 @@ void SCH_EDIT_FRAME::OnUnfoldBus( wxCommandEvent& event )
 
     auto pos = GetCrossHairPosition();
 
-    // TODO(JE) use s_LastShape from busentry.cpp?
-    auto bus_entry = new SCH_BUS_WIRE_ENTRY( pos, '\\' );
-    auto label = new SCH_LABEL( bus_entry->m_End(), net );
+    /**
+     * Unfolding a bus consists of the following user inputs:
+     * 1) User selects a bus to unfold (see AddMenusForBus())
+     *    We land in this event handler.
+     *
+     * 2) User clicks to set the net label location (handled by BeginSegment())
+     *    Before this first click, the posture of the bus entry  follows the
+     *    mouse cursor in X and Y (handled by DrawSegment())
+     *
+     * 3) User is now in normal wiring mode and can exit in any normal way.
+     */
 
-    label->SetTextSize( wxSize( GetDefaultTextSize(), GetDefaultTextSize() ) );
-    label->SetLabelSpinStyle( 0 );
+    wxASSERT( !m_busUnfold.in_progress );
 
-    SetSchItemParent( bus_entry, screen );
-    SetSchItemParent( label, screen );
+    m_busUnfold.entry = new SCH_BUS_WIRE_ENTRY( pos, '\\' );
 
-    screen->Append( bus_entry );
-    screen->Append( label );
+    SetSchItemParent( m_busUnfold.entry, screen );
+    screen->Append( m_busUnfold.entry );
 
-    m_busUnfoldItems.clear();
-    m_busUnfoldItems.push_back( bus_entry );
-    m_busUnfoldItems.push_back( label );
-    m_busUnfoldInProgress = true;
+    m_busUnfold.in_progress = true;
+    m_busUnfold.origin = pos;
+    m_busUnfold.net_name = net;
 
     SetToolID( ID_WIRE_BUTT, wxCURSOR_PENCIL, _( "Add wire" ) );
 
     INSTALL_UNBUFFERED_DC( dc, m_canvas );
-
-    SetCrossHairPosition( bus_entry->m_End() );
+    SetCrossHairPosition( m_busUnfold.entry->m_End() );
     BeginSegment( &dc, LAYER_WIRE );
     m_canvas->SetAutoPanRequest( true );
 }
@@ -433,10 +437,16 @@ void SCH_EDIT_FRAME::CancelBusUnfold()
 {
     auto screen = GetScreen();
 
-    for( auto item : m_busUnfoldItems )
+    if( m_busUnfold.entry )
     {
-        screen->Remove( item );
-        delete item;
+        screen->Remove( m_busUnfold.entry );
+        delete m_busUnfold.entry;
+    }
+
+    if( m_busUnfold.label )
+    {
+        screen->Remove( m_busUnfold.label );
+        delete m_busUnfold.label;
     }
 
     FinishBusUnfold();
@@ -445,8 +455,7 @@ void SCH_EDIT_FRAME::CancelBusUnfold()
 
 void SCH_EDIT_FRAME::FinishBusUnfold()
 {
-    m_busUnfoldItems.clear();
-    m_busUnfoldInProgress = false;
+    m_busUnfold = {};
 
     SetToolID( ID_NO_TOOL_SELECTED, m_canvas->GetDefaultCursor(), wxEmptyString );
 }

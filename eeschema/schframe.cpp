@@ -367,6 +367,7 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ):
     m_findReplaceData = new wxFindReplaceData( wxFR_DOWN );
     m_undoItem = NULL;
     m_hasAutoSave = true;
+    m_busUnfold = {};
 
     SetForceHVLines( true );
     SetSpiceAjustPassiveValues( false );

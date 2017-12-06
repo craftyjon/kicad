@@ -42,6 +42,7 @@
 #include <sch_text.h>
 #include <sch_component.h>
 #include <sch_sheet.h>
+#include <list_operations.h>
 
 
 static void AbortCreateNewLine( EDA_DRAW_PANEL* aPanel, wxDC* aDC );
@@ -128,6 +129,7 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
 
     segment = (SCH_LINE*) s_wires.begin();
     COLOR4D color = GetLayerColor( segment->GetLayer() );
+    SCH_EDIT_FRAME* frame = (SCH_EDIT_FRAME*) aPanel->GetParent();
 
     if( aErase )
     {
@@ -140,7 +142,36 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
         }
     }
 
-    SCH_EDIT_FRAME* frame = (SCH_EDIT_FRAME*) aPanel->GetParent();
+    // Update the bus unfold posture based on the mouse movement
+    if( frame->m_busUnfold.in_progress && !frame->m_busUnfold.label_placed )
+    {
+        auto cursor_delta = frame->GetCursorPosition( false ) - frame->m_busUnfold.origin;
+        auto entry = frame->m_busUnfold.entry;
+
+        bool offset = ( cursor_delta.x < 0 );
+        char shape = ( offset ? ( ( cursor_delta.y >= 0 ) ? '/' : '\\' )
+                              : ( ( cursor_delta.y >= 0 ) ? '\\' : '/' ) );
+
+        // Erase and redraw if necessary
+        if( shape != entry->GetBusEntryShape() ||
+            offset != frame->m_busUnfold.offset )
+        {
+            entry->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, color );
+
+            entry->SetBusEntryShape( shape );
+            wxPoint entry_pos = frame->m_busUnfold.origin;
+
+            if( offset )
+                entry_pos -= entry->GetSize();
+
+            entry->SetPosition( entry_pos );
+
+            entry->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, color );
+
+            wxPoint wire_start = ( offset ? entry->GetPosition() : entry->m_End() );
+            ( (SCH_LINE*) s_wires.begin() )->SetStartPoint( wire_start );
+        }
+    }
 
     wxPoint endpos = frame->GetCrossHairPosition();
 
@@ -222,6 +253,26 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
     }
     else    // A segment is in progress: terminates the current segment and add a new segment.
     {
+        // Place the label for bus unfolding if needed
+        if( IsBusUnfoldInProgress() && !m_busUnfold.label_placed )
+        {
+            auto screen = GetScreen();
+
+            m_busUnfold.label = new SCH_LABEL( cursorpos, m_busUnfold.net_name );
+
+            m_busUnfold.label->SetTextSize( wxSize( GetDefaultTextSize(),
+                                                    GetDefaultTextSize() ) );
+            m_busUnfold.label->SetLabelSpinStyle( 0 );
+
+            SetSchItemParent( m_busUnfold.label, screen );
+            screen->Append( m_busUnfold.label );
+
+            COLOR4D color = GetLayerColor( LAYER_LOCLABEL );
+            m_busUnfold.label->Draw( m_canvas, DC, wxPoint( 0, 0 ), g_XorMode, color );
+
+            m_busUnfold.label_placed = true;
+        }
+
         SCH_LINE* prevSegment = segment->Back();
 
         // Be aware prevSegment can be null when the horizontal and vertical lines only switch is off
@@ -246,7 +297,8 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
         m_canvas->CallMouseCapture( DC, wxDefaultPosition, false );
 
         // Terminate the command if the end point is on a pin, junction, or another wire or bus.
-        if( GetScreen()->IsTerminalPoint( cursorpos, segment->GetLayer() ) )
+        if( !IsBusUnfoldInProgress() &&
+            GetScreen()->IsTerminalPoint( cursorpos, segment->GetLayer() ) )
         {
             EndSegment();
             return;
@@ -321,11 +373,12 @@ void SCH_EDIT_FRAME::EndSegment()
 
     if( IsBusUnfoldInProgress() )
     {
+        wxASSERT( m_busUnfold.entry && m_busUnfold.label );
+
         PICKED_ITEMS_LIST bus_items;
-        for( auto bus_item : m_busUnfoldItems )
-        {
-            bus_items.PushItem( ITEM_PICKER( bus_item, UR_NEW ) );
-        }
+
+        bus_items.PushItem( ITEM_PICKER( m_busUnfold.entry, UR_NEW ) );
+        bus_items.PushItem( ITEM_PICKER( m_busUnfold.label, UR_NEW ) );
 
         SaveCopyInUndoList( bus_items, UR_NEW, false );
     }
