@@ -165,6 +165,7 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
                 entry_pos -= entry->GetSize();
 
             entry->SetPosition( entry_pos );
+            frame->m_busUnfold.offset = offset;
 
             entry->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, color );
 
