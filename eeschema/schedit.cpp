@@ -420,6 +420,14 @@ void SCH_EDIT_FRAME::OnUnfoldBus( wxCommandEvent& event )
     SetSchItemParent( m_busUnfold.entry, screen );
     screen->Append( m_busUnfold.entry );
 
+    m_busUnfold.label = new SCH_LABEL( m_busUnfold.entry->m_End(), net );
+
+    m_busUnfold.label->SetTextSize( wxSize( GetDefaultTextSize(),
+                                            GetDefaultTextSize() ) );
+    m_busUnfold.label->SetLabelSpinStyle( 0 );
+
+    SetSchItemParent( m_busUnfold.label, screen );
+
     m_busUnfold.in_progress = true;
     m_busUnfold.origin = pos;
     m_busUnfold.net_name = net;

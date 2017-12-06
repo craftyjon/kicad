@@ -142,6 +142,8 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
         }
     }
 
+    wxPoint endpos = frame->GetCrossHairPosition();
+
     // Update the bus unfold posture based on the mouse movement
     if( frame->m_busUnfold.in_progress && !frame->m_busUnfold.label_placed )
     {
@@ -156,7 +158,8 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
         if( shape != entry->GetBusEntryShape() ||
             offset != frame->m_busUnfold.offset )
         {
-            entry->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, color );
+            if( aErase )
+                entry->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, color );
 
             entry->SetBusEntryShape( shape );
             wxPoint entry_pos = frame->m_busUnfold.origin;
@@ -172,9 +175,18 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
             wxPoint wire_start = ( offset ? entry->GetPosition() : entry->m_End() );
             ( (SCH_LINE*) s_wires.begin() )->SetStartPoint( wire_start );
         }
-    }
 
-    wxPoint endpos = frame->GetCrossHairPosition();
+        // Update the label "ghost" position
+        auto label = frame->m_busUnfold.label;
+        COLOR4D label_color = GetLayerColor( LAYER_LOCLABEL );
+
+        if( aErase )
+            label->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, label_color );
+
+        label->SetPosition( endpos );
+
+        label->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, label_color );
+    }
 
     if( frame->GetForceHVLines() ) /* Coerce the line to vertical or horizontal one: */
         ComputeBreakPoint( (SCH_LINE*) s_wires.GetLast()->Back(), endpos );
@@ -249,6 +261,14 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
             GetScreen()->SetCurItem( nextSegment );
         }
 
+        // Initially draw the label for bus unfolding if needed
+        if( IsBusUnfoldInProgress() && !m_busUnfold.label_placed )
+        {
+            auto label = m_busUnfold.label;
+            COLOR4D label_color = GetLayerColor( LAYER_LOCLABEL );
+            label->Draw( m_canvas, DC, wxPoint( 0, 0 ), g_XorMode, label_color );
+        }
+
         m_canvas->SetMouseCapture( DrawSegment, AbortCreateNewLine );
         SetRepeatItem( NULL );
     }
@@ -258,19 +278,7 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
         if( IsBusUnfoldInProgress() && !m_busUnfold.label_placed )
         {
             auto screen = GetScreen();
-
-            m_busUnfold.label = new SCH_LABEL( cursorpos, m_busUnfold.net_name );
-
-            m_busUnfold.label->SetTextSize( wxSize( GetDefaultTextSize(),
-                                                    GetDefaultTextSize() ) );
-            m_busUnfold.label->SetLabelSpinStyle( 0 );
-
-            SetSchItemParent( m_busUnfold.label, screen );
             screen->Append( m_busUnfold.label );
-
-            COLOR4D color = GetLayerColor( LAYER_LOCLABEL );
-            m_busUnfold.label->Draw( m_canvas, DC, wxPoint( 0, 0 ), g_XorMode, color );
-
             m_busUnfold.label_placed = true;
         }
 
