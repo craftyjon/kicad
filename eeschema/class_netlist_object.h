@@ -265,6 +265,20 @@ public:
      */
     void ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItems );
 
+private:
+    /**
+     * Given a bus vector, append the appropriate members into the list
+     * If given something like "DATA", 7, 0, will append "DATA7", "DATA6", etc.
+     *
+     * @param aNetListItems is the list to append to
+     * @param aName is the prefix for the vector, like "DATA"
+     * @param begin is the first entry in the vector
+     * @param end is the last entry in the vector
+     */
+    void fillBusVector( NETLIST_OBJECT_LIST& aNetListItems, wxString aName,
+                        long aBegin, long aEnd );
+
+public:
     /**
      * Parses a bus vector (e.g. A[7..0]) into name, begin, and end.
      * Ensures that begin and end are positive and that end > begin.

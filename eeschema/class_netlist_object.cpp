@@ -31,6 +31,7 @@
 #include <fctsys.h>
 #include <macros.h>
 #include <schframe.h>
+#include <list>
 
 #include <sch_component.h>
 #include <class_netlist_object.h>
@@ -358,91 +359,104 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
     else
         wxCHECK_RET( false, wxT( "Net list object type is not valid." ) );
 
-    if( IsBusGroupLabel( m_Label ) )
+    auto alias = SCH_SCREEN::GetBusAlias( m_Label );
+    if( alias || IsBusGroupLabel( m_Label ) )
     {
-        wxString bus_name;
-        bool selfSet = false;
-        std::vector<wxString> bus_contents;
+        wxString group_name;
+        bool self_set = false;
+        std::vector<wxString> bus_contents_vec;
 
-        if( ParseBusGroup( m_Label, &bus_name, bus_contents ) )
+        if( alias )
         {
-            for( auto bus_member : bus_contents )
+            bus_contents_vec = alias->Members();
+        }
+        else
+        {
+            wxCHECK_RET( ParseBusGroup( m_Label, &group_name, bus_contents_vec ),
+                         _( "Failed to parse bus group " ) + m_Label );
+        }
+
+        // For named bus groups, like "USB{DP DM}"
+        auto group_prefix = ( group_name != "" ) ? ( group_name + "." ) : "";
+
+        std::list<wxString> bus_contents( bus_contents_vec.begin(),
+                                          bus_contents_vec.end() );
+
+        for( auto bus_member : bus_contents )
+        {
+            // Nested bus vector inside a bus group
+            if( IsBusVectorLabel( bus_member ) )
             {
-                // Handle a nested vector bus inside the bus group
-                if( IsBusLabel( bus_member ) )
+                wxString prefix;
+                long begin, end;
+
+                ParseBusVector( bus_member, &prefix, &begin, &end );
+                prefix = group_prefix + prefix;
+
+                if( !self_set )
                 {
-                    wxString vec_name, vec_member;
-                    long begin = 0, end = 0, member = 0;
+                    m_Label = prefix;
+                    m_Label << begin;
+                    m_Member = begin;
 
-                    ParseBusVector( bus_member, &vec_name, &begin, &end );
+                    self_set = true;
+                    begin++;
+                }
 
-                    if( !selfSet )
-                    {
-                        member = begin;
-                        vec_member = vec_name;
-                        vec_member << member;
-                        m_Label = vec_member;
-                        m_Member = member;
-
-                        selfSet = true;
-                    }
-
-                    for( member++; member <= end; member++ )
-                    {
-                        auto item = new NETLIST_OBJECT( *this );
-
-                        vec_member = vec_name;
-                        vec_member << member;
-                        item->m_Label = vec_member;
-                        item->m_Member = member;
-
-                        aNetListItems.push_back( item );
-                    }
+                fillBusVector( aNetListItems, prefix, begin, end );
+            }
+            else if( auto nested_alias = SCH_SCREEN::GetBusAlias( bus_member ) )
+            {
+                // Nested alias inside a group
+                for( auto alias_member : nested_alias->Members() )
+                {
+                    bus_contents.push_back( alias_member );
+                }
+            }
+            else
+            {
+                if( !self_set )
+                {
+                    m_Label = group_prefix + bus_member;
+                    self_set = true;
                 }
                 else
                 {
-                    if( !selfSet )
-                    {
-                        m_Label = bus_member;
-                        selfSet = true;
-                    }
-                    else
-                    {
-                        auto item = new NETLIST_OBJECT( *this );
-                        item->m_Label = bus_member;
-                        aNetListItems.push_back( item );
-                    }
+                    auto item = new NETLIST_OBJECT( *this );
+                    item->m_Label = group_prefix + bus_member;
+                    aNetListItems.push_back( item );
                 }
             }
         }
     }
     else
     {
-        // Normal bus label
+        // Plain bus vector
+        wxString prefix;
+        long begin, end;
 
-        wxString busName, tmp;
-        long begin, end, member;
+        ParseBusVector( m_Label, &prefix, &begin, &end );
 
-        ParseBusVector( m_Label, &busName, &begin, &end );
+        m_Label = prefix;
+        m_Label << begin;
+        m_Member = begin;
 
-        member = begin;
-        tmp = busName;
-        tmp << member;
-        m_Label = tmp;
-        m_Member = member;
+        fillBusVector( aNetListItems, prefix, begin + 1, end );
+    }
+}
 
-        for( member++; member <= end; member++ )
-        {
-            auto item = new NETLIST_OBJECT( *this );
+void NETLIST_OBJECT::fillBusVector( NETLIST_OBJECT_LIST& aNetListItems,
+                                    wxString aName, long aBegin, long aEnd )
+{
+    for( long member = aBegin; member <= aEnd; member++ )
+    {
+        auto item = new NETLIST_OBJECT( *this );
 
-            // Conversion of bus label to the root name + the current member id.
-            tmp = busName;
-            tmp << member;
-            item->m_Label = tmp;
-            item->m_Member = member;
+        item->m_Label = aName;
+        item->m_Label << member;
+        item->m_Member = member;
 
-            aNetListItems.push_back( item );
-        }
+        aNetListItems.push_back( item );
     }
 }
 
