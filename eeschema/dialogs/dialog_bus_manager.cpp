@@ -398,12 +398,14 @@ void DIALOG_BUS_MANAGER::OnAddSignal( wxCommandEvent& aEvent )
     while( tok.HasMoreTokens() )
     {
         auto name = tok.GetNextToken();
+
         if( !m_active_alias->Contains( name ) )
         {
             m_active_alias->AddMember( name );
 
             long idx = m_signal_list_view->InsertItem(
                     m_active_alias->GetMemberCount() - 1, name );
+
             m_signal_list_view->SetColumnWidth( 0, -1 );
             m_signal_list_view->Select( idx );
         }
@@ -418,7 +420,9 @@ void DIALOG_BUS_MANAGER::OnRenameSignal( wxCommandEvent& aEvent )
 
     auto new_name = m_signal_edit->GetValue();
     long idx = m_signal_list_view->GetFirstSelected();
+
     wxASSERT( idx >= 0 );
+
     auto old_name = m_active_alias->Members()[ idx ];
 
     // User could have typed a space here, so check first
@@ -441,6 +445,7 @@ void DIALOG_BUS_MANAGER::OnRemoveSignal( wxCommandEvent& aEvent )
     wxASSERT( m_active_alias );
 
     long idx = m_signal_list_view->GetFirstSelected();
+
     wxASSERT( idx >= 0 );
 
     m_active_alias->Members().erase( m_active_alias->Members().begin() + idx );
@@ -456,7 +461,9 @@ wxString DIALOG_BUS_MANAGER::getAliasDisplayText( std::shared_ptr< SCH_BUS_ALIAS
 {
     wxString name = aAlias->GetName();
     wxFileName sheet_name( aAlias->GetParent()->GetFileName() );
+
     name += _T( " (" ) + sheet_name.GetFullName() + _T( ")" );
+
     return name;
 }
 

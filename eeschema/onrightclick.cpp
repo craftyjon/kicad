@@ -750,13 +750,14 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
 
     // Bus unfolding menu (only available if bus is properly defined)
     auto connection = Bus->Connection();
+
     if( connection && connection->IsBus() )
     {
+        int idx = 0;
         wxMenu* bus_unfolding_menu = new wxMenu;
 
         PopMenu->AppendSubMenu( bus_unfolding_menu, _( "Unfold Bus" ) );
 
-        int idx = 0;
         for( const auto& member : connection->Members() )
         {
             int id = ID_POPUP_SCH_UNFOLD_BUS + ( idx++ );
