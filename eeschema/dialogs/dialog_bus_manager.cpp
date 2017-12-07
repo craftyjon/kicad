@@ -149,7 +149,7 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
     m_bus_edit->SetHint( _T( "Bus Alias Name" ) );
     m_signal_edit->SetHint( _T( "Net or Bus Name" ) );
 
-    Layout();
+    FinishDialogSettings();
 }
 
 
@@ -268,8 +268,8 @@ void DIALOG_BUS_MANAGER::OnSelectBus( wxListEvent& event )
             m_signal_list_view->SetColumnWidth( 0, -1 );
 
             m_btn_add_signal->Enable();
-            m_btn_rename_signal->Enable();
-            m_btn_remove_signal->Enable();
+            m_btn_rename_signal->Disable();
+            m_btn_remove_signal->Disable();
         }
     }
     else
@@ -362,7 +362,7 @@ void DIALOG_BUS_MANAGER::OnRenameBus( wxCommandEvent& aEvent )
 
     wxASSERT( idx >= 0 );
 
-    m_bus_list_view->SetItemText( idx, m_bus_edit->GetValue() );
+    m_bus_list_view->SetItemText( idx, getAliasDisplayText( m_active_alias ) );
 }
 
 
