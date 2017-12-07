@@ -277,9 +277,26 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
         // Place the label for bus unfolding if needed
         if( IsBusUnfoldInProgress() && !m_busUnfold.label_placed )
         {
+            wxASSERT( type == LAYER_WIRE );
+
             auto screen = GetScreen();
             screen->Append( m_busUnfold.label );
             m_busUnfold.label_placed = true;
+
+            nextSegment = new SCH_LINE( cursorpos, LAYER_WIRE );
+
+            segment->ClearFlags( IS_NEW );
+            segment->SetFlags( SELECTED );
+
+            nextSegment->SetStartPoint( cursorpos );
+            nextSegment->SetFlags( IS_NEW );
+
+            s_wires.PushBack( nextSegment );
+            GetScreen()->SetCurItem( nextSegment );
+
+            m_canvas->SetMouseCapture( DrawSegment, AbortCreateNewLine );
+            SetRepeatItem( NULL );
+            return;
         }
 
         SCH_LINE* prevSegment = segment->Back();
@@ -380,7 +397,7 @@ void SCH_EDIT_FRAME::EndSegment()
         itemList.PushItem( ITEM_PICKER( wire, UR_NEW ) );
     }
 
-    if( IsBusUnfoldInProgress() )
+    if( IsBusUnfoldInProgress() && m_busUnfold.label_placed )
     {
         wxASSERT( m_busUnfold.entry && m_busUnfold.label );
 
