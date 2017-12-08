@@ -272,11 +272,12 @@ private:
      *
      * @param aNetListItems is the list to append to
      * @param aName is the prefix for the vector, like "DATA"
-     * @param begin is the first entry in the vector
-     * @param end is the last entry in the vector
+     * @param aBegin is the first entry in the vector
+     * @param aEnd is the last entry in the vector
+     * @param aOffset is an offset to add to the member code for each member
      */
     void fillBusVector( NETLIST_OBJECT_LIST& aNetListItems, wxString aName,
-                        long aBegin, long aEnd );
+                        long aBegin, long aEnd, long aOffset );
 
 public:
     /**

@@ -359,6 +359,11 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
     else
         wxCHECK_RET( false, wxT( "Net list object type is not valid." ) );
 
+    // NOTE: all netlist objects generated from a single bus definition need to have different
+    // member codes set.  For bus vectors, the member code matches the vector index, but for
+    // bus groups (including with nested vectors) the code is something arbitrary.
+    long member_offset = 0;
+
     auto alias = SCH_SCREEN::GetBusAlias( m_Label );
     if( alias || IsBusGroupLabel( m_Label ) )
     {
@@ -397,13 +402,14 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
                 {
                     m_Label = prefix;
                     m_Label << begin;
-                    m_Member = begin;
+                    m_Member = ( begin++ ) + ( member_offset++ );
 
                     self_set = true;
                     begin++;
                 }
 
-                fillBusVector( aNetListItems, prefix, begin, end );
+                fillBusVector( aNetListItems, prefix, begin, end, member_offset );
+                member_offset += std::abs( end - begin );
             }
             else if( auto nested_alias = SCH_SCREEN::GetBusAlias( bus_member ) )
             {
@@ -418,12 +424,14 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
                 if( !self_set )
                 {
                     m_Label = group_prefix + bus_member;
+                    m_Member = member_offset++;
                     self_set = true;
                 }
                 else
                 {
                     auto item = new NETLIST_OBJECT( *this );
                     item->m_Label = group_prefix + bus_member;
+                    item->m_Member = member_offset++;
                     aNetListItems.push_back( item );
                 }
             }
@@ -441,12 +449,12 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
         m_Label << begin;
         m_Member = begin;
 
-        fillBusVector( aNetListItems, prefix, begin + 1, end );
+        fillBusVector( aNetListItems, prefix, begin + 1, end, 0 );
     }
 }
 
 void NETLIST_OBJECT::fillBusVector( NETLIST_OBJECT_LIST& aNetListItems,
-                                    wxString aName, long aBegin, long aEnd )
+                                    wxString aName, long aBegin, long aEnd, long aOffset )
 {
     for( long member = aBegin; member <= aEnd; member++ )
     {
