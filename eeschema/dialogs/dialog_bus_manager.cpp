@@ -54,7 +54,8 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
                                       wxLC_NO_HEADER | wxLC_REPORT |
                                       wxLC_SINGLE_SEL );
     m_bus_list_view->InsertColumn( 0, "" );
-    m_bus_edit = new wxTextCtrl( this, wxID_ANY );
+    m_bus_edit = new wxTextCtrl( this, wxID_ANY, wxEmptyString,
+            wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER );
 
     auto left_button_sizer = new wxBoxSizer( wxHORIZONTAL );
 
@@ -76,7 +77,8 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
                                          wxLC_NO_HEADER | wxLC_REPORT |
                                          wxLC_SINGLE_SEL );
     m_signal_list_view->InsertColumn( 0, "" );
-    m_signal_edit = new wxTextCtrl( this, wxID_ANY );
+    m_signal_edit = new wxTextCtrl( this, wxID_ANY, wxEmptyString,
+            wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER );
 
     auto right_button_sizer = new wxBoxSizer( wxHORIZONTAL );
 
@@ -129,6 +131,8 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
             wxCommandEventHandler( DIALOG_BUS_MANAGER::OnRenameBus ), NULL, this );
     m_btn_remove_bus->Connect( wxEVT_COMMAND_BUTTON_CLICKED,
             wxCommandEventHandler( DIALOG_BUS_MANAGER::OnRemoveBus ), NULL, this );
+    m_signal_edit->Connect( wxEVT_TEXT_ENTER,
+            wxCommandEventHandler( DIALOG_BUS_MANAGER::OnAddSignal ), NULL, this );
 
     m_btn_add_signal->Connect( wxEVT_COMMAND_BUTTON_CLICKED,
             wxCommandEventHandler( DIALOG_BUS_MANAGER::OnAddSignal ), NULL, this );
@@ -136,6 +140,8 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
             wxCommandEventHandler( DIALOG_BUS_MANAGER::OnRenameSignal ), NULL, this );
     m_btn_remove_signal->Connect( wxEVT_COMMAND_BUTTON_CLICKED,
             wxCommandEventHandler( DIALOG_BUS_MANAGER::OnRemoveSignal ), NULL, this );
+    m_bus_edit->Connect( wxEVT_TEXT_ENTER,
+            wxCommandEventHandler( DIALOG_BUS_MANAGER::OnAddBus ), NULL, this );
 
     // Set initial UI state
 
