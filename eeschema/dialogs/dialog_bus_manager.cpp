@@ -349,6 +349,7 @@ void DIALOG_BUS_MANAGER::OnAddBus( wxCommandEvent& aEvent )
         long idx = m_bus_list_view->InsertItem( m_aliases.size() - 1, text );
         m_bus_list_view->SetColumnWidth( 0, -1 );
         m_bus_list_view->Select( idx );
+        m_bus_edit->Clear();
     }
     else
     {
@@ -399,6 +400,9 @@ void DIALOG_BUS_MANAGER::OnAddSignal( wxCommandEvent& aEvent )
         return;
     }
 
+    // String collecting net names that were not added to the bus
+    wxString notAdded;
+
     // Parse a space-separated list and add each one
     wxStringTokenizer tok( name_list, " " );
     while( tok.HasMoreTokens() )
@@ -415,7 +419,15 @@ void DIALOG_BUS_MANAGER::OnAddSignal( wxCommandEvent& aEvent )
             m_signal_list_view->SetColumnWidth( 0, -1 );
             m_signal_list_view->Select( idx );
         }
+        else
+        {
+            // Some of the requested net names were not added to the list, so keep them for editing
+            notAdded = notAdded.IsEmpty() ? name : notAdded + " " + name;
+        }
     }
+
+    m_signal_edit->SetValue( notAdded );
+    m_signal_edit->SetInsertionPointEnd();
 }
 
 
