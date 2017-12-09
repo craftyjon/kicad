@@ -89,16 +89,30 @@ private:
     /// The type of connection of #m_item.
     DANGLING_END_T m_type;
 
+    /// A pointer to the parent object (in the case of pins)
+    const EDA_ITEM* m_parent;
+
 public:
     DANGLING_END_ITEM( DANGLING_END_T aType, EDA_ITEM* aItem, const wxPoint& aPosition )
     {
         m_item = aItem;
         m_type = aType;
         m_pos = aPosition;
+        m_parent = aItem;
+    }
+
+    DANGLING_END_ITEM( DANGLING_END_T aType, EDA_ITEM* aItem,
+            const wxPoint& aPosition, const EDA_ITEM* aParent )
+    {
+        m_item = aItem;
+        m_type = aType;
+        m_pos = aPosition;
+        m_parent = aParent;
     }
 
     wxPoint GetPosition() const { return m_pos; }
     EDA_ITEM* GetItem() const { return m_item; }
+    const EDA_ITEM* GetParent() const { return m_parent; }
     DANGLING_END_T GetType() const { return m_type; }
 };
 

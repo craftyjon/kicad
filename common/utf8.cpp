@@ -218,6 +218,23 @@ UTF8::UTF8( const wchar_t* txt ) :
 }
 
 
+UTF8& UTF8::operator+=( unsigned w_ch )
+{
+    if( w_ch <= 0x7F )
+        m_s.operator+=( char( w_ch ) );
+    else
+    {
+        wchar_t wide_chr[2];    // buffer to store wide chars (UTF16) read from aText
+        wide_chr[1] = 0;
+        wide_chr[0] = w_ch;
+        UTF8 substr( wide_chr );
+        m_s += substr.m_s;
+    }
+
+    return (UTF8&) *this;
+}
+
+
 #if 0   // some unit tests:
 
 #include <stdio.h>
