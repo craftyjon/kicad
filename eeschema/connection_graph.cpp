@@ -47,15 +47,16 @@ void CONNECTION_VISITOR::tree_edge( const CONNECTION_GRAPH_T::edge_descriptor aE
     // if the target has a connection already, but my m_connection is stronger,
     // override the target.
 
+    // std::cout << "source " << source_item->GetClass() << " " << source_item
+    //           << " match_self " << ( source_item->Connection() == m_connection ) << std::endl;
+    // std::cout << " target " << target_item->GetClass() << " " << target_item
+    //           << " dirty " << target_item->Connection()->IsDirty() << std::endl;
+
     // Don't propagate when the source vertex didn't get set earlier
     if( ( source_item->Connection() == m_connection ) &&
         target_item->Connection()->IsDirty() )
     {
-        target_item->Connection() = m_connection;
+        target_item->Connection()->Clone( m_connection );
         target_item->Connection()->ClearDirty();
     }
-
-    // std::cout << "source " << source_item->GetClass() << " " << source_item
-    //           << " target " << target_item->GetClass() << " " << target_item
-    //           << std::endl;
 }

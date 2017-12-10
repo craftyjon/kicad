@@ -319,6 +319,16 @@ public:
         return m_connected_items;
     }
 
+    void AddConnectionTo( SCH_ITEM* aItem )
+    {
+        m_connected_items.insert( aItem );
+    }
+
+    void InitializeConnection()
+    {
+        m_connection = SCH_CONNECTION( this );
+    }
+
     /**
      * Function ClearConnections
      * clears all of the connection items from the list.

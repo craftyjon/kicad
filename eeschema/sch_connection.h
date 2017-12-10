@@ -71,9 +71,21 @@ public:
 
     void Reset();
 
+    void Clone( SCH_CONNECTION& aOther );
+
     SCH_ITEM* Parent() const
     {
         return m_parent;
+    }
+
+    SCH_ITEM* Driver() const
+    {
+        return m_driver;
+    }
+
+    void SetDriver( SCH_ITEM* aItem )
+    {
+        m_driver = aItem;
     }
 
     bool IsBus() const
@@ -190,7 +202,9 @@ private:
 
     bool m_dirty;
 
-    SCH_ITEM* m_parent;
+    SCH_ITEM* m_parent;     ///< The SCH_ITEM this connection is owned by
+
+    SCH_ITEM* m_driver;     ///< The SCH_ITEM that drives this connection's net
 
     CONNECTION_TYPE m_type; ///< @see enum CONNECTION_TYPE
 

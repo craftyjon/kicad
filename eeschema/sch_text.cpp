@@ -445,7 +445,9 @@ bool SCH_TEXT::IsDanglingStateChanged( std::vector< DANGLING_END_ITEM >& aItemLi
 
                 // Add the line to the connected items, since it won't be picked
                 // up by a search of intersecting connection points
-                m_connected_items.insert( static_cast< SCH_ITEM* >( item.GetItem() ) );
+                auto sch_item = static_cast< SCH_ITEM* >( item.GetItem() );
+                AddConnectionTo( sch_item );
+                sch_item->AddConnectionTo( this );
             }
             else
             {

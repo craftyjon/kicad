@@ -1582,6 +1582,7 @@ void SCH_SCREENS::RecalculateConnections()
             if( item->IsConnectable() )
             {
                 // Skip non-power components
+                // TODO(JE) Add all component pins here to generate netlists
                 if( item->Type() == SCH_COMPONENT_T )
                 {
                     if( auto part = static_cast< SCH_COMPONENT* >( item )->GetPartRef().lock() )
@@ -1593,16 +1594,7 @@ void SCH_SCREENS::RecalculateConnections()
 
                 if( !item->Connection() )
                 {
-                    // no connection data yet, let's try to generate one
-                    item->Connection() = SCH_CONNECTION( item );
-
-                    if( item->Type() == SCH_SHEET_T )
-                    {
-                        for( auto& pin : static_cast<SCH_SHEET*>( item )->GetPins() )
-                        {
-                            pin.Connection() = SCH_CONNECTION( &pin );
-                        }
-                    }
+                    item->InitializeConnection();
                 }
 
                 if( item->Type() == SCH_SHEET_T )
@@ -1611,7 +1603,7 @@ void SCH_SCREENS::RecalculateConnections()
                     {
                         if( !pin.Connection() )
                         {
-                            pin.Connection() = SCH_CONNECTION( &pin );
+                            pin.InitializeConnection();
                         }
 
                         pin.Connection()->Reset();
@@ -1779,7 +1771,9 @@ void SCH_SCREENS::RecalculateConnections()
                 }
             }
 
-            auto visitor = CONNECTION_VISITOR( *( item->Connection() ) );
+            connection->SetDriver( item );
+
+            auto visitor = CONNECTION_VISITOR( *connection );
 
             boost::breadth_first_search( graph.m_graph, *vertex_it,
                                          boost::visitor( visitor ).vertex_index_map(

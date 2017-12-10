@@ -365,13 +365,14 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         }
 
         schematic.UpdateSymbolLinks();      // Update all symbol library links for all sheets.
-        schematic.RecalculateConnections(); // Update connectivity graph
 
         // Ensure the schematic is fully segmented on first display
         BreakSegmentsOnJunctions();
         SchematicCleanUp( true );
         GetScreen()->ClearUndoORRedoList( GetScreen()->m_UndoList, 1 );
         GetScreen()->TestDanglingEnds();    // Only perform the dangling end test on root sheet.
+
+        schematic.RecalculateConnections(); // Update connectivity graph
     }
 
     GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId );

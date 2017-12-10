@@ -25,7 +25,7 @@
 bool SCH_CONNECTION::operator==( const SCH_CONNECTION& aOther ) const
 {
     // NOTE: Not comparing m_dirty or net/bus/subgraph codes
-    if( ( aOther.m_parent == m_parent ) &&
+    if( ( aOther.m_driver == m_driver ) &&
         ( aOther.m_type == m_type ) &&
         ( aOther.m_name == m_name ) )
     {
@@ -124,11 +124,31 @@ void SCH_CONNECTION::Reset()
     m_type = CONNECTION_NONE;
     m_name = "<NO NET>";
     m_prefix = "";
+    m_driver = nullptr;
     m_members.clear();
     m_dirty = true;
     m_net_code = 0;
     m_bus_code = 0;
     m_subgraph_code = 0;
+    m_vector_start = 0;
+    m_vector_end = 0;
+    m_vector_index = 0;
+}
+
+
+void SCH_CONNECTION::Clone( SCH_CONNECTION& aOther )
+{
+    m_type = aOther.Type();
+    m_driver = aOther.Driver();
+    m_name = aOther.Name();
+    m_prefix = aOther.Prefix();
+    m_members = aOther.Members();
+    m_net_code = aOther.NetCode();
+    m_bus_code = aOther.BusCode();
+    m_subgraph_code = aOther.SubgraphCode();
+    m_vector_start = aOther.VectorStart();
+    m_vector_end = aOther.VectorEnd();
+    m_vector_index = aOther.VectorIndex();
 }
 
 
@@ -144,6 +164,9 @@ void SCH_CONNECTION::AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const
     msg.Printf( "%d", m_subgraph_code );
     aList.push_back( MSG_PANEL_ITEM( _( "Subgraph Code" ), msg, BROWN ) );
 
-    msg.Printf( "%s at %p", Parent()->GetSelectMenuText(), Parent() );
-    aList.push_back( MSG_PANEL_ITEM( _( "Connection Source" ), msg, RED ) );
+    if( Driver() )
+    {
+        msg.Printf( "%s at %p", Driver()->GetSelectMenuText(), Driver() );
+        aList.push_back( MSG_PANEL_ITEM( _( "Connection Source" ), msg, RED ) );
+    }
 }
