@@ -1521,24 +1521,7 @@ void SCH_SCREENS::RecalculateConnections()
 
                 std::vector< wxPoint > points;
                 item->GetConnectionPoints( points );
-
-                switch( item->Type() )
-                {
-                case SCH_TEXT_T:
-                case SCH_LABEL_T:
-                case SCH_GLOBAL_LABEL_T:
-                case SCH_HIERARCHICAL_LABEL_T:
-                    // Don't clear connected items for text; they may be
-                    // pre-populated from IsDanglingStateChanged()
-                    // Note that we still add them to the connection map because
-                    // it's not guaranteed that all connections will be added
-                    // by IsDanglingStateChanged()
-                    break;
-
-                default:
-                    item->ConnectedItems().clear();
-                    break;
-                }
+                item->ConnectedItems().clear();
 
                 if( item->Type() == SCH_SHEET_T )
                 {
@@ -1559,14 +1542,14 @@ void SCH_SCREENS::RecalculateConnections()
 
         for( auto& it : connection_map )
         {
-            // std::cout << "Connection map for " << it.first << std::endl;
             auto connection_vec = it.second;
+
             for( auto connected_item : connection_vec )
             {
-                // std::cout << "    " << connected_item->GetClass() << " " << connected_item << std::endl;
                 for( auto test_item : connection_vec )
                 {
-                    if( connected_item->ConnectionPropagatesTo( test_item ) )
+                    if( connected_item != test_item &&
+                        connected_item->ConnectionPropagatesTo( test_item ) )
                     {
                         connected_item->ConnectedItems().insert( test_item );
                     }
@@ -1574,6 +1557,9 @@ void SCH_SCREENS::RecalculateConnections()
             }
         }
     }
+
+    // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
+    TestDanglingEnds();
 
     phase1.Stop();
     std::cout << "Phase 1 " << phase1.msecs() << " ms" << std::endl;
