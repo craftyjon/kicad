@@ -453,7 +453,9 @@ void SCH_EDIT_FRAME::CancelBusUnfold()
 
     if( m_busUnfold.label )
     {
-        screen->Remove( m_busUnfold.label );
+        if( m_busUnfold.label_placed )
+            screen->Remove( m_busUnfold.label );
+
         delete m_busUnfold.label;
     }
 
