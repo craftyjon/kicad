@@ -32,6 +32,7 @@
 #include <confirm.h>
 #include <netlist_exporter_kicad.h>
 #include <kiway.h>
+#include <profile.h>
 
 #include <netlist.h>
 #include <class_netlist_object.h>
@@ -174,7 +175,10 @@ NETLIST_OBJECT_LIST* SCH_EDIT_FRAME::BuildNetListBase( bool updateStatusText )
     SCH_SHEET_LIST aSheets( g_RootSheet );
 
     // Build netlist info
+    PROF_COUNTER profile;
     bool success = ret->BuildNetListInfo( aSheets );
+    profile.Stop();
+    std::cout << "BuildNetListInfo " << profile.msecs() << " ms" << std::endl;
 
     if( !success )
     {

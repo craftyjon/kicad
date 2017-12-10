@@ -1543,15 +1543,41 @@ void SCH_SCREENS::RecalculateConnections()
         for( auto& it : connection_map )
         {
             auto connection_vec = it.second;
+            SCH_ITEM* junction = nullptr;
 
+            // Look for junctions.  For points that have a junction, we want all
+            // items to connect to the junction but not to each other.
             for( auto connected_item : connection_vec )
             {
-                for( auto test_item : connection_vec )
+                if( connected_item->Type() == SCH_JUNCTION_T )
                 {
-                    if( connected_item != test_item &&
-                        connected_item->ConnectionPropagatesTo( test_item ) )
+                    junction = connected_item;
+                    break;
+                }
+            }
+
+            if( junction )
+            {
+                for( auto connected_item : connection_vec )
+                {
+                    if( connected_item != junction &&
+                        connected_item->ConnectionPropagatesTo( junction ) )
                     {
-                        connected_item->ConnectedItems().insert( test_item );
+                        connected_item->ConnectedItems().insert( junction );
+                    }
+                }
+            }
+            else
+            {
+                for( auto connected_item : connection_vec )
+                {
+                    for( auto test_item : connection_vec )
+                    {
+                        if( connected_item != test_item &&
+                            connected_item->ConnectionPropagatesTo( test_item ) )
+                        {
+                            connected_item->ConnectedItems().insert( test_item );
+                        }
                     }
                 }
             }
