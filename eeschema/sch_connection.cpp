@@ -132,9 +132,18 @@ void SCH_CONNECTION::Reset()
 }
 
 
-wxString SCH_CONNECTION::GetInfoString() const
+void SCH_CONNECTION::AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const
 {
     wxString msg;
-    msg.Printf( "N: %d B: %d SG: %d", m_net_code, m_bus_code, m_subgraph_code );
-    return msg;
+    msg.Printf( "%d", m_net_code );
+    aList.push_back( MSG_PANEL_ITEM( _( "Net Code" ), msg, BROWN ) );
+
+    msg.Printf( "%d", m_bus_code );
+    aList.push_back( MSG_PANEL_ITEM( _( "Bus Code" ), msg, BROWN ) );
+
+    msg.Printf( "%d", m_subgraph_code );
+    aList.push_back( MSG_PANEL_ITEM( _( "Subgraph Code" ), msg, BROWN ) );
+
+    msg.Printf( "%s at %p", Parent()->GetSelectMenuText(), Parent() );
+    aList.push_back( MSG_PANEL_ITEM( _( "Connection Source" ), msg, RED ) );
 }

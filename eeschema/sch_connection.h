@@ -23,6 +23,7 @@
 #include <memory>
 
 #include <sch_bus_alias.h>
+#include <msgpanel.h>
 
 
 class SCH_ITEM;
@@ -170,8 +171,6 @@ public:
         return m_vector_index;
     }
 
-    wxString GetInfoString() const;
-
     std::vector< std::shared_ptr< SCH_CONNECTION > >& Members()
     {
         return m_members;
@@ -181,6 +180,11 @@ public:
     {
         return m_members;
     }
+
+    /**
+     * Adds information about the connection object to aList
+     */
+    void AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const;
 
 private:
 

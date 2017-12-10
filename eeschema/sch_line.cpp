@@ -787,12 +787,10 @@ void SCH_LINE::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
         aList.push_back( MSG_PANEL_ITEM( _( "Net Name" ), msg, BROWN ) );
 
 #if defined(DEBUG)
-        msg = m_connection->GetInfoString();
-        aList.push_back( MSG_PANEL_ITEM( _( "Net Info" ), msg, BROWN ) );
+        m_connection->AppendDebugInfoToMsgPanel( aList );
 
-        msg.Printf( "%s at %p", m_connection->Parent()->GetSelectMenuText(),
-                    m_connection->Parent() );
-        aList.push_back( MSG_PANEL_ITEM( _( "Connection Source" ), msg, RED ) );
+        msg.Printf( "%zu", m_connected_items.size() );
+        aList.push_back( MSG_PANEL_ITEM( _( "Connections" ), msg, BROWN ) );
 #endif
     }
 }

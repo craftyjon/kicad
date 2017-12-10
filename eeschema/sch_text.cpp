@@ -731,8 +731,15 @@ void SCH_TEXT::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
     aList.push_back( MSG_PANEL_ITEM( _( "Size" ), msg, RED ) );
 
 #if defined(DEBUG)
+
+    if( m_connection )
+    {
+        m_connection->AppendDebugInfoToMsgPanel( aList );
+    }
+
     msg.Printf( "%p", this );
     aList.push_back( MSG_PANEL_ITEM( _( "Object Address" ), msg, RED ) );
+
 #endif
 }
 
