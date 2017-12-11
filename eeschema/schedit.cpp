@@ -397,7 +397,7 @@ void SCH_EDIT_FRAME::OnUnfoldBus( wxCommandEvent& event )
 {
     auto screen = GetScreen();
     auto item = static_cast< wxMenuItem* >( event.GetEventUserData() );
-    auto net = item->GetLabel();
+    auto net = item->GetItemLabelText();
 
     auto pos = GetCrossHairPosition();
 
