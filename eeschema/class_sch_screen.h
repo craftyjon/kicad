@@ -40,7 +40,7 @@
 #include <class_page_info.h>
 #include <kiway_player.h>
 #include <sch_marker.h>
-#include <sch_bus_alias.h>
+#include <bus_alias.h>
 
 #include <../eeschema/general.h>
 
@@ -52,7 +52,6 @@ class SCH_SHEET_PIN;
 class SCH_LINE;
 class SCH_TEXT;
 class PLOTTER;
-class SCH_BUS_ALIAS;
 
 
 enum SCH_LINE_TEST_T
@@ -90,7 +89,7 @@ private:
                                         ///< will trigger ResolveAll().
 
     /// List of bus aliases stored in this screen
-    std::unordered_set< std::shared_ptr< SCH_BUS_ALIAS > > m_aliases;
+    std::unordered_set< std::shared_ptr< BUS_ALIAS > > m_aliases;
 
     /**
      * Add items connected at \a aPosition to the block pick list.
@@ -496,7 +495,7 @@ public:
     /**
      * Adds a bus alias definition (and transfers ownership of the pointer)
      */
-    void AddBusAlias( std::shared_ptr<SCH_BUS_ALIAS> aAlias );
+    void AddBusAlias( std::shared_ptr<BUS_ALIAS> aAlias );
 
     /**
      * Removes all bus alias definitions
@@ -509,7 +508,7 @@ public:
     /**
      * Returns a list of bus aliases defined in this screen
      */
-    std::unordered_set< std::shared_ptr<SCH_BUS_ALIAS> > GetBusAliases()
+    std::unordered_set< std::shared_ptr<BUS_ALIAS> > GetBusAliases()
     {
         return m_aliases;
     }
@@ -523,7 +522,7 @@ public:
      * Returns a pointer to a bus alias object for the given label,
      * or null if one doesn't exist
      */
-    static std::shared_ptr<SCH_BUS_ALIAS> GetBusAlias( const wxString& aLabel );
+    static std::shared_ptr<BUS_ALIAS> GetBusAlias( const wxString& aLabel );
 
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override;

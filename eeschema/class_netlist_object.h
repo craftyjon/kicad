@@ -279,27 +279,6 @@ private:
     void fillBusVector( NETLIST_OBJECT_LIST& aNetListItems, wxString aName,
                         long aBegin, long aEnd, long aOffset );
 
-public:
-    /**
-     * Parses a bus vector (e.g. A[7..0]) into name, begin, and end.
-     * Ensures that begin and end are positive and that end > begin.
-     *
-     * @param vector is a bus vector label string
-     * @param name output of the name portion of the label
-     * @param begin is the first entry in the vector
-     * @param end is the last entry in the vector
-     */
-    static void ParseBusVector( wxString vector, wxString* name, long* begin, long* end );
-
-    /**
-     * Parses a bus group label into the name and a list of components
-     *
-     * @param aGroup is the input label, e.g. "USB{DP DM}"
-     * @param name is the output group name, e.g. "USB"
-     * @param aMemberList is a list of member strings, e.g. "DP", "DM"
-     * @return true if aGroup was successfully parsed
-     */
-    static bool ParseBusGroup( wxString aGroup, wxString* name, std::vector<wxString>& aMemberList );
 };
 
 
@@ -528,30 +507,5 @@ private:
      */
     void findBestNetNameForEachNet();
 };
-
-
-/**
- * Test if \a aLabel has a bus notation.
- *
- * @param aLabel A wxString object containing the label to test.
- * @return true if text is a bus notation format otherwise false is returned.
- */
-extern bool IsBusLabel( const wxString& aLabel );
-
-/**
- * Test if \a aLabel has a bus vector notation (simple bus, e.g. A[7..0])
- *
- * @param aLabel A wxString object containing the label to test.
- * @return true if text is a bus notation format otherwise false is returned.
- */
-extern bool IsBusVectorLabel( const wxString& aLabel );
-
-/**
- * Test if \a aLabel has a bus group notation.
- *
- * @param aLabel A wxString object containing the label to test.
- * @return true if text is a bus group notation format
- */
-extern bool IsBusGroupLabel( const wxString& aLabel );
 
 #endif    // _CLASS_NETLIST_OBJECT_H_

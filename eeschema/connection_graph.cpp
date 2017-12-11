@@ -60,3 +60,66 @@ void CONNECTION_VISITOR::tree_edge( const CONNECTION_GRAPH_T::edge_descriptor aE
         target_item->Connection()->ClearDirty();
     }
 }
+
+
+bool CONNECTION_SUBGRAPH::ResolveDrivers()
+{
+    CONNECTABLE_ITEM* candidate = nullptr;
+    int highest_priority = -1;
+    int num_items = 0;
+
+    m_driver = nullptr;
+
+    for( auto connectable_item : m_drivers )
+    {
+        auto item = dynamic_cast<EDA_ITEM*>( connectable_item );
+        wxASSERT( item );
+
+        int item_priority = 0;
+
+        switch( item->Type() )
+        {
+        case LIB_PIN_T:                 item_priority = 1; break;
+        case SCH_LABEL_T:               item_priority = 2; break;
+        case SCH_HIERARCHICAL_LABEL_T:  item_priority = 3; break;
+        case SCH_SHEET_PIN_T:           item_priority = 4; break;
+        // TODO(JE) Handle power pins here
+        //case NET_PINLABEL:            item_priority = 4; break;
+        case SCH_GLOBAL_LABEL_T:        item_priority = 5; break;
+        default: break;
+        }
+
+        if( item_priority > highest_priority )
+        {
+            candidate = dynamic_cast<CONNECTABLE_ITEM*>( item );
+            highest_priority = item_priority;
+            num_items = 1;
+        }
+        else if( candidate && ( item_priority == highest_priority ) )
+        {
+            num_items++;
+        }
+    }
+
+    if( num_items > 0 )
+    {
+        m_driver = candidate;
+
+        if( num_items > 1 )
+        {
+            // TODO(JE) ERC warning about multiple drivers?
+        }
+    }
+    else
+    {
+        std::cout << "Warning: could not resolve drivers for SG " << m_code << std::endl;
+        for( auto connectable_item : m_items )
+        {
+            auto item = dynamic_cast<EDA_ITEM*>( connectable_item );
+            wxASSERT( item );
+            std::cout << "    " << item->GetSelectMenuText() << std::endl;
+        }
+    }
+
+    return ( m_driver != nullptr );
+}

@@ -40,6 +40,7 @@
 #include <eeschema_config.h>
 #include <general.h>
 #include <sch_bus_entry.h>
+#include <sch_line.h>
 
 
 SCH_BUS_ENTRY_BASE::SCH_BUS_ENTRY_BASE( KICAD_T aType, const wxPoint& pos, char shape ) :
@@ -382,11 +383,12 @@ void SCH_BUS_ENTRY_BASE::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
 }
 
 
-bool SCH_BUS_WIRE_ENTRY::ConnectionPropagatesTo( const SCH_ITEM* aItem ) const
+bool SCH_BUS_WIRE_ENTRY::ConnectionPropagatesTo( const EDA_ITEM* aItem ) const
 {
     // Don't generate connections between bus entries and buses, since there is
     // a connectivity change at that point (e.g. A[7..0] to A7)
-    if( ( aItem->Type() == SCH_LINE_T ) && ( aItem->GetLayer() == LAYER_BUS ) )
+    if( ( aItem->Type() == SCH_LINE_T ) &&
+        ( static_cast<const SCH_LINE*>( aItem )->GetLayer() == LAYER_BUS ) )
     {
         return false;
     }

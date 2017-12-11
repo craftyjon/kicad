@@ -1368,6 +1368,19 @@ void SCH_COMPONENT::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
             aList.push_back( MSG_PANEL_ITEM( _( "Description" ), alias->GetDescription(),
                                              DARKCYAN ) );
             aList.push_back( MSG_PANEL_ITEM( _( "Key Words" ), alias->GetKeyWords(), DARKCYAN ) );
+
+#if defined(DEBUG)
+            if( part->IsPower() )
+            {
+                for( auto pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
+                {
+                    if( pin->IsPowerConnection() )
+                    {
+                        pin->Connection()->AppendDebugInfoToMsgPanel( aList );
+                    }
+                }
+            }
+#endif
         }
     }
     else

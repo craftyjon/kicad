@@ -46,7 +46,7 @@
 #include <sch_text.h>
 #include <sch_sheet.h>
 #include <sch_bitmap.h>
-#include <sch_bus_alias.h>
+#include <bus_alias.h>
 #include <sch_legacy_plugin.h>
 #include <template_fieldnames.h>
 #include <class_sch_screen.h>
@@ -1655,10 +1655,10 @@ SCH_COMPONENT* SCH_LEGACY_PLUGIN::loadComponent( FILE_LINE_READER& aReader )
 }
 
 
-std::shared_ptr< SCH_BUS_ALIAS > SCH_LEGACY_PLUGIN::loadBusAlias( FILE_LINE_READER& aReader,
+std::shared_ptr< BUS_ALIAS > SCH_LEGACY_PLUGIN::loadBusAlias( FILE_LINE_READER& aReader,
                                                                   SCH_SCREEN* aScreen )
 {
-    auto busAlias = std::make_shared< SCH_BUS_ALIAS >( aScreen );
+    auto busAlias = std::make_shared< BUS_ALIAS >( aScreen );
     const char* line = aReader.Line();
 
     wxCHECK( strCompare( "BusAlias", line, &line ), NULL );
@@ -2172,9 +2172,9 @@ void SCH_LEGACY_PLUGIN::saveText( SCH_TEXT* aText )
 }
 
 
-void SCH_LEGACY_PLUGIN::saveBusAlias( std::shared_ptr< SCH_BUS_ALIAS > aAlias )
+void SCH_LEGACY_PLUGIN::saveBusAlias( std::shared_ptr< BUS_ALIAS > aAlias )
 {
-    wxCHECK_RET( aAlias != NULL, "SCH_BUS_ALIAS* is NULL" );
+    wxCHECK_RET( aAlias != NULL, "BUS_ALIAS* is NULL" );
 
     wxString members = boost::algorithm::join( aAlias->Members(), " " );
 

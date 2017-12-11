@@ -152,7 +152,7 @@ public:
 
     EDA_ITEM* Clone() const override;
 
-    virtual bool ConnectionPropagatesTo( const SCH_ITEM* aItem ) const override;
+    virtual bool ConnectionPropagatesTo( const EDA_ITEM* aItem ) const override;
 
     BITMAP_DEF GetMenuImage() const override;
 };

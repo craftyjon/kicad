@@ -25,7 +25,7 @@
 #include <schframe.h>
 #include <wx/listctrl.h>
 
-#include <sch_bus_alias.h>
+#include <bus_alias.h>
 
 class DIALOG_BUS_MANAGER : public DIALOG_SHIM
 {
@@ -74,11 +74,11 @@ private:
 
     virtual void OnCancelClick( wxCommandEvent& aEvent );
 
-    wxString getAliasDisplayText( std::shared_ptr< SCH_BUS_ALIAS > aAlias );
+    wxString getAliasDisplayText( std::shared_ptr< BUS_ALIAS > aAlias );
 
-    std::vector< std::shared_ptr< SCH_BUS_ALIAS > > m_aliases;
+    std::vector< std::shared_ptr< BUS_ALIAS > > m_aliases;
 
-    std::shared_ptr< SCH_BUS_ALIAS > m_active_alias;
+    std::shared_ptr< BUS_ALIAS > m_active_alias;
 
     DECLARE_EVENT_TABLE()
 };

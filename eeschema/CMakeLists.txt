@@ -100,6 +100,7 @@ set( EESCHEMA_SRCS
     block_libedit.cpp
     bom_table_model.cpp
     bom_table_column.cpp
+    bus_alias.cpp
     busentry.cpp
     bus-wire-junction.cpp
     class_drc_erc_item.cpp
@@ -175,6 +176,7 @@ set( EESCHEMA_SRCS
     sch_bus_entry.cpp
     sch_collectors.cpp
     sch_component.cpp
+    sch_connection.cpp
     sch_eagle_plugin.cpp
     sch_field.cpp
     sch_io_mgr.cpp
@@ -191,8 +193,6 @@ set( EESCHEMA_SRCS
     sch_sheet_pin.cpp
     sch_text.cpp
     sch_validators.cpp
-    sch_bus_alias.cpp
-    sch_connection.cpp
     schedit.cpp
     schematic_undo_redo.cpp
     schframe.cpp

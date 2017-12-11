@@ -35,6 +35,7 @@
 #include <class_eda_rect.h>
 #include <transform.h>
 #include <gr_basic.h>
+#include <sch_connection.h>
 
 
 class LINE_READER;
@@ -63,7 +64,7 @@ typedef std::vector< LIB_PIN* > LIB_PINS;
 /**
  * The base class for drawable items used by schematic library components.
  */
-class LIB_ITEM : public EDA_ITEM
+class LIB_ITEM : public EDA_ITEM, public CONNECTABLE_ITEM
 {
     /**
      * Draw the item on \a aPanel.

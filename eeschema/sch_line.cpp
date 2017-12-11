@@ -80,7 +80,6 @@ SCH_LINE::SCH_LINE( const wxPoint& pos, int layer ) :
 
     case LAYER_BUS:
         m_Layer = LAYER_BUS;
-        InitializeConnection();
         break;
     }
 }

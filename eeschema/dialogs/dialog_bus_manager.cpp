@@ -170,7 +170,7 @@ bool DIALOG_BUS_MANAGER::TransferDataToWindow()
     m_aliases.clear();
 
     SCH_SHEET_LIST aSheets( g_RootSheet );
-    std::vector< std::shared_ptr< SCH_BUS_ALIAS > > original_aliases;
+    std::vector< std::shared_ptr< BUS_ALIAS > > original_aliases;
 
     // collect aliases from each open sheet
     for( unsigned i = 0; i < aSheets.size(); i++ )
@@ -338,7 +338,7 @@ void DIALOG_BUS_MANAGER::OnAddBus( wxCommandEvent& aEvent )
         ( m_active_alias && m_active_alias->GetName().Cmp( new_name ) ) )
     {
         // The values are different; create a new alias
-        auto alias = std::make_shared<SCH_BUS_ALIAS>();
+        auto alias = std::make_shared<BUS_ALIAS>();
         alias->SetName( new_name );
 
         // New aliases get stored on the currently visible sheet
@@ -475,7 +475,7 @@ void DIALOG_BUS_MANAGER::OnRemoveSignal( wxCommandEvent& aEvent )
 }
 
 
-wxString DIALOG_BUS_MANAGER::getAliasDisplayText( std::shared_ptr< SCH_BUS_ALIAS > aAlias )
+wxString DIALOG_BUS_MANAGER::getAliasDisplayText( std::shared_ptr< BUS_ALIAS > aAlias )
 {
     wxString name = aAlias->GetName();
     wxFileName sheet_name( aAlias->GetParent()->GetFileName() );

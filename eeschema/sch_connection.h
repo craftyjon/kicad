@@ -21,12 +21,16 @@
 #define _SCH_CONNECTION_H
 
 #include <memory>
+#include <unordered_set>
 
-#include <sch_bus_alias.h>
+#include <boost/optional.hpp>
+
+#include <bus_alias.h>
 #include <msgpanel.h>
 
 
-class SCH_ITEM;
+class CONNECTABLE_ITEM;
+class EDA_ITEM;
 
 
 enum CONNECTION_TYPE
@@ -48,7 +52,7 @@ enum CONNECTION_TYPE
 class SCH_CONNECTION
 {
 public:
-    SCH_CONNECTION( SCH_ITEM* aParent = NULL ) :
+    SCH_CONNECTION( CONNECTABLE_ITEM* aParent ) :
         m_parent( aParent )
     {
         Reset();
@@ -73,20 +77,22 @@ public:
 
     void Clone( SCH_CONNECTION& aOther );
 
-    SCH_ITEM* Parent() const
+    CONNECTABLE_ITEM* Parent() const
     {
         return m_parent;
     }
 
-    SCH_ITEM* Driver() const
+    CONNECTABLE_ITEM* Driver() const
     {
         return m_driver;
     }
 
-    void SetDriver( SCH_ITEM* aItem )
+    void SetDriver( CONNECTABLE_ITEM* aItem )
     {
         m_driver = aItem;
     }
+
+    bool IsDriver() const;
 
     bool IsBus() const
     {
@@ -194,6 +200,27 @@ public:
     }
 
     /**
+     * Parses a bus vector (e.g. A[7..0]) into name, begin, and end.
+     * Ensures that begin and end are positive and that end > begin.
+     *
+     * @param vector is a bus vector label string
+     * @param name output of the name portion of the label
+     * @param begin is the first entry in the vector
+     * @param end is the last entry in the vector
+     */
+    static void ParseBusVector( wxString vector, wxString* name, long* begin, long* end );
+
+    /**
+     * Parses a bus group label into the name and a list of components
+     *
+     * @param aGroup is the input label, e.g. "USB{DP DM}"
+     * @param name is the output group name, e.g. "USB"
+     * @param aMemberList is a list of member strings, e.g. "DP", "DM"
+     * @return true if aGroup was successfully parsed
+     */
+    static bool ParseBusGroup( wxString aGroup, wxString* name, std::vector<wxString>& aMemberList );
+
+    /**
      * Adds information about the connection object to aList
      */
     void AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const;
@@ -202,9 +229,9 @@ private:
 
     bool m_dirty;
 
-    SCH_ITEM* m_parent;     ///< The SCH_ITEM this connection is owned by
+    CONNECTABLE_ITEM* m_parent;     ///< The CONNECTABLE_ITEM this connection is owned by
 
-    SCH_ITEM* m_driver;     ///< The SCH_ITEM that drives this connection's net
+    CONNECTABLE_ITEM* m_driver;     ///< The CONNECTABLE_ITEM that drives this connection's net
 
     CONNECTION_TYPE m_type; ///< @see enum CONNECTION_TYPE
 
@@ -229,6 +256,99 @@ private:
     std::vector< std::shared_ptr< SCH_CONNECTION > > m_members;
 
 };
+
+/**
+ * Mix-in class to add SCH_CONNECTION to SCH_ITEM and LIB_ITEM
+ * @details [long description]
+ *
+ */
+class CONNECTABLE_ITEM
+{
+protected:
+    /// Stores net/bus information for items that have it (schematic only)
+    boost::optional<SCH_CONNECTION> m_connection;
+
+    /// Stores pointers to other items that are connected to this one (schematic only)
+    std::unordered_set<CONNECTABLE_ITEM*> m_connected_items;
+
+public:
+    /**
+     * Retrieves the connection associated with this object, if it exists
+     *
+     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
+     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
+     * hoisted out.
+     */
+    virtual boost::optional<SCH_CONNECTION>& Connection()
+    {
+        return m_connection;
+    }
+
+    /**
+     * Retrieves the set of items connected to this item (schematic only)
+     *
+     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
+     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
+     * hoisted out.
+     */
+    virtual std::unordered_set<CONNECTABLE_ITEM*>& ConnectedItems()
+    {
+        return m_connected_items;
+    }
+
+    /**
+     * Adds a connection link between this item and another
+     *
+     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
+     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
+     * hoisted out.
+     */
+    virtual void AddConnectionTo( CONNECTABLE_ITEM* aItem )
+    {
+        m_connected_items.insert( aItem );
+    }
+
+    /**
+     * Creates a new connection object associated with this object
+     *
+     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
+     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
+     * hoisted out.
+     */
+    virtual void InitializeConnection()
+    {
+        m_connection = SCH_CONNECTION( this );
+    }
+
+    /**
+     * Returns true if this item should propagate connection info to aItem
+     */
+    virtual bool ConnectionPropagatesTo( const EDA_ITEM* aItem ) const { return true; }
+};
+
+/**
+ * Test if \a aLabel has a bus notation.
+ *
+ * @param aLabel A wxString object containing the label to test.
+ * @return true if text is a bus notation format otherwise false is returned.
+ */
+extern bool IsBusLabel( const wxString& aLabel );
+
+/**
+ * Test if \a aLabel has a bus vector notation (simple bus, e.g. A[7..0])
+ *
+ * @param aLabel A wxString object containing the label to test.
+ * @return true if text is a bus notation format otherwise false is returned.
+ */
+extern bool IsBusVectorLabel( const wxString& aLabel );
+
+/**
+ * Test if \a aLabel has a bus group notation.
+ *
+ * @param aLabel A wxString object containing the label to test.
+ * @return true if text is a bus group notation format
+ */
+extern bool IsBusGroupLabel( const wxString& aLabel );
 
 #endif
 

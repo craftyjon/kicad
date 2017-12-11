@@ -28,6 +28,7 @@
 #include <utility>
 #include <algorithm>
 
+#include <sch_connection.h>
 #include <sch_item_struct.h>
 
 
@@ -122,6 +123,7 @@ private:
 };
 
 
+// TODO(JE) Remove if unused
 class CONNECTION_GRAPH
 {
 public:
@@ -161,6 +163,42 @@ public:
 
     boost::associative_property_map< VERTEX_INDEX_MAP_T > m_vertex_index_property_map;
 
+};
+
+
+/**
+ * A subgraph is a set of items that are "physically" connected in the schematic.
+ *
+ * For example, a label connected to a wire and so on.
+ * A net is composed of one or more subgraphs.
+ *
+ * A set of items that appears to be physically connected may actually be more
+ * than one subgraph, because some items don't connect electrically.
+ *
+ * For example, multiple bus wires can come together at a junction but have
+ * different labels on each branch.  Each label+wire branch is its own subgraph.
+ *
+ */
+class CONNECTION_SUBGRAPH
+{
+public:
+    /**
+     * Determines which potential driver should drive the subgraph.
+     *
+     * If multiple possible drivers exist, picks one according to the priority.
+     * If multiple "winners" exist, returns false and sets m_driver to nullptr.
+     *
+     * @return true if m_driver was set, or false if a conflict occurred
+     */
+    bool ResolveDrivers();
+
+    long m_code;
+
+    std::vector<CONNECTABLE_ITEM*> m_items;
+
+    std::vector<CONNECTABLE_ITEM*> m_drivers;
+
+    CONNECTABLE_ITEM* m_driver;
 };
 
 #endif

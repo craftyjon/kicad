@@ -1191,7 +1191,7 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
 }
 
 
-void SCH_SCREEN::AddBusAlias( std::shared_ptr<SCH_BUS_ALIAS> aAlias )
+void SCH_SCREEN::AddBusAlias( std::shared_ptr<BUS_ALIAS> aAlias )
 {
     m_aliases.insert( aAlias );
 }
@@ -1215,7 +1215,7 @@ bool SCH_SCREEN::IsBusAlias( const wxString& aLabel )
 }
 
 
-std::shared_ptr<SCH_BUS_ALIAS> SCH_SCREEN::GetBusAlias( const wxString& aLabel )
+std::shared_ptr<BUS_ALIAS> SCH_SCREEN::GetBusAlias( const wxString& aLabel )
 {
     SCH_SHEET_LIST aSheets( g_RootSheet );
     for( unsigned i = 0; i < aSheets.size(); i++ )
@@ -1507,11 +1507,16 @@ void SCH_SCREENS::RecalculateConnections()
 
     PROF_COUNTER phase1;
 
+    std::vector<CONNECTABLE_ITEM*> all_connectable_items;
+
     // Phase 1: update connected items
+    // TODO(JE) This is bugged, doesn't work for multiple instances of a hierarchical sheet
     for( auto screen = GetFirst(); screen; screen = GetNext() )
     {
-        std::unordered_map< wxPoint, std::vector< SCH_ITEM* > > connection_map;
-        std::vector< SCH_ITEM* > items;
+        std::unordered_map< wxPoint, std::vector<CONNECTABLE_ITEM*> > connection_map;
+        std::vector<CONNECTABLE_ITEM*> items;
+
+        // std::cout << "*** Processing " << screen->GetFileName() << std::endl;
 
         for( auto item = screen->GetDrawItems(); item; item = item->Next() )
         {
@@ -1527,128 +1532,63 @@ void SCH_SCREENS::RecalculateConnections()
                 {
                     for( auto& pin : static_cast<SCH_SHEET*>( item )->GetPins() )
                     {
-                        connection_map[ pin.GetTextPos() ].push_back( &pin );
-                    }
-                }
-                else
-                {
-                    for( auto point : points )
-                    {
-                        connection_map[ point ].push_back( item );
-                    }
-                }
-            }
-        }
-
-        for( auto& it : connection_map )
-        {
-            auto connection_vec = it.second;
-            SCH_ITEM* junction = nullptr;
-
-            // Look for junctions.  For points that have a junction, we want all
-            // items to connect to the junction but not to each other.
-            for( auto connected_item : connection_vec )
-            {
-                if( connected_item->Type() == SCH_JUNCTION_T )
-                {
-                    junction = connected_item;
-                    break;
-                }
-            }
-
-            if( junction )
-            {
-                for( auto connected_item : connection_vec )
-                {
-                    if( connected_item != junction &&
-                        connected_item->ConnectionPropagatesTo( junction ) )
-                    {
-                        connected_item->ConnectedItems().insert( junction );
-                    }
-                }
-            }
-            else
-            {
-                for( auto connected_item : connection_vec )
-                {
-                    for( auto test_item : connection_vec )
-                    {
-                        if( connected_item != test_item &&
-                            connected_item->ConnectionPropagatesTo( test_item ) )
-                        {
-                            connected_item->ConnectedItems().insert( test_item );
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
-    TestDanglingEnds();
-
-    phase1.Stop();
-    std::cout << "Phase 1 " << phase1.msecs() << " ms" << std::endl;
-
-    PROF_COUNTER phase2;
-
-    CONNECTION_GRAPH graph;
-
-    // TODO(JE): Move to CONNECTION_GRAPH?
-    VERTEX_MAP_T::iterator pos;
-    bool inserted;
-    CONNECTION_VERTEX vertex;
-
-    // Phase 2: build graph of connections
-    std::vector<SCH_ITEM*> items_list;
-    for( auto screen = GetFirst(); screen; screen = GetNext() )
-    {
-        for( auto item = screen->GetDrawItems(); item; item = item->Next() )
-        {
-            if( item->IsConnectable() )
-            {
-                // Skip non-power components
-                // TODO(JE) Add all component pins here to generate netlists
-                if( item->Type() == SCH_COMPONENT_T )
-                {
-                    if( auto part = static_cast< SCH_COMPONENT* >( item )->GetPartRef().lock() )
-                    {
-                        if( !part->IsPower() )
-                            continue;
-                    }
-                }
-
-                if( !item->Connection() )
-                {
-                    item->InitializeConnection();
-                }
-
-                if( item->Type() == SCH_SHEET_T )
-                {
-                    for( auto& pin : static_cast<SCH_SHEET*>( item )->GetPins() )
-                    {
                         if( !pin.Connection() )
                         {
                             pin.InitializeConnection();
                         }
 
+                        pin.ConnectedItems().clear();
                         pin.Connection()->Reset();
-                        items_list.push_back( &pin );
-                        // Add pin to connection graph
-                        // TODO(JE) Move to CONNECTION_GRAPH
-                        boost::tie( pos, inserted ) = graph.m_vertex_map.insert(
-                            std::make_pair( &pin, CONNECTION_VERTEX() ) );
 
-                        if( inserted )
+                        connection_map[ pin.GetTextPos() ].push_back( &pin );
+                        all_connectable_items.push_back( &pin );
+                    }
+                }
+                else if( item->Type() == SCH_COMPONENT_T )
+                {
+                    auto component = static_cast<SCH_COMPONENT*>( item );
+                    if( auto part = component->GetPartRef().lock() )
+                    {
+                        // std::cout << component->GetSelectMenuText() << " pos "
+                        //           << component->GetPosition() << std::endl;
+                        for( auto pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
                         {
-                            vertex = boost::add_vertex( graph.m_graph );
-                            graph.m_graph[ vertex ].item = &pin;
-                            pos->second = vertex;
+                            // Skip items not used for this part.
+                            if( component->GetUnit() && pin->GetUnit() &&
+                                ( pin->GetUnit() != component->GetUnit() ) )
+                                continue;
+
+                            if( component->GetConvert() && pin->GetConvert() &&
+                                ( pin->GetConvert() != component->GetConvert() ) )
+                                continue;
+
+                            if( !pin->Connection() )
+                            {
+                                pin->InitializeConnection();
+                            }
+
+                            pin->ConnectedItems().clear();
+                            pin->Connection()->Reset();
+
+                            auto pin_pos = component->GetTransform().TransformCoordinate(
+                                pin->GetPosition() ) + component->GetPosition();
+
+                            // std::cout << "Pin pos " << pin_pos << std::endl;
+
+                            connection_map[ pin_pos ].push_back( pin );
+                            all_connectable_items.push_back( pin );
                         }
                     }
                 }
                 else
                 {
+                    all_connectable_items.push_back( item );
+
+                    if( !item->Connection() )
+                    {
+                        item->InitializeConnection();
+                    }
+
                     item->Connection()->Reset();
 
                     // Set bus/net property here so that the propagation code uses it
@@ -1671,143 +1611,196 @@ void SCH_SCREENS::RecalculateConnections()
                         break;
                     }
 
-                    items_list.push_back( item );
-
-                    // Add item to connection graph
-                    // TODO(JE) Move to CONNECTION_GRAPH
-                    boost::tie( pos, inserted ) = graph.m_vertex_map.insert(
-                        std::make_pair( item, CONNECTION_VERTEX() ) );
-
-                    if( inserted )
+                    for( auto point : points )
                     {
-                        vertex = boost::add_vertex( graph.m_graph );
-                        graph.m_graph[ vertex ].item = item;
-                        pos->second = vertex;
+                        connection_map[ point ].push_back( item );
                     }
                 }
             }
         }
-    }
 
-    // Add connection edges
-    // TODO(JE) move to CONNECTION_GRAPH
-    for( auto item : items_list )
-    {
-        auto first = graph.m_vertex_map[ item ];
-        for( auto connected_item : item->ConnectedItems() )
+        for( auto& it : connection_map )
         {
-            auto second = graph.m_vertex_map[ connected_item ];
+            auto connection_vec = it.second;
+            CONNECTABLE_ITEM* junction = nullptr;
 
-            if( second )
-                boost::add_edge( first, second, graph.m_graph );
-        }
-    }
+            // std::cout << "Connecting items at location " << it.first << std::endl;
 
-    // Create vertex index map
-    size_t vertex_index = 0;
-
-    CONNECTION_VERTEX_ITERATOR vertex_it, vertex_end;
-    for( boost::tie( vertex_it, vertex_end ) = boost::vertices( graph.m_graph );
-         vertex_it != vertex_end; ++vertex_it )
-    {
-        boost::put( graph.m_vertex_index_property_map, *vertex_it, vertex_index++ );
-    }
-
-    // Look for "forcing" items that define a net (labels, power components, ...)
-    // and propagate them to connected wires/junctions
-
-    int net_code = 0, bus_code = 0, subgraph_code = 0;
-
-    // TODO: Switch to wxString once wxWidgets 3.1.0 is in use
-    std::unordered_map< std::wstring, int > net_code_map;
-    std::unordered_map< std::wstring, int > bus_code_map;
-
-    for( boost::tie( vertex_it, vertex_end ) = boost::vertices( graph.m_graph );
-         vertex_it != vertex_end; ++vertex_it )
-    {
-        auto item = graph.m_graph[ *vertex_it ].item;
-        auto& connection = item->Connection();
-
-        switch( item->Type() )
-        {
-        case SCH_LABEL_T:
-        case SCH_GLOBAL_LABEL_T:
-        case SCH_HIERARCHICAL_LABEL_T:
-        case SCH_COMPONENT_T:
-        case SCH_SHEET_PIN_T:
-        case SCH_SHEET_T:
-        {
-            if( item->Type() == SCH_COMPONENT_T )
+            // Look for junctions.  For points that have a junction, we want all
+            // items to connect to the junction but not to each other.
+            for( auto connected_item : connection_vec )
             {
-                // Check for power pins and assign net accordingly
-                if( auto part = static_cast< SCH_COMPONENT* >( item )->GetPartRef().lock() )
+                EDA_ITEM* eda_item = dynamic_cast<EDA_ITEM*>( connected_item );
+                wxASSERT( eda_item );
+
+                // std::cout << "    " << eda_item->GetSelectMenuText() << std::endl;
+
+                if( eda_item->Type() == SCH_JUNCTION_T )
                 {
-                    if( part->IsPower() )
+                    junction = connected_item;
+                    break;
+                }
+            }
+
+            if( junction )
+            {
+                for( auto connected_item : connection_vec )
+                {
+                    if( connected_item != junction &&
+                        connected_item->ConnectionPropagatesTo( dynamic_cast<EDA_ITEM*>( junction ) ) )
                     {
-                        // TODO(JE) this doesn't really make sense; shouldn't we assume
-                        // that there is only one pin on a power component?
-                        for( auto pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
+                        connected_item->ConnectedItems().insert( junction );
+                    }
+                }
+            }
+            else
+            {
+                for( auto connected_item : connection_vec )
+                {
+                    for( auto test_item : connection_vec )
+                    {
+                        if( connected_item != test_item &&
+                            connected_item->ConnectionPropagatesTo( dynamic_cast<EDA_ITEM*>( test_item ) ) &&
+                            test_item->ConnectionPropagatesTo( dynamic_cast<EDA_ITEM*>( connected_item ) ) )
                         {
-                            if( pin->IsPowerConnection() )
-                            {
-                                connection->ConfigureFromLabel( pin->GetName() );
-                                connection->ClearDirty();
-                            }
+                            connected_item->ConnectedItems().insert( test_item );
                         }
                     }
                 }
             }
-            else
-            {
-                connection->ConfigureFromLabel( static_cast<SCH_TEXT*>( item )->GetText() );
-                connection->ClearDirty();
-            }
-
-            connection->SetSubgraphCode( ++subgraph_code );
-
-            // std::cout << "Visiting subgraph " << subgraph_code << " for item "
-            //           << item->GetSelectMenuText() << " at " << item << std::endl;
-
-            if( connection->IsBus() )
-            {
-                auto name = connection->Name().ToStdWstring();
-                auto search = bus_code_map.find( name );
-                if( search != bus_code_map.end() )
-                {
-                    connection->SetBusCode( search->second );
-                }
-                else
-                {
-                    connection->SetBusCode( ++bus_code );
-                    bus_code_map[ name ] = bus_code;
-                }
-            }
-            else
-            {
-                auto name = connection->Name().ToStdWstring();
-                auto search = net_code_map.find( name );
-                if( search != net_code_map.end() )
-                {
-                    connection->SetNetCode( search->second );
-                }
-                else
-                {
-                    connection->SetNetCode( ++net_code );
-                    net_code_map[ name ] = net_code;
-                }
-            }
-
-            connection->SetDriver( item );
-
-            auto visitor = CONNECTION_VISITOR( *connection );
-
-            boost::breadth_first_search( graph.m_graph, *vertex_it,
-                                         boost::visitor( visitor ).vertex_index_map(
-                                            graph.m_vertex_index_property_map ) );
         }
+    }
 
-        default:
-            break;
+    // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
+    TestDanglingEnds();
+
+    phase1.Stop();
+    std::cout << "Phase 1 " << phase1.msecs() << " ms" << std::endl;
+
+    PROF_COUNTER phase2;
+
+    long subgraph_code = 1;
+    std::vector<CONNECTION_SUBGRAPH> subgraphs;
+
+    for( auto item : all_connectable_items )
+    {
+        if( item->Connection()->SubgraphCode() == 0 )
+        {
+            CONNECTION_SUBGRAPH subgraph;
+
+            subgraph.m_code = subgraph_code++;
+            subgraph.m_items.push_back( item );
+
+            // std::cout << "SG " << subgraph.m_code << " started with "
+            //           << dynamic_cast<EDA_ITEM*>( item )->GetSelectMenuText() << std::endl;
+
+            if( item->Connection()->IsDriver() )
+                subgraph.m_drivers.push_back( item );
+
+            item->Connection()->SetSubgraphCode( subgraph.m_code );
+
+            std::list<CONNECTABLE_ITEM*> members( item->ConnectedItems().begin(),
+                                                  item->ConnectedItems().end() );
+
+            for( auto connected_item : members )
+            {
+                if( !connected_item->Connection() )
+                    connected_item->InitializeConnection();
+
+                if( connected_item->Connection()->SubgraphCode() == 0 )
+                {
+                    connected_item->Connection()->SetSubgraphCode( subgraph.m_code );
+                    subgraph.m_items.push_back( connected_item );
+
+                    // std::cout << "   +" << dynamic_cast<EDA_ITEM*>( connected_item )->GetSelectMenuText() << std::endl;
+
+                    if( connected_item->Connection()->IsDriver() )
+                        subgraph.m_drivers.push_back( connected_item );
+
+                    members.insert( members.end(),
+                                    connected_item->ConnectedItems().begin(),
+                                    connected_item->ConnectedItems().end() );
+                }
+            }
+
+            subgraphs.push_back( subgraph );
+        }
+    }
+
+    for( auto subgraph : subgraphs )
+    {
+        if( !subgraph.ResolveDrivers() )
+        {
+            // TODO(JE) ERC Error: multiple equivalent drivers
+        }
+        else
+        {
+            // Now the subgraph has only one driver
+            auto driver = dynamic_cast<EDA_ITEM*>( subgraph.m_driver );
+            wxASSERT( driver );
+
+            auto& connection = subgraph.m_driver->Connection();
+
+            // TODO(JE) This should live in SCH_CONNECTION probably
+            switch( driver->Type() )
+            {
+            case SCH_LABEL_T:
+            case SCH_GLOBAL_LABEL_T:
+            case SCH_HIERARCHICAL_LABEL_T:
+            case SCH_COMPONENT_T:
+            case SCH_SHEET_PIN_T:
+            case SCH_SHEET_T:
+            {
+                if( driver->Type() == SCH_COMPONENT_T )
+                {
+                    // Check for power pins and assign net accordingly
+                    if( auto part = static_cast< SCH_COMPONENT* >( driver )->GetPartRef().lock() )
+                    {
+                        if( part->IsPower() )
+                        {
+                            // TODO(JE) this doesn't really make sense; shouldn't we assume
+                            // that there is only one pin on a power component?
+                            for( auto pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
+                            {
+                                if( pin->IsPowerConnection() )
+                                {
+                                    connection->ConfigureFromLabel( pin->GetName() );
+                                    connection->ClearDirty();
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    connection->ConfigureFromLabel( static_cast<SCH_TEXT*>( driver )->GetText() );
+                    connection->ClearDirty();
+                }
+            }
+            default:
+                break;
+            }
+
+            connection->SetDriver( subgraph.m_driver );
+
+            // std::cout << "Propagating SG " << subgraph.m_code << " " << subgraph.m_driver->Connection()->Name() << std::endl;
+
+            for( auto item : subgraph.m_items )
+            {
+                if( ( connection->IsBus() && item->Connection()->IsNet() ) ||
+                    ( connection->IsNet() && item->Connection()->IsBus() ) )
+                {
+                    continue;
+                }
+
+                if( item != subgraph.m_driver )
+                {
+                    item->Connection()->Clone( *connection );
+                    item->Connection()->ClearDirty();
+
+                    // std::cout << "   +" << dynamic_cast<EDA_ITEM*>( item )->GetSelectMenuText() << std::endl;
+                }
+            }
         }
     }
 

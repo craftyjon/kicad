@@ -44,7 +44,7 @@ class SCH_LEGACY_PLUGIN_CACHE;
 class LIB_PART;
 class PART_LIB;
 class LIB_ALIAS;
-class SCH_BUS_ALIAS;
+class BUS_ALIAS;
 
 
 /**
@@ -142,7 +142,7 @@ private:
     SCH_BUS_ENTRY_BASE* loadBusEntry( FILE_LINE_READER& aReader );
     SCH_TEXT* loadText( FILE_LINE_READER& aReader );
     SCH_COMPONENT* loadComponent( FILE_LINE_READER& aReader );
-    std::shared_ptr< SCH_BUS_ALIAS > loadBusAlias( FILE_LINE_READER& aReader, SCH_SCREEN* aScreen );
+    std::shared_ptr< BUS_ALIAS > loadBusAlias( FILE_LINE_READER& aReader, SCH_SCREEN* aScreen );
 
     void saveComponent( SCH_COMPONENT* aComponent );
     void saveField( SCH_FIELD* aField );
@@ -153,7 +153,7 @@ private:
     void saveBusEntry( SCH_BUS_ENTRY_BASE* aBusEntry );
     void saveLine( SCH_LINE* aLine );
     void saveText( SCH_TEXT* aText );
-    void saveBusAlias( std::shared_ptr< SCH_BUS_ALIAS > aAlias );
+    void saveBusAlias( std::shared_ptr< BUS_ALIAS > aAlias );
 
     void cacheLib( const wxString& aLibraryFileName );
     bool writeDocFile( const PROPERTIES* aProperties );

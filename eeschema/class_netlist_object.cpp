@@ -34,66 +34,8 @@
 #include <list>
 
 #include <sch_component.h>
+#include <sch_connection.h>
 #include <class_netlist_object.h>
-
-#include <wx/regex.h>
-#include <wx/tokenzr.h>
-
-
-/**
- *
- * Buses can be defined in multiple ways. A bus vector consists of a prefix and
- * a numeric range of suffixes:
- *
- *     BUS_NAME[M..N]
- *
- * For example, the bus A[3..0] will contain nets A3, A2, A1, and A0.
- * The BUS_NAME is required.  M and N must be integers but do not need to be in
- * any particular order -- A[0..3] produces the same result.
- *
- * Like net names, bus names cannot contain whitespace.
- *
- * A bus group is just a grouping of signals, separated by spaces, some
- * of which may be bus vectors.  Bus groups can have names, but do not need to.
- *
- *     MEMORY{A[15..0] D[7..0] RW CE OE}
- *
- * In named bus groups, the net names are expanded as <BUS_NAME>.<NET_NAME>
- * In the above example, the nets would be named like MEMORY.A15, MEMORY.D0, etc.
- *
- *     {USB_DP USB_DN}
- *
- * In the above example, the bus is unnamed and so the underlying net names are
- * just USB_DP and USB_DN.
- *
- */
-static wxRegEx busLabelRe( wxT( "^([^[:space:]]+)(\\[[\\d]+\\.+[\\d]+\\])$" ), wxRE_ADVANCED );
-static wxRegEx busGroupLabelRe( wxT( "^([^[:space:]]+)?\\{((?:[^[:space:]]+(?:\\[[\\d]+\\.+[\\d]+\\])? ?)+)\\}$" ), wxRE_ADVANCED );
-
-
-bool IsBusLabel( const wxString& aLabel )
-{
-    return IsBusVectorLabel( aLabel ) || IsBusGroupLabel( aLabel );
-}
-
-
-bool IsBusVectorLabel( const wxString& aLabel )
-{
-    wxCHECK_MSG( busLabelRe.IsValid(), false,
-                 wxT( "Invalid regular expression in IsBusLabel()." ) );
-
-    return busLabelRe.Matches( aLabel );
-}
-
-
-bool IsBusGroupLabel( const wxString& aLabel )
-{
-    wxCHECK_MSG( busGroupLabelRe.IsValid(), false,
-                 wxT( "Invalid regular expression in IsBusGroupLabel()." ) );
-
-    return busGroupLabelRe.Matches( aLabel );
-}
-
 
 #if defined(DEBUG)
 
@@ -278,71 +220,6 @@ bool NETLIST_OBJECT::IsLabelConnected( NETLIST_OBJECT* aNetItem )
 }
 
 
-void NETLIST_OBJECT::ParseBusVector( wxString vector, wxString* name, long* begin, long* end )
-{
-    wxCHECK_RET( IsBusLabel( vector ),
-                 wxT( "<" ) + vector + wxT( "> is not a valid bus vector." ) );
-
-    *name = busLabelRe.GetMatch( vector, 1 );
-    wxString numberString = busLabelRe.GetMatch( vector, 2 );
-
-    // numberString will include the brackets, e.g. [5..0] so skip the first one
-    size_t i = 1, len = numberString.Len();
-    wxString tmp;
-
-    while( i < len && numberString[i] != '.' )
-    {
-        tmp.Append( numberString[i] );
-        i++;
-    }
-
-    tmp.ToLong( begin );
-
-    while( i < len && numberString[i] == '.' )
-        i++;
-
-    tmp.Empty();
-
-    while( i < len && numberString[i] != ']' )
-    {
-        tmp.Append( numberString[i] );
-        i++;
-    }
-
-    tmp.ToLong( end );
-
-    if( *begin < 0 )
-        *begin = 0;
-
-    if( *end < 0 )
-        *end = 0;
-
-    if( *begin > *end )
-        std::swap( *begin, *end );
-}
-
-
-bool NETLIST_OBJECT::ParseBusGroup( wxString aGroup, wxString* name,
-                                    std::vector<wxString>& aMemberList )
-{
-    if( !IsBusGroupLabel( aGroup ) )
-    {
-        return false;
-    }
-
-    *name = busGroupLabelRe.GetMatch( aGroup, 1 );
-    auto contents = busGroupLabelRe.GetMatch( aGroup, 2 );
-
-    wxStringTokenizer tokenizer( contents, " " );
-    while( tokenizer.HasMoreTokens() )
-    {
-        aMemberList.push_back( tokenizer.GetNextToken() );
-    }
-
-    return true;
-}
-
-
 void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItems )
 {
     wxCHECK_RET( IsBusLabel( m_Label ),
@@ -377,7 +254,7 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
         }
         else
         {
-            wxCHECK_RET( ParseBusGroup( m_Label, &group_name, bus_contents_vec ),
+            wxCHECK_RET( SCH_CONNECTION::ParseBusGroup( m_Label, &group_name, bus_contents_vec ),
                          _( "Failed to parse bus group " ) + m_Label );
         }
 
@@ -395,7 +272,7 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
                 wxString prefix;
                 long begin, end;
 
-                ParseBusVector( bus_member, &prefix, &begin, &end );
+                SCH_CONNECTION::ParseBusVector( bus_member, &prefix, &begin, &end );
                 prefix = group_prefix + prefix;
 
                 if( !self_set )
@@ -443,7 +320,7 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
         wxString prefix;
         long begin, end;
 
-        ParseBusVector( m_Label, &prefix, &begin, &end );
+        SCH_CONNECTION::ParseBusVector( m_Label, &prefix, &begin, &end );
 
         m_Label = prefix;
         m_Label << begin;

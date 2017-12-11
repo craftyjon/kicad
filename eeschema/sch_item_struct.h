@@ -34,7 +34,6 @@
 #include <class_base_screen.h>
 #include <general.h>
 #include <sch_connection.h>
-#include <unordered_set>
 
 class SCH_ITEM;
 class SCH_SHEET_PATH;
@@ -124,7 +123,7 @@ public:
  * found in EESCHEMA or other programs that use class SCHEMATIC and its contents.
  * The corresponding class in Pcbnew is BOARD_ITEM.
  */
-class SCH_ITEM : public EDA_ITEM
+class SCH_ITEM : public EDA_ITEM, public CONNECTABLE_ITEM
 {
 public:
 
@@ -134,12 +133,6 @@ protected:
     EDA_ITEMS      m_connections;   ///< List of items connected to this item.
     wxPoint        m_storedPos;     ///< a temporary variable used in some move commands
                                     ///> to store a initial pos (of the item or mouse cursor)
-
-    /// Stores net/bus information for items that have it
-    boost::optional<SCH_CONNECTION> m_connection;
-
-    /// Stores pointers to other items that are connected to this one
-    std::unordered_set<SCH_ITEM*> m_connected_items;
 
 public:
     SCH_ITEM( EDA_ITEM* aParent, KICAD_T aType );
@@ -309,26 +302,6 @@ public:
      */
     virtual void GetConnectionPoints( std::vector< wxPoint >& aPoints ) const { }
 
-    boost::optional<SCH_CONNECTION>& Connection()
-    {
-        return m_connection;
-    }
-
-    std::unordered_set<SCH_ITEM*>& ConnectedItems()
-    {
-        return m_connected_items;
-    }
-
-    void AddConnectionTo( SCH_ITEM* aItem )
-    {
-        m_connected_items.insert( aItem );
-    }
-
-    void InitializeConnection()
-    {
-        m_connection = SCH_CONNECTION( this );
-    }
-
     /**
      * Function ClearConnections
      * clears all of the connection items from the list.
@@ -337,11 +310,6 @@ public:
      * Do not use the vector erase method on the connection list.
      */
     void ClearConnections() { m_connections.clear(); }
-
-    /**
-     * Returns true if this item should propagate connection info to aItem
-     */
-    virtual bool ConnectionPropagatesTo( const SCH_ITEM* aItem ) const { return true; }
 
     /**
      * Function IsConnected
