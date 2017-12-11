@@ -1725,6 +1725,13 @@ void LIB_PIN::getMsgPanelInfoBase( MSG_PANEL_ITEMS& aList )
 
     text = getPinOrientationName( (unsigned) GetOrientationCodeIndex( m_orientation ) );
     aList.push_back( MSG_PANEL_ITEM( _( "Orientation" ), text, DARKMAGENTA ) );
+
+#if defined(DEBUG)
+    if( Connection() )
+    {
+        Connection()->AppendDebugInfoToMsgPanel( aList );
+    }
+#endif
 }
 
 void LIB_PIN::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )

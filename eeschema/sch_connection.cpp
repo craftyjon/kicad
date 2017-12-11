@@ -234,6 +234,9 @@ bool SCH_CONNECTION::IsDriver() const
 void SCH_CONNECTION::AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const
 {
     wxString msg;
+
+    aList.push_back( MSG_PANEL_ITEM( _( "Connection Name" ), m_name, BROWN ) );
+
     msg.Printf( "%d", m_net_code );
     aList.push_back( MSG_PANEL_ITEM( _( "Net Code" ), msg, BROWN ) );
 
