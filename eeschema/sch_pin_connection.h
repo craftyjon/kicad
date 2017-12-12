@@ -22,8 +22,8 @@
 
 #include <base_struct.h>
 #include <sch_connection.h>
+#include <lib_pin.h>
 
-class LIB_PIN;
 class SCH_COMPONENT;
 
 /**

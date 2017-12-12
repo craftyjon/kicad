@@ -20,7 +20,6 @@
 
 #include <connection_graph.h>
 #include <sch_pin_connection.h>
-#include <lib_pin.h>
 
 
 CONNECTION_VISITOR::CONNECTION_VISITOR( SCH_CONNECTION aConnection ) :
@@ -121,13 +120,13 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
     }
     else
     {
-        std::cout << "Warning: could not resolve drivers for SG " << m_code << std::endl;
-        for( auto connectable_item : m_items )
-        {
-            auto item = dynamic_cast<EDA_ITEM*>( connectable_item );
-            wxASSERT( item );
-            std::cout << "    " << item->GetSelectMenuText() << std::endl;
-        }
+        // std::cout << "Warning: could not resolve drivers for SG " << m_code << std::endl;
+        // for( auto connectable_item : m_items )
+        // {
+        //     auto item = dynamic_cast<EDA_ITEM*>( connectable_item );
+        //     wxASSERT( item );
+        //     std::cout << "    " << item->GetSelectMenuText() << std::endl;
+        // }
     }
 
     return ( m_driver != nullptr );

@@ -775,7 +775,7 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
 
                     // See comment in else clause below
                     auto sub_item_clone = new wxMenuItem();
-                    sub_item_clone->SetText( sub_member->Name() );
+                    sub_item_clone->SetItemLabel( sub_member->Name() );
 
                     frame->Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
                                  frame, id, id, sub_item_clone );
@@ -792,7 +792,7 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
                 // Bind() requires a pointer to wxObject rather than a void
                 // pointer.  Maybe at some point I'll think of a better way...
                 auto item_clone = new wxMenuItem();
-                item_clone->SetText( member->Name() );
+                item_clone->SetItemLabel( member->Name() );
 
                 frame->Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
                              frame, id, id, item_clone );
