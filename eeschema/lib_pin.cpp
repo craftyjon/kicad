@@ -1725,13 +1725,6 @@ void LIB_PIN::getMsgPanelInfoBase( MSG_PANEL_ITEMS& aList )
 
     text = getPinOrientationName( (unsigned) GetOrientationCodeIndex( m_orientation ) );
     aList.push_back( MSG_PANEL_ITEM( _( "Orientation" ), text, DARKMAGENTA ) );
-
-#if defined(DEBUG)
-    if( Connection() )
-    {
-        Connection()->AppendDebugInfoToMsgPanel( aList );
-    }
-#endif
 }
 
 void LIB_PIN::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
@@ -1771,6 +1764,13 @@ void LIB_PIN::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList,
     aList.push_back( MSG_PANEL_ITEM( aComponent->GetField( REFERENCE )->GetShownText(),
                                      aComponent->GetField( VALUE )->GetShownText(),
                                      DARKCYAN ) );
+
+    #if defined(DEBUG)
+    if( auto connection = aComponent->GetConnectionForPin( this ) )
+    {
+        connection->Connection()->AppendDebugInfoToMsgPanel( aList );
+    }
+    #endif
 }
 
 const EDA_RECT LIB_PIN::GetBoundingBox( bool aIncludeInvisibles ) const

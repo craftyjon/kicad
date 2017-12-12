@@ -1900,3 +1900,29 @@ void SCH_COMPONENT::Plot( PLOTTER* aPlotter )
         }
     }
 }
+
+
+void SCH_COMPONENT::PopulatePinConnections()
+{
+    if( auto part = GetPartRef().lock() )
+    {
+        m_pin_connections.clear();
+
+        for( auto pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
+        {
+            // Skip items not used for this part.
+            if( GetUnit() && pin->GetUnit() && ( pin->GetUnit() != GetUnit() ) )
+                continue;
+
+            if( GetConvert() && pin->GetConvert() && ( pin->GetConvert() != GetConvert() ) )
+                continue;
+
+            auto connection = new SCH_PIN_CONNECTION();
+            connection->m_pin = pin;
+            connection->m_comp = this;
+            connection->InitializeConnection();
+
+            m_pin_connections.push_back( connection );
+        }
+    }
+}

@@ -315,9 +315,12 @@ public:
      * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
      * hoisted out.
      */
-    virtual void InitializeConnection()
+    virtual void InitializeConnection( CONNECTABLE_ITEM* aParent = nullptr )
     {
-        m_connection = SCH_CONNECTION( this );
+        if( aParent == nullptr )
+            aParent = this;
+
+        m_connection = SCH_CONNECTION( aParent );
     }
 
     /**

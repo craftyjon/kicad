@@ -19,6 +19,8 @@
 
 
 #include <connection_graph.h>
+#include <sch_pin_connection.h>
+#include <lib_pin.h>
 
 
 CONNECTION_VISITOR::CONNECTION_VISITOR( SCH_CONNECTION aConnection ) :
@@ -83,9 +85,16 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
         case SCH_LABEL_T:               item_priority = 2; break;
         case SCH_HIERARCHICAL_LABEL_T:  item_priority = 3; break;
         case SCH_SHEET_PIN_T:           item_priority = 4; break;
-        // TODO(JE) Handle power pins here
-        //case NET_PINLABEL:            item_priority = 4; break;
-        case SCH_GLOBAL_LABEL_T:        item_priority = 5; break;
+        case SCH_PIN_CONNECTION_T:
+        {
+            auto pin_connection = static_cast<SCH_PIN_CONNECTION*>( item );
+            if( pin_connection->m_pin->IsPowerConnection() )
+                item_priority = 5;
+            else
+                item_priority = 1;
+            break;
+        }
+        case SCH_GLOBAL_LABEL_T:        item_priority = 6; break;
         default: break;
         }
 

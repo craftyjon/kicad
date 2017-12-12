@@ -219,7 +219,7 @@ bool SCH_CONNECTION::IsDriver() const
     case SCH_LABEL_T:
     case SCH_GLOBAL_LABEL_T:
     case SCH_HIERARCHICAL_LABEL_T:
-    case SCH_COMPONENT_T:
+    case SCH_PIN_CONNECTION_T:
     case SCH_SHEET_PIN_T:
     case SCH_SHEET_T:
     case LIB_PIN_T:

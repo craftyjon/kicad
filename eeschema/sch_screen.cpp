@@ -1547,37 +1547,16 @@ void SCH_SCREENS::RecalculateConnections()
                 else if( item->Type() == SCH_COMPONENT_T )
                 {
                     auto component = static_cast<SCH_COMPONENT*>( item );
-                    if( auto part = component->GetPartRef().lock() )
+
+                    component->PopulatePinConnections();
+
+                    for( auto pin_connection : component->m_pin_connections )
                     {
-                        // std::cout << component->GetSelectMenuText() << " pos "
-                        //           << component->GetPosition() << std::endl;
-                        for( auto pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
-                        {
-                            // Skip items not used for this part.
-                            if( component->GetUnit() && pin->GetUnit() &&
-                                ( pin->GetUnit() != component->GetUnit() ) )
-                                continue;
-
-                            if( component->GetConvert() && pin->GetConvert() &&
-                                ( pin->GetConvert() != component->GetConvert() ) )
-                                continue;
-
-                            if( !pin->Connection() )
-                            {
-                                pin->InitializeConnection();
-                            }
-
-                            pin->ConnectedItems().clear();
-                            pin->Connection()->Reset();
-
-                            auto pin_pos = component->GetTransform().TransformCoordinate(
-                                pin->GetPosition() ) + component->GetPosition();
-
-                            // std::cout << "Pin pos " << pin_pos << std::endl;
-
-                            connection_map[ pin_pos ].push_back( pin );
-                            all_connectable_items.push_back( pin );
-                        }
+                        auto pin_pos = pin_connection->m_pin->GetPosition();
+                        auto pos = component->GetTransform().TransformCoordinate( pin_pos ) +
+                                   component->GetPosition();
+                        connection_map[ pos ].push_back( pin_connection );
+                        all_connectable_items.push_back( pin_connection );
                     }
                 }
                 else
@@ -1626,11 +1605,13 @@ void SCH_SCREENS::RecalculateConnections()
 
             // std::cout << "Connecting items at location " << it.first << std::endl;
 
+            // TODO(JE) this can be optimized to not need two loops.
+
             // Look for junctions.  For points that have a junction, we want all
             // items to connect to the junction but not to each other.
             for( auto connected_item : connection_vec )
             {
-                EDA_ITEM* eda_item = dynamic_cast<EDA_ITEM*>( connected_item );
+                auto eda_item = dynamic_cast<EDA_ITEM*>( connected_item );
                 wxASSERT( eda_item );
 
                 // std::cout << "    " << eda_item->GetSelectMenuText() << std::endl;
@@ -1747,35 +1728,22 @@ void SCH_SCREENS::RecalculateConnections()
             case SCH_LABEL_T:
             case SCH_GLOBAL_LABEL_T:
             case SCH_HIERARCHICAL_LABEL_T:
-            case SCH_COMPONENT_T:
+            case SCH_PIN_CONNECTION_T:
             case SCH_SHEET_PIN_T:
             case SCH_SHEET_T:
             {
-                if( driver->Type() == SCH_COMPONENT_T )
+                if( driver->Type() == SCH_PIN_CONNECTION_T )
                 {
-                    // Check for power pins and assign net accordingly
-                    if( auto part = static_cast< SCH_COMPONENT* >( driver )->GetPartRef().lock() )
-                    {
-                        if( part->IsPower() )
-                        {
-                            // TODO(JE) this doesn't really make sense; shouldn't we assume
-                            // that there is only one pin on a power component?
-                            for( auto pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
-                            {
-                                if( pin->IsPowerConnection() )
-                                {
-                                    connection->ConfigureFromLabel( pin->GetName() );
-                                    connection->ClearDirty();
-                                }
-                            }
-                        }
-                    }
+                    auto pin_connection = static_cast<SCH_PIN_CONNECTION*>( driver );
+                    connection->ConfigureFromLabel( pin_connection->m_pin->GetName() );
                 }
                 else
                 {
                     connection->ConfigureFromLabel( static_cast<SCH_TEXT*>( driver )->GetText() );
-                    connection->ClearDirty();
                 }
+
+                connection->ClearDirty();
+                break;
             }
             default:
                 break;
