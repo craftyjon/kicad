@@ -1631,6 +1631,7 @@ void SCH_SCREENS::RecalculateConnections()
                         connected_item->ConnectionPropagatesTo( dynamic_cast<EDA_ITEM*>( junction ) ) )
                     {
                         connected_item->ConnectedItems().insert( junction );
+                        junction->ConnectedItems().insert( connected_item );
                     }
                 }
             }
@@ -1645,6 +1646,7 @@ void SCH_SCREENS::RecalculateConnections()
                             test_item->ConnectionPropagatesTo( dynamic_cast<EDA_ITEM*>( connected_item ) ) )
                         {
                             connected_item->ConnectedItems().insert( test_item );
+                            test_item->ConnectedItems().insert( connected_item );
                         }
                     }
                 }
@@ -1707,6 +1709,11 @@ void SCH_SCREENS::RecalculateConnections()
             subgraphs.push_back( subgraph );
         }
     }
+
+    phase2.Stop();
+    std::cout << "Phase 2 " <<  phase2.msecs() << " ms" << std::endl;
+
+    PROF_COUNTER phase3;
 
     for( auto subgraph : subgraphs )
     {
@@ -1772,8 +1779,8 @@ void SCH_SCREENS::RecalculateConnections()
         }
     }
 
-    phase2.Stop();
-    std::cout << "Phase 2 " <<  phase2.msecs() << " ms" << std::endl;
+    phase3.Stop();
+    std::cout << "Phase 3 " <<  phase3.msecs() << " ms" << std::endl;
 }
 
 
