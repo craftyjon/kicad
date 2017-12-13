@@ -20,13 +20,7 @@
 #ifndef _CONNECTION_GRAPH_H
 #define _CONNECTION_GRAPH_H
 
-
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/graph_utility.hpp>
-#include <boost/graph/breadth_first_search.hpp>
-
-#include <utility>
-#include <algorithm>
+#include <vector>
 
 #include <sch_connection.h>
 #include <sch_item_struct.h>
@@ -48,125 +42,35 @@ namespace std {
     };
 }
 
-#if 0
-/**
- * Properties to attach to each connection graph vertex
- * Right now, we just hold a pointer back to the item the vertex refers to
- */
-struct CONNECTION_VERTEX_PROPS
-{
-    SCH_ITEM* item;
-};
-
 
 /**
- * Properties to attach to each connection graph edge
- * NOTE: this data is not currently used
+ * Calculates the connectivity of a schematic and generates netlists
  */
-struct CONNECTION_EDGE_PROPS
-{
-    wxString name;
-};
-
-
-typedef boost::adjacency_list< boost::listS, boost::vecS, boost::undirectedS,
-                               CONNECTION_VERTEX_PROPS,
-                               CONNECTION_EDGE_PROPS > CONNECTION_GRAPH_T;
-
-
-typedef boost::graph_traits< CONNECTION_GRAPH_T >::vertex_descriptor CONNECTION_VERTEX;
-
-
-typedef boost::graph_traits< CONNECTION_GRAPH_T >::vertex_iterator CONNECTION_VERTEX_ITERATOR;
-
-
-typedef boost::graph_traits< CONNECTION_GRAPH_T >::edge_iterator CONNECTION_EDGE_ITERATOR;
-
-
-/**
- * A map to look up graph vertices by item
- */
-typedef std::unordered_map< SCH_ITEM*, CONNECTION_VERTEX > VERTEX_MAP_T;
-
-
-/**
- * An index map for BFS to keep track of visited vertices
- */
-typedef std::unordered_map< CONNECTION_VERTEX, size_t > VERTEX_INDEX_MAP_T;
-
-
-/**
- * This visitor is responsible for propagating connection updates through the
- * graph when information changes.
- */
-class CONNECTION_VISITOR : public boost::default_bfs_visitor
-{
-public:
-
-    CONNECTION_VISITOR( SCH_CONNECTION aConnection );
-
-    /**
-     * Visitor function called for each edge during the search.
-     * @param aEdge is the edge (source->target) to visit
-     * @param aGraph is the graph being searched
-     */
-    void tree_edge( const CONNECTION_GRAPH_T::edge_descriptor aEdge,
-                    const CONNECTION_GRAPH_T& aGraph );
-
-private:
-
-    /// This connection is the "template" to propagate through the graph
-    SCH_CONNECTION m_connection;
-
-    /// This ID will represent a directly-connected portion of the graph
-    int m_subgraph_code;
-};
-#endif
-
-
-// TODO(JE) Remove if unused
-#if 0
 class CONNECTION_GRAPH
 {
 public:
-    CONNECTION_GRAPH()
-    {
-        m_vertex_index_property_map = boost::associative_property_map< VERTEX_INDEX_MAP_T >( m_vertex_index_map );
-    }
-
-    ~CONNECTION_GRAPH()
-    {
-
-    }
+    CONNECTION_GRAPH() {}
 
     /**
-     * Adds an item to the graph (with no connections)
+     * Updates the physical connectivity between items (i.e. where they touch)
+     * The items passed in must be on the same sheet, because their locations
+     * are considered without checking what sheet they are on.
+     *
+     * As a side effect, loads the items into m_items for BuildConnectionGraph()
+     *
+     * @param aItemList is a list of items to consider
      */
-    void Add( SCH_ITEM* aItem );
+    void UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList );
 
     /**
-     * Connects two members of the graph together
-     * Make sure to call Add() first for both of the items
+     * Generates connectivity (using CONNECTION_SUBGRAPH) for all items
      */
-    void Connect( SCH_ITEM* aFirstItem, SCH_ITEM* aSecondItem );
+    void BuildConnectionGraph();
 
-    /**
-     * Sets the net name for all members of the graph
-     */
-    void PropagateNetName( const wxString aName );
+private:
 
-    bool m_dirty;
-
-    CONNECTION_GRAPH_T m_graph;
-
-    VERTEX_MAP_T m_vertex_map;
-
-    VERTEX_INDEX_MAP_T m_vertex_index_map;
-
-    boost::associative_property_map< VERTEX_INDEX_MAP_T > m_vertex_index_property_map;
-
+    std::vector<SCH_ITEM*> m_items;
 };
-#endif
 
 
 /**

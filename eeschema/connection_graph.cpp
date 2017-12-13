@@ -17,51 +17,263 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <list>
+#include <unordered_map>
+#include <profile.h>
+
+#include <sch_component.h>
+#include <sch_pin_connection.h>
+#include <sch_sheet.h>
+#include <sch_text.h>
 
 #include <connection_graph.h>
-#include <sch_pin_connection.h>
 
-#if 0
-CONNECTION_VISITOR::CONNECTION_VISITOR( SCH_CONNECTION aConnection ) :
-    m_connection( aConnection )
+
+void CONNECTION_GRAPH::UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList )
 {
+    PROF_COUNTER phase1;
+
+
+    std::unordered_map< wxPoint, std::vector<SCH_ITEM*> > connection_map;
+
+    for( auto item : aItemList )
+    {
+        std::vector< wxPoint > points;
+        item->GetConnectionPoints( points );
+        item->ConnectedItems().clear();
+
+        if( item->Type() == SCH_SHEET_T )
+        {
+            for( auto& pin : static_cast<SCH_SHEET*>( item )->GetPins() )
+            {
+                if( !pin.Connection() )
+                {
+                    pin.InitializeConnection();
+                }
+
+                pin.ConnectedItems().clear();
+                pin.Connection()->Reset();
+
+                connection_map[ pin.GetTextPos() ].push_back( &pin );
+                m_items.push_back( &pin );
+            }
+        }
+        else if( item->Type() == SCH_COMPONENT_T )
+        {
+            auto component = static_cast<SCH_COMPONENT*>( item );
+
+            component->UpdatePinConnections();
+
+            for( auto pin_connection : component->m_pin_connections )
+            {
+                // TODO(JE) use cached location from m_Pins
+                auto pin_pos = pin_connection->m_pin->GetPosition();
+                auto pos = component->GetTransform().TransformCoordinate( pin_pos ) +
+                           component->GetPosition();
+                connection_map[ pos ].push_back( pin_connection );
+                m_items.push_back( pin_connection );
+            }
+        }
+        else
+        {
+            m_items.push_back( item );
+
+            if( !item->Connection() )
+            {
+                item->InitializeConnection();
+            }
+
+            item->Connection()->Reset();
+
+            // Set bus/net property here so that the propagation code uses it
+            switch( item->Type() )
+            {
+            case SCH_LINE_T:
+                item->Connection()->SetType( ( item->GetLayer() == LAYER_BUS ) ?
+                                             CONNECTION_BUS : CONNECTION_NET );
+                break;
+
+            case SCH_BUS_BUS_ENTRY_T:
+                item->Connection()->SetType( CONNECTION_BUS );
+                break;
+
+            case SCH_PIN_CONNECTION_T:
+            case SCH_BUS_WIRE_ENTRY_T:
+                item->Connection()->SetType( CONNECTION_NET );
+                break;
+
+            default:
+                break;
+            }
+
+            for( auto point : points )
+            {
+                connection_map[ point ].push_back( item );
+            }
+        }
+    }
+
+    for( auto& it : connection_map )
+    {
+        auto connection_vec = it.second;
+        SCH_ITEM* junction = nullptr;
+
+        for( auto connected_item : connection_vec )
+        {
+            // Look for junctions.  For points that have a junction, we want all
+            // items to connect to the junction but not to each other.
+
+            if( connected_item->Type() == SCH_JUNCTION_T )
+            {
+                junction = connected_item;
+            }
+
+            for( auto test_item : connection_vec )
+            {
+                if( !junction && test_item->Type() == SCH_JUNCTION_T )
+                {
+                    junction = test_item;
+                }
+
+                if( connected_item != test_item &&
+                    connected_item != junction &&
+                    connected_item->ConnectionPropagatesTo( test_item ) &&
+                    test_item->ConnectionPropagatesTo( connected_item ) )
+                {
+                    connected_item->ConnectedItems().insert( test_item );
+                    test_item->ConnectedItems().insert( connected_item );
+                }
+            }
+        }
+    }
+
+    phase1.Stop();
+    std::cout << "Phase 1 " << phase1.msecs() << " ms" << std::endl;
 }
 
 
-void CONNECTION_VISITOR::tree_edge( const CONNECTION_GRAPH_T::edge_descriptor aEdge,
-                                    const CONNECTION_GRAPH_T& aGraph )
+void CONNECTION_GRAPH::BuildConnectionGraph()
 {
-    auto source_item = aGraph[ boost::source( aEdge, aGraph ) ].item;
-    auto target_item = aGraph[ boost::target( aEdge, aGraph ) ].item;
+    PROF_COUNTER phase2;
 
-    wxASSERT( source_item->Connection() );
-    wxASSERT( target_item->Connection() );
+    long subgraph_code = 1;
+    std::vector<CONNECTION_SUBGRAPH> subgraphs;
 
-    // Don't propagate across bus/net boundary
-    if( ( m_connection.IsBus() && target_item->Connection()->IsNet() ) ||
-        ( m_connection.IsNet() && target_item->Connection()->IsBus() ) )
+    for( auto item : m_items )
     {
-        return;
+        if( item->Connection()->SubgraphCode() == 0 )
+        {
+            CONNECTION_SUBGRAPH subgraph;
+
+            subgraph.m_code = subgraph_code++;
+            subgraph.m_items.push_back( item );
+
+            // std::cout << "SG " << subgraph.m_code << " started with "
+            //           << item->GetSelectMenuText() << std::endl;
+
+            if( item->Connection()->IsDriver() )
+                subgraph.m_drivers.push_back( item );
+
+            item->Connection()->SetSubgraphCode( subgraph.m_code );
+
+            std::list<SCH_ITEM*> members( item->ConnectedItems().begin(),
+                                          item->ConnectedItems().end() );
+
+            for( auto connected_item : members )
+            {
+                if( !connected_item->Connection() )
+                    connected_item->InitializeConnection();
+
+                if( connected_item->Connection()->SubgraphCode() == 0 )
+                {
+                    connected_item->Connection()->SetSubgraphCode( subgraph.m_code );
+                    subgraph.m_items.push_back( connected_item );
+
+                    // std::cout << "   +" << connected_item->GetSelectMenuText() << std::endl;
+
+                    if( connected_item->Connection()->IsDriver() )
+                        subgraph.m_drivers.push_back( connected_item );
+
+                    members.insert( members.end(),
+                                    connected_item->ConnectedItems().begin(),
+                                    connected_item->ConnectedItems().end() );
+                }
+            }
+
+            subgraphs.push_back( subgraph );
+        }
     }
 
-    // TODO(JE) check for "drive strength" here:
-    // if the target has a connection already, but my m_connection is stronger,
-    // override the target.
+    phase2.Stop();
+    std::cout << "Phase 2 " <<  phase2.msecs() << " ms" << std::endl;
 
-    // std::cout << "source " << source_item->GetClass() << " " << source_item
-    //           << " match_self " << ( source_item->Connection() == m_connection ) << std::endl;
-    // std::cout << " target " << target_item->GetClass() << " " << target_item
-    //           << " dirty " << target_item->Connection()->IsDirty() << std::endl;
+    PROF_COUNTER phase3;
 
-    // Don't propagate when the source vertex didn't get set earlier
-    if( ( source_item->Connection() == m_connection ) &&
-        target_item->Connection()->IsDirty() )
+    for( auto subgraph : subgraphs )
     {
-        target_item->Connection()->Clone( m_connection );
-        target_item->Connection()->ClearDirty();
+        if( !subgraph.ResolveDrivers() )
+        {
+            // TODO(JE) ERC Error: multiple equivalent drivers
+        }
+        else
+        {
+            // Now the subgraph has only one driver
+            auto& connection = subgraph.m_driver->Connection();
+
+            // TODO(JE) This should live in SCH_CONNECTION probably
+            switch( subgraph.m_driver->Type() )
+            {
+            case SCH_LABEL_T:
+            case SCH_GLOBAL_LABEL_T:
+            case SCH_HIERARCHICAL_LABEL_T:
+            case SCH_PIN_CONNECTION_T:
+            case SCH_SHEET_PIN_T:
+            case SCH_SHEET_T:
+            {
+                if( subgraph.m_driver->Type() == SCH_PIN_CONNECTION_T )
+                {
+                    auto pin = static_cast<SCH_PIN_CONNECTION*>( subgraph.m_driver );
+                    connection->ConfigureFromLabel( pin->m_pin->GetName() );
+                }
+                else
+                {
+                    auto text = static_cast<SCH_TEXT*>( subgraph.m_driver );
+                    connection->ConfigureFromLabel( text->GetText() );
+                }
+
+                connection->SetDriver( subgraph.m_driver );
+                connection->ClearDirty();
+                break;
+            }
+            default:
+                break;
+            }
+
+            // std::cout << "Propagating SG " << subgraph.m_code << " driven by "
+            //           << subgraph.m_driver->GetSelectMenuText() << " net "
+            //           << subgraph.m_driver->Connection()->Name() << std::endl;
+
+            for( auto item : subgraph.m_items )
+            {
+                if( ( connection->IsBus() && item->Connection()->IsNet() ) ||
+                    ( connection->IsNet() && item->Connection()->IsBus() ) )
+                {
+                    continue;
+                }
+
+                if( item != subgraph.m_driver )
+                {
+                    // std::cout << "   +" << item->GetSelectMenuText() << std::endl;
+                    item->Connection()->Clone( *connection );
+                    item->Connection()->ClearDirty();
+                }
+            }
+        }
     }
+
+    phase3.Stop();
+    std::cout << "Phase 3 " <<  phase3.msecs() << " ms" << std::endl;
 }
-#endif
 
 
 bool CONNECTION_SUBGRAPH::ResolveDrivers()
