@@ -222,7 +222,13 @@ public:
     /**
      * Adds information about the connection object to aList
      */
+    void AppendInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const;
+
+    /**
+     * Adds extended debug information about the connection object to aList
+     */
     void AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const;
+
 
 private:
 

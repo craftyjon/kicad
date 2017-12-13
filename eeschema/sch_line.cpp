@@ -781,16 +781,18 @@ void SCH_LINE::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
 
     aList.push_back( MSG_PANEL_ITEM( _( "Line Type" ), msg, DARKCYAN ) );
 
-#if defined(DEBUG)
-
     if( m_connection )
     {
+#if defined(DEBUG)
         m_connection->AppendDebugInfoToMsgPanel( aList );
 
         msg.Printf( "%zu", m_connected_items.size() );
         aList.push_back( MSG_PANEL_ITEM( _( "Connections" ), msg, BROWN ) );
-    }
+#else
+        m_connection->AppendInfoToMsgPanel( aList );
 #endif
+
+    }
 }
 
 
