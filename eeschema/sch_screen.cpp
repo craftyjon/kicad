@@ -536,6 +536,7 @@ void SCH_SCREEN::Draw( EDA_DRAW_PANEL* aCanvas, wxDC* aDC, GR_DRAWMODE aDrawMode
             item->Draw( aCanvas, aDC, wxPoint( 0, 0 ), aDrawMode, aColor );
 
         // TODO(JE) Remove debugging code
+#ifdef DEBUG
         if( item->Connection() )
         {
             auto pos = item->GetBoundingBox().Centre();
@@ -544,8 +545,9 @@ void SCH_SCREEN::Draw( EDA_DRAW_PANEL* aCanvas, wxDC* aDC, GR_DRAWMODE aDrawMode
 
             auto text = SCH_TEXT( pos, label, SCH_TEXT_T );
             text.SetTextSize( wxSize( sz, sz ) );
-            text.Draw( aCanvas, aDC, wxPoint( 0, 0 ), aDrawMode, COLOR4D( LIGHTRED ) );
+            text.Draw( aCanvas, aDC, wxPoint( 10, 10 ), aDrawMode, COLOR4D( LIGHTRED ) );
         }
+#endif
     }
 
     for( auto item : junctions )
