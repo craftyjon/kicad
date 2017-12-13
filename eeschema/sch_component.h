@@ -232,6 +232,11 @@ public:
     static void UpdateAllPinCaches( const SCH_COLLECTOR& aComponents );
 
     /**
+     * Updates the local cache of SCH_PIN_CONNECTION objects for each pin
+     */
+    void UpdatePinConnections();
+
+    /**
      * Change the unit number to \a aUnit
      *
      * This has meaning only for symbols made up of multiple units per package.

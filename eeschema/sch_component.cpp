@@ -446,7 +446,6 @@ void SCH_COMPONENT::UpdatePinCache()
     if( PART_SPTR part = m_part.lock() )
     {
         m_Pins.clear();
-        m_pin_connections.clear();
 
         for( LIB_PIN* pin = part->GetNextPin();  pin;  pin = part->GetNextPin( pin ) )
         {
@@ -459,13 +458,6 @@ void SCH_COMPONENT::UpdatePinCache()
                 continue;
 
             m_Pins.push_back( pin->GetPosition() );
-
-            auto connection = new SCH_PIN_CONNECTION();
-            connection->m_pin = pin;
-            connection->m_comp = this;
-            connection->InitializeConnection();
-
-            m_pin_connections.push_back( connection );
         }
     }
 }
@@ -511,6 +503,33 @@ void SCH_COMPONENT::UpdateAllPinCaches( const SCH_COLLECTOR& aComponents )
             // Propagate the pin cache vector as well
             next_cmp->m_Pins = cmp->m_Pins;
             ii = jj;
+        }
+    }
+}
+
+
+void SCH_COMPONENT::UpdatePinConnections()
+{
+    if( PART_SPTR part = m_part.lock() )
+    {
+        m_pin_connections.clear();
+
+        for( LIB_PIN* pin = part->GetNextPin();  pin;  pin = part->GetNextPin( pin ) )
+        {
+            wxASSERT( pin->Type() == LIB_PIN_T );
+
+            if( pin->GetUnit() && m_unit && ( m_unit != pin->GetUnit() ) )
+                continue;
+
+            if( pin->GetConvert() && m_convert && ( m_convert != pin->GetConvert() ) )
+                continue;
+
+            auto connection = new SCH_PIN_CONNECTION();
+            connection->m_pin = pin;
+            connection->m_comp = this;
+            connection->InitializeConnection();
+
+            m_pin_connections.push_back( connection );
         }
     }
 }

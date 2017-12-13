@@ -1550,7 +1550,7 @@ void SCH_SCREENS::RecalculateConnections()
                 {
                     auto component = static_cast<SCH_COMPONENT*>( item );
 
-                    component->UpdatePinCache();
+                    component->UpdatePinConnections();
 
                     for( auto pin_connection : component->m_pin_connections )
                     {
@@ -1585,6 +1585,7 @@ void SCH_SCREENS::RecalculateConnections()
                         item->Connection()->SetType( CONNECTION_BUS );
                         break;
 
+                    case SCH_PIN_CONNECTION_T:
                     case SCH_BUS_WIRE_ENTRY_T:
                         item->Connection()->SetType( CONNECTION_NET );
                         break;
@@ -1662,7 +1663,7 @@ void SCH_SCREENS::RecalculateConnections()
             subgraph.m_items.push_back( item );
 
             // std::cout << "SG " << subgraph.m_code << " started with "
-            //           << dynamic_cast<EDA_ITEM*>( item )->GetSelectMenuText() << std::endl;
+            //           << item->GetSelectMenuText() << std::endl;
 
             if( item->Connection()->IsDriver() )
                 subgraph.m_drivers.push_back( item );
@@ -1682,7 +1683,7 @@ void SCH_SCREENS::RecalculateConnections()
                     connected_item->Connection()->SetSubgraphCode( subgraph.m_code );
                     subgraph.m_items.push_back( connected_item );
 
-                    // std::cout << "   +" << dynamic_cast<EDA_ITEM*>( connected_item )->GetSelectMenuText() << std::endl;
+                    // std::cout << "   +" << connected_item->GetSelectMenuText() << std::endl;
 
                     if( connected_item->Connection()->IsDriver() )
                         subgraph.m_drivers.push_back( connected_item );
@@ -1734,6 +1735,7 @@ void SCH_SCREENS::RecalculateConnections()
                     connection->ConfigureFromLabel( text->GetText() );
                 }
 
+                connection->SetDriver( subgraph.m_driver );
                 connection->ClearDirty();
                 break;
             }
@@ -1741,9 +1743,9 @@ void SCH_SCREENS::RecalculateConnections()
                 break;
             }
 
-            connection->SetDriver( subgraph.m_driver );
-
-            // std::cout << "Propagating SG " << subgraph.m_code << " " << subgraph.m_driver->Connection()->Name() << std::endl;
+            // std::cout << "Propagating SG " << subgraph.m_code << " driven by "
+            //           << subgraph.m_driver->GetSelectMenuText() << " net "
+            //           << subgraph.m_driver->Connection()->Name() << std::endl;
 
             for( auto item : subgraph.m_items )
             {
@@ -1755,6 +1757,7 @@ void SCH_SCREENS::RecalculateConnections()
 
                 if( item != subgraph.m_driver )
                 {
+                    // std::cout << "   +" << item->GetSelectMenuText() << std::endl;
                     item->Connection()->Clone( *connection );
                     item->Connection()->ClearDirty();
                 }

@@ -211,10 +211,8 @@ void SCH_CONNECTION::Clone( SCH_CONNECTION& aOther )
 bool SCH_CONNECTION::IsDriver() const
 {
     wxASSERT( Parent() );
-    auto eda_item = dynamic_cast<EDA_ITEM*>( Parent() );
-    wxASSERT( eda_item );
 
-    switch( eda_item->Type() )
+    switch( Parent()->Type() )
     {
     case SCH_LABEL_T:
     case SCH_GLOBAL_LABEL_T:
@@ -246,7 +244,7 @@ void SCH_CONNECTION::AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const
     msg.Printf( "%d", m_subgraph_code );
     aList.push_back( MSG_PANEL_ITEM( _( "Subgraph Code" ), msg, BROWN ) );
 
-    if( auto driver = dynamic_cast<EDA_ITEM*>( Driver() ) )
+    if( auto driver = Driver() )
     {
         msg.Printf( "%s at %p", driver->GetSelectMenuText(), driver );
         aList.push_back( MSG_PANEL_ITEM( _( "Connection Source" ), msg, RED ) );
