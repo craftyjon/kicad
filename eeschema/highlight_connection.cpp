@@ -36,6 +36,7 @@
 #include <class_netlist_object.h>
 
 
+// TODO(JE) Probably use netcode rather than connection name here eventually
 bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
 {
     m_SelectedNetName = "";
@@ -45,23 +46,16 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
     EDA_ITEMS nodeList;
     wxPoint   gridPosition = GetGridPosition( aPosition );
 
-    if( GetScreen()->GetNode( gridPosition,nodeList ) )
+    if( GetScreen()->GetNode( gridPosition, nodeList ) )
     {
         if( TestDuplicateSheetNames( false ) > 0 )
             wxMessageBox( _( "Error: duplicate sub-sheet names found in current sheet. Fix it" ) );
         else
         {
-            // Build netlist info to get the proper netnames of connected items
-            std::unique_ptr<NETLIST_OBJECT_LIST> objectsConnectedList( BuildNetListBase() );
-            buildNetlistOk = true;
-
-            for( auto obj : *objectsConnectedList )
+            if( auto item = dynamic_cast<SCH_ITEM*>( nodeList[0] ) )
             {
-                if( obj->m_SheetPath == *m_CurrentSheet && obj->m_Comp == nodeList[0] )
-                {
-                    m_SelectedNetName = obj->GetNetName( true );
-                    break;
-                }
+                if( item->Connection() )
+                    m_SelectedNetName = item->Connection()->Name();
             }
         }
     }
@@ -78,15 +72,20 @@ bool SCH_EDIT_FRAME::SetCurrentSheetHighlightFlags()
 {
     SCH_SCREEN* screen = m_CurrentSheet->LastScreen();
 
-    // Disable highlight flag on all items in the current screen
+    // Update highlight flag on all items in the current screen
     for( SCH_ITEM* ptr = screen->GetDrawItems(); ptr; ptr = ptr->Next() )
     {
-        ptr->SetState( BRIGHTENED, false );
+        ptr->SetState( BRIGHTENED,
+                       ( ptr->Connection() &&
+                         ptr->Connection()->Name() == m_SelectedNetName ) );
 
         if( ptr->Type() == SCH_SHEET_T )
         {
             for( SCH_SHEET_PIN& pin : static_cast<SCH_SHEET*>( ptr )->GetPins() )
-                pin.SetState( BRIGHTENED, false );
+            {
+                pin.SetState( BRIGHTENED, ( pin.Connection() &&
+                              pin.Connection()->Name() == m_SelectedNetName ) );
+            }
         }
     }
 
@@ -95,30 +94,6 @@ bool SCH_EDIT_FRAME::SetCurrentSheetHighlightFlags()
 
     if( TestDuplicateSheetNames( false ) > 0 )
         return false;
-
-    // Build netlist info to get the proper netnames
-    std::unique_ptr<NETLIST_OBJECT_LIST> objectsConnectedList( BuildNetListBase( false ) );
-
-    // highlight the items belonging to this net
-    for( auto obj1 : *objectsConnectedList )
-    {
-        if( obj1->m_SheetPath == *m_CurrentSheet &&
-            obj1->GetNetName( true ) == m_SelectedNetName && obj1->m_Comp )
-        {
-            obj1->m_Comp->SetState( BRIGHTENED, true );
-
-            //if a bus is associated with this net highlight it as well
-            if( obj1->m_BusNetCode )
-            {
-                for( auto obj2 : *objectsConnectedList )
-                {
-                    if( obj2 && obj2->m_Comp && obj2->m_SheetPath == *m_CurrentSheet &&
-                        obj1->m_BusNetCode == obj2->m_BusNetCode )
-                        obj2->m_Comp->SetState( BRIGHTENED, true );
-                }
-            }
-        }
-    }
 
     return true;
 }
