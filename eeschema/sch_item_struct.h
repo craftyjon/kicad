@@ -123,7 +123,7 @@ public:
  * found in EESCHEMA or other programs that use class SCHEMATIC and its contents.
  * The corresponding class in Pcbnew is BOARD_ITEM.
  */
-class SCH_ITEM : public EDA_ITEM, public CONNECTABLE_ITEM
+class SCH_ITEM : public EDA_ITEM
 {
 public:
 
@@ -133,6 +133,12 @@ protected:
     EDA_ITEMS      m_connections;   ///< List of items connected to this item.
     wxPoint        m_storedPos;     ///< a temporary variable used in some move commands
                                     ///> to store a initial pos (of the item or mouse cursor)
+    /// Stores net/bus information for items that have it (schematic only)
+    boost::optional<SCH_CONNECTION> m_connection;
+
+    /// Stores pointers to other items that are connected to this one (schematic only)
+    std::unordered_set<SCH_ITEM*> m_connected_items;
+
 
 public:
     SCH_ITEM( EDA_ITEM* aParent, KICAD_T aType );
@@ -319,6 +325,62 @@ public:
      * @return True if connection to \a aPoint exists.
      */
     bool IsConnected( const wxPoint& aPoint ) const;
+
+    /**
+     * Retrieves the connection associated with this object, if it exists
+     *
+     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
+     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
+     * hoisted out.
+     */
+    virtual boost::optional<SCH_CONNECTION>& Connection()
+    {
+        return m_connection;
+    }
+
+    /**
+     * Retrieves the set of items connected to this item (schematic only)
+     *
+     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
+     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
+     * hoisted out.
+     */
+    virtual std::unordered_set<SCH_ITEM*>& ConnectedItems()
+    {
+        return m_connected_items;
+    }
+
+    /**
+     * Adds a connection link between this item and another
+     *
+     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
+     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
+     * hoisted out.
+     */
+    virtual void AddConnectionTo( SCH_ITEM* aItem )
+    {
+        m_connected_items.insert( aItem );
+    }
+
+    /**
+     * Creates a new connection object associated with this object
+     *
+     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
+     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
+     * hoisted out.
+     */
+    virtual void InitializeConnection( SCH_ITEM* aParent = nullptr )
+    {
+        if( aParent == nullptr )
+            aParent = this;
+
+        m_connection = SCH_CONNECTION( aParent );
+    }
+
+    /**
+     * Returns true if this item should propagate connection info to aItem
+     */
+    virtual bool ConnectionPropagatesTo( const EDA_ITEM* aItem ) const { return true; }
 
     virtual bool HitTest( const wxPoint& aPosition ) const override
     {

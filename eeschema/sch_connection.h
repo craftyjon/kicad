@@ -29,8 +29,7 @@
 #include <msgpanel.h>
 
 
-class CONNECTABLE_ITEM;
-class EDA_ITEM;
+class SCH_ITEM;
 
 
 enum CONNECTION_TYPE
@@ -52,7 +51,7 @@ enum CONNECTION_TYPE
 class SCH_CONNECTION
 {
 public:
-    SCH_CONNECTION( CONNECTABLE_ITEM* aParent ) :
+    SCH_CONNECTION( SCH_ITEM* aParent ) :
         m_parent( aParent )
     {
         Reset();
@@ -77,17 +76,17 @@ public:
 
     void Clone( SCH_CONNECTION& aOther );
 
-    CONNECTABLE_ITEM* Parent() const
+    SCH_ITEM* Parent() const
     {
         return m_parent;
     }
 
-    CONNECTABLE_ITEM* Driver() const
+    SCH_ITEM* Driver() const
     {
         return m_driver;
     }
 
-    void SetDriver( CONNECTABLE_ITEM* aItem )
+    void SetDriver( SCH_ITEM* aItem )
     {
         m_driver = aItem;
     }
@@ -229,9 +228,9 @@ private:
 
     bool m_dirty;
 
-    CONNECTABLE_ITEM* m_parent;     ///< The CONNECTABLE_ITEM this connection is owned by
+    SCH_ITEM* m_parent;     ///< The SCH_ITEM this connection is owned by
 
-    CONNECTABLE_ITEM* m_driver;     ///< The CONNECTABLE_ITEM that drives this connection's net
+    SCH_ITEM* m_driver;     ///< The SCH_ITEM that drives this connection's net
 
     CONNECTION_TYPE m_type; ///< @see enum CONNECTION_TYPE
 
@@ -257,6 +256,7 @@ private:
 
 };
 
+#if 0
 /**
  * Mix-in class to add SCH_CONNECTION to SCH_ITEM and LIB_ITEM
  * @details [long description]
@@ -328,6 +328,7 @@ public:
      */
     virtual bool ConnectionPropagatesTo( const EDA_ITEM* aItem ) const { return true; }
 };
+#endif
 
 /**
  * Test if \a aLabel has a bus notation.

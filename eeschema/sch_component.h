@@ -74,21 +74,9 @@ class SCH_COMPONENT : public SCH_ITEM
 public:
     enum AUTOPLACED { AUTOPLACED_NO = 0, AUTOPLACED_AUTO, AUTOPLACED_MANUAL };
 
-    /**
-     * NOTE(JE)
-     *
-     * To make this less cumbersome, I think we actually want some kind of
-     * object deriving from CONNECTABLE_ITEM that represents a pin on a specific
-     * component instance.  Then PopulatePinConnectionMap() can create these for
-     * each instance and we will get what we want (a unique CONNECTABLE_ITEM for
-     * each pin, which has a link to the parent component as well as the LIB_PIN).
-     */
-
     // TODO(JE) Move to private if this ends up being a good idea
     // TODO(JE) smart pointer?
     std::vector<SCH_PIN_CONNECTION*> m_pin_connections;
-
-    void PopulatePinConnections();
 
     // TODO(JE) Move to cpp if needed
     SCH_PIN_CONNECTION* GetConnectionForPin( LIB_PIN* aPin )

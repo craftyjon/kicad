@@ -20,7 +20,7 @@
 #ifndef _SCH_PIN_CONNECTION_H
 #define _SCH_PIN_CONNECTION_H
 
-#include <base_struct.h>
+#include <sch_item_struct.h>
 #include <sch_connection.h>
 #include <lib_pin.h>
 
@@ -29,7 +29,7 @@ class SCH_COMPONENT;
 /**
  * Container to describe the net connectivity of a specific pin on a component.
  */
-class SCH_PIN_CONNECTION : public EDA_ITEM, public CONNECTABLE_ITEM
+class SCH_PIN_CONNECTION : public SCH_ITEM
 {
 public:
     SCH_PIN_CONNECTION( EDA_ITEM* aParent = nullptr );
@@ -40,6 +40,26 @@ public:
     }
 
     wxString GetSelectMenuText() const override;
+
+    void Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOffset,
+               GR_DRAWMODE aDrawMode, COLOR4D aColor = COLOR4D::UNSPECIFIED ) override
+    {
+    }
+
+    void Move( const wxPoint& aMoveVector ) override {}
+
+    void MirrorY( int aYaxis_position ) override {}
+
+    void MirrorX( int aXaxis_position ) override {}
+
+    void Rotate( wxPoint aPosition ) override {}
+
+    wxPoint GetPosition() const override
+    {
+        return wxPoint( 0, 0 );
+    }
+
+    void SetPosition( const wxPoint& aPosition ) override {}
 
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override {}

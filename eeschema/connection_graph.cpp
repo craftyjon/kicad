@@ -21,7 +21,7 @@
 #include <connection_graph.h>
 #include <sch_pin_connection.h>
 
-
+#if 0
 CONNECTION_VISITOR::CONNECTION_VISITOR( SCH_CONNECTION aConnection ) :
     m_connection( aConnection )
 {
@@ -61,21 +61,19 @@ void CONNECTION_VISITOR::tree_edge( const CONNECTION_GRAPH_T::edge_descriptor aE
         target_item->Connection()->ClearDirty();
     }
 }
+#endif
 
 
 bool CONNECTION_SUBGRAPH::ResolveDrivers()
 {
-    CONNECTABLE_ITEM* candidate = nullptr;
+    SCH_ITEM* candidate = nullptr;
     int highest_priority = -1;
     int num_items = 0;
 
     m_driver = nullptr;
 
-    for( auto connectable_item : m_drivers )
+    for( auto item : m_drivers )
     {
-        auto item = dynamic_cast<EDA_ITEM*>( connectable_item );
-        wxASSERT( item );
-
         int item_priority = 0;
 
         switch( item->Type() )
@@ -99,7 +97,7 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
 
         if( item_priority > highest_priority )
         {
-            candidate = dynamic_cast<CONNECTABLE_ITEM*>( item );
+            candidate = item;
             highest_priority = item_priority;
             num_items = 1;
         }
@@ -121,10 +119,8 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
     else
     {
         std::cout << "Warning: could not resolve drivers for SG " << m_code << std::endl;
-        for( auto connectable_item : m_items )
+        for( auto item : m_items )
         {
-            auto item = dynamic_cast<EDA_ITEM*>( connectable_item );
-            wxASSERT( item );
             std::cout << "    " << item->GetSelectMenuText() << std::endl;
         }
     }

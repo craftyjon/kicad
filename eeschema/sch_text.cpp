@@ -416,7 +416,9 @@ bool SCH_TEXT::IsDanglingStateChanged( std::vector< DANGLING_END_ITEM >& aItemLi
             if( GetTextPos() == item.GetPosition() )
             {
                 m_isDangling = false;
-                m_connected_items.insert( static_cast< SCH_ITEM* >( item.GetItem() ) );
+
+                if( item.GetType() != PIN_END )
+                    m_connected_items.insert( static_cast< SCH_ITEM* >( item.GetItem() ) );
             }
 
             break;

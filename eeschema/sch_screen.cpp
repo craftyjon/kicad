@@ -1509,14 +1509,14 @@ void SCH_SCREENS::RecalculateConnections()
 
     PROF_COUNTER phase1;
 
-    std::vector<CONNECTABLE_ITEM*> all_connectable_items;
+    std::vector<SCH_ITEM*> all_items;
 
     // Phase 1: update connected items
     // TODO(JE) This is bugged, doesn't work for multiple instances of a hierarchical sheet
     for( auto screen = GetFirst(); screen; screen = GetNext() )
     {
-        std::unordered_map< wxPoint, std::vector<CONNECTABLE_ITEM*> > connection_map;
-        std::vector<CONNECTABLE_ITEM*> items;
+        std::unordered_map< wxPoint, std::vector<SCH_ITEM*> > connection_map;
+        std::vector<SCH_ITEM*> items;
 
         // std::cout << "*** Processing " << screen->GetFileName() << std::endl;
 
@@ -1543,27 +1543,28 @@ void SCH_SCREENS::RecalculateConnections()
                         pin.Connection()->Reset();
 
                         connection_map[ pin.GetTextPos() ].push_back( &pin );
-                        all_connectable_items.push_back( &pin );
+                        all_items.push_back( &pin );
                     }
                 }
                 else if( item->Type() == SCH_COMPONENT_T )
                 {
                     auto component = static_cast<SCH_COMPONENT*>( item );
 
-                    component->PopulatePinConnections();
+                    component->UpdatePinCache();
 
                     for( auto pin_connection : component->m_pin_connections )
                     {
+                        // TODO(JE) use cached location from m_Pins
                         auto pin_pos = pin_connection->m_pin->GetPosition();
                         auto pos = component->GetTransform().TransformCoordinate( pin_pos ) +
                                    component->GetPosition();
                         connection_map[ pos ].push_back( pin_connection );
-                        all_connectable_items.push_back( pin_connection );
+                        all_items.push_back( pin_connection );
                     }
                 }
                 else
                 {
-                    all_connectable_items.push_back( item );
+                    all_items.push_back( item );
 
                     if( !item->Connection() )
                     {
@@ -1603,71 +1604,55 @@ void SCH_SCREENS::RecalculateConnections()
         for( auto& it : connection_map )
         {
             auto connection_vec = it.second;
-            CONNECTABLE_ITEM* junction = nullptr;
+            SCH_ITEM* junction = nullptr;
 
-            // std::cout << "Connecting items at location " << it.first << std::endl;
-
-            // TODO(JE) this can be optimized to not need two loops.
-
-            // Look for junctions.  For points that have a junction, we want all
-            // items to connect to the junction but not to each other.
             for( auto connected_item : connection_vec )
             {
-                auto eda_item = dynamic_cast<EDA_ITEM*>( connected_item );
-                wxASSERT( eda_item );
+                // Look for junctions.  For points that have a junction, we want all
+                // items to connect to the junction but not to each other.
 
-                // std::cout << "    " << eda_item->GetSelectMenuText() << std::endl;
-
-                if( eda_item->Type() == SCH_JUNCTION_T )
+                if( connected_item->Type() == SCH_JUNCTION_T )
                 {
                     junction = connected_item;
-                    break;
                 }
-            }
 
-            if( junction )
-            {
-                for( auto connected_item : connection_vec )
+                for( auto test_item : connection_vec )
                 {
-                    if( connected_item != junction &&
-                        connected_item->ConnectionPropagatesTo( dynamic_cast<EDA_ITEM*>( junction ) ) )
+                    if( !junction && test_item->Type() == SCH_JUNCTION_T )
                     {
-                        connected_item->ConnectedItems().insert( junction );
-                        junction->ConnectedItems().insert( connected_item );
+                        junction = test_item;
                     }
-                }
-            }
-            else
-            {
-                for( auto connected_item : connection_vec )
-                {
-                    for( auto test_item : connection_vec )
+
+                    if( connected_item != test_item &&
+                        connected_item != junction &&
+                        connected_item->ConnectionPropagatesTo( test_item ) &&
+                        test_item->ConnectionPropagatesTo( connected_item ) )
                     {
-                        if( connected_item != test_item &&
-                            connected_item->ConnectionPropagatesTo( dynamic_cast<EDA_ITEM*>( test_item ) ) &&
-                            test_item->ConnectionPropagatesTo( dynamic_cast<EDA_ITEM*>( connected_item ) ) )
-                        {
-                            connected_item->ConnectedItems().insert( test_item );
-                            test_item->ConnectedItems().insert( connected_item );
-                        }
+                        connected_item->ConnectedItems().insert( test_item );
+                        test_item->ConnectedItems().insert( connected_item );
                     }
                 }
             }
         }
     }
 
+    phase1.Stop();
+    std::cout << "Phase 1 " << phase1.msecs() << " ms" << std::endl;
+
+    PROF_COUNTER tde;
+
     // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
     TestDanglingEnds();
 
-    phase1.Stop();
-    std::cout << "Phase 1 " << phase1.msecs() << " ms" << std::endl;
+    tde.Stop();
+    std::cout << "TestDanglingEnds " << tde.msecs() << " ms" << std::endl;
 
     PROF_COUNTER phase2;
 
     long subgraph_code = 1;
     std::vector<CONNECTION_SUBGRAPH> subgraphs;
 
-    for( auto item : all_connectable_items )
+    for( auto item : all_items )
     {
         if( item->Connection()->SubgraphCode() == 0 )
         {
@@ -1684,8 +1669,8 @@ void SCH_SCREENS::RecalculateConnections()
 
             item->Connection()->SetSubgraphCode( subgraph.m_code );
 
-            std::list<CONNECTABLE_ITEM*> members( item->ConnectedItems().begin(),
-                                                  item->ConnectedItems().end() );
+            std::list<SCH_ITEM*> members( item->ConnectedItems().begin(),
+                                          item->ConnectedItems().end() );
 
             for( auto connected_item : members )
             {
@@ -1726,13 +1711,10 @@ void SCH_SCREENS::RecalculateConnections()
         else
         {
             // Now the subgraph has only one driver
-            auto driver = dynamic_cast<EDA_ITEM*>( subgraph.m_driver );
-            wxASSERT( driver );
-
             auto& connection = subgraph.m_driver->Connection();
 
             // TODO(JE) This should live in SCH_CONNECTION probably
-            switch( driver->Type() )
+            switch( subgraph.m_driver->Type() )
             {
             case SCH_LABEL_T:
             case SCH_GLOBAL_LABEL_T:
@@ -1741,14 +1723,15 @@ void SCH_SCREENS::RecalculateConnections()
             case SCH_SHEET_PIN_T:
             case SCH_SHEET_T:
             {
-                if( driver->Type() == SCH_PIN_CONNECTION_T )
+                if( subgraph.m_driver->Type() == SCH_PIN_CONNECTION_T )
                 {
-                    auto pin_connection = static_cast<SCH_PIN_CONNECTION*>( driver );
-                    connection->ConfigureFromLabel( pin_connection->m_pin->GetName() );
+                    auto pin = static_cast<SCH_PIN_CONNECTION*>( subgraph.m_driver );
+                    connection->ConfigureFromLabel( pin->m_pin->GetName() );
                 }
                 else
                 {
-                    connection->ConfigureFromLabel( static_cast<SCH_TEXT*>( driver )->GetText() );
+                    auto text = static_cast<SCH_TEXT*>( subgraph.m_driver );
+                    connection->ConfigureFromLabel( text->GetText() );
                 }
 
                 connection->ClearDirty();
@@ -1774,8 +1757,6 @@ void SCH_SCREENS::RecalculateConnections()
                 {
                     item->Connection()->Clone( *connection );
                     item->Connection()->ClearDirty();
-
-                    // std::cout << "   +" << dynamic_cast<EDA_ITEM*>( item )->GetSelectMenuText() << std::endl;
                 }
             }
         }

@@ -48,7 +48,7 @@ namespace std {
     };
 }
 
-
+#if 0
 /**
  * Properties to attach to each connection graph vertex
  * Right now, we just hold a pointer back to the item the vertex refers to
@@ -121,9 +121,11 @@ private:
     /// This ID will represent a directly-connected portion of the graph
     int m_subgraph_code;
 };
+#endif
 
 
 // TODO(JE) Remove if unused
+#if 0
 class CONNECTION_GRAPH
 {
 public:
@@ -164,6 +166,7 @@ public:
     boost::associative_property_map< VERTEX_INDEX_MAP_T > m_vertex_index_property_map;
 
 };
+#endif
 
 
 /**
@@ -194,11 +197,11 @@ public:
 
     long m_code;
 
-    std::vector<CONNECTABLE_ITEM*> m_items;
+    std::vector<SCH_ITEM*> m_items;
 
-    std::vector<CONNECTABLE_ITEM*> m_drivers;
+    std::vector<SCH_ITEM*> m_drivers;
 
-    CONNECTABLE_ITEM* m_driver;
+    SCH_ITEM* m_driver;
 };
 
 #endif
