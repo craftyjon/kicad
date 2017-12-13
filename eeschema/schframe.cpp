@@ -65,6 +65,7 @@
 #include <wildcards_and_files_ext.h>
 
 #include <netlist_exporter_kicad.h>
+#include <connection_graph.h>
 #include <kiway.h>
 
 
@@ -779,8 +780,7 @@ void SCH_EDIT_FRAME::OnModify()
 
     m_foundItems.SetForceSearch();
 
-    SCH_SCREENS schematic;
-    schematic.RecalculateConnections();
+    GetScreen()->RecalculateConnections();
 
     m_canvas->Refresh();
 }
@@ -1465,10 +1465,6 @@ void SCH_EDIT_FRAME::addCurrentItemToList( bool aRedraw )
             if( screen->IsJunctionNeeded( *i, true ) )
                 AddJunction( *i, true );
         }
-        screen->TestDanglingEnds();
-
-        SCH_SCREENS schematic;
-        schematic.RecalculateConnections();
     }
 
     if( aRedraw )

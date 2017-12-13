@@ -1235,6 +1235,31 @@ std::shared_ptr<BUS_ALIAS> SCH_SCREEN::GetBusAlias( const wxString& aLabel )
 }
 
 
+void SCH_SCREEN::RecalculateConnections()
+{
+    // TODO(JE) Create on stack or should this have permanence somewhere?
+    CONNECTION_GRAPH graph;
+
+    std::vector<SCH_ITEM*> items;
+
+    for( auto item = GetDrawItems(); item; item = item->Next() )
+    {
+        if( item->IsConnectable() )
+        {
+            items.push_back( item );
+        }
+    }
+
+    graph.UpdateItemConnectivity( items );
+
+    // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
+    TestDanglingEnds();
+
+    graph.BuildConnectionGraph();
+}
+
+
+
 #if defined(DEBUG)
 void SCH_SCREEN::Show( int nestLevel, std::ostream& os ) const
 {

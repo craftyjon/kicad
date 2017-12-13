@@ -67,6 +67,11 @@ public:
      */
     void BuildConnectionGraph();
 
+    /**
+     * Updates the connectivity graph based on a single item
+     */
+    void RebuildGraphForItem( SCH_ITEM* aItem );
+
 private:
 
     std::vector<SCH_ITEM*> m_items;

@@ -524,6 +524,11 @@ public:
      */
     static std::shared_ptr<BUS_ALIAS> GetBusAlias( const wxString& aLabel );
 
+    /**
+     * Recalculates the connectivity for this screen only
+     */
+    void RecalculateConnections();
+
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override;
 #endif
