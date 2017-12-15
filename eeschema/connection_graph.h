@@ -119,6 +119,10 @@ private:
     std::map<wxString, int> m_bus_name_to_code_map;
 
     std::unordered_map<int, CONNECTION_SUBGRAPH*> m_subgraph_code_map;
+
+    int m_last_net_code;
+
+    int m_last_bus_code;
 };
 
 #endif

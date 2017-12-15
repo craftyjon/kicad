@@ -151,7 +151,7 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList 
     }
 
     phase1.Stop();
-    std::cout << "Phase 1 " << phase1.msecs() << " ms" << std::endl;
+    std::cout << "UpdateItemConnectivity() " << phase1.msecs() << " ms" << std::endl;
 }
 
 
@@ -217,10 +217,24 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         }
     }
 
-    phase2.Stop();
-    std::cout << "Phase 2 " <<  phase2.msecs() << " ms" << std::endl;
+    m_last_net_code = 0;
+    m_last_bus_code = 0;
 
-    PROF_COUNTER phase3;
+    /**
+     * TODO(JE)
+     *
+     * It would be good if net codes were preserved as much as possible when
+     * generating netlists, so that unnamed nets don't keep shifting around when
+     * you regenerate.
+     *
+     * Right now, we are clearing out the old connections up in
+     * UpdateItemConnectivity(), but that is useful information, so maybe we
+     * need to just set the dirty flag or something.
+     *
+     * That way, ResolveDrivers() can check what the driver of the subgraph was
+     * previously, and if it is in the situation of choosing between equal
+     * candidates for an auto-generated net name, pick the previous one.
+     */
 
 #ifdef USE_OPENMP
     #pragma omp parallel for schedule(dynamic)
@@ -289,8 +303,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         }
     }
 
-    phase3.Stop();
-    std::cout << "Phase 3 " <<  phase3.msecs() << " ms" << std::endl;
+    phase2.Stop();
+    std::cout << "BuildConnectionGraph() " <<  phase2.msecs() << " ms" << std::endl;
 }
 
 
