@@ -155,6 +155,16 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList 
 }
 
 
+// TODO(JE) This won't give the same subgraph IDs (and eventually net/graph codes)
+// to the same subgraph necessarily if it runs over and over again on the same
+// sheet.  We need:
+//
+//  a) a cache of net/bus codes, like used before
+//  b) to persist the CONNECTION_GRAPH globally so the cache is persistent,
+//  c) some way of trying to avoid changing net names.  so we should keep track
+//     of the previous driver of a net, and if it comes down to choosing between
+//     equally-prioritized drivers, choose the one that already exists as a driver
+//     on some portion of the items.
 void CONNECTION_GRAPH::BuildConnectionGraph()
 {
     PROF_COUNTER phase2;
@@ -212,73 +222,68 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
     PROF_COUNTER phase3;
 
-    #ifdef USE_OPENMP
-        #pragma omp parallel
-    #endif
+#ifdef USE_OPENMP
+    #pragma omp parallel for schedule(dynamic)
+#endif
+    for( auto it = subgraphs.begin(); it < subgraphs.end(); it++ )
     {
-        #ifdef USE_OPENMP
-            #pragma omp for schedule(dynamic)
-        #endif
-        for( auto it = subgraphs.begin(); it < subgraphs.end(); it++ )
+        auto subgraph = *it;
+
+        if( !subgraph.ResolveDrivers() )
         {
-            auto subgraph = *it;
+            // TODO(JE) ERC Error: multiple equivalent drivers
+        }
+        else
+        {
+            // Now the subgraph has only one driver
+            auto& connection = subgraph.m_driver->Connection();
 
-            if( !subgraph.ResolveDrivers() )
+            // TODO(JE) This should live in SCH_CONNECTION probably
+            switch( subgraph.m_driver->Type() )
             {
-                // TODO(JE) ERC Error: multiple equivalent drivers
+            case SCH_LABEL_T:
+            case SCH_GLOBAL_LABEL_T:
+            case SCH_HIERARCHICAL_LABEL_T:
+            case SCH_PIN_CONNECTION_T:
+            case SCH_SHEET_PIN_T:
+            case SCH_SHEET_T:
+            {
+                if( subgraph.m_driver->Type() == SCH_PIN_CONNECTION_T )
+                {
+                    auto pin = static_cast<SCH_PIN_CONNECTION*>( subgraph.m_driver );
+                    connection->ConfigureFromLabel( pin->m_pin->GetName() );
+                }
+                else
+                {
+                    auto text = static_cast<SCH_TEXT*>( subgraph.m_driver );
+                    connection->ConfigureFromLabel( text->GetText() );
+                }
+
+                connection->SetDriver( subgraph.m_driver );
+                connection->ClearDirty();
+                break;
             }
-            else
+            default:
+                break;
+            }
+
+            // std::cout << "Propagating SG " << subgraph.m_code << " driven by "
+            //           << subgraph.m_driver->GetSelectMenuText() << " net "
+            //           << subgraph.m_driver->Connection()->Name() << std::endl;
+
+            for( auto item : subgraph.m_items )
             {
-                // Now the subgraph has only one driver
-                auto& connection = subgraph.m_driver->Connection();
-
-                // TODO(JE) This should live in SCH_CONNECTION probably
-                switch( subgraph.m_driver->Type() )
+                if( ( connection->IsBus() && item->Connection()->IsNet() ) ||
+                    ( connection->IsNet() && item->Connection()->IsBus() ) )
                 {
-                case SCH_LABEL_T:
-                case SCH_GLOBAL_LABEL_T:
-                case SCH_HIERARCHICAL_LABEL_T:
-                case SCH_PIN_CONNECTION_T:
-                case SCH_SHEET_PIN_T:
-                case SCH_SHEET_T:
-                {
-                    if( subgraph.m_driver->Type() == SCH_PIN_CONNECTION_T )
-                    {
-                        auto pin = static_cast<SCH_PIN_CONNECTION*>( subgraph.m_driver );
-                        connection->ConfigureFromLabel( pin->m_pin->GetName() );
-                    }
-                    else
-                    {
-                        auto text = static_cast<SCH_TEXT*>( subgraph.m_driver );
-                        connection->ConfigureFromLabel( text->GetText() );
-                    }
-
-                    connection->SetDriver( subgraph.m_driver );
-                    connection->ClearDirty();
-                    break;
-                }
-                default:
-                    break;
+                    continue;
                 }
 
-                // std::cout << "Propagating SG " << subgraph.m_code << " driven by "
-                //           << subgraph.m_driver->GetSelectMenuText() << " net "
-                //           << subgraph.m_driver->Connection()->Name() << std::endl;
-
-                for( auto item : subgraph.m_items )
+                if( item != subgraph.m_driver )
                 {
-                    if( ( connection->IsBus() && item->Connection()->IsNet() ) ||
-                        ( connection->IsNet() && item->Connection()->IsBus() ) )
-                    {
-                        continue;
-                    }
-
-                    if( item != subgraph.m_driver )
-                    {
-                        // std::cout << "   +" << item->GetSelectMenuText() << std::endl;
-                        item->Connection()->Clone( *connection );
-                        item->Connection()->ClearDirty();
-                    }
+                    // std::cout << "   +" << item->GetSelectMenuText() << std::endl;
+                    item->Connection()->Clone( *connection );
+                    item->Connection()->ClearDirty();
                 }
             }
         }

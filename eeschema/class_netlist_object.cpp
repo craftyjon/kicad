@@ -222,7 +222,8 @@ bool NETLIST_OBJECT::IsLabelConnected( NETLIST_OBJECT* aNetItem )
 
 void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItems )
 {
-    wxCHECK_RET( IsBusLabel( m_Label ),
+    SCH_CONNECTION conn;
+    wxCHECK_RET( conn.IsBusLabel( m_Label ),
                  wxT( "<" ) + m_Label + wxT( "> is not a valid bus label." ) );
 
     if( m_Type == NET_HIERLABEL )
@@ -242,7 +243,7 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
     long member_offset = 0;
 
     auto alias = SCH_SCREEN::GetBusAlias( m_Label );
-    if( alias || IsBusGroupLabel( m_Label ) )
+    if( alias || conn.IsBusGroupLabel( m_Label ) )
     {
         wxString group_name;
         bool self_set = false;
@@ -254,7 +255,7 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
         }
         else
         {
-            wxCHECK_RET( SCH_CONNECTION::ParseBusGroup( m_Label, &group_name, bus_contents_vec ),
+            wxCHECK_RET( conn.ParseBusGroup( m_Label, &group_name, bus_contents_vec ),
                          _( "Failed to parse bus group " ) + m_Label );
         }
 
@@ -267,12 +268,12 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
         for( auto bus_member : bus_contents )
         {
             // Nested bus vector inside a bus group
-            if( IsBusVectorLabel( bus_member ) )
+            if( conn.IsBusVectorLabel( bus_member ) )
             {
                 wxString prefix;
                 long begin, end;
 
-                SCH_CONNECTION::ParseBusVector( bus_member, &prefix, &begin, &end );
+                conn.ParseBusVector( bus_member, &prefix, &begin, &end );
                 prefix = group_prefix + prefix;
 
                 if( !self_set )
@@ -320,7 +321,7 @@ void NETLIST_OBJECT::ConvertBusToNetListItems( NETLIST_OBJECT_LIST& aNetListItem
         wxString prefix;
         long begin, end;
 
-        SCH_CONNECTION::ParseBusVector( m_Label, &prefix, &begin, &end );
+        conn.ParseBusVector( m_Label, &prefix, &begin, &end );
 
         m_Label = prefix;
         m_Label << begin;

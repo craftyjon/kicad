@@ -561,7 +561,8 @@ void SCH_TEXT::GetNetListItem( NETLIST_OBJECT_LIST& aNetListItems,
         m_connection = SCH_CONNECTION( this );
 
     // If a bus connects to label
-    if( IsBusLabel( m_Text ) )
+    SCH_CONNECTION conn;
+    if( conn.IsBusLabel( m_Text ) )
     {
         // TODO(JE) this kind of goes backwards...
         // Labels are inferred to be nets or buses based on the text,

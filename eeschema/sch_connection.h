@@ -24,6 +24,7 @@
 #include <unordered_set>
 
 #include <boost/optional.hpp>
+#include <wx/regex.h>
 
 #include <bus_alias.h>
 #include <msgpanel.h>
@@ -51,11 +52,7 @@ enum CONNECTION_TYPE
 class SCH_CONNECTION
 {
 public:
-    SCH_CONNECTION( SCH_ITEM* aParent ) :
-        m_parent( aParent )
-    {
-        Reset();
-    }
+    SCH_CONNECTION( SCH_ITEM* aParent = nullptr );
 
     ~SCH_CONNECTION()
     {}
@@ -207,7 +204,7 @@ public:
      * @param begin is the first entry in the vector
      * @param end is the last entry in the vector
      */
-    static void ParseBusVector( wxString vector, wxString* name, long* begin, long* end );
+    void ParseBusVector( wxString vector, wxString* name, long* begin, long* end );
 
     /**
      * Parses a bus group label into the name and a list of components
@@ -217,7 +214,7 @@ public:
      * @param aMemberList is a list of member strings, e.g. "DP", "DM"
      * @return true if aGroup was successfully parsed
      */
-    static bool ParseBusGroup( wxString aGroup, wxString* name, std::vector<wxString>& aMemberList );
+    bool ParseBusGroup( wxString aGroup, wxString* name, std::vector<wxString>& aMemberList );
 
     /**
      * Adds information about the connection object to aList
@@ -229,6 +226,29 @@ public:
      */
     void AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const;
 
+    /**
+     * Test if \a aLabel has a bus notation.
+     *
+     * @param aLabel A wxString object containing the label to test.
+     * @return true if text is a bus notation format otherwise false is returned.
+     */
+    bool IsBusLabel( const wxString& aLabel );
+
+    /**
+     * Test if \a aLabel has a bus vector notation (simple bus, e.g. A[7..0])
+     *
+     * @param aLabel A wxString object containing the label to test.
+     * @return true if text is a bus notation format otherwise false is returned.
+     */
+    bool IsBusVectorLabel( const wxString& aLabel );
+
+    /**
+     * Test if \a aLabel has a bus group notation.
+     *
+     * @param aLabel A wxString object containing the label to test.
+     * @return true if text is a bus group notation format
+     */
+    bool IsBusGroupLabel( const wxString& aLabel );
 
 private:
 
@@ -261,104 +281,6 @@ private:
     std::vector< std::shared_ptr< SCH_CONNECTION > > m_members;
 
 };
-
-#if 0
-/**
- * Mix-in class to add SCH_CONNECTION to SCH_ITEM and LIB_ITEM
- * @details [long description]
- *
- */
-class CONNECTABLE_ITEM
-{
-protected:
-    /// Stores net/bus information for items that have it (schematic only)
-    boost::optional<SCH_CONNECTION> m_connection;
-
-    /// Stores pointers to other items that are connected to this one (schematic only)
-    std::unordered_set<CONNECTABLE_ITEM*> m_connected_items;
-
-public:
-    /**
-     * Retrieves the connection associated with this object, if it exists
-     *
-     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
-     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
-     * hoisted out.
-     */
-    virtual boost::optional<SCH_CONNECTION>& Connection()
-    {
-        return m_connection;
-    }
-
-    /**
-     * Retrieves the set of items connected to this item (schematic only)
-     *
-     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
-     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
-     * hoisted out.
-     */
-    virtual std::unordered_set<CONNECTABLE_ITEM*>& ConnectedItems()
-    {
-        return m_connected_items;
-    }
-
-    /**
-     * Adds a connection link between this item and another
-     *
-     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
-     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
-     * hoisted out.
-     */
-    virtual void AddConnectionTo( CONNECTABLE_ITEM* aItem )
-    {
-        m_connected_items.insert( aItem );
-    }
-
-    /**
-     * Creates a new connection object associated with this object
-     *
-     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
-     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
-     * hoisted out.
-     */
-    virtual void InitializeConnection( CONNECTABLE_ITEM* aParent = nullptr )
-    {
-        if( aParent == nullptr )
-            aParent = this;
-
-        m_connection = SCH_CONNECTION( aParent );
-    }
-
-    /**
-     * Returns true if this item should propagate connection info to aItem
-     */
-    virtual bool ConnectionPropagatesTo( const EDA_ITEM* aItem ) const { return true; }
-};
-#endif
-
-/**
- * Test if \a aLabel has a bus notation.
- *
- * @param aLabel A wxString object containing the label to test.
- * @return true if text is a bus notation format otherwise false is returned.
- */
-extern bool IsBusLabel( const wxString& aLabel );
-
-/**
- * Test if \a aLabel has a bus vector notation (simple bus, e.g. A[7..0])
- *
- * @param aLabel A wxString object containing the label to test.
- * @return true if text is a bus notation format otherwise false is returned.
- */
-extern bool IsBusVectorLabel( const wxString& aLabel );
-
-/**
- * Test if \a aLabel has a bus group notation.
- *
- * @param aLabel A wxString object containing the label to test.
- * @return true if text is a bus group notation format
- */
-extern bool IsBusGroupLabel( const wxString& aLabel );
 
 #endif
 

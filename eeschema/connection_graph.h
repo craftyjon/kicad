@@ -44,41 +44,6 @@ namespace std {
 
 
 /**
- * Calculates the connectivity of a schematic and generates netlists
- */
-class CONNECTION_GRAPH
-{
-public:
-    CONNECTION_GRAPH() {}
-
-    /**
-     * Updates the physical connectivity between items (i.e. where they touch)
-     * The items passed in must be on the same sheet, because their locations
-     * are considered without checking what sheet they are on.
-     *
-     * As a side effect, loads the items into m_items for BuildConnectionGraph()
-     *
-     * @param aItemList is a list of items to consider
-     */
-    void UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList );
-
-    /**
-     * Generates connectivity (using CONNECTION_SUBGRAPH) for all items
-     */
-    void BuildConnectionGraph();
-
-    /**
-     * Updates the connectivity graph based on a single item
-     */
-    void RebuildGraphForItem( SCH_ITEM* aItem );
-
-private:
-
-    std::vector<SCH_ITEM*> m_items;
-};
-
-
-/**
  * A subgraph is a set of items that are "physically" connected in the schematic.
  *
  * For example, a label connected to a wire and so on.
@@ -111,6 +76,49 @@ public:
     std::vector<SCH_ITEM*> m_drivers;
 
     SCH_ITEM* m_driver;
+};
+
+
+/**
+ * Calculates the connectivity of a schematic and generates netlists
+ */
+class CONNECTION_GRAPH
+{
+public:
+    CONNECTION_GRAPH() {}
+
+    /**
+     * Updates the physical connectivity between items (i.e. where they touch)
+     * The items passed in must be on the same sheet, because their locations
+     * are considered without checking what sheet they are on.
+     *
+     * As a side effect, loads the items into m_items for BuildConnectionGraph()
+     *
+     * @param aItemList is a list of items to consider
+     */
+    void UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList );
+
+    /**
+     * Generates connectivity (using CONNECTION_SUBGRAPH) for all items
+     */
+    void BuildConnectionGraph();
+
+    /**
+     * Updates the connectivity graph based on a single item
+     */
+    void RebuildGraphForItem( SCH_ITEM* aItem );
+
+private:
+
+    std::vector<SCH_ITEM*> m_items;
+
+    std::unordered_set<CONNECTION_SUBGRAPH*> m_subgraphs;
+
+    std::map<wxString, int> m_net_name_to_code_map;
+
+    std::map<wxString, int> m_bus_name_to_code_map;
+
+    std::unordered_map<int, CONNECTION_SUBGRAPH*> m_subgraph_code_map;
 };
 
 #endif

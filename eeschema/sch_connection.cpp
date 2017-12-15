@@ -20,7 +20,6 @@
 #include <sch_connection.h>
 #include <class_sch_screen.h>
 
-#include <wx/regex.h>
 #include <wx/tokenzr.h>
 
 
@@ -51,31 +50,15 @@
  * just USB_DP and USB_DN.
  *
  */
-static wxRegEx busLabelRe( wxT( "^([^[:space:]]+)(\\[[\\d]+\\.+[\\d]+\\])$" ), wxRE_ADVANCED );
-static wxRegEx busGroupLabelRe( wxT( "^([^[:space:]]+)?\\{((?:[^[:space:]]+(?:\\[[\\d]+\\.+[\\d]+\\])? ?)+)\\}$" ), wxRE_ADVANCED );
+static wxString busLabelRe( _( "^([^[:space:]]+)(\\[[\\d]+\\.+[\\d]+\\])$" ) );
+
+static wxString busGroupLabelRe( _( "^([^[:space:]]+)?\\{((?:[^[:space:]]+(?:\\[[\\d]+\\.+[\\d]+\\])? ?)+)\\}$" ) );
 
 
-bool IsBusLabel( const wxString& aLabel )
+SCH_CONNECTION::SCH_CONNECTION( SCH_ITEM* aParent ) :
+        m_parent( aParent )
 {
-    return IsBusVectorLabel( aLabel ) || IsBusGroupLabel( aLabel );
-}
-
-
-bool IsBusVectorLabel( const wxString& aLabel )
-{
-    wxCHECK_MSG( busLabelRe.IsValid(), false,
-                 wxT( "Invalid regular expression in IsBusLabel()." ) );
-
-    return busLabelRe.Matches( aLabel );
-}
-
-
-bool IsBusGroupLabel( const wxString& aLabel )
-{
-    wxCHECK_MSG( busGroupLabelRe.IsValid(), false,
-                 wxT( "Invalid regular expression in IsBusGroupLabel()." ) );
-
-    return busGroupLabelRe.Matches( aLabel );
+    Reset();
 }
 
 
@@ -131,6 +114,8 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
         {
             // Named bus groups generate a net prefix, unnamed ones don't
             auto prefix = ( group_name != "" ) ? ( group_name + "." ) : "";
+
+            std::cout << prefix << std::endl;
 
             for( auto group_member : members )
             {
@@ -269,14 +254,48 @@ void SCH_CONNECTION::AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const
 }
 
 
+bool SCH_CONNECTION::IsBusLabel( const wxString& aLabel )
+{
+    return IsBusVectorLabel( aLabel ) || IsBusGroupLabel( aLabel );
+}
+
+
+bool SCH_CONNECTION::IsBusVectorLabel( const wxString& aLabel )
+{
+    wxRegEx re( busLabelRe, wxRE_ADVANCED );
+
+    wxCHECK_MSG( re.IsValid(), false,
+                 wxT( "Invalid regular expression in IsBusLabel()." ) );
+
+    return re.Matches( aLabel );
+}
+
+
+bool SCH_CONNECTION::IsBusGroupLabel( const wxString& aLabel )
+{
+    wxRegEx re( busGroupLabelRe, wxRE_ADVANCED );
+
+    wxCHECK_MSG( re.IsValid(), false,
+                 wxT( "Invalid regular expression in IsBusGroupLabel()." ) );
+
+    return re.Matches( aLabel );
+}
+
+
+
 void SCH_CONNECTION::ParseBusVector( wxString vector, wxString* name,
                                      long* begin, long* end )
 {
-    wxCHECK_RET( IsBusLabel( vector ),
-                 wxT( "<" ) + vector + wxT( "> is not a valid bus vector." ) );
+    wxRegEx vector_re( busLabelRe, wxRE_ADVANCED );
 
-    *name = busLabelRe.GetMatch( vector, 1 );
-    wxString numberString = busLabelRe.GetMatch( vector, 2 );
+    if( !vector_re.Matches( vector ) )
+    {
+        wxFAIL_MSG( wxT( "<" ) + vector + wxT( "> is not a valid bus vector." ) );
+        return;
+    }
+
+    *name = vector_re.GetMatch( vector, 1 );
+    wxString numberString = vector_re.GetMatch( vector, 2 );
 
     // numberString will include the brackets, e.g. [5..0] so skip the first one
     size_t i = 1, len = numberString.Len();
@@ -317,13 +336,15 @@ void SCH_CONNECTION::ParseBusVector( wxString vector, wxString* name,
 bool SCH_CONNECTION::ParseBusGroup( wxString aGroup, wxString* name,
                                     std::vector<wxString>& aMemberList )
 {
-    if( !IsBusGroupLabel( aGroup ) )
+    wxRegEx group_re( busGroupLabelRe, wxRE_ADVANCED );
+
+    if( !group_re.Matches( aGroup ) )
     {
         return false;
     }
 
-    *name = busGroupLabelRe.GetMatch( aGroup, 1 );
-    auto contents = busGroupLabelRe.GetMatch( aGroup, 2 );
+    *name = group_re.GetMatch( aGroup, 1 );
+    auto contents = group_re.GetMatch( aGroup, 2 );
 
     wxStringTokenizer tokenizer( contents, " " );
     while( tokenizer.HasMoreTokens() )
