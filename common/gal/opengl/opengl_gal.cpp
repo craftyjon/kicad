@@ -789,7 +789,7 @@ void OPENGL_GAL::drawTriangulatedPolyset( const SHAPE_POLY_SET& aPolySet )
         {
             auto triPoly = aPolySet.TriangulatedPolygon( j );
 
-            for ( int i = 0; i < triPoly->m_triangleCount; i++ )
+            for ( int i = 0; i < triPoly->TriangleCount(); i++ )
             {
                 VECTOR2I a, b, c;
                 triPoly->GetTriangle( i ,a,b,c);
@@ -826,11 +826,11 @@ void OPENGL_GAL::DrawPolygon( const SHAPE_POLY_SET& aPolySet )
     for( int j = 0; j < aPolySet.OutlineCount(); ++j )
     {
         const SHAPE_LINE_CHAIN& outline = aPolySet.COutline( j );
-        const int pointCount = outline.PointCount();
+        const int pointCount = outline.SegmentCount() + 1;
         std::unique_ptr<GLdouble[]> points( new GLdouble[3 * pointCount] );
         GLdouble* ptr = points.get();
 
-        for( int i = 0; i < outline.PointCount(); ++i )
+        for( int i = 0; i < pointCount; ++i )
         {
             const VECTOR2I& p = outline.CPoint( i );
             *ptr++ = p.x;

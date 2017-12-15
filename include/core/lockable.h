@@ -1,9 +1,8 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2007, 2008 Lubo Racko <developer@lura.sk>
- * Copyright (C) 2007, 2008, 2012 Alexander Lunev <al.lunev@yahoo.com>
- * Copyright (C) 2012 KiCad Developers, see CHANGELOG.TXT for contributors.
+ * Copyright (C) 2017 KiCad Developers, see change_log.txt for contributors.
+ * @author Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,31 +22,35 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-/**
- * @file pcb_cutout.h
- */
+#ifndef __LOCKABLE_H
+#define __LOCKABLE_H
 
-#ifndef PCB_CUTOUT_H_
-#define PCB_CUTOUT_H_
+#include <thread>
+#include <mutex>
 
-#include <wx/wx.h>
-
-#include <pcb_polygon.h>
-
-namespace PCAD2KICAD {
-
-class PCB_CUTOUT : public PCB_POLYGON
+class LOCKABLE
 {
 public:
+    LOCKABLE() {};
+    ~LOCKABLE() {};
 
-    PCB_CUTOUT( PCB_CALLBACKS* aCallbacks, BOARD* aBoard, int aPCadLayer );
-    ~PCB_CUTOUT();
+    void Lock()
+    {
+        m_lock.lock();
+    }
 
-    virtual bool    Parse( XNODE*       aNode,
-                           wxString     aDefaultMeasurementUnit,
-                           wxString     aActualConversion ) override;
+    void Unlock()
+    {
+        m_lock.unlock();
+    }
+
+    bool TryLock()
+    {
+        return m_lock.try_lock();
+    }
+
+private:
+    std::mutex m_lock;
 };
 
-} // namespace PCAD2KICAD
-
-#endif    // PCB_CUTOUT_H_
+#endif
