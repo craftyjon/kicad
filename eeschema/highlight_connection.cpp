@@ -42,6 +42,8 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
     m_SelectedNetName = "";
     bool buildNetlistOk = false;
 
+    SetStatusText( "" );
+
     // find which connected item is selected
     EDA_ITEMS nodeList;
     wxPoint   gridPosition = GetGridPosition( aPosition );
@@ -55,12 +57,14 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
             if( auto item = dynamic_cast<SCH_ITEM*>( nodeList[0] ) )
             {
                 if( item->Connection() )
+                {
                     m_SelectedNetName = item->Connection()->Name();
+                    SetStatusText( _( "Highlighted net: " ) + m_SelectedNetName );
+                }
             }
         }
     }
 
-    SetStatusText( "selected net: " + m_SelectedNetName );
     SetCurrentSheetHighlightFlags();
     m_canvas->Refresh();
 
