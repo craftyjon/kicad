@@ -1489,8 +1489,11 @@ void SCH_SCREENS::UpdateSymbolLinks( bool aForce )
 
 void SCH_SCREENS::TestDanglingEnds()
 {
-    for( SCH_SCREEN* screen = GetFirst(); screen; screen = GetNext() )
-        screen->TestDanglingEnds();
+#ifdef USE_OPENMP
+    #pragma omp parallel for
+#endif
+    for( auto it = m_screens.begin(); it < m_screens.end(); it++ )
+        ( *it )->TestDanglingEnds();
 }
 
 
