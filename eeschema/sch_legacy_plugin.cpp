@@ -751,7 +751,7 @@ void SCH_LEGACY_PLUGIN::loadHeader( FILE_LINE_READER& aReader, SCH_SCREEN* aScre
 
     if( !strCompare( "Eeschema Schematic File Version", line, &line ) )
     {
-        m_error.Printf( _( "'%s' does not appear to be an Eeschema file" ),
+        m_error.Printf( _( "\"%s\" does not appear to be an Eeschema file" ),
                         GetChars( aScreen->GetFileName() ) );
         THROW_IO_ERROR( m_error );
     }
@@ -2315,9 +2315,9 @@ void SCH_LEGACY_PLUGIN_CACHE::Load()
 {
     wxCHECK_RET( m_libFileName.IsAbsolute(),
                  wxString::Format( "Cannot use relative file paths in legacy plugin to "
-                                   "open library '%s'.", m_libFileName.GetFullPath() ) );
+                                   "open library \"%s\".", m_libFileName.GetFullPath() ) );
 
-    wxLogTrace( traceSchLegacyPlugin, "Loading legacy symbol file '%s'",
+    wxLogTrace( traceSchLegacyPlugin, "Loading legacy symbol file \"%s\"",
                 m_libFileName.GetFullPath() );
 
     FILE_LINE_READER reader( m_libFileName.GetFullPath() );
@@ -2408,7 +2408,7 @@ void SCH_LEGACY_PLUGIN_CACHE::loadDocs()
 
     if( !fn.IsFileReadable() )
         THROW_IO_ERROR( wxString::Format( _( "user does not have permission to read library "
-                                             "document file '%s'" ), fn.GetFullPath() ) );
+                                             "document file \"%s\"" ), fn.GetFullPath() ) );
 
     FILE_LINE_READER reader( fn.GetFullPath() );
 
@@ -4190,7 +4190,7 @@ void SCH_LEGACY_PLUGIN::CreateSymbolLib( const wxString& aLibraryPath,
     if( wxFileExists( aLibraryPath ) )
     {
         THROW_IO_ERROR( wxString::Format(
-            _( "symbol library '%s' already exists, cannot create a new library" ),
+            _( "symbol library \"%s\" already exists, cannot create a new library" ),
             aLibraryPath.GetData() ) );
     }
 
@@ -4218,7 +4218,7 @@ bool SCH_LEGACY_PLUGIN::DeleteSymbolLib( const wxString& aLibraryPath,
     // we don't want that.  we want bare metal portability with no UI here.
     if( wxRemove( aLibraryPath ) )
     {
-        THROW_IO_ERROR( wxString::Format( _( "library '%s' cannot be deleted" ),
+        THROW_IO_ERROR( wxString::Format( _( "library \"%s\" cannot be deleted" ),
                                           aLibraryPath.GetData() ) );
     }
 
