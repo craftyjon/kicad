@@ -28,6 +28,7 @@
  * @brief Electrical Rules Check implementation.
  */
 
+#include <algorithm>
 #include <fctsys.h>
 #include <class_drawpanel.h>
 #include <kicad_string.h>
@@ -219,6 +220,56 @@ int TestDuplicateSheetNames( bool aCreateMarker )
                 }
             }
         }
+    }
+
+    return err_count;
+}
+
+
+int TestConflictingBusAliases( bool aCreateMarker )
+{
+    int err_count = 0;
+    SCH_SCREENS screens;
+    std::unordered_set< std::shared_ptr<BUS_ALIAS> > aliases;
+
+    for( auto screen = screens.GetFirst(); screen != NULL; screen = screens.GetNext() )
+    {
+        std::unordered_set< std::shared_ptr<BUS_ALIAS> > intersection;
+        auto screen_aliases = screen->GetBusAliases();
+
+        std::set_intersection( aliases.begin(), aliases.end(),
+                               screen_aliases.begin(), screen_aliases.end(),
+                               std::inserter( intersection, intersection.end() ),
+                               []( std::shared_ptr<BUS_ALIAS> a,
+                                   std::shared_ptr<BUS_ALIAS> b) -> bool
+                                {
+                                    return a->GetName() > b->GetName();
+                                } );
+
+        if( !intersection.empty() )
+        {
+            if( aCreateMarker )
+            {
+                wxString msg;
+
+                for( auto conflict : intersection )
+                {
+                    auto marker = new SCH_MARKER();
+
+                    msg.Printf( _( "Bus alias %s has conflicting definitions on multiple sheets" ),
+                                GetChars( conflict->GetName() ) );
+
+                    marker->SetData( ERCE_BUS_ALIAS_CONFLICT, wxPoint( 0, 0 ),
+                                     msg,  wxPoint( 0, 0 ) );
+                    marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+                    marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_ERROR );
+
+                    screen->Append( marker );
+                }
+            }
+        }
+
+        aliases.insert( screen_aliases.begin(), screen_aliases.end() );
     }
 
     return err_count;

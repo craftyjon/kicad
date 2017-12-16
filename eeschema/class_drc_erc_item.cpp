@@ -58,9 +58,11 @@ wxString DRC_ITEM::GetErrorText() const
         return wxString( _("Labels are similar (lower/upper case difference only)") );
     case ERCE_SIMILAR_GLBL_LABELS:
         return wxString( _("Global labels are similar (lower/upper case difference only)") );
+    case ERCE_BUS_ALIAS_CONFLICT:
+        return wxString( _("Conflict between bus alias definitions across schematic sheets") );
 
     default:
-        return wxString( wxT("Unkown.") );
+        return wxString( wxT("Unknown.") );
     }
 }
 

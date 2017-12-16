@@ -60,6 +60,7 @@ extern const wxString CommentERC_V[];
 #define ERCE_GLOBLABEL            8    // global label not connected to any other global label
 #define ERCE_SIMILAR_LABELS       9    // 2 labels are equal fir case insensitive comparisons
 #define ERCE_SIMILAR_GLBL_LABELS  10   // 2 labels are equal fir case insensitive comparisons
+#define ERCE_BUS_ALIAS_CONFLICT   11   // conflicting bus alias definitions across sheets
 
 /* Minimal connection table */
 #define NPI    4  // Net with Pin isolated, this pin has type Not Connected and must be left N.C.
@@ -107,6 +108,18 @@ void TestOthersItems( NETLIST_OBJECT_LIST* aList,
  *                       false = calculate error count only
  */
 int TestDuplicateSheetNames( bool aCreateMarker );
+
+/**
+ * Checks that there are not conflicting bus alias definitions in the schematic
+ *
+ * (for example, two hierarchical sub-sheets contain different definitions for
+ * the same bus alias)
+ *
+ * @param aCreateMarker: true = create error markers in schematic,
+ *                       false = calculate error count only
+ * @return the error count
+ */
+int TestConflictingBusAliases( bool aCreateMarker = true );
 
 
 #endif  // _ERC_H
