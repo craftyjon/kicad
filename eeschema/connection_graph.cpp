@@ -234,6 +234,10 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
      * That way, ResolveDrivers() can check what the driver of the subgraph was
      * previously, and if it is in the situation of choosing between equal
      * candidates for an auto-generated net name, pick the previous one.
+     *
+     * N.B. the old algorithm solves this by sorting the possible net names
+     * alphabetically, so as long as the same refdes components are involved,
+     * the net will be the same.
      */
 
 #ifdef USE_OPENMP
@@ -265,7 +269,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 if( subgraph.m_driver->Type() == SCH_PIN_CONNECTION_T )
                 {
                     auto pin = static_cast<SCH_PIN_CONNECTION*>( subgraph.m_driver );
-                    connection->ConfigureFromLabel( pin->m_pin->GetName() );
+                    connection->ConfigureFromLabel( pin->GetDefaultNetName() );
                 }
                 else
                 {
@@ -310,9 +314,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
 bool CONNECTION_SUBGRAPH::ResolveDrivers()
 {
-    SCH_ITEM* candidate = nullptr;
     int highest_priority = -1;
-    int num_items = 0;
+    std::vector<SCH_ITEM*> candidates;
 
     m_driver = nullptr;
 
@@ -322,10 +325,8 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
 
         switch( item->Type() )
         {
-        case LIB_PIN_T:                 item_priority = 1; break;
         case SCH_LABEL_T:               item_priority = 2; break;
         case SCH_HIERARCHICAL_LABEL_T:  item_priority = 3; break;
-        case SCH_SHEET_PIN_T:           item_priority = 4; break;
         case SCH_PIN_CONNECTION_T:
         {
             auto pin_connection = static_cast<SCH_PIN_CONNECTION*>( item );
@@ -341,23 +342,41 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
 
         if( item_priority > highest_priority )
         {
-            candidate = item;
+            candidates.clear();
+            candidates.push_back( item );
             highest_priority = item_priority;
-            num_items = 1;
         }
-        else if( candidate && ( item_priority == highest_priority ) )
+        else if( candidates.size() && ( item_priority == highest_priority ) )
         {
-            num_items++;
+            candidates.push_back( item );
         }
     }
 
-    if( num_items > 0 )
+    if( candidates.size() )
     {
-        m_driver = candidate;
+        m_driver = candidates[0];
 
-        if( num_items > 1 )
+        if( candidates.size() > 1 )
         {
-            // TODO(JE) ERC warning about multiple drivers?
+            if( highest_priority == 1 )
+            {
+                // We have multiple options and they are all component pins.
+                std::sort( candidates.begin(), candidates.end(),
+                           []( SCH_ITEM* a, SCH_ITEM* b) -> bool
+                            {
+                                auto pin_a = static_cast<SCH_PIN_CONNECTION*>( a );
+                                auto pin_b = static_cast<SCH_PIN_CONNECTION*>( b );
+
+                                auto name_a = pin_a->GetDefaultNetName();
+                                auto name_b = pin_b->GetDefaultNetName();
+
+                                return name_a > name_b;
+                            } );
+            }
+            else
+            {
+                // TODO(JE) ERC warning about multiple drivers?
+            }
         }
     }
     else

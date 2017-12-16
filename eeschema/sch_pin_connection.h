@@ -39,6 +39,8 @@ public:
         return wxT( "SCH_PIN_CONNECTION" );
     }
 
+    wxString GetDefaultNetName();
+
     wxString GetSelectMenuText() const override;
 
     void Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOffset,

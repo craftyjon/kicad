@@ -277,7 +277,12 @@ private:
 
     long m_vector_end;      ///< Lowest member of a vector bus
 
-    // For bus connections, store a list of member connections
+    /**
+     * For bus connections, store a list of member connections
+     *
+     * NOTE: All connections that Clone() others share the list of member
+     * pointers.  This seems fine at the moment.
+     */
     std::vector< std::shared_ptr< SCH_CONNECTION > > m_members;
 
 };

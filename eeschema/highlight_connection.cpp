@@ -34,6 +34,7 @@
 #include <erc.h>
 
 #include <class_netlist_object.h>
+#include <sch_component.h>
 
 
 // TODO(JE) Probably use netcode rather than connection name here eventually

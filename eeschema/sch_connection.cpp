@@ -115,8 +115,6 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
             // Named bus groups generate a net prefix, unnamed ones don't
             auto prefix = ( group_name != "" ) ? ( group_name + "." ) : "";
 
-            std::cout << prefix << std::endl;
-
             for( auto group_member : members )
             {
                 // Handle alias inside bus group member list

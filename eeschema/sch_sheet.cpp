@@ -926,9 +926,6 @@ void SCH_SHEET::GetNetListItem( NETLIST_OBJECT_LIST& aNetListItems,
         item->m_Start = item->m_End = m_pins[i].GetPosition();
         aNetListItems.push_back( item );
 
-        // TODO(JE) Check if the text is a bus alias as well here,
-        // and if so, convert to netlist items as below.
-
         SCH_CONNECTION conn;
         if( conn.IsBusLabel( m_pins[i].GetText() ) )
             item->ConvertBusToNetListItems( aNetListItems );

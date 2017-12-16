@@ -44,3 +44,22 @@ wxString SCH_PIN_CONNECTION::GetSelectMenuText() const
 
     return tmp;
 }
+
+
+wxString SCH_PIN_CONNECTION::GetDefaultNetName()
+{
+    if( m_pin->IsPowerConnection() )
+        return m_pin->GetName();
+
+    wxString name = wxT( "Net-(" );
+
+    // TODO(JE) Uncomment once we have the sheet path
+    //name << m_comp->GetRef( &m_netNameCandidate->m_SheetPath );
+
+    // if( adoptTimestamp && netName.Last() == '?' )
+    //     netName << link->GetTimeStamp();
+
+    name << _( "-Pad" ) << m_pin->GetNumber() << _( ")" );
+
+    return name;
+}

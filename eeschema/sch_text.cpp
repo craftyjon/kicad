@@ -561,16 +561,8 @@ void SCH_TEXT::GetNetListItem( NETLIST_OBJECT_LIST& aNetListItems,
         m_connection = SCH_CONNECTION( this );
 
     // If a bus connects to label
-    SCH_CONNECTION conn;
-    if( conn.IsBusLabel( m_Text ) )
+    if( m_connection->IsBusLabel( m_Text ) )
     {
-        // TODO(JE) this kind of goes backwards...
-        // Labels are inferred to be nets or buses based on the text,
-        // then the info is propagated to the wires connected to the label.
-        // It would be nice if labels could know that they are connected to
-        // a net wire or bus wire.
-        m_connection->SetType( CONNECTION_BUS );
-
         item->ConvertBusToNetListItems( aNetListItems );
     }
 }
