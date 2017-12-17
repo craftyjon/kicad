@@ -1311,3 +1311,77 @@ void SCH_EDIT_FRAME::OnOrient( wxCommandEvent& aEvent )
     if( item->GetFlags() == 0 )
         screen->SetCurItem( NULL );
 }
+
+
+void SCH_EDIT_FRAME::OnUnfoldBusHotkey( wxCommandEvent& aEvent )
+{
+    auto data = (EDA_HOTKEY_CLIENT_DATA*) aEvent.GetClientObject();
+    auto item = GetScreen()->GetCurItem();
+
+    wxCHECK_RET( data != NULL, wxT( "Invalid hot key client object." ) );
+
+    if( item == NULL )
+    {
+        // If we didn't get here by a hot key, then something has gone wrong.
+        if( aEvent.GetInt() == 0 )
+            return;
+
+        item = LocateAndShowItem( data->GetPosition(), SCH_COLLECTOR::EditableItems,
+                                  aEvent.GetInt() );
+
+        // Exit if no item found at the current location or the item is already being edited.
+        if( (item == NULL) || (item->GetFlags() != 0) )
+            return;
+    }
+
+    auto connection = item->Connection();
+
+    if( connection && connection->IsBus() )
+    {
+        int idx = 0;
+        wxMenu* bus_unfolding_menu = new wxMenu;
+
+        for( const auto& member : connection->Members() )
+        {
+            int id = ID_POPUP_SCH_UNFOLD_BUS + ( idx++ );
+
+            if( member->Type() == CONNECTION_BUS )
+            {
+                wxMenu* submenu = new wxMenu;
+                bus_unfolding_menu->AppendSubMenu( submenu, _( member->Name() ) );
+
+                for( const auto& sub_member : member->Members() )
+                {
+                    id = ID_POPUP_SCH_UNFOLD_BUS + ( idx++ );
+
+                    submenu->Append( id, sub_member->Name(), wxEmptyString );
+
+                    // See comment in else clause below
+                    auto sub_item_clone = new wxMenuItem();
+                    sub_item_clone->SetItemLabel( sub_member->Name() );
+
+                    Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
+                                 this, id, id, sub_item_clone );
+                }
+            }
+            else
+            {
+                bus_unfolding_menu->Append( id, member->Name(),
+                                            wxEmptyString );
+
+                // Because Bind() takes ownership of the user data item, we
+                // make a new menu item here and set its label.  Why create a
+                // menu item instead of just a wxString or something? Because
+                // Bind() requires a pointer to wxObject rather than a void
+                // pointer.  Maybe at some point I'll think of a better way...
+                auto item_clone = new wxMenuItem();
+                item_clone->SetItemLabel( member->Name() );
+
+                Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
+                             this, id, id, item_clone );
+            }
+        }
+
+        m_canvas->PopupMenu( bus_unfolding_menu, GetCrossHairScreenPosition() );
+    }
+}

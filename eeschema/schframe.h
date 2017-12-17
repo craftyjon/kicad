@@ -897,6 +897,11 @@ private:
      */
     void OnOrient( wxCommandEvent& aEvent );
 
+    /**
+     * Handles the keyboard hotkey for unfolding a bus
+     */
+    void OnUnfoldBusHotkey( wxCommandEvent& event );
+
     void OnExit( wxCommandEvent& event );
     void OnAnnotate( wxCommandEvent& event );
     void OnErc( wxCommandEvent& event );
