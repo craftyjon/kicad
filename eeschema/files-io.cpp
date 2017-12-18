@@ -372,7 +372,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         GetScreen()->ClearUndoORRedoList( GetScreen()->m_UndoList, 1 );
         GetScreen()->TestDanglingEnds();    // Only perform the dangling end test on root sheet.
 
-        schematic.RecalculateConnections(); // Update connectivity graph
+        RecalculateConnections(); // Update connectivity graph
     }
 
     GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId );

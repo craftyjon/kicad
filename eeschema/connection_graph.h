@@ -76,6 +76,8 @@ public:
     std::vector<SCH_ITEM*> m_drivers;
 
     SCH_ITEM* m_driver;
+
+    const SCH_SHEET_PATH* m_sheet;
 };
 
 
@@ -89,14 +91,14 @@ public:
 
     /**
      * Updates the physical connectivity between items (i.e. where they touch)
-     * The items passed in must be on the same sheet, because their locations
-     * are considered without checking what sheet they are on.
+     * The items passed in must be on the same sheet.
      *
      * As a side effect, loads the items into m_items for BuildConnectionGraph()
      *
+     * @param aSheet is the path to the sheet of all items in the list
      * @param aItemList is a list of items to consider
      */
-    void UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList );
+    void UpdateItemConnectivity( SCH_SHEET_PATH* aSheet, std::vector<SCH_ITEM*> aItemList );
 
     /**
      * Generates connectivity (using CONNECTION_SUBGRAPH) for all items

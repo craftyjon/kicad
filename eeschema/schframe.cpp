@@ -781,7 +781,8 @@ void SCH_EDIT_FRAME::OnModify()
 
     m_foundItems.SetForceSearch();
 
-    GetScreen()->RecalculateConnections();
+    //RecalculateConnections( SCH_SHEET_LIST( m_CurrentSheet->Last() ) );
+    RecalculateConnections();
 
     m_canvas->Refresh();
 }
@@ -1501,4 +1502,45 @@ void SCH_EDIT_FRAME::UpdateTitle()
     }
 
     SetTitle( title );
+}
+
+
+/**
+ * TODO(JE)
+ *
+ * Since we don't actually care about connectivity for components, just their
+ * pins, maybe it makes sense to store a map of vectors for pin connections.
+ * Each sheet that the component exists on will get its own set of pin
+ * connections.
+ */
+void SCH_EDIT_FRAME::RecalculateConnections()
+{
+    RecalculateConnections( SCH_SHEET_LIST( g_RootSheet ) );
+}
+
+
+void SCH_EDIT_FRAME::RecalculateConnections( SCH_SHEET_LIST aSheetList )
+{
+    for( auto sheet : aSheetList )
+    {
+        std::cout << "RecalculateConnections " << sheet.Path() << std::endl;
+        std::vector<SCH_ITEM*> items;
+
+        for( auto item = sheet.LastScreen()->GetDrawItems();
+             item; item = item->Next() )
+        {
+            if( item->IsConnectable() )
+            {
+                items.push_back( item );
+            }
+        }
+
+        m_connectionGraph.UpdateItemConnectivity( &sheet, items );
+    }
+
+    // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
+    SCH_SCREENS schematic;
+    schematic.TestDanglingEnds();
+
+    m_connectionGraph.BuildConnectionGraph();
 }

@@ -1766,9 +1766,14 @@ void LIB_PIN::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList,
                                      DARKCYAN ) );
 
     #if defined(DEBUG)
-    if( auto connection = aComponent->GetConnectionForPin( this ) )
+    if( auto pin_connection = aComponent->GetConnectionForPin( this ) )
     {
-        connection->Connection()->AppendDebugInfoToMsgPanel( aList );
+        auto path = pin_connection->m_comp->GetCurrentSheetPath();
+        auto conn = pin_connection->m_comp->Connection( path );
+
+        wxASSERT( conn );
+
+        conn->AppendDebugInfoToMsgPanel( aList );
     }
     #endif
 }

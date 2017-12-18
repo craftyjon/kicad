@@ -32,16 +32,21 @@
 #include <omp.h>
 #endif
 
+using std::map;
+using std::unordered_map;
+using std::unordered_set;
+using std::vector;
 
-void CONNECTION_GRAPH::UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList )
+
+void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH* aSheet, vector<SCH_ITEM*> aItemList )
 {
     PROF_COUNTER phase1;
 
-    std::unordered_map< wxPoint, std::vector<SCH_ITEM*> > connection_map;
+    unordered_map< wxPoint, vector<SCH_ITEM*> > connection_map;
 
     for( auto item : aItemList )
     {
-        std::vector< wxPoint > points;
+        vector< wxPoint > points;
         item->GetConnectionPoints( points );
         item->ConnectedItems().clear();
 
@@ -49,13 +54,13 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList 
         {
             for( auto& pin : static_cast<SCH_SHEET*>( item )->GetPins() )
             {
-                if( !pin.Connection() )
+                if( !pin.Connection( aSheet ) )
                 {
-                    pin.InitializeConnection();
+                    pin.InitializeConnection( aSheet );
                 }
 
                 pin.ConnectedItems().clear();
-                pin.Connection()->Reset();
+                pin.Connection( aSheet )->Reset();
 
                 connection_map[ pin.GetTextPos() ].push_back( &pin );
                 m_items.push_back( &pin );
@@ -65,7 +70,7 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList 
         {
             auto component = static_cast<SCH_COMPONENT*>( item );
 
-            component->UpdatePinConnections();
+            component->UpdatePinConnections( aSheet );
 
             for( auto pin_connection : component->m_pin_connections )
             {
@@ -81,28 +86,30 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList 
         {
             m_items.push_back( item );
 
-            if( !item->Connection() )
+            if( !item->Connection( aSheet ) )
             {
-                item->InitializeConnection();
+                item->InitializeConnection( aSheet );
             }
 
-            item->Connection()->Reset();
+            auto conn = item->Connection( aSheet );
+
+            conn->Reset();
 
             // Set bus/net property here so that the propagation code uses it
             switch( item->Type() )
             {
             case SCH_LINE_T:
-                item->Connection()->SetType( ( item->GetLayer() == LAYER_BUS ) ?
-                                             CONNECTION_BUS : CONNECTION_NET );
+                conn->SetType( ( item->GetLayer() == LAYER_BUS ) ?
+                               CONNECTION_BUS : CONNECTION_NET );
                 break;
 
             case SCH_BUS_BUS_ENTRY_T:
-                item->Connection()->SetType( CONNECTION_BUS );
+                conn->SetType( CONNECTION_BUS );
                 break;
 
             case SCH_PIN_CONNECTION_T:
             case SCH_BUS_WIRE_ENTRY_T:
-                item->Connection()->SetType( CONNECTION_NET );
+                conn->SetType( CONNECTION_NET );
                 break;
 
             default:
@@ -165,55 +172,83 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( std::vector<SCH_ITEM*> aItemList 
 //     of the previous driver of a net, and if it comes down to choosing between
 //     equally-prioritized drivers, choose the one that already exists as a driver
 //     on some portion of the items.
+
+/*
+
+OK, what I think is going on is that literally ALL items (not just components)
+need to be retrieved on a PER-SHEET basis.
+
+That means EVERY ITEM needs multiple Connections(), one per sheet.
+
+We can use a CurrentSheetConnection() call to pull up whatever is relevant.
+
+*/
+
+
 void CONNECTION_GRAPH::BuildConnectionGraph()
 {
     PROF_COUNTER phase2;
 
     long subgraph_code = 1;
-    std::vector<CONNECTION_SUBGRAPH> subgraphs;
+    vector<CONNECTION_SUBGRAPH> subgraphs;
 
     for( auto item : m_items )
     {
-        if( item->Connection()->SubgraphCode() == 0 )
+        for( auto it : item->m_connection_map )
         {
-            CONNECTION_SUBGRAPH subgraph;
+            auto sheet = it.first;
+            auto connection = it.second;
 
-            subgraph.m_code = subgraph_code++;
-            subgraph.m_items.push_back( item );
-
-            // std::cout << "SG " << subgraph.m_code << " started with "
-            //           << item->GetSelectMenuText() << std::endl;
-
-            if( item->Connection()->IsDriver() )
-                subgraph.m_drivers.push_back( item );
-
-            item->Connection()->SetSubgraphCode( subgraph.m_code );
-
-            std::list<SCH_ITEM*> members( item->ConnectedItems().begin(),
-                                          item->ConnectedItems().end() );
-
-            for( auto connected_item : members )
+            if( connection->SubgraphCode() == 0 )
             {
-                if( !connected_item->Connection() )
-                    connected_item->InitializeConnection();
+                CONNECTION_SUBGRAPH subgraph;
 
-                if( connected_item->Connection()->SubgraphCode() == 0 )
+                subgraph.m_code = subgraph_code++;
+                subgraph.m_sheet = sheet;
+
+                subgraph.m_items.push_back( item );
+
+                // std::cout << "SG " << subgraph.m_code << " started with "
+                //           << item->GetSelectMenuText() << std::endl;
+
+                if( connection->IsDriver() )
+                    subgraph.m_drivers.push_back( item );
+
+                connection->SetSubgraphCode( subgraph.m_code );
+
+                std::list<SCH_ITEM*> members( item->ConnectedItems().begin(),
+                                              item->ConnectedItems().end() );
+
+                for( auto connected_item : members )
                 {
-                    connected_item->Connection()->SetSubgraphCode( subgraph.m_code );
-                    subgraph.m_items.push_back( connected_item );
+                    if( !connected_item->Connection( sheet ) )
+                    {
+                        std::cout << "Warning: uninitialized conn in phase 2" << std::endl;
+                        connected_item->InitializeConnection( sheet );
+                    }
 
-                    // std::cout << "   +" << connected_item->GetSelectMenuText() << std::endl;
+                    auto connected_conn = connected_item->Connection( sheet );
 
-                    if( connected_item->Connection()->IsDriver() )
-                        subgraph.m_drivers.push_back( connected_item );
+                    wxASSERT( connected_conn );
 
-                    members.insert( members.end(),
-                                    connected_item->ConnectedItems().begin(),
-                                    connected_item->ConnectedItems().end() );
+                    if( connected_conn->SubgraphCode() == 0 )
+                    {
+                        connected_conn->SetSubgraphCode( subgraph.m_code );
+                        subgraph.m_items.push_back( connected_item );
+
+                        // std::cout << "   +" << connected_item->GetSelectMenuText() << std::endl;
+
+                        if( connected_conn->IsDriver() )
+                            subgraph.m_drivers.push_back( connected_item );
+
+                        members.insert( members.end(),
+                                        connected_item->ConnectedItems().begin(),
+                                        connected_item->ConnectedItems().end() );
+                    }
                 }
-            }
 
-            subgraphs.push_back( subgraph );
+                subgraphs.push_back( subgraph );
+            }
         }
     }
 
@@ -254,10 +289,12 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         else
         {
             // Now the subgraph has only one driver
-            auto& connection = subgraph.m_driver->Connection();
+            auto driver = subgraph.m_driver;
+            auto sheet = subgraph.m_sheet;
+            auto connection = driver->Connection( subgraph.m_sheet );
 
             // TODO(JE) This should live in SCH_CONNECTION probably
-            switch( subgraph.m_driver->Type() )
+            switch( driver->Type() )
             {
             case SCH_LABEL_T:
             case SCH_GLOBAL_LABEL_T:
@@ -266,18 +303,18 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             case SCH_SHEET_PIN_T:
             case SCH_SHEET_T:
             {
-                if( subgraph.m_driver->Type() == SCH_PIN_CONNECTION_T )
+                if( driver->Type() == SCH_PIN_CONNECTION_T )
                 {
-                    auto pin = static_cast<SCH_PIN_CONNECTION*>( subgraph.m_driver );
-                    connection->ConfigureFromLabel( pin->GetDefaultNetName() );
+                    auto pin = static_cast<SCH_PIN_CONNECTION*>( driver );
+                    connection->ConfigureFromLabel( pin->GetDefaultNetName( sheet ) );
                 }
                 else
                 {
-                    auto text = static_cast<SCH_TEXT*>( subgraph.m_driver );
+                    auto text = static_cast<SCH_TEXT*>( driver );
                     connection->ConfigureFromLabel( text->GetText() );
                 }
 
-                connection->SetDriver( subgraph.m_driver );
+                connection->SetDriver( driver );
                 connection->ClearDirty();
                 break;
             }
@@ -291,17 +328,19 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
             for( auto item : subgraph.m_items )
             {
-                if( ( connection->IsBus() && item->Connection()->IsNet() ) ||
-                    ( connection->IsNet() && item->Connection()->IsBus() ) )
+                auto item_conn = item->Connection( sheet );
+
+                if( ( connection->IsBus() && item_conn->IsNet() ) ||
+                    ( connection->IsNet() && item_conn->IsBus() ) )
                 {
                     continue;
                 }
 
-                if( item != subgraph.m_driver )
+                if( item != driver )
                 {
                     // std::cout << "   +" << item->GetSelectMenuText() << std::endl;
-                    item->Connection()->Clone( *connection );
-                    item->Connection()->ClearDirty();
+                    item_conn->Clone( *connection );
+                    item_conn->ClearDirty();
                 }
             }
         }
@@ -315,7 +354,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 bool CONNECTION_SUBGRAPH::ResolveDrivers()
 {
     int highest_priority = -1;
-    std::vector<SCH_ITEM*> candidates;
+    vector<SCH_ITEM*> candidates;
 
     m_driver = nullptr;
 
@@ -362,13 +401,13 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
             {
                 // We have multiple options and they are all component pins.
                 std::sort( candidates.begin(), candidates.end(),
-                           []( SCH_ITEM* a, SCH_ITEM* b) -> bool
+                           [this]( SCH_ITEM* a, SCH_ITEM* b) -> bool
                             {
                                 auto pin_a = static_cast<SCH_PIN_CONNECTION*>( a );
                                 auto pin_b = static_cast<SCH_PIN_CONNECTION*>( b );
 
-                                auto name_a = pin_a->GetDefaultNetName();
-                                auto name_b = pin_b->GetDefaultNetName();
+                                auto name_a = pin_a->GetDefaultNetName( m_sheet );
+                                auto name_b = pin_b->GetDefaultNetName( m_sheet );
 
                                 return name_a > name_b;
                             } );

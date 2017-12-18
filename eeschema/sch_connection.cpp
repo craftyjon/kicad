@@ -55,7 +55,8 @@ static wxString busLabelRe( _( "^([^[:space:]]+)(\\[[\\d]+\\.+[\\d]+\\])$" ) );
 static wxString busGroupLabelRe( _( "^([^[:space:]]+)?\\{((?:[^[:space:]]+(?:\\[[\\d]+\\.+[\\d]+\\])? ?)+)\\}$" ) );
 
 
-SCH_CONNECTION::SCH_CONNECTION( SCH_ITEM* aParent ) :
+SCH_CONNECTION::SCH_CONNECTION( SCH_ITEM* aParent, SCH_SHEET_PATH* aPath ) :
+        m_sheet( aPath ),
         m_parent( aParent )
 {
     Reset();
@@ -249,6 +250,9 @@ void SCH_CONNECTION::AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const
         msg.Printf( "%s at %p", driver->GetSelectMenuText(), driver );
         aList.push_back( MSG_PANEL_ITEM( _( "Connection Source" ), msg, RED ) );
     }
+
+    msg.Printf( "%s at %p", Parent()->GetSelectMenuText(), Parent() );
+    aList.push_back( MSG_PANEL_ITEM( _( "Attached To" ), msg, RED ) );
 }
 
 

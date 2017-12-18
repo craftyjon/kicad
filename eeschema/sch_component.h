@@ -234,7 +234,7 @@ public:
     /**
      * Updates the local cache of SCH_PIN_CONNECTION objects for each pin
      */
-    void UpdatePinConnections();
+    void UpdatePinConnections( const SCH_SHEET_PATH* aSheet );
 
     /**
      * Change the unit number to \a aUnit
@@ -507,6 +507,11 @@ public:
     void SetCurrentSheetPath( const SCH_SHEET_PATH* aSheetPath )
     {
         m_currentSheetPath = aSheetPath;
+    }
+
+    const SCH_SHEET_PATH* GetCurrentSheetPath() const
+    {
+        return m_currentSheetPath;
     }
 
     /**

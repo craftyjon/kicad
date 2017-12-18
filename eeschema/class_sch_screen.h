@@ -47,6 +47,7 @@
 
 class LIB_PIN;
 class SCH_COMPONENT;
+class SCH_SHEET_LIST;
 class SCH_SHEET_PATH;
 class SCH_SHEET_PIN;
 class SCH_LINE;
@@ -524,11 +525,6 @@ public:
      */
     static std::shared_ptr<BUS_ALIAS> GetBusAlias( const wxString& aLabel );
 
-    /**
-     * Recalculates the connectivity for this screen only
-     */
-    void RecalculateConnections();
-
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override;
 #endif
@@ -612,16 +608,6 @@ public:
      *         are empty, otherwise false.
      */
     bool HasNoFullyDefinedLibIds();
-
-    // TODO(JE) is this the right home for this?
-    /**
-     * Generates the connection data for the entire schematic heirarchy.
-     * Note that connection data is not (currently) the same as a netlist.
-     * For example, a netlist has no concept of buses (bus members are stored as
-     * individual nets) but in the connectivity objects, buses are stored
-     * separately from individual nets.
-     */
-    void RecalculateConnections();
 
     /**
      * Fetch all of the symbol library nickames into \a aLibNicknames.

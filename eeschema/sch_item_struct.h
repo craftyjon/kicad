@@ -30,7 +30,9 @@
 #ifndef SCH_ITEM_STRUCT_H
 #define SCH_ITEM_STRUCT_H
 
+#include <unordered_map>
 #include <vector>
+
 #include <class_base_screen.h>
 #include <general.h>
 #include <sch_connection.h>
@@ -125,16 +127,13 @@ public:
  */
 class SCH_ITEM : public EDA_ITEM
 {
-public:
-
+    friend class CONNECTION_GRAPH;
 
 protected:
     SCH_LAYER_ID   m_Layer;
     EDA_ITEMS      m_connections;   ///< List of items connected to this item.
     wxPoint        m_storedPos;     ///< a temporary variable used in some move commands
                                     ///> to store a initial pos (of the item or mouse cursor)
-    /// Stores net/bus information for items that have it (schematic only)
-    boost::optional<SCH_CONNECTION> m_connection;
 
     /// Stores pointers to other items that are connected to this one (schematic only)
     std::unordered_set<SCH_ITEM*> m_connected_items;
@@ -327,23 +326,26 @@ public:
     bool IsConnected( const wxPoint& aPoint ) const;
 
     /**
-     * Retrieves the connection associated with this object, if it exists
-     *
-     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
-     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
-     * hoisted out.
+     * Retrieves the connection associated with this object in the given sheet
      */
-    virtual boost::optional<SCH_CONNECTION>& Connection()
+    virtual SCH_CONNECTION* Connection( const SCH_SHEET_PATH* aPath )
     {
-        return m_connection;
+        SCH_CONNECTION* conn = nullptr;
+
+        try
+        {
+            conn = m_connection_map.at( aPath );
+        }
+        catch( const std::out_of_range& oor )
+        {
+            // TODO(JE) should we just call InitializeConnection here?
+        }
+
+        return conn;
     }
 
     /**
      * Retrieves the set of items connected to this item (schematic only)
-     *
-     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
-     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
-     * hoisted out.
      */
     virtual std::unordered_set<SCH_ITEM*>& ConnectedItems()
     {
@@ -352,10 +354,6 @@ public:
 
     /**
      * Adds a connection link between this item and another
-     *
-     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
-     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
-     * hoisted out.
      */
     virtual void AddConnectionTo( SCH_ITEM* aItem )
     {
@@ -365,16 +363,13 @@ public:
     /**
      * Creates a new connection object associated with this object
      *
-     * Used for schematic only.  Lives in EDA_ITEM because it's needed by both
-     * SCH_ITEM and LIB_ITEM.  If those classes are ever unified, this can be
-     * hoisted out.
+     * @param aPath is the sheet path to initialize
      */
-    virtual void InitializeConnection( SCH_ITEM* aParent = nullptr )
+    virtual void InitializeConnection( const SCH_SHEET_PATH* aPath )
     {
-        if( aParent == nullptr )
-            aParent = this;
+        auto connection = new SCH_CONNECTION( this );
 
-        m_connection = SCH_CONNECTION( aParent );
+        m_connection_map[ aPath ] = connection;
     }
 
     /**
@@ -491,6 +486,11 @@ private:
      * @return True if connection to \a aPosition exists.
      */
     virtual bool doIsConnected( const wxPoint& aPosition ) const { return false; }
+
+    /**
+     * Stores connectivity information, per sheet
+     */
+    std::unordered_map<const SCH_SHEET_PATH*, SCH_CONNECTION*> m_connection_map;
 };
 
 #endif /* SCH_ITEM_STRUCT_H */

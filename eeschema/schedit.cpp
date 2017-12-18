@@ -1334,7 +1334,7 @@ void SCH_EDIT_FRAME::OnUnfoldBusHotkey( wxCommandEvent& aEvent )
             return;
     }
 
-    auto connection = item->Connection();
+    auto connection = item->Connection( &GetCurrentSheet() );
 
     if( connection && connection->IsBus() )
     {

@@ -31,6 +31,7 @@
 
 
 class SCH_ITEM;
+class SCH_SHEET_PATH;
 
 
 enum CONNECTION_TYPE
@@ -46,17 +47,26 @@ enum CONNECTION_TYPE
  * connection (to a bus or net).  These are generated when netlisting, or when
  * editing operations that can change the netlist are performed.
  *
- * These objects are used to implement the bus unfolding and net highlighting
- * features, not the final netlist (at least for now).
+ * In hierarchical schematics, a single SCH_ITEM object can refer to multiple
+ * distinct parts of a design (in the case of a sub-sheet that is instanced
+ * more than once in a higher level sheet).  Because of this, a single item may
+ * contain more than one SCH_CONNECTION -- each is specific to a sheet.
+ *
+ * Components contain connections for each of their pins (and for each sheet
+ * they exist on) but don't use their own connection object.
  */
 class SCH_CONNECTION
 {
 public:
-    SCH_CONNECTION( SCH_ITEM* aParent = nullptr );
+    SCH_CONNECTION( SCH_ITEM* aParent = nullptr, SCH_SHEET_PATH* aPath = nullptr );
 
     ~SCH_CONNECTION()
     {}
 
+    /**
+     * Note: the equality operator for SCH_CONNECTION only tests the net
+     * properties, not the ownership / sheet location!
+     */
     bool operator==( const SCH_CONNECTION& aOther ) const;
 
     bool operator!=( const SCH_CONNECTION& aOther ) const;
@@ -81,6 +91,11 @@ public:
     SCH_ITEM* Driver() const
     {
         return m_driver;
+    }
+
+    SCH_SHEET_PATH* Sheet() const
+    {
+        return m_sheet;
     }
 
     void SetDriver( SCH_ITEM* aItem )
@@ -253,6 +268,8 @@ public:
 private:
 
     bool m_dirty;
+
+    SCH_SHEET_PATH* m_sheet;    ///< The hierarchical sheet this connection is on
 
     SCH_ITEM* m_parent;     ///< The SCH_ITEM this connection is owned by
 

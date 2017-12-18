@@ -46,18 +46,17 @@ wxString SCH_PIN_CONNECTION::GetSelectMenuText() const
 }
 
 
-wxString SCH_PIN_CONNECTION::GetDefaultNetName()
+wxString SCH_PIN_CONNECTION::GetDefaultNetName( const SCH_SHEET_PATH* aPath )
 {
     if( m_pin->IsPowerConnection() )
         return m_pin->GetName();
 
     wxString name = wxT( "Net-(" );
 
-    // TODO(JE) Uncomment once we have the sheet path
-    //name << m_comp->GetRef( &m_netNameCandidate->m_SheetPath );
+    name << m_comp->GetRef( aPath );
 
-    // if( adoptTimestamp && netName.Last() == '?' )
-    //     netName << link->GetTimeStamp();
+    if( /* adoptTimestamp && */ name.Last() == '?' )
+        name << m_comp->GetTimeStamp();
 
     name << _( "-Pad" ) << m_pin->GetNumber() << _( ")" );
 

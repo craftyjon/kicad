@@ -55,7 +55,6 @@
 #include <sch_text.h>
 #include <lib_pin.h>
 #include <symbol_lib_table.h>
-#include <connection_graph.h>
 
 // TODO(JE) Debugging only
 #include <profile.h>
@@ -538,11 +537,15 @@ void SCH_SCREEN::Draw( EDA_DRAW_PANEL* aCanvas, wxDC* aDC, GR_DRAWMODE aDrawMode
 
         // TODO(JE) Remove debugging code
 #ifdef DEBUG
-        if( item->Connection() )
+
+        auto frame = static_cast<SCH_EDIT_FRAME*>( aCanvas->GetParent() );
+        auto conn = item->Connection( &frame->GetCurrentSheet() );
+
+        if( conn )
         {
             auto pos = item->GetBoundingBox().Centre();
             int sz = Mils2iu( 15 );
-            auto label = item->Connection()->Name();
+            auto label = conn->Name();
 
             auto text = SCH_TEXT( pos, label, SCH_TEXT_T );
             text.SetTextSize( wxSize( sz, sz ) );
@@ -1238,31 +1241,6 @@ std::shared_ptr<BUS_ALIAS> SCH_SCREEN::GetBusAlias( const wxString& aLabel )
 }
 
 
-void SCH_SCREEN::RecalculateConnections()
-{
-    // TODO(JE) Create on stack or should this have permanence somewhere?
-    CONNECTION_GRAPH graph;
-
-    std::vector<SCH_ITEM*> items;
-
-    for( auto item = GetDrawItems(); item; item = item->Next() )
-    {
-        if( item->IsConnectable() )
-        {
-            items.push_back( item );
-        }
-    }
-
-    graph.UpdateItemConnectivity( items );
-
-    // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
-    TestDanglingEnds();
-
-    graph.BuildConnectionGraph();
-}
-
-
-
 #if defined(DEBUG)
 void SCH_SCREEN::Show( int nestLevel, std::ostream& os ) const
 {
@@ -1526,38 +1504,6 @@ bool SCH_SCREENS::HasNoFullyDefinedLibIds()
         return false;
 
     return true;
-}
-
-
-void SCH_SCREENS::RecalculateConnections()
-{
-    // TODO(JE) Create on stack or should this have permanence somewhere?
-    CONNECTION_GRAPH graph;
-
-    for( auto screen : m_screens )
-    {
-        std::vector<SCH_ITEM*> items;
-
-        for( auto item = screen->GetDrawItems(); item; item = item->Next() )
-        {
-            if( item->IsConnectable() )
-            {
-                items.push_back( item );
-            }
-        }
-
-        graph.UpdateItemConnectivity( items );
-    }
-
-    PROF_COUNTER tde;
-
-    // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
-    TestDanglingEnds();
-
-    tde.Stop();
-    std::cout << "TestDanglingEnds " << tde.msecs() << " ms" << std::endl;
-
-    graph.BuildConnectionGraph();
 }
 
 

@@ -286,7 +286,6 @@ public:
      * @return The current cross hair position.
      */
     wxPoint GetCrossHairScreenPosition() const;
-
     void SetMousePosition( const wxPoint& aPosition );
 
     /**

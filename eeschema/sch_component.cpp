@@ -508,7 +508,7 @@ void SCH_COMPONENT::UpdateAllPinCaches( const SCH_COLLECTOR& aComponents )
 }
 
 
-void SCH_COMPONENT::UpdatePinConnections()
+void SCH_COMPONENT::UpdatePinConnections( const SCH_SHEET_PATH* aSheet )
 {
     if( PART_SPTR part = m_part.lock() )
     {
@@ -527,7 +527,7 @@ void SCH_COMPONENT::UpdatePinConnections()
             auto connection = new SCH_PIN_CONNECTION();
             connection->m_pin = pin;
             connection->m_comp = this;
-            connection->InitializeConnection();
+            connection->InitializeConnection( aSheet );
 
             m_pin_connections.push_back( connection );
         }

@@ -39,7 +39,7 @@ public:
         return wxT( "SCH_PIN_CONNECTION" );
     }
 
-    wxString GetDefaultNetName();
+    wxString GetDefaultNetName( const SCH_SHEET_PATH* aSheet );
 
     wxString GetSelectMenuText() const override;
 

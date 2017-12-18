@@ -37,6 +37,7 @@
 #include <block_commande.h>
 #include <class_sch_screen.h>
 #include <sch_collectors.h>
+#include <connection_graph.h>
 
 // enum PINSHEETLABEL_SHAPE
 #include <sch_text.h>
@@ -189,7 +190,11 @@ private:
     /// Use netcodes (net number) as net names when generating spice net lists.
     bool        m_spiceAjustPassiveValues;
 
-public: // TODO(JE) Debugging only
+    // TODO: Move to SCHEMATIC object once it exists
+    /// The connection graph for the whole schematic
+    CONNECTION_GRAPH    m_connectionGraph;
+
+public: // TODO(JE) Make private
 
     /// Data related to bus unfolding tool
     BUS_UNFOLDING_T m_busUnfold;
@@ -1522,6 +1527,18 @@ public:
     void ClearExecFlags( const int aFlags ) { m_exec_flags &= ~( aFlags ); }
 
     wxString GetNetListerCommand() const { return m_netListerCommand; }
+
+    /**
+     * Generates the connection data for the entire schematic heirarchy.
+     */
+    void RecalculateConnections();
+
+    /**
+     * Generates the connection data for a portion of the schematic
+     *
+     * @param aSheetList is a list of sheets to recalculate
+     */
+    void RecalculateConnections( SCH_SHEET_LIST aSheetList );
 
     ///> Probe cursor, used by circuit simulator
     const static wxCursor CURSOR_PROBE;
