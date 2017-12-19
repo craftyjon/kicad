@@ -22,25 +22,9 @@
 
 #include <vector>
 
+#include <common.h>
 #include <sch_connection.h>
 #include <sch_item_struct.h>
-
-
-/**
- * Define a hash operator for wxPoint so it can be used as a std::map key
- */
-namespace std {
-
-    template <>
-    struct hash<wxPoint>
-    {
-        std::size_t operator() ( const wxPoint& k ) const
-        {
-            return ( ( std::hash<int>()( k.x )
-                     ^ ( std::hash<int>()( k.y ) << 1 ) ) >> 1 );
-        }
-    };
-}
 
 
 /**

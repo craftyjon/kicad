@@ -370,4 +370,11 @@ size_t std::hash<wxString>::operator()( const wxString& s ) const
 {
     return std::hash<std::wstring>{}( s.ToStdWstring() );
 }
+
+
+size_t std::hash<wxPoint>::operator() ( const wxPoint& k ) const
+{
+    return ( ( std::hash<int>()( k.x )
+             ^ ( std::hash<int>()( k.y ) << 1 ) ) >> 1 );
+}
 #endif

@@ -348,6 +348,11 @@ namespace std
     {
         size_t operator()( const wxString& s ) const;
     };
+
+    template <> struct hash<wxPoint>
+    {
+        size_t operator() ( const wxPoint& k ) const;
+    };
 }
 #endif
 
