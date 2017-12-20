@@ -211,7 +211,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
             if( connection->SubgraphCode() == 0 )
             {
-                CONNECTION_SUBGRAPH subgraph;
+                CONNECTION_SUBGRAPH subgraph = {};
 
                 subgraph.m_code = subgraph_code++;
                 subgraph.m_sheet = sheet;
@@ -224,6 +224,9 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 if( connection->IsDriver() )
                     subgraph.m_drivers.push_back( item );
 
+                if( item->Type() == SCH_NO_CONNECT_T )
+                    subgraph.m_no_connect = item;
+
                 connection->SetSubgraphCode( subgraph.m_code );
 
                 std::list<SCH_ITEM*> members( item->ConnectedItems().begin(),
@@ -233,9 +236,12 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 {
                     if( !connected_item->Connection( sheet ) )
                     {
-                        std::cout << "Warning: uninitialized conn in phase 2" << std::endl;
+                        // std::cout << "Warning: uninitialized " << connected_item->GetSelectMenuText() << std::endl;
                         connected_item->InitializeConnection( sheet );
                     }
+
+                    if( connected_item->Type() == SCH_NO_CONNECT_T )
+                        subgraph.m_no_connect = connected_item;
 
                     auto connected_conn = connected_item->Connection( sheet );
 
@@ -298,6 +304,13 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         }
         else
         {
+            if( subgraph.m_no_connect )
+            {
+                // TODO(JE) ERC check that the only other thing in the graph
+                // is a component pin
+                continue;
+            }
+
             // Now the subgraph has only one driver
             auto driver = subgraph.m_driver;
             auto sheet = subgraph.m_sheet;
@@ -371,6 +384,10 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
     vector<SCH_ITEM*> candidates;
 
     m_driver = nullptr;
+
+    // Don't worry about drivers for graphs with no-connects
+    if( m_no_connect )
+        return true;
 
     for( auto item : m_drivers )
     {

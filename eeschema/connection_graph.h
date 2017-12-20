@@ -55,6 +55,9 @@ public:
 
     long m_code;
 
+    /// No-connect item in graph, if any
+    SCH_ITEM* m_no_connect;
+
     std::vector<SCH_ITEM*> m_items;
 
     std::vector<SCH_ITEM*> m_drivers;
