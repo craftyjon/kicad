@@ -82,6 +82,10 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( const SCH_SHEET* aSheet,
                 auto pin_pos = pin_connection->m_pin->GetPosition();
                 auto pos = component->GetTransform().TransformCoordinate( pin_pos ) +
                            component->GetPosition();
+
+                // because calling the first time is not thread-safe
+                pin_connection->GetDefaultNetName( aSheetPath );
+
                 connection_map[ pos ].push_back( pin_connection );
                 m_items.push_back( pin_connection );
             }
@@ -270,7 +274,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
      */
 
 #ifdef USE_OPENMP
-    //#pragma omp parallel for schedule(dynamic)
+    #pragma omp parallel for schedule(dynamic)
 #endif
     for( auto it = subgraphs.begin(); it < subgraphs.end(); it++ )
     {
