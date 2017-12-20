@@ -538,7 +538,6 @@ void SCH_SCREEN::Draw( EDA_DRAW_PANEL* aCanvas, wxDC* aDC, GR_DRAWMODE aDrawMode
         // TODO(JE) Remove debugging code
 #ifdef DEBUG
 
-        auto frame = static_cast<SCH_EDIT_FRAME*>( aCanvas->GetParent() );
         auto conn = item->Connection( g_CurrentSheet->Last() );
 
         if( conn )

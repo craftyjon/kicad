@@ -570,6 +570,7 @@ void SCH_EDIT_FRAME::CreateScreens()
 
     g_CurrentSheet->clear();
     g_CurrentSheet->push_back( g_RootSheet );
+    m_connectionGraph.Reset();
 
     if( GetScreen() == NULL )
     {
@@ -1519,7 +1520,8 @@ void SCH_EDIT_FRAME::UpdateTitle()
  */
 void SCH_EDIT_FRAME::RecalculateConnections()
 {
-    RecalculateConnections( g_RootSheet );
+    SCH_SHEET_LIST list( g_RootSheet );
+    RecalculateConnections( list );
 }
 
 
@@ -1538,7 +1540,7 @@ void SCH_EDIT_FRAME::RecalculateConnections( SCH_SHEET_LIST aSheetList )
             }
         }
 
-        m_connectionGraph.UpdateItemConnectivity( sheet.Last(), &sheet, items );
+        m_connectionGraph.UpdateItemConnectivity( sheet.Last(), items );
     }
 
     // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT

@@ -62,8 +62,6 @@ public:
     SCH_ITEM* m_driver;
 
     const SCH_SHEET* m_sheet;
-
-    const SCH_SHEET_PATH* m_sheet_path; // temporary
 };
 
 
@@ -75,6 +73,8 @@ class CONNECTION_GRAPH
 public:
     CONNECTION_GRAPH() {}
 
+    void Reset();
+
     /**
      * Updates the physical connectivity between items (i.e. where they touch)
      * The items passed in must be on the same sheet.
@@ -85,7 +85,6 @@ public:
      * @param aItemList is a list of items to consider
      */
     void UpdateItemConnectivity( const SCH_SHEET* aSheet,
-                                 const SCH_SHEET_PATH* aSheetPath, // temporary
                                  std::vector<SCH_ITEM*> aItemList );
 
     /**
@@ -113,9 +112,6 @@ private:
     int m_last_net_code;
 
     int m_last_bus_code;
-
-    // temporary
-    std::map<const SCH_SHEET*, const SCH_SHEET_PATH*> m_sheet_path_map;
 };
 
 #endif

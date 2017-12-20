@@ -20,6 +20,7 @@
 #include <lib_pin.h>
 #include <sch_component.h>
 #include <sch_pin_connection.h>
+#include <sch_sheet_path.h>
 
 
 SCH_PIN_CONNECTION::SCH_PIN_CONNECTION( EDA_ITEM* aParent ) :
@@ -51,14 +52,26 @@ wxString SCH_PIN_CONNECTION::GetDefaultNetName( const SCH_SHEET_PATH* aPath )
     if( m_pin->IsPowerConnection() )
         return m_pin->GetName();
 
-    wxString name = wxT( "Net-(" );
+    wxString name;
 
-    name << m_comp->GetRef( aPath );
+    try
+    {
+        name = m_net_name_map.at( aPath->Last() );
+    }
+    catch( const std::out_of_range& oor )
+    {
+        name = wxT( "Net-(" );
 
-    if( /* adoptTimestamp && */ name.Last() == '?' )
-        name << m_comp->GetTimeStamp();
+        name << m_comp->GetRef( aPath );
 
-    name << _( "-Pad" ) << m_pin->GetNumber() << _( ")" );
+        // TODO(JE) do we need adoptTimestamp?
+        if( /* adoptTimestamp && */ name.Last() == '?' )
+            name << m_comp->GetTimeStamp();
+
+        name << _( "-Pad" ) << m_pin->GetNumber() << _( ")" );
+
+        m_net_name_map[ aPath->Last() ] = name;
+    }
 
     return name;
 }

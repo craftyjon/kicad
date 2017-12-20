@@ -70,6 +70,9 @@ public:
     LIB_PIN* m_pin;
 
     SCH_COMPONENT* m_comp;
+
+    /// The name that this pin connection will drive onto a net
+    std::map<SCH_SHEET*, wxString> m_net_name_map;
 };
 
 #endif

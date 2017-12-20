@@ -24,6 +24,7 @@
 #include <sch_component.h>
 #include <sch_pin_connection.h>
 #include <sch_sheet.h>
+#include <sch_sheet_path.h>
 #include <sch_text.h>
 
 #include <connection_graph.h>
@@ -38,15 +39,24 @@ using std::unordered_set;
 using std::vector;
 
 
+void CONNECTION_GRAPH::Reset()
+{
+    m_items.clear();
+    m_subgraphs.clear();
+    m_net_name_to_code_map.clear();
+    m_bus_name_to_code_map.clear();
+    m_subgraph_code_map.clear();
+    m_last_net_code = 1;
+    m_last_bus_code = 1;
+}
+
+
 void CONNECTION_GRAPH::UpdateItemConnectivity( const SCH_SHEET* aSheet,
-                                               const SCH_SHEET_PATH* aSheetPath,
                                                vector<SCH_ITEM*> aItemList )
 {
     PROF_COUNTER phase1;
 
     unordered_map< wxPoint, vector<SCH_ITEM*> > connection_map;
-
-    m_sheet_path_map.insert( std::make_pair( aSheet, aSheetPath ) );
 
     for( auto item : aItemList )
     {
@@ -84,7 +94,10 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( const SCH_SHEET* aSheet,
                            component->GetPosition();
 
                 // because calling the first time is not thread-safe
-                pin_connection->GetDefaultNetName( aSheetPath );
+                // TODO(JE) casting-away constness because SCH_SHEET_LIST
+                // can't deal with const but other things require it...
+                SCH_SHEET_LIST path( ( SCH_SHEET* )aSheet );
+                pin_connection->GetDefaultNetName( &path.at( 0 ) );
 
                 connection_map[ pos ].push_back( pin_connection );
                 m_items.push_back( pin_connection );
@@ -202,7 +215,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                 subgraph.m_code = subgraph_code++;
                 subgraph.m_sheet = sheet;
-                subgraph.m_sheet_path = m_sheet_path_map[ sheet ];
 
                 subgraph.m_items.push_back( item );
 
@@ -304,8 +316,11 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 if( driver->Type() == SCH_PIN_CONNECTION_T )
                 {
                     auto pin = static_cast<SCH_PIN_CONNECTION*>( driver );
-                    auto path = m_sheet_path_map[ sheet ];
-                    connection->ConfigureFromLabel( pin->GetDefaultNetName( path ) );
+                    auto path = SCH_SHEET_LIST( ( SCH_SHEET* )sheet );
+
+                    // NOTE(JE) GetDefaultNetName is not thread-safe.
+
+                    connection->ConfigureFromLabel( pin->GetDefaultNetName( &path.at( 0 ) ) );
                 }
                 else
                 {
@@ -399,14 +414,17 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
             if( highest_priority == 1 )
             {
                 // We have multiple options and they are all component pins.
+                SCH_SHEET_LIST list( ( SCH_SHEET* )m_sheet );
+                auto path = list.at( 0 );
+
                 std::sort( candidates.begin(), candidates.end(),
-                           [this]( SCH_ITEM* a, SCH_ITEM* b) -> bool
+                           [path]( SCH_ITEM* a, SCH_ITEM* b) -> bool
                             {
                                 auto pin_a = static_cast<SCH_PIN_CONNECTION*>( a );
                                 auto pin_b = static_cast<SCH_PIN_CONNECTION*>( b );
 
-                                auto name_a = pin_a->GetDefaultNetName( m_sheet_path );
-                                auto name_b = pin_b->GetDefaultNetName( m_sheet_path );
+                                auto name_a = pin_a->GetDefaultNetName( &path );
+                                auto name_b = pin_b->GetDefaultNetName( &path );
 
                                 return name_a > name_b;
                             } );
