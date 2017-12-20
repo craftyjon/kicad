@@ -92,7 +92,7 @@ void SCH_EDIT_FRAME::EditComponentFieldText( SCH_FIELD* aField )
         return;
     }
 
-    dlg.UpdateField( aField, m_CurrentSheet );
+    dlg.UpdateField( aField, g_CurrentSheet );
     m_canvas->MoveCursorToCrossHair();
     m_canvas->SetIgnoreMouseEvents( false );
     OnModify();
@@ -103,7 +103,6 @@ void SCH_EDIT_FRAME::EditComponentFieldText( SCH_FIELD* aField )
     m_canvas->Refresh();
 
     MSG_PANEL_ITEMS items;
-    component->SetCurrentSheetPath( &GetCurrentSheet() );
     component->GetMsgPanelInfo( items );
     SetMsgPanel( items );
 }

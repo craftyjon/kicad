@@ -286,13 +286,16 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
     {
         delete g_RootSheet;   // Delete the current project.
         g_RootSheet = NULL;   // Force CreateScreens() to build new empty project on load failure.
+
         SCH_PLUGIN::SCH_PLUGIN_RELEASER pi( SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_LEGACY ) );
 
         try
         {
             g_RootSheet = pi->Load( fullFileName, &Kiway() );
-            m_CurrentSheet->clear();
-            m_CurrentSheet->push_back( g_RootSheet );
+
+            g_CurrentSheet = new SCH_SHEET_PATH();
+            g_CurrentSheet->clear();
+            g_CurrentSheet->push_back( g_RootSheet );
 
             if( !pi->GetError().IsEmpty() )
             {
@@ -321,7 +324,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
             return false;
         }
 
-        SetScreen( m_CurrentSheet->LastScreen() );
+        SetScreen( g_CurrentSheet->LastScreen() );
 
         // It's possible the schematic parser fixed errors due to bugs so warn the user
         // that the schematic has been fixed (modified).
@@ -793,9 +796,9 @@ bool SCH_EDIT_FRAME::ImportFile( const wxString& aFileName, int aFileType )
                 newfilename = Prj().AbsolutePath( Prj().GetProjectName() );
                 newfilename.SetExt( SchematicFileExtension );
 
-                m_CurrentSheet->clear();
-                m_CurrentSheet->push_back( g_RootSheet );
-                SetScreen( m_CurrentSheet->LastScreen() );
+                g_CurrentSheet->clear();
+                g_CurrentSheet->push_back( g_RootSheet );
+                SetScreen( g_CurrentSheet->LastScreen() );
 
                 g_RootSheet->SetFileName( newfilename.GetFullPath() );
                 GetScreen()->SetFileName( newfilename.GetFullPath() );

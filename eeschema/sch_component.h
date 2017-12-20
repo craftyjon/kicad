@@ -118,14 +118,6 @@ private:
     AUTOPLACED  m_fieldsAutoplaced; ///< indicates status of field autoplacement
 
     /**
-     * A temporary sheet path is required to generate the correct reference designator string
-     * in complex hierarchies.  Hopefully this is only a temporary hack to decouple schematic
-     * objects from the drawing window until a better design for handling complex hierarchies
-     * can be implemented.
-     */
-    const SCH_SHEET_PATH* m_currentSheetPath;
-
-    /**
      * Defines the hierarchical path and reference of the component.  This allows support
      * for hierarchical sheets that reference the same schematic.  The format for the path
      * is /&ltsheet time stamp&gt/&ltsheet time stamp&gt/.../&lscomponent time stamp&gt.
@@ -234,7 +226,7 @@ public:
     /**
      * Updates the local cache of SCH_PIN_CONNECTION objects for each pin
      */
-    void UpdatePinConnections( const SCH_SHEET_PATH* aSheet );
+    void UpdatePinConnections( const SCH_SHEET* aSheet );
 
     /**
      * Change the unit number to \a aUnit
@@ -503,16 +495,6 @@ public:
      * @return true if reference string is valid.
      */
     static bool IsReferenceStringValid( const wxString& aReferenceString );
-
-    void SetCurrentSheetPath( const SCH_SHEET_PATH* aSheetPath )
-    {
-        m_currentSheetPath = aSheetPath;
-    }
-
-    const SCH_SHEET_PATH* GetCurrentSheetPath() const
-    {
-        return m_currentSheetPath;
-    }
 
     /**
      * Return the reference for the given sheet path.

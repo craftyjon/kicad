@@ -57,9 +57,9 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
         {
             if( auto item = dynamic_cast<SCH_ITEM*>( nodeList[0] ) )
             {
-                if( item->Connection( m_CurrentSheet ) )
+                if( item->Connection( g_CurrentSheet->Last() ) )
                 {
-                    m_SelectedNetName = item->Connection( m_CurrentSheet )->Name();
+                    m_SelectedNetName = item->Connection( g_CurrentSheet->Last() )->Name();
                     SetStatusText( _( "Highlighted net: " ) + m_SelectedNetName );
                 }
             }
@@ -75,12 +75,12 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
 
 bool SCH_EDIT_FRAME::SetCurrentSheetHighlightFlags()
 {
-    SCH_SCREEN* screen = m_CurrentSheet->LastScreen();
+    SCH_SCREEN* screen = g_CurrentSheet->LastScreen();
 
     // Update highlight flag on all items in the current screen
     for( SCH_ITEM* ptr = screen->GetDrawItems(); ptr; ptr = ptr->Next() )
     {
-        auto conn = ptr->Connection( m_CurrentSheet );
+        auto conn = ptr->Connection( g_CurrentSheet->Last() );
 
         ptr->SetState( BRIGHTENED,
                        ( conn && conn->Name() == m_SelectedNetName ) );
@@ -89,7 +89,7 @@ bool SCH_EDIT_FRAME::SetCurrentSheetHighlightFlags()
         {
             for( SCH_SHEET_PIN& pin : static_cast<SCH_SHEET*>( ptr )->GetPins() )
             {
-                auto pin_conn = pin.Connection( m_CurrentSheet );
+                auto pin_conn = pin.Connection( g_CurrentSheet->Last() );
 
                 pin.SetState( BRIGHTENED, ( pin_conn &&
                               pin_conn->Name() == m_SelectedNetName ) );

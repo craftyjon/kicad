@@ -42,7 +42,7 @@ void SCH_EDIT_FRAME::DeleteAnnotation( bool aCurrentSheetOnly )
     {
         SCH_SCREEN* screen = GetScreen();
         wxCHECK_RET( screen != NULL, wxT( "Attempt to clear annotation of a NULL screen." ) );
-        screen->ClearAnnotation( m_CurrentSheet );
+        screen->ClearAnnotation( g_CurrentSheet );
     }
     else
     {
@@ -51,7 +51,7 @@ void SCH_EDIT_FRAME::DeleteAnnotation( bool aCurrentSheetOnly )
     }
 
     // Update the references for the sheet that is currently being displayed.
-    m_CurrentSheet->UpdateAllScreenReferences();
+    g_CurrentSheet->UpdateAllScreenReferences();
     GetCanvas()->Refresh();
     OnModify();
 }
@@ -98,7 +98,7 @@ void SCH_EDIT_FRAME::AnnotateComponents( bool              aAnnotateSchematic,
         }
         else
         {
-            m_CurrentSheet->GetMultiUnitComponents( lockedComponents );
+            g_CurrentSheet->GetMultiUnitComponents( lockedComponents );
         }
     }
 
@@ -116,7 +116,7 @@ void SCH_EDIT_FRAME::AnnotateComponents( bool              aAnnotateSchematic,
     }
     else
     {
-        m_CurrentSheet->GetComponents( references );
+        g_CurrentSheet->GetComponents( references );
     }
 
     // Break full components reference in name (prefix) and number:
@@ -177,7 +177,7 @@ void SCH_EDIT_FRAME::AnnotateComponents( bool              aAnnotateSchematic,
     OnModify();
 
     // Update on screen references, that can be modified by previous calculations:
-    m_CurrentSheet->UpdateAllScreenReferences();
+    g_CurrentSheet->UpdateAllScreenReferences();
     SetSheetNumberAndCount();
 
     m_canvas->Refresh( true );
@@ -194,7 +194,7 @@ int SCH_EDIT_FRAME::CheckAnnotate( wxArrayString* aMessageList, bool aOneSheetOn
     if( !aOneSheetOnly )
         sheetList.GetComponents( componentsList );
     else
-        m_CurrentSheet->GetComponents( componentsList );
+        g_CurrentSheet->GetComponents( componentsList );
 
     return componentsList.CheckAnnotation( aMessageList );
 }

@@ -69,6 +69,9 @@
 #include <kiway.h>
 
 
+SCH_SHEET_PATH* g_CurrentSheet = nullptr; // declared in general.h
+
+
 // non-member so it can be moved easily, and kept REALLY private.
 // Do NOT Clear() in here.
 static void add_search_paths( SEARCH_STACK* aDst, const SEARCH_STACK& aSrc, int aIndex )
@@ -353,9 +356,10 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ):
         wxDefaultPosition, wxDefaultSize, KICAD_DEFAULT_DRAWFRAME_STYLE, SCH_EDIT_FRAME_NAME ),
     m_item_to_repeat( 0 )
 {
+    g_CurrentSheet = new SCH_SHEET_PATH();
+
     m_showAxis = false;                 // true to show axis
     m_showBorderAndTitleBlock = true;   // true to show sheet references
-    m_CurrentSheet = new SCH_SHEET_PATH;
     m_DefaultSchematicFileName = NAMELESS_PROJECT;
     m_DefaultSchematicFileName += wxT( ".sch" );
     m_showAllPins = false;
@@ -460,12 +464,12 @@ SCH_EDIT_FRAME::~SCH_EDIT_FRAME()
 
     SetScreen( NULL );
 
-    delete m_CurrentSheet;          // a SCH_SHEET_PATH, on the heap.
+    delete g_CurrentSheet;          // a SCH_SHEET_PATH, on the heap.
     delete m_undoItem;
     delete g_RootSheet;
     delete m_findReplaceData;
 
-    m_CurrentSheet = NULL;
+    g_CurrentSheet = NULL;
     m_undoItem = NULL;
     g_RootSheet = NULL;
     m_findReplaceData = NULL;
@@ -507,7 +511,7 @@ void SCH_EDIT_FRAME::SetSheetNumberAndCount()
      */
     int            sheet_count = g_RootSheet->CountSheets();
     int            SheetNumber = 1;
-    wxString       current_sheetpath = m_CurrentSheet->Path();
+    wxString       current_sheetpath = g_CurrentSheet->Path();
     SCH_SHEET_LIST sheetList( g_RootSheet );
 
     // Examine all sheets path to find the current sheets path,
@@ -535,13 +539,13 @@ void SCH_EDIT_FRAME::SetSheetNumberAndCount()
 
 SCH_SCREEN* SCH_EDIT_FRAME::GetScreen() const
 {
-    return m_CurrentSheet->LastScreen();
+    return g_CurrentSheet->LastScreen();
 }
 
 
 wxString SCH_EDIT_FRAME::GetScreenDesc() const
 {
-    wxString s = m_CurrentSheet->PathHumanReadable();
+    wxString s = g_CurrentSheet->PathHumanReadable();
 
     return s;
 }
@@ -564,8 +568,8 @@ void SCH_EDIT_FRAME::CreateScreens()
 
     g_RootSheet->GetScreen()->SetFileName( m_DefaultSchematicFileName );
 
-    m_CurrentSheet->clear();
-    m_CurrentSheet->push_back( g_RootSheet );
+    g_CurrentSheet->clear();
+    g_CurrentSheet->push_back( g_RootSheet );
 
     if( GetScreen() == NULL )
     {
@@ -580,15 +584,15 @@ void SCH_EDIT_FRAME::CreateScreens()
 
 SCH_SHEET_PATH& SCH_EDIT_FRAME::GetCurrentSheet()
 {
-    wxASSERT_MSG( m_CurrentSheet != NULL, wxT( "SCH_EDIT_FRAME m_CurrentSheet member is NULL." ) );
+    wxASSERT_MSG( g_CurrentSheet != NULL, wxT( "SCH_EDIT_FRAME g_CurrentSheet member is NULL." ) );
 
-    return *m_CurrentSheet;
+    return *g_CurrentSheet;
 }
 
 
 void SCH_EDIT_FRAME::SetCurrentSheet( const SCH_SHEET_PATH& aSheet )
 {
-    *m_CurrentSheet = aSheet;
+    *g_CurrentSheet = aSheet;
 }
 
 
@@ -713,7 +717,7 @@ void SCH_EDIT_FRAME::OnCloseWindow( wxCloseEvent& aEvent )
     g_RootSheet->GetScreen()->Clear();
 
     // all sub sheets are deleted, only the main sheet is usable
-    m_CurrentSheet->clear();
+    g_CurrentSheet->clear();
 
     Destroy();
 }
@@ -753,7 +757,7 @@ wxString SCH_EDIT_FRAME::GetUniqueFilenameForCurrentSheet()
     #define FN_LEN_MAX 80   // A reasonable value for the short filename len
 
     wxString filename = fn.GetName();
-    wxString sheetFullName =  m_CurrentSheet->PathHumanReadable();
+    wxString sheetFullName =  g_CurrentSheet->PathHumanReadable();
 
     // Remove the last '/' of the path human readable
     // (and for the root sheet, make sheetFullName empty):
@@ -781,7 +785,7 @@ void SCH_EDIT_FRAME::OnModify()
 
     m_foundItems.SetForceSearch();
 
-    //RecalculateConnections( SCH_SHEET_LIST( m_CurrentSheet->Last() ) );
+    //RecalculateConnections( SCH_SHEET_LIST( g_CurrentSheet->Last() ) );
     RecalculateConnections();
 
     m_canvas->Refresh();
@@ -841,7 +845,7 @@ void SCH_EDIT_FRAME::OnUpdateSaveSheet( wxUpdateUIEvent& aEvent )
 
 void SCH_EDIT_FRAME::OnUpdateHierarchySheet( wxUpdateUIEvent& aEvent )
 {
-    aEvent.Enable( m_CurrentSheet->Last() != g_RootSheet );
+    aEvent.Enable( g_CurrentSheet->Last() != g_RootSheet );
 }
 
 
@@ -1405,7 +1409,7 @@ void SCH_EDIT_FRAME::addCurrentItemToList( bool aRedraw )
             // the m_mouseCaptureCallback function.
             m_canvas->SetMouseCapture( NULL, NULL );
 
-            if( !EditSheet( (SCH_SHEET*)item, m_CurrentSheet ) )
+            if( !EditSheet( (SCH_SHEET*)item, g_CurrentSheet ) )
             {
                 screen->SetCurItem( NULL );
                 delete item;
@@ -1489,7 +1493,7 @@ void SCH_EDIT_FRAME::UpdateTitle()
 
         title.Printf( L"Eeschema \u2014 %s [%s] \u2014 %s",
                       GetChars( fn.GetName() ),
-                      GetChars( m_CurrentSheet->PathHumanReadable() ),
+                      GetChars( g_CurrentSheet->PathHumanReadable() ),
                       GetChars( fn.GetPath() ) );
 
         if( fn.FileExists() )
@@ -1515,15 +1519,14 @@ void SCH_EDIT_FRAME::UpdateTitle()
  */
 void SCH_EDIT_FRAME::RecalculateConnections()
 {
-    RecalculateConnections( SCH_SHEET_LIST( g_RootSheet ) );
+    RecalculateConnections( g_RootSheet );
 }
 
 
 void SCH_EDIT_FRAME::RecalculateConnections( SCH_SHEET_LIST aSheetList )
 {
-    for( auto sheet : aSheetList )
+    for( const auto& sheet : aSheetList )
     {
-        std::cout << "RecalculateConnections " << sheet.Path() << std::endl;
         std::vector<SCH_ITEM*> items;
 
         for( auto item = sheet.LastScreen()->GetDrawItems();
@@ -1535,7 +1538,7 @@ void SCH_EDIT_FRAME::RecalculateConnections( SCH_SHEET_LIST aSheetList )
             }
         }
 
-        m_connectionGraph.UpdateItemConnectivity( &sheet, items );
+        m_connectionGraph.UpdateItemConnectivity( sheet.Last(), &sheet, items );
     }
 
     // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT

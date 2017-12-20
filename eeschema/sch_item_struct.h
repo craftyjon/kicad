@@ -138,6 +138,8 @@ protected:
     /// Stores pointers to other items that are connected to this one (schematic only)
     std::unordered_set<SCH_ITEM*> m_connected_items;
 
+    /// Stores connectivity information, per sheet
+    std::unordered_map<const SCH_SHEET*, SCH_CONNECTION*> m_connection_map;
 
 public:
     SCH_ITEM( EDA_ITEM* aParent, KICAD_T aType );
@@ -328,49 +330,24 @@ public:
     /**
      * Retrieves the connection associated with this object in the given sheet
      */
-    virtual SCH_CONNECTION* Connection( const SCH_SHEET_PATH* aPath )
-    {
-        SCH_CONNECTION* conn = nullptr;
-
-        try
-        {
-            conn = m_connection_map.at( aPath );
-        }
-        catch( const std::out_of_range& oor )
-        {
-            // TODO(JE) should we just call InitializeConnection here?
-        }
-
-        return conn;
-    }
+    SCH_CONNECTION* Connection( const SCH_SHEET* aPath );
 
     /**
      * Retrieves the set of items connected to this item (schematic only)
      */
-    virtual std::unordered_set<SCH_ITEM*>& ConnectedItems()
-    {
-        return m_connected_items;
-    }
+    std::unordered_set<SCH_ITEM*>& ConnectedItems();
 
     /**
      * Adds a connection link between this item and another
      */
-    virtual void AddConnectionTo( SCH_ITEM* aItem )
-    {
-        m_connected_items.insert( aItem );
-    }
+    void AddConnectionTo( SCH_ITEM* aItem );
 
     /**
      * Creates a new connection object associated with this object
      *
      * @param aPath is the sheet path to initialize
      */
-    virtual void InitializeConnection( const SCH_SHEET_PATH* aPath )
-    {
-        auto connection = new SCH_CONNECTION( this );
-
-        m_connection_map[ aPath ] = connection;
-    }
+    void InitializeConnection( const SCH_SHEET* aPath );
 
     /**
      * Returns true if this item should propagate connection info to aItem
@@ -486,11 +463,6 @@ private:
      * @return True if connection to \a aPosition exists.
      */
     virtual bool doIsConnected( const wxPoint& aPosition ) const { return false; }
-
-    /**
-     * Stores connectivity information, per sheet
-     */
-    std::unordered_map<const SCH_SHEET_PATH*, SCH_CONNECTION*> m_connection_map;
 };
 
 #endif /* SCH_ITEM_STRUCT_H */

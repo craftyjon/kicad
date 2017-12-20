@@ -137,7 +137,6 @@ struct BUS_UNFOLDING_T {
 class SCH_EDIT_FRAME : public SCH_BASE_FRAME
 {
 private:
-    SCH_SHEET_PATH*         m_CurrentSheet;    ///< which sheet we are presently working on.
     wxString                m_DefaultSchematicFileName;
     wxString                m_SelectedNetName;
 

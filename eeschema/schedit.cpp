@@ -295,16 +295,16 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
         if( item && (item->Type() == SCH_SHEET_T) )
         {
-            m_CurrentSheet->push_back( (SCH_SHEET*) item );
+            g_CurrentSheet->push_back( (SCH_SHEET*) item );
             DisplayCurrentSheet();
         }
 
         break;
 
     case ID_POPUP_SCH_LEAVE_SHEET:
-        if( m_CurrentSheet->Last() != g_RootSheet )
+        if( g_CurrentSheet->Last() != g_RootSheet )
         {
-            m_CurrentSheet->pop_back();
+            g_CurrentSheet->pop_back();
             DisplayCurrentSheet();
         }
 
@@ -1102,7 +1102,7 @@ void SCH_EDIT_FRAME::OnEditItem( wxCommandEvent& aEvent )
     }
 
     case SCH_SHEET_T:
-        if( EditSheet( (SCH_SHEET*) item, m_CurrentSheet ) )
+        if( EditSheet( (SCH_SHEET*) item, g_CurrentSheet ) )
             m_canvas->Refresh();
         break;
 
@@ -1334,7 +1334,7 @@ void SCH_EDIT_FRAME::OnUnfoldBusHotkey( wxCommandEvent& aEvent )
             return;
     }
 
-    auto connection = item->Connection( &GetCurrentSheet() );
+    auto connection = item->Connection( g_CurrentSheet->Last() );
 
     if( connection && connection->IsBus() )
     {

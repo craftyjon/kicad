@@ -36,6 +36,7 @@ using KIGFX::COLOR4D;
 
 class TRANSFORM;
 class SCH_SHEET;
+class SCH_SHEET_PATH;
 
 #define EESCHEMA_VERSION 4
 #define SCHEMATIC_HEAD_STRING "Schematic File Version"
@@ -79,6 +80,13 @@ extern TRANSFORM DefaultTransform;
 
 /* First and main (root) screen */
 extern SCH_SHEET*   g_RootSheet;
+
+/**
+ * With the new connectivity algorithm, many more places than before want to
+ * know what the current sheet is.  This was moved here from SCH_EDIT_FRAME
+ * but we could refactor things to get rid of this global.
+ */
+extern SCH_SHEET_PATH* g_CurrentSheet;    ///< which sheet we are presently working on.
 
 /**
  * Default line thickness used to draw/plot items having a

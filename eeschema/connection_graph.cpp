@@ -38,11 +38,15 @@ using std::unordered_set;
 using std::vector;
 
 
-void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH* aSheet, vector<SCH_ITEM*> aItemList )
+void CONNECTION_GRAPH::UpdateItemConnectivity( const SCH_SHEET* aSheet,
+                                               const SCH_SHEET_PATH* aSheetPath,
+                                               vector<SCH_ITEM*> aItemList )
 {
     PROF_COUNTER phase1;
 
     unordered_map< wxPoint, vector<SCH_ITEM*> > connection_map;
+
+    m_sheet_path_map.insert( std::make_pair( aSheet, aSheetPath ) );
 
     for( auto item : aItemList )
     {
@@ -173,17 +177,6 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH* aSheet, vector<SC
 //     equally-prioritized drivers, choose the one that already exists as a driver
 //     on some portion of the items.
 
-/*
-
-OK, what I think is going on is that literally ALL items (not just components)
-need to be retrieved on a PER-SHEET basis.
-
-That means EVERY ITEM needs multiple Connections(), one per sheet.
-
-We can use a CurrentSheetConnection() call to pull up whatever is relevant.
-
-*/
-
 
 void CONNECTION_GRAPH::BuildConnectionGraph()
 {
@@ -205,6 +198,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                 subgraph.m_code = subgraph_code++;
                 subgraph.m_sheet = sheet;
+                subgraph.m_sheet_path = m_sheet_path_map[ sheet ];
 
                 subgraph.m_items.push_back( item );
 
@@ -276,7 +270,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
      */
 
 #ifdef USE_OPENMP
-    #pragma omp parallel for schedule(dynamic)
+    //#pragma omp parallel for schedule(dynamic)
 #endif
     for( auto it = subgraphs.begin(); it < subgraphs.end(); it++ )
     {
@@ -306,7 +300,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 if( driver->Type() == SCH_PIN_CONNECTION_T )
                 {
                     auto pin = static_cast<SCH_PIN_CONNECTION*>( driver );
-                    connection->ConfigureFromLabel( pin->GetDefaultNetName( sheet ) );
+                    auto path = m_sheet_path_map[ sheet ];
+                    connection->ConfigureFromLabel( pin->GetDefaultNetName( path ) );
                 }
                 else
                 {
@@ -406,8 +401,8 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
                                 auto pin_a = static_cast<SCH_PIN_CONNECTION*>( a );
                                 auto pin_b = static_cast<SCH_PIN_CONNECTION*>( b );
 
-                                auto name_a = pin_a->GetDefaultNetName( m_sheet );
-                                auto name_b = pin_b->GetDefaultNetName( m_sheet );
+                                auto name_a = pin_a->GetDefaultNetName( m_sheet_path );
+                                auto name_b = pin_b->GetDefaultNetName( m_sheet_path );
 
                                 return name_a > name_b;
                             } );

@@ -197,7 +197,7 @@ bool SCH_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
 
     if( item == NULL )
     {
-        if( m_CurrentSheet->Last() != g_RootSheet )
+        if( g_CurrentSheet->Last() != g_RootSheet )
         {
             msg = AddHotkeyName( _( "Leave Sheet" ), g_Schematic_Hokeys_Descr, HK_LEAVE_SHEET );
             AddMenuItem( PopMenu, ID_POPUP_SCH_LEAVE_SHEET, msg,
@@ -749,7 +749,7 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
     AddMenuItem( PopMenu, ID_POPUP_SCH_BREAK_WIRE, _( "Break Bus" ), KiBitmap( break_bus_xpm ) );
 
     // Bus unfolding menu (only available if bus is properly defined)
-    auto connection = Bus->Connection( &frame->GetCurrentSheet() );
+    auto connection = Bus->Connection( g_CurrentSheet->Last() );
 
     if( connection && connection->IsBus() )
     {

@@ -558,7 +558,7 @@ void SCH_TEXT::GetNetListItem( NETLIST_OBJECT_LIST& aNetListItems,
     aNetListItems.push_back( item );
 
     // If a bus connects to label
-    if( Connection( aSheetPath )->IsBusLabel( m_Text ) )
+    if( Connection( aSheetPath->Last() )->IsBusLabel( m_Text ) )
     {
         item->ConvertBusToNetListItems( aNetListItems );
     }
@@ -724,18 +724,17 @@ void SCH_TEXT::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
     msg = StringFromValue( g_UserUnit, GetTextWidth(), true );
     aList.push_back( MSG_PANEL_ITEM( _( "Size" ), msg, RED ) );
 
-    // TODO(JE) this is broken because only components know about the current sheet
-// #if defined(DEBUG)
+#if defined(DEBUG)
 
-//     if( m_connection )
-//     {
-//         m_connection->AppendDebugInfoToMsgPanel( aList );
-//     }
+    if( auto conn = Connection( g_CurrentSheet->Last() ) )
+    {
+        conn->AppendDebugInfoToMsgPanel( aList );
+    }
 
-//     msg.Printf( "%p", this );
-//     aList.push_back( MSG_PANEL_ITEM( _( "Object Address" ), msg, RED ) );
+    msg.Printf( "%p", this );
+    aList.push_back( MSG_PANEL_ITEM( _( "Object Address" ), msg, RED ) );
 
-// #endif
+#endif
 }
 
 #if defined(DEBUG)
@@ -1296,8 +1295,7 @@ void SCH_HIERLABEL::Draw( EDA_DRAW_PANEL* panel,
 
     linewidth = Clamp_Text_PenSize( linewidth, GetTextSize(), IsBold() );
 
-    auto frame = static_cast<SCH_EDIT_FRAME*>( panel->GetParent() );
-    auto conn = Connection( &frame->GetCurrentSheet() );
+    auto conn = Connection( g_CurrentSheet->Last() );
 
     if( Color != COLOR4D::UNSPECIFIED )
         color = Color;

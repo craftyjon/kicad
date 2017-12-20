@@ -47,6 +47,7 @@
 #include <lib_pin.h>
 #include <transform.h>
 #include <sch_component.h>
+#include <sch_sheet_path.h>
 
 
 static const int pin_orientation_codes[] =
@@ -1765,17 +1766,18 @@ void LIB_PIN::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList,
                                      aComponent->GetField( VALUE )->GetShownText(),
                                      DARKCYAN ) );
 
-    #if defined(DEBUG)
+#if defined(DEBUG)
+
     if( auto pin_connection = aComponent->GetConnectionForPin( this ) )
     {
-        auto path = pin_connection->m_comp->GetCurrentSheetPath();
-        auto conn = pin_connection->m_comp->Connection( path );
+        auto conn = pin_connection->Connection( g_CurrentSheet->Last() );
 
         wxASSERT( conn );
 
         conn->AppendDebugInfoToMsgPanel( aList );
     }
-    #endif
+
+#endif
 }
 
 const EDA_RECT LIB_PIN::GetBoundingBox( bool aIncludeInvisibles ) const

@@ -120,7 +120,6 @@ SCH_COMPONENT::SCH_COMPONENT( const wxPoint& aPos, SCH_ITEM* aParent ) :
     SCH_ITEM( aParent, SCH_COMPONENT_T )
 {
     Init( aPos );
-    m_currentSheetPath = NULL;
     m_fieldsAutoplaced = AUTOPLACED_NO;
 }
 
@@ -135,7 +134,6 @@ SCH_COMPONENT::SCH_COMPONENT( LIB_PART& aPart, SCH_SHEET_PATH* sheet, int unit,
     m_convert   = convert;
     m_lib_id.SetLibItemName( aPart.GetName(), false );
     m_part      = aPart.SharedPtr();
-    m_currentSheetPath = NULL;
     m_fieldsAutoplaced = AUTOPLACED_NO;
 
     SetTimeStamp( GetNewTimeStamp() );
@@ -168,7 +166,6 @@ SCH_COMPONENT::SCH_COMPONENT( LIB_PART& aPart, SCH_SHEET_PATH* sheet, int unit,
 SCH_COMPONENT::SCH_COMPONENT( const SCH_COMPONENT& aComponent ) :
     SCH_ITEM( aComponent )
 {
-    m_currentSheetPath = NULL;
     m_Parent    = aComponent.m_Parent;
     m_Pos       = aComponent.m_Pos;
     m_unit      = aComponent.m_unit;
@@ -529,7 +526,8 @@ void SCH_COMPONENT::UpdateAllPinCaches( const SCH_COLLECTOR& aComponents )
 }
 
 
-void SCH_COMPONENT::UpdatePinConnections( const SCH_SHEET_PATH* aSheet )
+// TODO(JE) do we need m_pin_connections to have a separate conn for each sheet?
+void SCH_COMPONENT::UpdatePinConnections( const SCH_SHEET* aSheet )
 {
     if( PART_SPTR part = m_part.lock() )
     {
@@ -1456,9 +1454,9 @@ void SCH_COMPONENT::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
             if( !alias )
                 return;
 
-            if( m_currentSheetPath )
+            if( g_CurrentSheet )
                 aList.push_back( MSG_PANEL_ITEM( _( "Reference" ),
-                                                 GetRef( m_currentSheetPath ),
+                                                 GetRef( g_CurrentSheet ),
                                                  DARKCYAN ) );
 
             msg = part->IsPower() ? _( "Power symbol" ) : _( "Value" );
@@ -1497,8 +1495,8 @@ void SCH_COMPONENT::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
     }
     else
     {
-        if( m_currentSheetPath )
-            aList.push_back( MSG_PANEL_ITEM( _( "Reference" ), GetRef( m_currentSheetPath ),
+        if( g_CurrentSheet )
+            aList.push_back( MSG_PANEL_ITEM( _( "Reference" ), GetRef( g_CurrentSheet ),
                                              DARKCYAN ) );
 
         aList.push_back( MSG_PANEL_ITEM( _( "Value" ), GetField( VALUE )->GetShownText(),
