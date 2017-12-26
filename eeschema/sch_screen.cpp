@@ -353,11 +353,11 @@ void SCH_SCREEN::MarkConnections( SCH_LINE* aSegment )
 
 bool SCH_SCREEN::IsJunctionNeeded( const wxPoint& aPosition, bool aNew )
 {
-    bool has_line = false;
-    bool has_nonparallel = false;
-    int end_count = 0;
-    int pin_count = 0;
-    std::vector< SCH_LINE* > lines;
+    bool    has_nonparallel[2] = { false };
+    int     end_count[2] = { 0 };
+    int     pin_count = 0;
+
+    std::vector<SCH_LINE*> lines[2];
 
     for( SCH_ITEM* item = m_drawList.begin(); item; item = item->Next() )
     {
@@ -368,44 +368,63 @@ bool SCH_SCREEN::IsJunctionNeeded( const wxPoint& aPosition, bool aNew )
             return false;
 
         if( ( item->Type() == SCH_LINE_T )
-                && ( item->GetLayer() == LAYER_WIRE )
-                && ( item->HitTest( aPosition, 0 ) ) )
-            lines.push_back( (SCH_LINE*) item );
+            && ( item->HitTest( aPosition, 0 ) ) )
+        {
+            if( item->GetLayer() == LAYER_WIRE )
+                lines[0].push_back( (SCH_LINE*) item );
+            else if( item->GetLayer() == LAYER_BUS )
+                lines[1].push_back( (SCH_LINE*) item );
+        }
 
         if( ( item->Type() == SCH_COMPONENT_T )
                 && ( item->IsConnected( aPosition ) ) )
             pin_count++;
     }
 
-    BOOST_FOREACH( SCH_LINE* line, lines)
+    for( int i = 0; i < 2; i++ )
     {
-        if( !line->IsEndPoint( aPosition ) )
-            has_line = true;
-        else
-            end_count++;
-        BOOST_REVERSE_FOREACH( SCH_LINE* second_line, lines )
+        bool removed_overlapping = false;
+        end_count[i] = lines[i].size();
+
+        for( auto line = lines[i].begin(); line < lines[i].end(); line++ )
         {
-            if( line == second_line )
-                break;
-            if( line->IsEndPoint( second_line->GetStartPoint() )
-                    && line->IsEndPoint( second_line->GetEndPoint() ) )
-                end_count--;
-            if( !line->IsParallel( second_line ) )
-                has_nonparallel = true;
+            // Consider ending on a line to be equivalent to two endpoints because
+            // we will want to split the line if anything else connects
+            if( !(*line)->IsEndPoint( aPosition ) )
+                end_count[i]++;
+
+            for( auto second_line = lines[i].end() - 1; second_line > line; second_line-- )
+            {
+                if( !(*line)->IsParallel( *second_line ) )
+                    has_nonparallel[i] = true;
+                else if( !removed_overlapping
+                         && (*line)->IsSameQuadrant( *second_line, aPosition ) )
+                {
+                    /**
+                     * Overlapping lines that point in the same direction should not be counted
+                     * as extra end_points.  We remove the overlapping lines, being careful to only
+                     * remove them once.
+                     */
+                    removed_overlapping = true;
+                    end_count[i]--;
+                }
+            }
         }
     }
 
-    // If there is line intersecting a pin
-    if( pin_count && has_line )
-        return true;
+    //
 
     // If there are three or more endpoints
-    if( pin_count + end_count > 2 )
+    if( pin_count + end_count[0] > 2 )
         return true;
 
     // If there is at least one segment that ends on a non-parallel line or
     // junction of two other lines
-    if( has_nonparallel && (has_line || end_count > 2 ) )
+    if( has_nonparallel[0] && end_count[0] > 2 )
+        return true;
+
+    // Check for bus - bus junction requirements
+    if( has_nonparallel[1] && end_count[1] > 2 )
         return true;
 
     return false;
@@ -795,13 +814,17 @@ void SCH_SCREEN::SelectBlockItems()
         }
     }
 
-    // Select the items that are connected to a component that was added
+    // Select the items that are connected to a block object that was added
     // to our selection list in the last step.
     for( unsigned ii = last_select_id; ii < pickedlist->GetCount(); ii++ )
     {
         SCH_ITEM* item = (SCH_ITEM*)pickedlist->GetPickedItem( ii );
 
-        if( item->Type() == SCH_COMPONENT_T )
+        if( item->Type() == SCH_COMPONENT_T ||
+                item->Type() == SCH_BUS_BUS_ENTRY_T ||
+                item->Type() == SCH_BUS_WIRE_ENTRY_T ||
+                item->Type() == SCH_SHEET_T ||
+                ( item->Type() == SCH_LINE_T && !( item->GetFlags() & ( ENDPOINT | STARTPOINT ) ) ) )
         {
             item->SetFlags( IS_DRAGGED );
             addConnections( item );
@@ -817,44 +840,59 @@ void SCH_SCREEN::addConnectedItemsToBlock( const SCH_ITEM* aItem, const wxPoint&
     SCH_ITEM* item;
     ITEM_PICKER picker;
 
-    if( aItem->IsUnconnected() )
-        return;
-
     for( item = m_drawList.begin(); item; item = item->Next() )
     {
-        bool addinlist = true;
-        picker.SetItem( item );
 
-        if( !item->IsConnectable() || !item->IsConnected( position )
-            || (item->GetFlags() & SKIP_STRUCT) || item->IsUnconnected() )
-            continue;
-
-        if( item->IsSelected() && item->Type() != SCH_LINE_T )
-            continue;
-
-        if( item->GetLayer() != aItem->GetLayer() )
+        if( !item->IsConnectable() || ( item->GetFlags() & SKIP_STRUCT )
+                || !item->CanConnect( aItem ) || item == aItem )
             continue;
 
         // A line having 2 ends, it can be tested twice: one time per end
         if( item->Type() == SCH_LINE_T )
         {
-            if( ! item->IsSelected() )      // First time this line is tested
-                item->SetFlags( SELECTED | STARTPOINT | ENDPOINT );
-            else      // second time (or more) this line is tested
-                addinlist = false;
-
             SCH_LINE* line = (SCH_LINE*) item;
+
+            if( !item->HitTest( position ) )
+                continue;
+
+            // First time through.  Flags set to denote an end that is not moving
+            if( !item->IsSelected() )
+                item->SetFlags( CANDIDATE | STARTPOINT | ENDPOINT );
 
             if( line->GetStartPoint() == position )
                 item->ClearFlags( STARTPOINT );
             else if( line->GetEndPoint() == position )
                 item->ClearFlags( ENDPOINT );
+            else
+                // This picks up items such as labels that can connect to the middle of a line
+                item->ClearFlags( STARTPOINT | ENDPOINT );
         }
-        else
-            item->SetFlags( SELECTED );
-
-        if( addinlist )
+        // We want to move a mid-connected label or bus entry when the full line is being moved
+        else if( !item->IsSelected()
+                && aItem->Type() == SCH_LINE_T
+                && !( aItem->GetFlags() & ( ENDPOINT | STARTPOINT ) ) )
         {
+            std::vector< wxPoint > connections;
+            item->GetConnectionPoints( connections );
+
+            for( auto conn : connections )
+            {
+                if( aItem->HitTest( conn ) )
+                {
+                    item->SetFlags( CANDIDATE );
+                    break;
+                }
+            }
+        }
+
+        if( item->IsSelected() )
+            continue;
+
+        if( ( item->GetFlags() & CANDIDATE ) || item->IsConnected( position ) ) // Deal with all non-line items
+        {
+            item->ClearFlags( CANDIDATE );
+            item->SetFlags( SELECTED );
+            picker.SetItem( item );
             picker.SetFlags( item->GetFlags() );
             m_BlockLocate.GetItems().PushItem( picker );
         }

@@ -242,6 +242,12 @@ public:
 
     bool IsConnectable() const override { return true; }
 
+    bool CanConnect( const SCH_ITEM* aItem ) const override
+    {
+        return aItem->Type() == SCH_LINE_T &&
+                ( aItem->GetLayer() == LAYER_WIRE || aItem->GetLayer() == LAYER_BUS );
+    }
+
     wxString GetSelectMenuText() const override;
 
     BITMAP_DEF GetMenuImage() const override;
@@ -288,6 +294,12 @@ public:
 
     bool IsConnectable() const override { return true; }
 
+    bool CanConnect( const SCH_ITEM* aItem ) const override
+    {
+        return aItem->Type() == SCH_LINE_T &&
+                ( aItem->GetLayer() == LAYER_WIRE || aItem->GetLayer() == LAYER_BUS );
+    }
+
     wxString GetSelectMenuText() const override;
 
     BITMAP_DEF GetMenuImage() const override;
@@ -333,6 +345,12 @@ public:
     void Rotate( wxPoint aPosition ) override;
 
     bool IsConnectable() const override { return true; }
+
+    bool CanConnect( const SCH_ITEM* aItem ) const override
+    {
+        return aItem->Type() == SCH_LINE_T &&
+                ( aItem->GetLayer() == LAYER_WIRE || aItem->GetLayer() == LAYER_BUS );
+    }
 
     wxString GetSelectMenuText() const override;
 
