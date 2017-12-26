@@ -291,6 +291,9 @@ void SCH_EDIT_FRAME::DisplayCurrentSheet()
         screen->ClearUndoORRedoList( screen->m_UndoList, 1 );
 
         screen->TestDanglingEnds();
+
+        // TODO(JE) should be able to just recalculate the current sheet path
+        RecalculateConnections();
     }
     else
     {
