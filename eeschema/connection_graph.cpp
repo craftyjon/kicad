@@ -419,8 +419,6 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
 
     if( candidates.size() )
     {
-        m_driver = candidates[0];
-
         if( candidates.size() > 1 )
         {
             if( highest_priority == 1 )
@@ -435,7 +433,7 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
                                 auto name_a = pin_a->GetDefaultNetName( m_sheet );
                                 auto name_b = pin_b->GetDefaultNetName( m_sheet );
 
-                                return name_a > name_b;
+                                return name_a < name_b;
                             } );
             }
             else
@@ -443,15 +441,18 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
                 // TODO(JE) ERC warning about multiple drivers?
             }
         }
+
+        m_driver = candidates[0];
     }
     else
     {
-        std::cout << "Warning: could not resolve drivers for SG " << m_code
-                  <<  " on sheet " << m_sheet.PathHumanReadable() << std::endl;
+        wxLogDebug( _( "Could not resolve drivers for subgraph %li on sheet %s " ),
+                    m_code, m_sheet.PathHumanReadable() );
+
+#if DEBUG
         for( auto item : m_items )
-        {
-            std::cout << "    " << item->GetSelectMenuText() << std::endl;
-        }
+            wxLogDebug( "    %s", item->GetSelectMenuText() );
+#endif
     }
 
     return ( m_driver != nullptr );
