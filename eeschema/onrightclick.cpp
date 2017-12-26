@@ -751,7 +751,7 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
     // Bus unfolding menu (only available if bus is properly defined)
     auto connection = Bus->Connection( *g_CurrentSheet );
 
-    if( connection && connection->IsBus() )
+    if( connection && connection->IsBus() && connection->Members().size() > 0 )
     {
         int idx = 0;
         wxMenu* bus_unfolding_menu = new wxMenu;
