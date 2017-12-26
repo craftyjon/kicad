@@ -48,11 +48,6 @@ void CONNECTION_GRAPH::Reset()
     m_subgraph_code_map.clear();
     m_last_net_code = 1;
     m_last_bus_code = 1;
-
-    for( auto path : m_sheet_paths )
-        delete path;
-
-    m_sheet_paths.clear();
 }
 
 
@@ -62,9 +57,6 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( const SCH_SHEET_PATH aSheet,
     PROF_COUNTER phase1;
 
     unordered_map< wxPoint, vector<SCH_ITEM*> > connection_map;
-
-    auto sheet_ptr = new SCH_SHEET_PATH( aSheet );
-    m_sheet_paths.push_back( sheet_ptr );
 
     for( auto item : aItemList )
     {
@@ -454,7 +446,8 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
     }
     else
     {
-        std::cout << "Warning: could not resolve drivers for SG " << m_code << std::endl;
+        std::cout << "Warning: could not resolve drivers for SG " << m_code
+                  <<  " on sheet " << m_sheet.PathHumanReadable() << std::endl;
         for( auto item : m_items )
         {
             std::cout << "    " << item->GetSelectMenuText() << std::endl;

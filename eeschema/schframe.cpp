@@ -1522,6 +1522,7 @@ void SCH_EDIT_FRAME::UpdateTitle()
 void SCH_EDIT_FRAME::RecalculateConnections()
 {
     SCH_SHEET_LIST list( g_RootSheet );
+    m_connectionGraph.Reset();
     RecalculateConnections( list );
 }
 

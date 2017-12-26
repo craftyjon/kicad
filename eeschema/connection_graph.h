@@ -104,9 +104,6 @@ private:
 
     std::vector<SCH_ITEM*> m_items;
 
-    /// Pointers to all sheet paths in a project.  Owned by this object.
-    std::vector<SCH_SHEET_PATH*> m_sheet_paths;
-
     std::unordered_set<CONNECTION_SUBGRAPH*> m_subgraphs;
 
     std::map<wxString, int> m_net_name_to_code_map;
