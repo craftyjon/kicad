@@ -17,11 +17,13 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <sch_connection.h>
-#include <class_sch_screen.h>
-
 #include <boost/regex.hpp>
 #include <wx/tokenzr.h>
+
+#include <connection_graph.h>
+#include <class_sch_screen.h>
+
+#include <sch_connection.h>
 
 
 /**
@@ -120,7 +122,7 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
             for( auto group_member : members )
             {
                 // Handle alias inside bus group member list
-                if( auto alias = SCH_SCREEN::GetBusAlias( group_member ) )
+                if( auto alias = g_ConnectionGraph->GetBusAlias( group_member ) )
                 {
                     for( auto alias_member : alias->Members() )
                     {
@@ -140,7 +142,7 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
             }
         }
     }
-    else if( auto alias = SCH_SCREEN::GetBusAlias( aLabel ) )
+    else if( auto alias = g_ConnectionGraph->GetBusAlias( aLabel ) )
     {
         m_type = CONNECTION_BUS_GROUP;
         m_name = aLabel;

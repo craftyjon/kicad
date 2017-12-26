@@ -189,10 +189,6 @@ private:
     /// Use netcodes (net number) as net names when generating spice net lists.
     bool        m_spiceAjustPassiveValues;
 
-    // TODO: Move to SCHEMATIC object once it exists
-    /// The connection graph for the whole schematic
-    CONNECTION_GRAPH    m_connectionGraph;
-
 public: // TODO(JE) Make private
 
     /// Data related to bus unfolding tool

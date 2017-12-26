@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <profile.h>
 
+#include <class_sch_screen.h>
 #include <sch_component.h>
 #include <sch_pin_connection.h>
 #include <sch_sheet.h>
@@ -196,6 +197,16 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 {
     PROF_COUNTER phase2;
 
+    SCH_SHEET_LIST all_sheets( g_RootSheet );
+
+    for( unsigned i = 0; i < all_sheets.size(); i++ )
+    {
+        for( auto alias : all_sheets[i].LastScreen()->GetBusAliases() )
+        {
+            m_bus_alias_cache[ alias->GetName() ] = alias;
+        }
+    }
+
     long subgraph_code = 1;
     vector<CONNECTION_SUBGRAPH> subgraphs;
 
@@ -370,6 +381,19 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
     phase2.Stop();
     std::cout << "BuildConnectionGraph() " <<  phase2.msecs() << " ms" << std::endl;
+}
+
+
+std::shared_ptr<BUS_ALIAS> CONNECTION_GRAPH::GetBusAlias( wxString aName )
+{
+    try
+    {
+        return m_bus_alias_cache.at( aName );
+    }
+    catch( const std::out_of_range& oor )
+    {
+        return nullptr;
+    }
 }
 
 

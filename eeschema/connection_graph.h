@@ -100,11 +100,21 @@ public:
      */
     void RebuildGraphForItem( SCH_ITEM* aItem );
 
+    /**
+     * Returns a bus alias pointer for the given name if it exists (from cache)
+     *
+     * CONNECTION_GRAPH caches these, they are owned by the SCH_SCREEN that
+     * the alias was defined on.  The cache is only used to update the graph.
+     */
+    std::shared_ptr<BUS_ALIAS> GetBusAlias( wxString aName );
+
 private:
 
     std::vector<SCH_ITEM*> m_items;
 
     std::unordered_set<CONNECTION_SUBGRAPH*> m_subgraphs;
+
+    std::map<wxString, std::shared_ptr<BUS_ALIAS>> m_bus_alias_cache;
 
     std::map<wxString, int> m_net_name_to_code_map;
 

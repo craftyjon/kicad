@@ -70,6 +70,7 @@
 
 
 SCH_SHEET_PATH* g_CurrentSheet = nullptr; // declared in general.h
+CONNECTION_GRAPH* g_ConnectionGraph = nullptr;
 
 
 // non-member so it can be moved easily, and kept REALLY private.
@@ -358,6 +359,7 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ):
     m_item_to_repeat( 0 )
 {
     g_CurrentSheet = new SCH_SHEET_PATH();
+    g_ConnectionGraph = new CONNECTION_GRAPH();
 
     m_showAxis = false;                 // true to show axis
     m_showBorderAndTitleBlock = true;   // true to show sheet references
@@ -466,14 +468,16 @@ SCH_EDIT_FRAME::~SCH_EDIT_FRAME()
     SetScreen( NULL );
 
     delete g_CurrentSheet;          // a SCH_SHEET_PATH, on the heap.
+    delete g_ConnectionGraph;
     delete m_undoItem;
     delete g_RootSheet;
     delete m_findReplaceData;
 
-    g_CurrentSheet = NULL;
-    m_undoItem = NULL;
-    g_RootSheet = NULL;
-    m_findReplaceData = NULL;
+    g_CurrentSheet = nullptr;
+    g_ConnectionGraph = nullptr;
+    m_undoItem = nullptr;
+    g_RootSheet = nullptr;
+    m_findReplaceData = nullptr;
 }
 
 
@@ -571,7 +575,7 @@ void SCH_EDIT_FRAME::CreateScreens()
 
     g_CurrentSheet->clear();
     g_CurrentSheet->push_back( g_RootSheet );
-    m_connectionGraph.Reset();
+    g_ConnectionGraph->Reset();
 
     if( GetScreen() == NULL )
     {
@@ -1522,7 +1526,7 @@ void SCH_EDIT_FRAME::UpdateTitle()
 void SCH_EDIT_FRAME::RecalculateConnections()
 {
     SCH_SHEET_LIST list( g_RootSheet );
-    m_connectionGraph.Reset();
+    g_ConnectionGraph->Reset();
     RecalculateConnections( list );
 }
 
@@ -1542,14 +1546,14 @@ void SCH_EDIT_FRAME::RecalculateConnections( SCH_SHEET_LIST aSheetList )
             }
         }
 
-        m_connectionGraph.UpdateItemConnectivity( sheet, items );
+        g_ConnectionGraph->UpdateItemConnectivity( sheet, items );
     }
 
     // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
     SCH_SCREENS schematic;
     schematic.TestDanglingEnds();
 
-    m_connectionGraph.BuildConnectionGraph();
+    g_ConnectionGraph->BuildConnectionGraph();
 }
 
 

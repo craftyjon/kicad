@@ -34,6 +34,7 @@
 
 using KIGFX::COLOR4D;
 
+class CONNECTION_GRAPH;
 class TRANSFORM;
 class SCH_SHEET;
 class SCH_SHEET_PATH;
@@ -87,6 +88,11 @@ extern SCH_SHEET*   g_RootSheet;
  * but we could refactor things to get rid of this global.
  */
 extern SCH_SHEET_PATH* g_CurrentSheet;    ///< which sheet we are presently working on.
+
+/**
+ * This also wants to live in the eventual SCHEMATIC object
+ */
+extern CONNECTION_GRAPH* g_ConnectionGraph;
 
 /**
  * Default line thickness used to draw/plot items having a
