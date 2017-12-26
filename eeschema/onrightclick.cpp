@@ -749,7 +749,7 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
     AddMenuItem( PopMenu, ID_POPUP_SCH_BREAK_WIRE, _( "Break Bus" ), KiBitmap( break_bus_xpm ) );
 
     // Bus unfolding menu (only available if bus is properly defined)
-    auto connection = Bus->Connection( g_CurrentSheet->Last() );
+    auto connection = Bus->Connection( *g_CurrentSheet );
 
     if( connection && connection->IsBus() )
     {

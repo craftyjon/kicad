@@ -1770,7 +1770,7 @@ void LIB_PIN::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList,
 
     if( auto pin_connection = aComponent->GetConnectionForPin( this ) )
     {
-        auto conn = pin_connection->Connection( g_CurrentSheet->Last() );
+        auto conn = pin_connection->Connection( *g_CurrentSheet );
 
         wxASSERT( conn );
 

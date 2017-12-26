@@ -1541,7 +1541,7 @@ void SCH_EDIT_FRAME::RecalculateConnections( SCH_SHEET_LIST aSheetList )
             }
         }
 
-        m_connectionGraph.UpdateItemConnectivity( sheet.Last(), items );
+        m_connectionGraph.UpdateItemConnectivity( sheet, items );
     }
 
     // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT

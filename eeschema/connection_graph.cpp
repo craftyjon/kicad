@@ -48,15 +48,23 @@ void CONNECTION_GRAPH::Reset()
     m_subgraph_code_map.clear();
     m_last_net_code = 1;
     m_last_bus_code = 1;
+
+    for( auto path : m_sheet_paths )
+        delete path;
+
+    m_sheet_paths.clear();
 }
 
 
-void CONNECTION_GRAPH::UpdateItemConnectivity( const SCH_SHEET* aSheet,
+void CONNECTION_GRAPH::UpdateItemConnectivity( const SCH_SHEET_PATH aSheet,
                                                vector<SCH_ITEM*> aItemList )
 {
     PROF_COUNTER phase1;
 
     unordered_map< wxPoint, vector<SCH_ITEM*> > connection_map;
+
+    auto sheet_ptr = new SCH_SHEET_PATH( aSheet );
+    m_sheet_paths.push_back( sheet_ptr );
 
     for( auto item : aItemList )
     {
@@ -94,10 +102,7 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( const SCH_SHEET* aSheet,
                            component->GetPosition();
 
                 // because calling the first time is not thread-safe
-                // TODO(JE) casting-away constness because SCH_SHEET_LIST
-                // can't deal with const but other things require it...
-                SCH_SHEET_LIST path( ( SCH_SHEET* )aSheet );
-                pin_connection->GetDefaultNetName( &path.at( 0 ) );
+                pin_connection->GetDefaultNetName( aSheet );
 
                 connection_map[ pos ].push_back( pin_connection );
                 m_items.push_back( pin_connection );
@@ -206,7 +211,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
     {
         for( auto it : item->m_connection_map )
         {
-            auto sheet = it.first;
+            const auto sheet = it.first;
             auto connection = it.second;
 
             if( connection->SubgraphCode() == 0 )
@@ -314,7 +319,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             // Now the subgraph has only one driver
             auto driver = subgraph.m_driver;
             auto sheet = subgraph.m_sheet;
-            auto connection = driver->Connection( subgraph.m_sheet );
+            auto connection = driver->Connection( sheet );
 
             // TODO(JE) This should live in SCH_CONNECTION probably
             switch( driver->Type() )
@@ -329,11 +334,9 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 if( driver->Type() == SCH_PIN_CONNECTION_T )
                 {
                     auto pin = static_cast<SCH_PIN_CONNECTION*>( driver );
-                    auto path = SCH_SHEET_LIST( ( SCH_SHEET* )sheet );
 
                     // NOTE(JE) GetDefaultNetName is not thread-safe.
-
-                    connection->ConfigureFromLabel( pin->GetDefaultNetName( &path.at( 0 ) ) );
+                    connection->ConfigureFromLabel( pin->GetDefaultNetName( sheet ) );
                 }
                 else
                 {
@@ -431,17 +434,14 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
             if( highest_priority == 1 )
             {
                 // We have multiple options and they are all component pins.
-                SCH_SHEET_LIST list( ( SCH_SHEET* )m_sheet );
-                auto path = list.at( 0 );
-
                 std::sort( candidates.begin(), candidates.end(),
-                           [path]( SCH_ITEM* a, SCH_ITEM* b) -> bool
+                           [this]( SCH_ITEM* a, SCH_ITEM* b) -> bool
                             {
                                 auto pin_a = static_cast<SCH_PIN_CONNECTION*>( a );
                                 auto pin_b = static_cast<SCH_PIN_CONNECTION*>( b );
 
-                                auto name_a = pin_a->GetDefaultNetName( &path );
-                                auto name_b = pin_b->GetDefaultNetName( &path );
+                                auto name_a = pin_a->GetDefaultNetName( m_sheet );
+                                auto name_b = pin_b->GetDefaultNetName( m_sheet );
 
                                 return name_a > name_b;
                             } );

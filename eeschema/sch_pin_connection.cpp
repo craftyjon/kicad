@@ -47,7 +47,7 @@ wxString SCH_PIN_CONNECTION::GetSelectMenuText() const
 }
 
 
-wxString SCH_PIN_CONNECTION::GetDefaultNetName( const SCH_SHEET_PATH* aPath )
+wxString SCH_PIN_CONNECTION::GetDefaultNetName( const SCH_SHEET_PATH aPath )
 {
     if( m_pin->IsPowerConnection() )
         return m_pin->GetName();
@@ -56,13 +56,13 @@ wxString SCH_PIN_CONNECTION::GetDefaultNetName( const SCH_SHEET_PATH* aPath )
 
     try
     {
-        name = m_net_name_map.at( aPath->Last() );
+        name = m_net_name_map.at( aPath );
     }
     catch( const std::out_of_range& oor )
     {
         name = wxT( "Net-(" );
 
-        name << m_comp->GetRef( aPath );
+        name << m_comp->GetRef( &aPath );
 
         // TODO(JE) do we need adoptTimestamp?
         if( /* adoptTimestamp && */ name.Last() == '?' )
@@ -70,7 +70,7 @@ wxString SCH_PIN_CONNECTION::GetDefaultNetName( const SCH_SHEET_PATH* aPath )
 
         name << _( "-Pad" ) << m_pin->GetNumber() << _( ")" );
 
-        m_net_name_map[ aPath->Last() ] = name;
+        m_net_name_map[ aPath ] = name;
     }
 
     return name;

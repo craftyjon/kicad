@@ -22,6 +22,7 @@
 
 #include <sch_item_struct.h>
 #include <sch_connection.h>
+#include <sch_sheet_path.h>
 #include <lib_pin.h>
 
 class SCH_COMPONENT;
@@ -39,7 +40,7 @@ public:
         return wxT( "SCH_PIN_CONNECTION" );
     }
 
-    wxString GetDefaultNetName( const SCH_SHEET_PATH* aPath );
+    wxString GetDefaultNetName( const SCH_SHEET_PATH aPath );
 
     wxString GetSelectMenuText() const override;
 
@@ -72,7 +73,7 @@ public:
     SCH_COMPONENT* m_comp;
 
     /// The name that this pin connection will drive onto a net
-    std::map<SCH_SHEET*, wxString> m_net_name_map;
+    std::map<const SCH_SHEET_PATH, wxString> m_net_name_map;
 };
 
 #endif

@@ -35,6 +35,7 @@
 
 #include <class_netlist_object.h>
 #include <sch_component.h>
+#include <sch_sheet.h>
 
 
 // TODO(JE) Probably use netcode rather than connection name here eventually
@@ -57,9 +58,9 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
         {
             if( auto item = dynamic_cast<SCH_ITEM*>( nodeList[0] ) )
             {
-                if( item->Connection( g_CurrentSheet->Last() ) )
+                if( item->Connection( *g_CurrentSheet ) )
                 {
-                    m_SelectedNetName = item->Connection( g_CurrentSheet->Last() )->Name();
+                    m_SelectedNetName = item->Connection( *g_CurrentSheet )->Name();
                     SetStatusText( _( "Highlighted net: " ) + m_SelectedNetName );
                 }
             }
@@ -80,7 +81,7 @@ bool SCH_EDIT_FRAME::SetCurrentSheetHighlightFlags()
     // Update highlight flag on all items in the current screen
     for( SCH_ITEM* ptr = screen->GetDrawItems(); ptr; ptr = ptr->Next() )
     {
-        auto conn = ptr->Connection( g_CurrentSheet->Last() );
+        auto conn = ptr->Connection( *g_CurrentSheet );
 
         ptr->SetState( BRIGHTENED,
                        ( conn && conn->Name() == m_SelectedNetName ) );
@@ -89,7 +90,7 @@ bool SCH_EDIT_FRAME::SetCurrentSheetHighlightFlags()
         {
             for( SCH_SHEET_PIN& pin : static_cast<SCH_SHEET*>( ptr )->GetPins() )
             {
-                auto pin_conn = pin.Connection( g_CurrentSheet->Last() );
+                auto pin_conn = pin.Connection( *g_CurrentSheet );
 
                 pin.SetState( BRIGHTENED, ( pin_conn &&
                               pin_conn->Name() == m_SelectedNetName ) );

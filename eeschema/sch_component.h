@@ -226,7 +226,7 @@ public:
     /**
      * Updates the local cache of SCH_PIN_CONNECTION objects for each pin
      */
-    void UpdatePinConnections( const SCH_SHEET* aSheet );
+    void UpdatePinConnections( const SCH_SHEET_PATH aSheet );
 
     /**
      * Change the unit number to \a aUnit

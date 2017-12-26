@@ -558,7 +558,7 @@ void SCH_TEXT::GetNetListItem( NETLIST_OBJECT_LIST& aNetListItems,
     aNetListItems.push_back( item );
 
     // If a bus connects to label
-    if( Connection( aSheetPath->Last() )->IsBusLabel( m_Text ) )
+    if( Connection( *aSheetPath )->IsBusLabel( m_Text ) )
     {
         item->ConvertBusToNetListItems( aNetListItems );
     }
@@ -726,7 +726,7 @@ void SCH_TEXT::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
 
 #if defined(DEBUG)
 
-    if( auto conn = Connection( g_CurrentSheet->Last() ) )
+    if( auto conn = Connection( *g_CurrentSheet ) )
     {
         conn->AppendDebugInfoToMsgPanel( aList );
     }
@@ -1295,7 +1295,7 @@ void SCH_HIERLABEL::Draw( EDA_DRAW_PANEL* panel,
 
     linewidth = Clamp_Text_PenSize( linewidth, GetTextSize(), IsBold() );
 
-    auto conn = Connection( g_CurrentSheet->Last() );
+    auto conn = Connection( *g_CurrentSheet );
 
     if( Color != COLOR4D::UNSPECIFIED )
         color = Color;

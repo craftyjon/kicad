@@ -802,7 +802,7 @@ void SCH_LINE::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
 
     aList.push_back( MSG_PANEL_ITEM( _( "Line Type" ), msg, DARKCYAN ) );
 
-    if( auto conn = Connection( g_CurrentSheet->Last() ) )
+    if( auto conn = Connection( *g_CurrentSheet ) )
     {
 #if defined(DEBUG)
         conn->AppendDebugInfoToMsgPanel( aList );

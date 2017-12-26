@@ -64,7 +64,7 @@ public:
 
     SCH_ITEM* m_driver;
 
-    const SCH_SHEET* m_sheet;
+    SCH_SHEET_PATH m_sheet;
 };
 
 
@@ -87,7 +87,7 @@ public:
      * @param aSheet is the path to the sheet of all items in the list
      * @param aItemList is a list of items to consider
      */
-    void UpdateItemConnectivity( const SCH_SHEET* aSheet,
+    void UpdateItemConnectivity( const SCH_SHEET_PATH aSheet,
                                  std::vector<SCH_ITEM*> aItemList );
 
     /**
@@ -103,6 +103,9 @@ public:
 private:
 
     std::vector<SCH_ITEM*> m_items;
+
+    /// Pointers to all sheet paths in a project.  Owned by this object.
+    std::vector<SCH_SHEET_PATH*> m_sheet_paths;
 
     std::unordered_set<CONNECTION_SUBGRAPH*> m_subgraphs;
 
