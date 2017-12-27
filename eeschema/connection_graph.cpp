@@ -22,6 +22,7 @@
 #include <profile.h>
 
 #include <class_sch_screen.h>
+#include <erc.h>
 #include <sch_component.h>
 #include <sch_pin_connection.h>
 #include <sch_sheet.h>
@@ -38,6 +39,92 @@ using std::map;
 using std::unordered_map;
 using std::unordered_set;
 using std::vector;
+
+
+bool CONNECTION_SUBGRAPH::ResolveDrivers()
+{
+    int highest_priority = -1;
+    vector<SCH_ITEM*> candidates;
+
+    m_driver = nullptr;
+
+    // Don't worry about drivers for graphs with no-connects
+    if( m_no_connect )
+        return true;
+
+    for( auto item : m_drivers )
+    {
+        int item_priority = 0;
+
+        switch( item->Type() )
+        {
+        case SCH_LABEL_T:               item_priority = 2; break;
+        case SCH_HIERARCHICAL_LABEL_T:  item_priority = 3; break;
+        case SCH_PIN_CONNECTION_T:
+        {
+            auto pin_connection = static_cast<SCH_PIN_CONNECTION*>( item );
+            if( pin_connection->m_pin->IsPowerConnection() )
+                item_priority = 5;
+            else
+                item_priority = 1;
+            break;
+        }
+        case SCH_GLOBAL_LABEL_T:        item_priority = 6; break;
+        default: break;
+        }
+
+        if( item_priority > highest_priority )
+        {
+            candidates.clear();
+            candidates.push_back( item );
+            highest_priority = item_priority;
+        }
+        else if( candidates.size() && ( item_priority == highest_priority ) )
+        {
+            candidates.push_back( item );
+        }
+    }
+
+    if( candidates.size() )
+    {
+        if( candidates.size() > 1 )
+        {
+            if( highest_priority == 1 )
+            {
+                // We have multiple options and they are all component pins.
+                std::sort( candidates.begin(), candidates.end(),
+                           [this]( SCH_ITEM* a, SCH_ITEM* b) -> bool
+                            {
+                                auto pin_a = static_cast<SCH_PIN_CONNECTION*>( a );
+                                auto pin_b = static_cast<SCH_PIN_CONNECTION*>( b );
+
+                                auto name_a = pin_a->GetDefaultNetName( m_sheet );
+                                auto name_b = pin_b->GetDefaultNetName( m_sheet );
+
+                                return name_a < name_b;
+                            } );
+            }
+            else
+            {
+                // TODO(JE) ERC warning about multiple drivers?
+            }
+        }
+
+        m_driver = candidates[0];
+    }
+    else
+    {
+        wxLogDebug( _( "Could not resolve drivers for subgraph %li on sheet %s " ),
+                    m_code, m_sheet.PathHumanReadable() );
+
+#if DEBUG
+        for( auto item : m_items )
+            wxLogDebug( "    %s", item->GetSelectMenuText() );
+#endif
+    }
+
+    return ( m_driver != nullptr );
+}
 
 
 void CONNECTION_GRAPH::Reset()
@@ -208,7 +295,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
     }
 
     long subgraph_code = 1;
-    vector<CONNECTION_SUBGRAPH> subgraphs;
 
     for( auto item : m_items )
     {
@@ -219,23 +305,23 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
             if( connection->SubgraphCode() == 0 )
             {
-                CONNECTION_SUBGRAPH subgraph = {};
+                auto subgraph = new CONNECTION_SUBGRAPH( {} );
 
-                subgraph.m_code = subgraph_code++;
-                subgraph.m_sheet = sheet;
+                subgraph->m_code = subgraph_code++;
+                subgraph->m_sheet = sheet;
 
-                subgraph.m_items.push_back( item );
+                subgraph->m_items.push_back( item );
 
                 // std::cout << "SG " << subgraph.m_code << " started with "
                 //           << item->GetSelectMenuText() << std::endl;
 
                 if( connection->IsDriver() )
-                    subgraph.m_drivers.push_back( item );
+                    subgraph->m_drivers.push_back( item );
 
                 if( item->Type() == SCH_NO_CONNECT_T )
-                    subgraph.m_no_connect = item;
+                    subgraph->m_no_connect = item;
 
-                connection->SetSubgraphCode( subgraph.m_code );
+                connection->SetSubgraphCode( subgraph->m_code );
 
                 std::list<SCH_ITEM*> members( item->ConnectedItems().begin(),
                                               item->ConnectedItems().end() );
@@ -249,7 +335,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                     }
 
                     if( connected_item->Type() == SCH_NO_CONNECT_T )
-                        subgraph.m_no_connect = connected_item;
+                        subgraph->m_no_connect = connected_item;
 
                     auto connected_conn = connected_item->Connection( sheet );
 
@@ -257,13 +343,13 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                     if( connected_conn->SubgraphCode() == 0 )
                     {
-                        connected_conn->SetSubgraphCode( subgraph.m_code );
-                        subgraph.m_items.push_back( connected_item );
+                        connected_conn->SetSubgraphCode( subgraph->m_code );
+                        subgraph->m_items.push_back( connected_item );
 
                         // std::cout << "   +" << connected_item->GetSelectMenuText() << std::endl;
 
                         if( connected_conn->IsDriver() )
-                            subgraph.m_drivers.push_back( connected_item );
+                            subgraph->m_drivers.push_back( connected_item );
 
                         members.insert( members.end(),
                                         connected_item->ConnectedItems().begin(),
@@ -271,7 +357,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                     }
                 }
 
-                subgraphs.push_back( subgraph );
+                subgraph->m_dirty = true;
+                m_subgraphs.push_back( subgraph );
             }
         }
     }
@@ -302,26 +389,28 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 #ifdef USE_OPENMP
     #pragma omp parallel for schedule(dynamic)
 #endif
-    for( auto it = subgraphs.begin(); it < subgraphs.end(); it++ )
+    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
     {
         auto subgraph = *it;
 
-        if( !subgraph.ResolveDrivers() )
+        if( !subgraph->m_dirty )
+            continue;
+
+        if( !subgraph->ResolveDrivers() )
         {
             // TODO(JE) ERC Error: multiple equivalent drivers
         }
         else
         {
-            if( subgraph.m_no_connect )
+            if( subgraph->m_no_connect )
             {
-                // TODO(JE) ERC check that the only other thing in the graph
-                // is a component pin
+                subgraph->m_dirty = false;
                 continue;
             }
 
             // Now the subgraph has only one driver
-            auto driver = subgraph.m_driver;
-            auto sheet = subgraph.m_sheet;
+            auto driver = subgraph->m_driver;
+            auto sheet = subgraph->m_sheet;
             auto connection = driver->Connection( sheet );
 
             // TODO(JE) This should live in SCH_CONNECTION probably
@@ -359,7 +448,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             //           << subgraph.m_driver->GetSelectMenuText() << " net "
             //           << subgraph.m_driver->Connection()->Name() << std::endl;
 
-            for( auto item : subgraph.m_items )
+            for( auto item : subgraph->m_items )
             {
                 auto item_conn = item->Connection( sheet );
 
@@ -376,6 +465,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                     item_conn->ClearDirty();
                 }
             }
+
+            subgraph->m_dirty = false;
         }
     }
 
@@ -397,87 +488,94 @@ std::shared_ptr<BUS_ALIAS> CONNECTION_GRAPH::GetBusAlias( wxString aName )
 }
 
 
-bool CONNECTION_SUBGRAPH::ResolveDrivers()
+int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
 {
-    int highest_priority = -1;
-    vector<SCH_ITEM*> candidates;
+    int error_count = 0;
 
-    m_driver = nullptr;
-
-    // Don't worry about drivers for graphs with no-connects
-    if( m_no_connect )
-        return true;
-
-    for( auto item : m_drivers )
+    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
     {
-        int item_priority = 0;
+        auto subgraph = *it;
 
-        switch( item->Type() )
-        {
-        case SCH_LABEL_T:               item_priority = 2; break;
-        case SCH_HIERARCHICAL_LABEL_T:  item_priority = 3; break;
-        case SCH_PIN_CONNECTION_T:
-        {
-            auto pin_connection = static_cast<SCH_PIN_CONNECTION*>( item );
-            if( pin_connection->m_pin->IsPowerConnection() )
-                item_priority = 5;
-            else
-                item_priority = 1;
-            break;
-        }
-        case SCH_GLOBAL_LABEL_T:        item_priority = 6; break;
-        default: break;
-        }
+        // Graph is supposed to be up-to-date before calling RunERC()
+        wxASSERT( !subgraph->m_dirty );
 
-        if( item_priority > highest_priority )
-        {
-            candidates.clear();
-            candidates.push_back( item );
-            highest_priority = item_priority;
-        }
-        else if( candidates.size() && ( item_priority == highest_priority ) )
-        {
-            candidates.push_back( item );
-        }
-    }
+        wxString msg;
+        auto screen = subgraph->m_sheet.LastScreen();
 
-    if( candidates.size() )
-    {
-        if( candidates.size() > 1 )
+        /**
+         * Check that labels attached to bus subgraphs follow proper format
+         */
+
+        /**
+         * Check that subgraphs of nets that connect to buses via a bus entry
+         * actually exist in the bus they are attached to
+         */
+
+        /**
+         * Check that the nets broken out of a named bus group are properly
+         * prefixed with the bus group name
+         */
+
+        /**
+         * Check that bus subgraphs that contain both a label and a pin/port
+         * have some bus members in common between the two
+         */
+
+        /**
+         * Check that subgraphs don't have multiple conflicting drivers
+         */
+
+        /**
+         * Check that no-connect subgraphs don't have anything other than pins
+         *
+         * NOTE: this is already implemented in the "classic" ERC code, but I
+         * have re-implemented it here to demonstrate how we could move all the
+         * ERC code to the CONNECTION_GRAPH if desired.
+         */
+#if 0
+        if( subgraph->m_no_connect != nullptr )
         {
-            if( highest_priority == 1 )
+            bool has_invalid_items = false;
+            SCH_PIN_CONNECTION* pin = nullptr;
+            std::vector<SCH_ITEM*> invalid_items;
+
+            for( auto item : subgraph->m_items )
             {
-                // We have multiple options and they are all component pins.
-                std::sort( candidates.begin(), candidates.end(),
-                           [this]( SCH_ITEM* a, SCH_ITEM* b) -> bool
-                            {
-                                auto pin_a = static_cast<SCH_PIN_CONNECTION*>( a );
-                                auto pin_b = static_cast<SCH_PIN_CONNECTION*>( b );
+                switch( item->Type() )
+                {
+                case SCH_PIN_CONNECTION_T:
+                    pin = static_cast<SCH_PIN_CONNECTION*>( item );
+                    break;
 
-                                auto name_a = pin_a->GetDefaultNetName( m_sheet );
-                                auto name_b = pin_b->GetDefaultNetName( m_sheet );
+                case SCH_NO_CONNECT_T:
+                    break;
 
-                                return name_a < name_b;
-                            } );
+                default:
+                    has_invalid_items = true;
+                    invalid_items.push_back( item );
+                }
             }
-            else
+
+            // TODO: Should it be an error to have a NC item but no pin?
+            if( pin && has_invalid_items )
             {
-                // TODO(JE) ERC warning about multiple drivers?
+                error_count++;
+
+                auto pos = pin->GetPosition();
+                msg.Printf( _( "Pin on %s has a no-connect marker but is connected" ),
+                            GetChars( pin->m_comp->GetRef( &subgraph->m_sheet ) ) );
+
+                auto marker = new SCH_MARKER();
+                marker->SetTimeStamp( GetNewTimeStamp() );
+                marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+                marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_WARNING );
+                marker->SetData( ERCE_NOCONNECT_CONNECTED, pos, msg, pos );
+
+                screen->Append( marker );
             }
         }
-
-        m_driver = candidates[0];
-    }
-    else
-    {
-        wxLogDebug( _( "Could not resolve drivers for subgraph %li on sheet %s " ),
-                    m_code, m_sheet.PathHumanReadable() );
-
-#if DEBUG
-        for( auto item : m_items )
-            wxLogDebug( "    %s", item->GetSelectMenuText() );
 #endif
     }
 
-    return ( m_driver != nullptr );
+    return error_count;
 }

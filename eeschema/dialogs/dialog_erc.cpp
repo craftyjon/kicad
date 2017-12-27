@@ -485,6 +485,10 @@ void DIALOG_ERC::TestErc( wxArrayString* aMessagesList )
 
     TestConflictingBusAliases();
 
+    // The connection graph has a whole set of ERC checks it can run
+    m_parent->RecalculateConnections();
+    g_ConnectionGraph->RunERC();
+
     std::unique_ptr<NETLIST_OBJECT_LIST> objectsConnectedList( m_parent->BuildNetListBase() );
 
     // Reset the connection type indicator

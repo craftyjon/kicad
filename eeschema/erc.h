@@ -49,18 +49,25 @@ extern const wxString CommentERC_H[];
 extern const wxString CommentERC_V[];
 
 /// DRC error codes:
-#define ERCE_UNSPECIFIED          0
-#define ERCE_DUPLICATE_SHEET_NAME 1    // duplicate sheet names within a given sheet
-#define ERCE_PIN_NOT_CONNECTED    2    // pin not connected and not no connect symbol
-#define ERCE_PIN_NOT_DRIVEN       3    // pin connected to some others pins but no pin to drive it
-#define ERCE_PIN_TO_PIN_WARNING   4    // pin connected to an other pin: warning level
-#define ERCE_PIN_TO_PIN_ERROR     5    // pin connected to an other pin: error level
-#define ERCE_HIERACHICAL_LABEL    6    // mismatch between hierarchical labels and pins sheets
-#define ERCE_NOCONNECT_CONNECTED  7    // a no connect symbol is connected to more than 1 pin
-#define ERCE_GLOBLABEL            8    // global label not connected to any other global label
-#define ERCE_SIMILAR_LABELS       9    // 2 labels are equal fir case insensitive comparisons
-#define ERCE_SIMILAR_GLBL_LABELS  10   // 2 labels are equal fir case insensitive comparisons
-#define ERCE_BUS_ALIAS_CONFLICT   11   // conflicting bus alias definitions across sheets
+enum ERCE_T
+{
+    ERCE_UNSPECIFIED = 0,
+    ERCE_DUPLICATE_SHEET_NAME,  // duplicate sheet names within a given sheet
+    ERCE_PIN_NOT_CONNECTED,     // pin not connected and not no connect symbol
+    ERCE_PIN_NOT_DRIVEN,        // pin connected to some others pins but no pin to drive it
+    ERCE_PIN_TO_PIN_WARNING,    // pin connected to an other pin: warning level
+    ERCE_PIN_TO_PIN_ERROR,      // pin connected to an other pin: error level
+    ERCE_HIERACHICAL_LABEL,     // mismatch between hierarchical labels and pins sheets
+    ERCE_NOCONNECT_CONNECTED,   // a no connect symbol is connected to more than 1 pin
+    ERCE_GLOBLABEL,             // global label not connected to any other global label
+    ERCE_SIMILAR_LABELS,        // 2 labels are equal fir case insensitive comparisons
+    ERCE_SIMILAR_GLBL_LABELS,   // 2 labels are equal fir case insensitive comparisons
+    ERCE_BUS_ALIAS_CONFLICT,    // conflicting bus alias definitions across sheets
+    ERCE_DRIVER_CONFLICT,       // conflicting drivers (labels, etc) on a subgraph
+    ERCE_BUS_ENTRY_CONFLICT,    // a wire connected to a bus doesn't match the bus
+    ERCE_BUS_LABEL_ERROR,       // a label attached to a bus isn't in bus format
+    ERCE_BUS_TO_BUS_CONFLICT,   // a connection between bus objects doesn't share at least one net
+};
 
 /* Minimal connection table */
 #define NPI    4  // Net with Pin isolated, this pin has type Not Connected and must be left N.C.

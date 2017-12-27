@@ -75,3 +75,12 @@ wxString SCH_PIN_CONNECTION::GetDefaultNetName( const SCH_SHEET_PATH aPath )
 
     return name;
 }
+
+
+wxPoint SCH_PIN_CONNECTION::GetPosition() const
+{
+    auto pos = m_comp->GetPosition();
+    auto transform = m_comp->GetTransform();
+
+    return pos + transform.TransformCoordinate( m_pin->GetPosition() );
+}

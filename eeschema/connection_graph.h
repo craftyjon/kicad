@@ -53,6 +53,8 @@ public:
      */
     bool ResolveDrivers();
 
+    bool m_dirty;
+
     long m_code;
 
     /// No-connect item in graph, if any
@@ -108,11 +110,21 @@ public:
      */
     std::shared_ptr<BUS_ALIAS> GetBusAlias( wxString aName );
 
+    /**
+     * Runs electrical rule checks on the connectivity graph.
+     *
+     * Precondition: graph is up-to-date
+     *
+     * @param aCreateMarkers controls whether error markers are created
+     * @return the number of errors found
+     */
+    int RunERC( bool aCreateMarkers = true );
+
 private:
 
     std::vector<SCH_ITEM*> m_items;
 
-    std::unordered_set<CONNECTION_SUBGRAPH*> m_subgraphs;
+    std::vector<CONNECTION_SUBGRAPH*> m_subgraphs;
 
     std::map<wxString, std::shared_ptr<BUS_ALIAS>> m_bus_alias_cache;
 
