@@ -501,10 +501,73 @@ int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
 
         wxString msg;
         auto screen = subgraph->m_sheet.LastScreen();
+        auto driver = subgraph->m_driver;
 
         /**
          * Check that labels attached to bus subgraphs follow proper format
+         *
+         * NOTE: this check doesn't need to be here right now because labels
+         * won't actually be connected to bus wires if they aren't in the right
+         * format.
          */
+
+        /**
+         * Check for conflict between type (bus vs net) of wires and ports/pins
+         */
+        {
+            SCH_ITEM* net_item = nullptr;
+            SCH_ITEM* bus_item = nullptr;
+
+            for( auto item : subgraph->m_items )
+            {
+                switch( item->Type() )
+                {
+                case SCH_LINE_T:
+                {
+                    if( item->GetLayer() == LAYER_BUS )
+                        bus_item = ( !bus_item ) ? item : bus_item;
+                    else
+                        net_item = ( !net_item ) ? item : net_item;
+                    break;
+                }
+
+                case SCH_GLOBAL_LABEL_T:
+                case SCH_SHEET_PIN_T:
+                case SCH_HIERARCHICAL_LABEL_T:
+                {
+                    auto text = static_cast<SCH_TEXT*>( driver );
+                    SCH_CONNECTION conn;
+                    conn.ConfigureFromLabel( text->GetText() );
+
+                    if( conn.IsBus() )
+                        bus_item = ( !bus_item ) ? item : bus_item;
+                    else
+                        net_item = ( !net_item ) ? item : net_item;
+                    break;
+                }
+
+                default:
+                    break;
+                }
+            }
+
+            if( net_item && bus_item )
+            {
+                error_count++;
+
+                msg.Printf( _( "Invalid connection between bus and net items" ) );
+
+                auto marker = new SCH_MARKER();
+                marker->SetTimeStamp( GetNewTimeStamp() );
+                marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+                marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_ERROR );
+                marker->SetData( ERCE_BUS_VS_NET_CONFLICT,
+                                 net_item->GetPosition(), msg,
+                                 bus_item->GetPosition() );
+
+                screen->Append( marker );
+            }
+        }
 
         /**
          * Check that subgraphs of nets that connect to buses via a bus entry

@@ -60,6 +60,16 @@ wxString DRC_ITEM::GetErrorText() const
         return wxString( _("Global labels are similar (lower/upper case difference only)") );
     case ERCE_BUS_ALIAS_CONFLICT:
         return wxString( _("Conflict between bus alias definitions across schematic sheets") );
+    case ERCE_DRIVER_CONFLICT:
+        return wxString( _( "More than one name given to this bus or net" ) );
+    case ERCE_BUS_ENTRY_CONFLICT:
+        return wxString( _( "Net is graphically connected to a bus but not a bus member" ) );
+    case ERCE_BUS_LABEL_ERROR:
+        return wxString( _( "Label attached to bus item does not describe a bus" ) );
+    case ERCE_BUS_TO_BUS_CONFLICT:
+        return wxString( _( "No nets are shared between two bus items" ) );
+    case ERCE_BUS_VS_NET_CONFLICT:
+        return wxString( _( "Invalid connection between bus and net items" ) );
 
     default:
         return wxString( wxT("Unknown.") );
