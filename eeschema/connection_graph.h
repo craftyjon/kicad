@@ -137,6 +137,10 @@ private:
     int m_last_net_code;
 
     int m_last_bus_code;
+
+    bool ercCheckBusToNetConflicts( CONNECTION_SUBGRAPH* aSubgraph, bool aCreateMarkers );
+
+    bool ercCheckBusToBusConflicts( CONNECTION_SUBGRAPH* aSubgraph, bool aCreateMarkers );
 };
 
 #endif
