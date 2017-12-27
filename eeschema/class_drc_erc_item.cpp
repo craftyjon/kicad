@@ -68,7 +68,7 @@ wxString DRC_ITEM::GetErrorText() const
         return wxString( _( "Label attached to bus item does not describe a bus" ) );
     case ERCE_BUS_TO_BUS_CONFLICT:
         return wxString( _( "No nets are shared between two bus items" ) );
-    case ERCE_BUS_VS_NET_CONFLICT:
+    case ERCE_BUS_TO_NET_CONFLICT:
         return wxString( _( "Invalid connection between bus and net items" ) );
 
     default:

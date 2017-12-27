@@ -67,7 +67,7 @@ enum ERCE_T
     ERCE_BUS_ENTRY_CONFLICT,    // a wire connected to a bus doesn't match the bus
     ERCE_BUS_LABEL_ERROR,       // a label attached to a bus isn't in bus format
     ERCE_BUS_TO_BUS_CONFLICT,   // a connection between bus objects doesn't share at least one net
-    ERCE_BUS_VS_NET_CONFLICT,   // a bus wire is graphically connected to a net port/pin (or vice versa)
+    ERCE_BUS_TO_NET_CONFLICT,   // a bus wire is graphically connected to a net port/pin (or vice versa)
 };
 
 /* Minimal connection table */

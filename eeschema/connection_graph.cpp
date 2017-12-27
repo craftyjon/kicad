@@ -500,7 +500,8 @@ int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
         wxASSERT( !subgraph->m_dirty );
 
         wxString msg;
-        auto screen = subgraph->m_sheet.LastScreen();
+        auto sheet = subgraph->m_sheet;
+        auto screen = sheet.LastScreen();
         auto driver = subgraph->m_driver;
 
         /**
@@ -565,7 +566,7 @@ int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
                 marker->SetTimeStamp( GetNewTimeStamp() );
                 marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
                 marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_ERROR );
-                marker->SetData( ERCE_BUS_VS_NET_CONFLICT,
+                marker->SetData( ERCE_BUS_TO_NET_CONFLICT,
                                  net_item->GetPosition(), msg,
                                  bus_item->GetPosition() );
 
@@ -587,6 +588,75 @@ int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
          * Check that bus subgraphs that contain both a label and a pin/port
          * have some bus members in common between the two
          */
+        {
+            SCH_ITEM* label = nullptr;
+            SCH_ITEM* port = nullptr;
+
+            for( auto item : subgraph->m_items )
+            {
+                switch( item->Type() )
+                {
+                case SCH_TEXT_T:
+                case SCH_GLOBAL_LABEL_T:
+                {
+                    if( item->Connection( sheet )->IsBus() )
+                        label = ( !label ) ? item : label;
+                    break;
+                }
+
+                case SCH_SHEET_PIN_T:
+                case SCH_HIERARCHICAL_LABEL_T:
+                {
+                    if( item->Connection( sheet )->IsBus() )
+                        port = ( !port ) ? item : port;
+                    break;
+                }
+
+                default:
+                    break;
+                }
+            }
+
+            if( label && port )
+            {
+                bool match = false;
+
+                for( auto member : label->Connection( sheet )->Members() )
+                {
+                    for( auto test : port->Connection( sheet )->Members() )
+                    {
+                        if( test != member && member->Name() == test->Name() )
+                        {
+                            match = true;
+                            break;
+                        }
+                    }
+
+                    if( match )
+                        break;
+                }
+
+                if( !match )
+                {
+                    error_count++;
+
+                    msg.Printf( _( "%s and %s are graphically connected but do "
+                                   "not share any bus members" ),
+                                label->GetSelectMenuText(),
+                                port->GetSelectMenuText() );
+
+                    auto marker = new SCH_MARKER();
+                    marker->SetTimeStamp( GetNewTimeStamp() );
+                    marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+                    marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_ERROR );
+                    marker->SetData( ERCE_BUS_TO_BUS_CONFLICT,
+                                     label->GetPosition(), msg,
+                                     port->GetPosition() );
+
+                    screen->Append( marker );
+                }
+            }
+        }
 
         /**
          * Check that subgraphs don't have multiple conflicting drivers
