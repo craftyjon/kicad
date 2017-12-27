@@ -555,7 +555,11 @@ int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
             {
                 error_count++;
 
-                msg.Printf( _( "Invalid connection between bus and net items" ) );
+                msg.Printf( _( "%s and %s are graphically connected but cannot"
+                               " electrically connect because one is a bus and"
+                               " the other is a net." ),
+                            bus_item->GetSelectMenuText(),
+                            net_item->GetSelectMenuText() );
 
                 auto marker = new SCH_MARKER();
                 marker->SetTimeStamp( GetNewTimeStamp() );
