@@ -62,6 +62,11 @@ void EDA_3D_VIEWER::ReCreateMainToolbar()
 
     m_mainToolBar->AddSeparator();
 
+    m_mainToolBar->AddTool( ID_TOOL_SET_VISIBLE_ITEMS, wxEmptyString,
+                         KiBitmap( read_setup_xpm ),
+                         _( "Set display options, and some layers visibility" ) );
+    m_mainToolBar->AddSeparator();
+
     m_mainToolBar->AddTool( ID_RENDER_CURRENT_VIEW, wxEmptyString,
                             KiBitmap( render_mode_xpm ),
                             _( "Render current view using Raytracing" ) );
@@ -193,12 +198,6 @@ void EDA_3D_VIEWER::CreateMenuBar()
     AddMenuItem( prefsMenu, renderOptionsMenu, ID_MENU3D_FL,
                 _( "Render Options" ), KiBitmap( options_3drender_xpm ) );
 
-    AddMenuItem( renderOptionsMenu, ID_MENU3D_FL_RENDER_SHOW_HOLES_IN_ZONES,
-                _( "Show Holes in Zones" ),
-                _( "Holes inside a copper layer copper zones are shown, "
-                   "but the calculation time is longer" ),
-                KiBitmap( green_xpm ), wxITEM_CHECK );
-
     wxMenu * materialsList = new wxMenu;
     AddMenuItem( renderOptionsMenu, materialsList, ID_MENU3D_FL_RENDER_MATERIAL,
                 _( "Material Properties" ), KiBitmap( color_materials_xpm ) );
@@ -229,7 +228,7 @@ void EDA_3D_VIEWER::CreateMenuBar()
 
     AddMenuItem( renderOptionsMenu_OPENGL, ID_MENU3D_FL_OPENGL_RENDER_SHOW_MODEL_BBOX,
                 _( "Show Model Bounding Boxes" ),
-                KiBitmap( green_xpm ), wxITEM_CHECK );
+                KiBitmap( ortho_xpm ), wxITEM_CHECK );
 
 
     // Add specific preferences for Raytracing
@@ -442,9 +441,6 @@ void EDA_3D_VIEWER::SetMenuBarOptionsState()
     item->Enable( !m_settings.GetFlag( FL_USE_REALISTIC_MODE ) );
     item = menuBar->FindItem( ID_MENU3D_ECO_ONOFF );
     item->Enable( !m_settings.GetFlag( FL_USE_REALISTIC_MODE ) );
-
-    item = menuBar->FindItem( ID_MENU3D_FL_RENDER_SHOW_HOLES_IN_ZONES );
-    item->Check( m_settings.GetFlag( FL_RENDER_SHOW_HOLES_IN_ZONES ) );
 
     item = menuBar->FindItem( ID_MENU3D_FL_RENDER_MATERIAL_MODE_NORMAL );
     item->Check( m_settings.MaterialModeGet() == MATERIAL_MODE_NORMAL );
