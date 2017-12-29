@@ -679,7 +679,10 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     if( hotKey == NULL )
         return false;
 
-    bool itemInEdit = m_drawItem && m_drawItem->InEditMode();
+    SCH_SCREEN* screen = GetScreen();
+
+    // itemInEdit == false means no item currently edited. We can ask for editing a new item
+    bool itemInEdit = IsEditingDrawItem();
 
     bool blocInProgress = GetScreen()->m_BlockLocate.GetState() != STATE_NO_BLOCK;
 
@@ -737,12 +740,12 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
         break;
 
     case HK_EDIT:
-        if( !itemInEdit )
-            m_drawItem = LocateItemUsingCursor( aPosition );
+        if ( !itemInEdit )
+            SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
-        if( m_drawItem )
+        if( GetDrawItem() )
         {
-            switch( m_drawItem->Type() )
+            switch( GetDrawItem()->Type() )
             {
             case LIB_PIN_T:
                 cmd.SetId( ID_LIBEDIT_EDIT_PIN );
@@ -778,9 +781,9 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
         else
         {
             if ( !itemInEdit )
-                m_drawItem = LocateItemUsingCursor( aPosition );
+                SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
-            if( m_drawItem )
+            if( GetDrawItem() )
             {
                 cmd.SetId( ID_LIBEDIT_ROTATE_ITEM );
                 GetEventHandler()->ProcessEvent( cmd );
@@ -797,10 +800,10 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
         break;
 
     case HK_DELETE:
-        if( !itemInEdit )
-            m_drawItem = LocateItemUsingCursor( aPosition );
+        if ( !itemInEdit )
+            SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
-        if( m_drawItem && !m_drawItem->InEditMode() )
+        if( IsEditingDrawItem() )
         {
             cmd.SetId( ID_POPUP_LIBEDIT_DELETE_ITEM );
             Process_Special_Functions( cmd );
@@ -810,9 +813,9 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     case HK_LIBEDIT_MOVE_GRAPHIC_ITEM:
         if( !itemInEdit )
         {
-            m_drawItem = LocateItemUsingCursor( aPosition );
+            SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
-            if( m_drawItem )
+            if( GetDrawItem() )
             {
                 cmd.SetId( ID_POPUP_LIBEDIT_MOVE_ITEM_REQUEST );
                 Process_Special_Functions( cmd );
@@ -823,9 +826,9 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     case HK_DRAG:
         if( !itemInEdit )
         {
-            m_drawItem = LocateItemUsingCursor( aPosition );
+            SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
-            if( m_drawItem && !m_drawItem->InEditMode() )
+            if( IsEditingDrawItem() )
             {
                 cmd.SetId( ID_POPUP_LIBEDIT_MODIFY_ITEM );
                 Process_Special_Functions( cmd );
@@ -835,7 +838,7 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
 
     case HK_MIRROR_Y:                       // Mirror Y
         if( !itemInEdit )
-            m_drawItem = LocateItemUsingCursor( aPosition );
+            SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
         cmd.SetId( ID_LIBEDIT_MIRROR_Y );
         GetEventHandler()->ProcessEvent( cmd );
@@ -843,7 +846,7 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
 
     case HK_MIRROR_X:                       // Mirror X
         if( !itemInEdit )
-            m_drawItem = LocateItemUsingCursor( aPosition );
+            SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
         cmd.SetId( ID_LIBEDIT_MIRROR_X );
         GetEventHandler()->ProcessEvent( cmd );

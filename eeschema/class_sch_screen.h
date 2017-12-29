@@ -35,6 +35,7 @@
 #include <macros.h>
 #include <dlist.h>
 #include <sch_item_struct.h>
+#include <lib_draw_item.h>
 #include <class_base_screen.h>
 #include <class_title_block.h>
 #include <class_page_info.h>
@@ -178,6 +179,7 @@ public:
      * @return SCH_ITEM* - the one selected, or NULL.
      */
     SCH_ITEM* GetCurItem() const { return (SCH_ITEM*) BASE_SCREEN::GetCurItem(); }
+    LIB_ITEM* GetCurLibItem() const { return (LIB_ITEM*) BASE_SCREEN::GetCurItem(); }
 
     /**
      * Sets the currently selected object, m_CurrentItem.
@@ -185,6 +187,7 @@ public:
      * @param aItem Any object derived from SCH_ITEM
      */
     void SetCurItem( SCH_ITEM* aItem ) { BASE_SCREEN::SetCurItem( (EDA_ITEM*) aItem ); }
+    void SetCurLibItem( LIB_ITEM* aItem ) { BASE_SCREEN::SetCurItem( (EDA_ITEM*) aItem ); }
 
     /**
      * Delete all draw items and clears the project settings.
