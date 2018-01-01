@@ -69,7 +69,7 @@
 class DIALOG_EDIT_COMPONENT_IN_SCHEMATIC : public DIALOG_EDIT_COMPONENT_IN_SCHEMATIC_FBP
 {
 public:
-    DIALOG_EDIT_COMPONENT_IN_SCHEMATIC( wxWindow* aParent );
+    DIALOG_EDIT_COMPONENT_IN_SCHEMATIC( SCH_EDIT_FRAME* aParent );
 
     /**
      * Initialize controls with \a aComponent.
@@ -198,11 +198,9 @@ void SCH_EDIT_FRAME::EditComponent( SCH_COMPONENT* aComponent )
 }
 
 
-DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::DIALOG_EDIT_COMPONENT_IN_SCHEMATIC( wxWindow* aParent ) :
+DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::DIALOG_EDIT_COMPONENT_IN_SCHEMATIC( SCH_EDIT_FRAME* aParent ) :
     DIALOG_EDIT_COMPONENT_IN_SCHEMATIC_FBP( aParent )
 {
-    wxASSERT( dynamic_cast< SCH_EDIT_FRAME* >( aParent ) );
-
 #ifndef KICAD_SPICE
     spiceFieldsButton->Hide();
 #endif /* not KICAD_SPICE */
@@ -596,7 +594,7 @@ void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::showButtonHandler( wxCommandEvent& even
         // pick a footprint using the footprint picker.
         wxString fpid;
 
-        KIWAY_PLAYER* frame = Kiway().Player( FRAME_PCB_MODULE_VIEWER_MODAL, true, GetParent() );
+        KIWAY_PLAYER* frame = Kiway().Player( FRAME_PCB_MODULE_VIEWER_MODAL, true, this );
 
         if( frame->ShowModal( &fpid, this ) )
         {
