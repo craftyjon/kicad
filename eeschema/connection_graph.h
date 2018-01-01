@@ -138,9 +138,47 @@ private:
 
     int m_last_bus_code;
 
-    bool ercCheckBusToNetConflicts( CONNECTION_SUBGRAPH* aSubgraph, bool aCreateMarkers );
+    /**
+     * Checks one subgraph for conflicting connections between net and bus labels
+     *
+     * For example, a net wire connected to a bus port/pin, or vice versa
+     *
+     * @param  aSubgraph      is the subgraph to examine
+     * @param  aCreateMarkers controls whether error markers are created
+     * @return                true for no errors, false for errors
+     */
+    bool ercCheckBusToNetConflicts( CONNECTION_SUBGRAPH* aSubgraph,
+                                    bool aCreateMarkers );
 
-    bool ercCheckBusToBusConflicts( CONNECTION_SUBGRAPH* aSubgraph, bool aCreateMarkers );
+    /**
+     * Checks one subgraph for conflicting connections between two bus items
+     *
+     * For example, a labeled bus wire connected to a hierarchical sheet pin
+     * where the labeled bus doesn't contain any of the same bus members as the
+     * sheet pin
+     *
+     * @param  aSubgraph      is the subgraph to examine
+     * @param  aCreateMarkers controls whether error markers are created
+     * @return                true for no errors, false for errors
+     */
+    bool ercCheckBusToBusConflicts( CONNECTION_SUBGRAPH* aSubgraph,
+                                    bool aCreateMarkers );
+
+    /**
+     * Checks one subgraph for conflicting bus entry to bus connections
+     *
+     * For example, a wire with label "A0" is connected to a bus labeled "D[8..0]"
+     *
+     * Will also check for mistakes related to bus group names, for example:
+     * A bus group named "USB{DP DM}" should have bus entry connections like
+     * "USB.DP" but someone might accidentally just enter "DP"
+     *
+     * @param  aSubgraph      is the subgraph to examine
+     * @param  aCreateMarkers controls whether error markers are created
+     * @return                true for no errors, false for errors
+     */
+    bool ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSubgraph,
+                                         bool aCreateMarkers );
 };
 
 #endif

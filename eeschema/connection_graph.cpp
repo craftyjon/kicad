@@ -506,33 +506,21 @@ int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
          * won't actually be connected to bus wires if they aren't in the right
          * format.
          */
+        // TODO(JE) Add ERC
 
-        /**
-         * Check for conflict between type (bus vs net) of wires and ports/pins
-         */
         if( !ercCheckBusToNetConflicts( subgraph, aCreateMarkers ) )
             error_count++;
 
-        /**
-         * Check that subgraphs of nets that connect to buses via a bus entry
-         * actually exist in the bus they are attached to
-         */
+        if( !ercCheckBusToBusEntryConflicts( subgraph, aCreateMarkers ) )
+            error_count++;
 
-        /**
-         * Check that the nets broken out of a named bus group are properly
-         * prefixed with the bus group name
-         */
-
-        /**
-         * Check that bus subgraphs that contain both a label and a pin/port
-         * have some bus members in common between the two
-         */
         if( !ercCheckBusToBusConflicts( subgraph, aCreateMarkers ) )
             error_count++;
 
         /**
          * Check that subgraphs don't have multiple conflicting drivers
          */
+        // TODO(JE) Add ERC
 
         /**
          * Check that no-connect subgraphs don't have anything other than pins
@@ -732,6 +720,58 @@ bool CONNECTION_GRAPH::ercCheckBusToBusConflicts( CONNECTION_SUBGRAPH* aSubgraph
 
             return false;
         }
+    }
+
+    return true;
+}
+
+
+bool CONNECTION_GRAPH::ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSubgraph,
+                                                       bool aCreateMarkers )
+{
+    wxString msg;
+    bool conflict = false;
+    auto sheet = aSubgraph->m_sheet;
+    auto screen = sheet.LastScreen();
+
+    SCH_ITEM* bus_entry = nullptr;
+    SCH_ITEM* bus_wire = nullptr;
+
+    for( auto item : aSubgraph->m_items )
+    {
+        switch( item->Type() )
+        {
+        case SCH_BUS_WIRE_ENTRY_T:
+        {
+            bus_entry = ( !bus_entry ) ? item : bus_entry;
+            break;
+        }
+
+        default:
+            break;
+        }
+    }
+
+    std::vector< DANGLING_END_ITEM > endPoints;
+    bus_entry->GetEndPoints( endPoints );
+
+    if( conflict )
+    {
+        msg.Printf( _( "%s is connected to %s but is not a member of the bus" ),
+                    bus_entry->GetSelectMenuText(),
+                    bus_wire->GetSelectMenuText() );
+
+        auto marker = new SCH_MARKER();
+        marker->SetTimeStamp( GetNewTimeStamp() );
+        marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+        marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_ERROR );
+        marker->SetData( ERCE_BUS_ENTRY_CONFLICT,
+                         bus_entry->GetPosition(), msg,
+                         bus_entry->GetPosition() );
+
+        screen->Append( marker );
+
+        return false;
     }
 
     return true;
