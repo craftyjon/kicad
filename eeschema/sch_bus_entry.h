@@ -159,6 +159,12 @@ public:
     BITMAP_DEF GetMenuImage() const override;
 
     bool IsDanglingStateChanged( std::vector<DANGLING_END_ITEM>& aItemList ) override;
+
+    /**
+     * Pointer to the bus item (usually a bus wire) connected to this bus-wire
+     * entry, if it is connected to one.
+     */
+    SCH_ITEM* m_connected_bus_item;
 };
 
 /**

@@ -60,6 +60,7 @@ SCH_BUS_WIRE_ENTRY::SCH_BUS_WIRE_ENTRY( const wxPoint& pos, char shape ) :
     SCH_BUS_ENTRY_BASE( SCH_BUS_WIRE_ENTRY_T, pos, shape )
 {
     m_Layer  = LAYER_WIRE;
+    m_connected_bus_item = nullptr;
 }
 
 SCH_BUS_BUS_ENTRY::SCH_BUS_BUS_ENTRY( const wxPoint& pos, char shape ) :

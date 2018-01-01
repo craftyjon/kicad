@@ -23,6 +23,7 @@
 
 #include <class_sch_screen.h>
 #include <erc.h>
+#include <sch_bus_entry.h>
 #include <sch_component.h>
 #include <sch_pin_connection.h>
 #include <sch_sheet.h>
@@ -258,6 +259,15 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( const SCH_SHEET_PATH aSheet,
                 {
                     connected_item->ConnectedItems().insert( test_item );
                     test_item->ConnectedItems().insert( connected_item );
+                }
+
+                if( connected_item->Type() == SCH_BUS_WIRE_ENTRY_T )
+                {
+                    if( test_item->Connection( aSheet )->IsBus() )
+                    {
+                        auto bus_entry = static_cast<SCH_BUS_WIRE_ENTRY*>( connected_item );
+                        bus_entry->m_connected_bus_item = test_item;
+                    }
                 }
             }
         }
@@ -664,16 +674,16 @@ bool CONNECTION_GRAPH::ercCheckBusToBusConflicts( CONNECTION_SUBGRAPH* aSubgraph
         case SCH_TEXT_T:
         case SCH_GLOBAL_LABEL_T:
         {
-            if( item->Connection( sheet )->IsBus() )
-                label = ( !label ) ? item : label;
+            if( !label && item->Connection( sheet )->IsBus() )
+                label = item;
             break;
         }
 
         case SCH_SHEET_PIN_T:
         case SCH_HIERARCHICAL_LABEL_T:
         {
-            if( item->Connection( sheet )->IsBus() )
-                port = ( !port ) ? item : port;
+            if( !port && item->Connection( sheet )->IsBus() )
+                port = item;
             break;
         }
 
@@ -734,7 +744,7 @@ bool CONNECTION_GRAPH::ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSub
     auto sheet = aSubgraph->m_sheet;
     auto screen = sheet.LastScreen();
 
-    SCH_ITEM* bus_entry = nullptr;
+    SCH_BUS_WIRE_ENTRY* bus_entry = nullptr;
     SCH_ITEM* bus_wire = nullptr;
 
     for( auto item : aSubgraph->m_items )
@@ -743,7 +753,8 @@ bool CONNECTION_GRAPH::ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSub
         {
         case SCH_BUS_WIRE_ENTRY_T:
         {
-            bus_entry = ( !bus_entry ) ? item : bus_entry;
+            if( !bus_entry )
+                bus_entry = static_cast<SCH_BUS_WIRE_ENTRY*>( item );
             break;
         }
 
@@ -752,19 +763,30 @@ bool CONNECTION_GRAPH::ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSub
         }
     }
 
-    std::vector< DANGLING_END_ITEM > endPoints;
-    bus_entry->GetEndPoints( endPoints );
+    if( bus_entry && bus_entry->m_connected_bus_item )
+    {
+        bus_wire = bus_entry->m_connected_bus_item;
+        conflict = true;
+
+        auto test_name = bus_entry->Connection( sheet )->Name();
+
+        for( auto member : bus_wire->Connection( sheet )->Members() )
+        {
+            if( member->Name() == test_name )
+                conflict = false;
+        }
+    }
 
     if( conflict )
     {
-        msg.Printf( _( "%s is connected to %s but is not a member of the bus" ),
-                    bus_entry->GetSelectMenuText(),
-                    bus_wire->GetSelectMenuText() );
+        msg.Printf( _( "%s (%s) is connected to %s (%s) but is not a member of the bus" ),
+                    bus_entry->GetSelectMenuText(), bus_entry->Connection( sheet )->Name(),
+                    bus_wire->GetSelectMenuText(), bus_wire->Connection( sheet )->Name() );
 
         auto marker = new SCH_MARKER();
         marker->SetTimeStamp( GetNewTimeStamp() );
         marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
-        marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_ERROR );
+        marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_WARNING );
         marker->SetData( ERCE_BUS_ENTRY_CONFLICT,
                          bus_entry->GetPosition(), msg,
                          bus_entry->GetPosition() );
