@@ -42,7 +42,7 @@ using std::unordered_set;
 using std::vector;
 
 
-bool CONNECTION_SUBGRAPH::ResolveDrivers()
+bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
 {
     int highest_priority = -1;
     vector<SCH_ITEM*> candidates;
@@ -124,7 +124,31 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers()
 #endif
     }
 
-    return ( m_driver != nullptr );
+    if( aCreateMarkers && candidates.size() > 1 && highest_priority > 1)
+    {
+        wxString msg;
+        msg.Printf( _( "%s and %s are both attached to the same wires. "
+                       "%s was picked as the label to use for netlisting." ),
+                    candidates[0]->GetSelectMenuText(),
+                    candidates[1]->GetSelectMenuText(),
+                    candidates[0]->Connection( m_sheet )->Name() );
+
+        auto marker = new SCH_MARKER();
+        marker->SetTimeStamp( GetNewTimeStamp() );
+        marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+        marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_WARNING );
+        marker->SetData( ERCE_DRIVER_CONFLICT,
+                         candidates[0]->GetPosition(), msg,
+                         candidates[1]->GetPosition() );
+
+        m_sheet.LastScreen()->Append( marker );
+
+        // If aCreateMarkers is true, then this is part of ERC check, so we
+        // should return false even if the driver was assigned
+        return false;
+    }
+
+    return aCreateMarkers || ( m_driver != nullptr );
 }
 
 
@@ -527,10 +551,8 @@ int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
         if( !ercCheckBusToBusConflicts( subgraph, aCreateMarkers ) )
             error_count++;
 
-        /**
-         * Check that subgraphs don't have multiple conflicting drivers
-         */
-        // TODO(JE) Add ERC
+        if( !subgraph->ResolveDrivers( aCreateMarkers ) )
+            error_count++;
 
         /**
          * Check that no-connect subgraphs don't have anything other than pins
@@ -633,21 +655,24 @@ bool CONNECTION_GRAPH::ercCheckBusToNetConflicts( CONNECTION_SUBGRAPH* aSubgraph
 
     if( net_item && bus_item )
     {
-        msg.Printf( _( "%s and %s are graphically connected but cannot"
-                       " electrically connect because one is a bus and"
-                       " the other is a net." ),
-                    bus_item->GetSelectMenuText(),
-                    net_item->GetSelectMenuText() );
+        if( aCreateMarkers )
+        {
+            msg.Printf( _( "%s and %s are graphically connected but cannot"
+                           " electrically connect because one is a bus and"
+                           " the other is a net." ),
+                        bus_item->GetSelectMenuText(),
+                        net_item->GetSelectMenuText() );
 
-        auto marker = new SCH_MARKER();
-        marker->SetTimeStamp( GetNewTimeStamp() );
-        marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
-        marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_ERROR );
-        marker->SetData( ERCE_BUS_TO_NET_CONFLICT,
-                         net_item->GetPosition(), msg,
-                         bus_item->GetPosition() );
+            auto marker = new SCH_MARKER();
+            marker->SetTimeStamp( GetNewTimeStamp() );
+            marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+            marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_ERROR );
+            marker->SetData( ERCE_BUS_TO_NET_CONFLICT,
+                             net_item->GetPosition(), msg,
+                             bus_item->GetPosition() );
 
-        screen->Append( marker );
+            screen->Append( marker );
+        }
 
         return false;
     }
@@ -712,20 +737,23 @@ bool CONNECTION_GRAPH::ercCheckBusToBusConflicts( CONNECTION_SUBGRAPH* aSubgraph
 
         if( !match )
         {
-            msg.Printf( _( "%s and %s are graphically connected but do "
-                           "not share any bus members" ),
-                        label->GetSelectMenuText(),
-                        port->GetSelectMenuText() );
+            if( aCreateMarkers )
+            {
+                msg.Printf( _( "%s and %s are graphically connected but do "
+                               "not share any bus members" ),
+                            label->GetSelectMenuText(),
+                            port->GetSelectMenuText() );
 
-            auto marker = new SCH_MARKER();
-            marker->SetTimeStamp( GetNewTimeStamp() );
-            marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
-            marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_ERROR );
-            marker->SetData( ERCE_BUS_TO_BUS_CONFLICT,
-                             label->GetPosition(), msg,
-                             port->GetPosition() );
+                auto marker = new SCH_MARKER();
+                marker->SetTimeStamp( GetNewTimeStamp() );
+                marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+                marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_ERROR );
+                marker->SetData( ERCE_BUS_TO_BUS_CONFLICT,
+                                 label->GetPosition(), msg,
+                                 port->GetPosition() );
 
-            screen->Append( marker );
+                screen->Append( marker );
+            }
 
             return false;
         }
@@ -778,19 +806,22 @@ bool CONNECTION_GRAPH::ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSub
 
     if( conflict )
     {
-        msg.Printf( _( "%s (%s) is connected to %s (%s) but is not a member of the bus" ),
-                    bus_entry->GetSelectMenuText(), bus_entry->Connection( sheet )->Name(),
-                    bus_wire->GetSelectMenuText(), bus_wire->Connection( sheet )->Name() );
+        if( aCreateMarkers )
+        {
+            msg.Printf( _( "%s (%s) is connected to %s (%s) but is not a member of the bus" ),
+                        bus_entry->GetSelectMenuText(), bus_entry->Connection( sheet )->Name(),
+                        bus_wire->GetSelectMenuText(), bus_wire->Connection( sheet )->Name() );
 
-        auto marker = new SCH_MARKER();
-        marker->SetTimeStamp( GetNewTimeStamp() );
-        marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
-        marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_WARNING );
-        marker->SetData( ERCE_BUS_ENTRY_CONFLICT,
-                         bus_entry->GetPosition(), msg,
-                         bus_entry->GetPosition() );
+            auto marker = new SCH_MARKER();
+            marker->SetTimeStamp( GetNewTimeStamp() );
+            marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+            marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_WARNING );
+            marker->SetData( ERCE_BUS_ENTRY_CONFLICT,
+                             bus_entry->GetPosition(), msg,
+                             bus_entry->GetPosition() );
 
-        screen->Append( marker );
+            screen->Append( marker );
+        }
 
         return false;
     }

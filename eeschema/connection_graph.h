@@ -49,9 +49,10 @@ public:
      * If multiple possible drivers exist, picks one according to the priority.
      * If multiple "winners" exist, returns false and sets m_driver to nullptr.
      *
+     * @param aCreateMarkers controls whether ERC markers should be added for conflicts
      * @return true if m_driver was set, or false if a conflict occurred
      */
-    bool ResolveDrivers();
+    bool ResolveDrivers( bool aCreateMarkers = false );
 
     bool m_dirty;
 
