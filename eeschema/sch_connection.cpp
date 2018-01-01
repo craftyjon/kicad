@@ -277,7 +277,6 @@ bool SCH_CONNECTION::IsBusGroupLabel( const wxString& aLabel )
 }
 
 
-
 void SCH_CONNECTION::ParseBusVector( wxString aVector, wxString* aName,
                                      long* begin, long* end )
 {

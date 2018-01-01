@@ -594,10 +594,10 @@ bool CONNECTION_GRAPH::ercCheckBusToNetConflicts( CONNECTION_SUBGRAPH* aSubgraph
     wxString msg;
     auto sheet = aSubgraph->m_sheet;
     auto screen = sheet.LastScreen();
-    auto driver = aSubgraph->m_driver;
 
     SCH_ITEM* net_item = nullptr;
     SCH_ITEM* bus_item = nullptr;
+    SCH_CONNECTION conn;
 
     for( auto item : aSubgraph->m_items )
     {
@@ -616,9 +616,8 @@ bool CONNECTION_GRAPH::ercCheckBusToNetConflicts( CONNECTION_SUBGRAPH* aSubgraph
         case SCH_SHEET_PIN_T:
         case SCH_HIERARCHICAL_LABEL_T:
         {
-            auto text = static_cast<SCH_TEXT*>( driver );
-            SCH_CONNECTION conn;
-            conn.ConfigureFromLabel( text->GetText() );
+            auto text = static_cast<SCH_TEXT*>( item )->GetText();
+            conn.ConfigureFromLabel( text );
 
             if( conn.IsBus() )
                 bus_item = ( !bus_item ) ? item : bus_item;
