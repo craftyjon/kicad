@@ -529,13 +529,10 @@ void SCH_COMPONENT::UpdateAllPinCaches( const SCH_COLLECTOR& aComponents )
 }
 
 
-// TODO(JE) do we need m_pin_connections to have a separate conn for each sheet?
 void SCH_COMPONENT::UpdatePinConnections( SCH_SHEET_PATH aSheet )
 {
     if( PART_SPTR part = m_part.lock() )
     {
-        m_pin_connections.clear();
-
         for( LIB_PIN* pin = part->GetNextPin();  pin;  pin = part->GetNextPin( pin ) )
         {
             wxASSERT( pin->Type() == LIB_PIN_T );
@@ -546,14 +543,37 @@ void SCH_COMPONENT::UpdatePinConnections( SCH_SHEET_PATH aSheet )
             if( pin->GetConvert() && m_convert && ( m_convert != pin->GetConvert() ) )
                 continue;
 
-            auto connection = new SCH_PIN_CONNECTION();
+            SCH_PIN_CONNECTION* connection = nullptr;
+
+            try
+            {
+                connection = m_pin_connections.at( pin );
+            }
+            catch( const std::out_of_range& oor )
+            {
+                connection = new SCH_PIN_CONNECTION();
+                m_pin_connections[ pin ] = connection;
+            }
+
             connection->m_pin = pin;
             connection->m_comp = this;
             connection->InitializeConnection( aSheet );
-
-            m_pin_connections.push_back( connection );
         }
     }
+}
+
+
+SCH_PIN_CONNECTION* SCH_COMPONENT::GetConnectionForPin( LIB_PIN* aPin )
+{
+    try
+    {
+        return m_pin_connections.at( aPin );
+    }
+    catch( const std::out_of_range& oor )
+    {
+        return nullptr;
+    }
+
 }
 
 

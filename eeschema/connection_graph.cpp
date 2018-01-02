@@ -105,26 +105,12 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
                                 return name_a < name_b;
                             } );
             }
-            else
-            {
-                // TODO(JE) ERC warning about multiple drivers?
-            }
         }
 
         m_driver = candidates[0];
     }
-    else
-    {
-        wxLogDebug( _( "Could not resolve drivers for subgraph %li on sheet %s " ),
-                    m_code, m_sheet.PathHumanReadable() );
 
-#if DEBUG
-        for( auto item : m_items )
-            wxLogDebug( "    %s", item->GetSelectMenuText() );
-#endif
-    }
-
-    if( aCreateMarkers && candidates.size() > 1 && highest_priority > 1)
+    if( aCreateMarkers && candidates.size() > 1 && highest_priority > 1 )
     {
         wxString msg;
         msg.Printf( _( "%s and %s are both attached to the same wires. "
@@ -132,6 +118,8 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
                     candidates[0]->GetSelectMenuText(),
                     candidates[1]->GetSelectMenuText(),
                     candidates[0]->Connection( m_sheet )->Name() );
+
+        wxASSERT( candidates[0]->GetSelectMenuText() != candidates[1]->GetSelectMenuText() );
 
         auto marker = new SCH_MARKER();
         marker->SetTimeStamp( GetNewTimeStamp() );
@@ -199,8 +187,10 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH aSheet,
 
             component->UpdatePinConnections( aSheet );
 
-            for( auto pin_connection : component->m_pin_connections )
+            for( auto it : component->PinConnections() )
             {
+                auto pin_connection = it.second;
+
                 // TODO(JE) use cached location from m_Pins
                 auto pin_pos = pin_connection->m_pin->GetPosition();
                 auto pos = component->GetTransform().TransformCoordinate( pin_pos ) +
@@ -332,6 +322,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
     for( auto item : m_items )
     {
+        bool debug = false;
+
         for( auto it : item->m_connection_map )
         {
             const auto sheet = it.first;
@@ -346,8 +338,11 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                 subgraph->m_items.push_back( item );
 
-                // std::cout << "SG " << subgraph.m_code << " started with "
-                //           << item->GetSelectMenuText() << std::endl;
+                if( debug )
+                {
+                    std::cout << "SG " << subgraph->m_code << " started with "
+                              << item << " " << item->GetSelectMenuText() << std::endl;
+                }
 
                 if( connection->IsDriver() )
                     subgraph->m_drivers.push_back( item );
@@ -380,7 +375,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                         connected_conn->SetSubgraphCode( subgraph->m_code );
                         subgraph->m_items.push_back( connected_item );
 
-                        // std::cout << "   +" << connected_item->GetSelectMenuText() << std::endl;
+                        if( debug )
+                            std::cout << "   +" << connected_item << " " << connected_item->GetSelectMenuText() << std::endl;
 
                         if( connected_conn->IsDriver() )
                             subgraph->m_drivers.push_back( connected_item );
@@ -534,13 +530,18 @@ int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
         wxASSERT( !subgraph->m_dirty );
 
         /**
-         * Check that labels attached to bus subgraphs follow proper format
+         * NOTE:
          *
-         * NOTE: this check doesn't need to be here right now because labels
+         * We could check that labels attached to bus subgraphs follow the
+         * proper format (i.e. actually define a bus).
+         *
+         * This check doesn't need to be here right now because labels
          * won't actually be connected to bus wires if they aren't in the right
-         * format.
+         * format due to their TestDanglingEnds() implementation.
          */
-        // TODO(JE) Add ERC
+
+        if( !subgraph->ResolveDrivers( aCreateMarkers ) )
+            error_count++;
 
         if( !ercCheckBusToNetConflicts( subgraph, aCreateMarkers ) )
             error_count++;
@@ -551,8 +552,7 @@ int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
         if( !ercCheckBusToBusConflicts( subgraph, aCreateMarkers ) )
             error_count++;
 
-        if( !subgraph->ResolveDrivers( aCreateMarkers ) )
-            error_count++;
+
 
         /**
          * Check that no-connect subgraphs don't have anything other than pins

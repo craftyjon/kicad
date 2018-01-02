@@ -74,24 +74,6 @@ class SCH_COMPONENT : public SCH_ITEM
 public:
     enum AUTOPLACED { AUTOPLACED_NO = 0, AUTOPLACED_AUTO, AUTOPLACED_MANUAL };
 
-    // TODO(JE) Move to private if this ends up being a good idea
-    // TODO(JE) smart pointer?
-    std::vector<SCH_PIN_CONNECTION*> m_pin_connections;
-
-    // TODO(JE) Move to cpp if needed
-    SCH_PIN_CONNECTION* GetConnectionForPin( LIB_PIN* aPin )
-    {
-        for( auto connection : m_pin_connections )
-        {
-            if( connection->m_pin == aPin )
-            {
-                return connection;
-            }
-        }
-
-        return nullptr;
-    }
-
 private:
 
     wxPoint     m_Pos;
@@ -124,6 +106,8 @@ private:
      * A single / denotes the root sheet.
      */
     wxArrayString m_PathsAndReferences;
+
+    std::unordered_map<LIB_PIN*, SCH_PIN_CONNECTION*> m_pin_connections;
 
     void Init( const wxPoint& pos = wxPoint( 0, 0 ) );
 
@@ -227,6 +211,16 @@ public:
      * Updates the local cache of SCH_PIN_CONNECTION objects for each pin
      */
     void UpdatePinConnections( SCH_SHEET_PATH aSheet );
+
+    /**
+     * Retrieves the pin connection for a given pin of the component
+     */
+    SCH_PIN_CONNECTION* GetConnectionForPin( LIB_PIN* aPin );
+
+    const std::unordered_map<LIB_PIN*, SCH_PIN_CONNECTION*>& PinConnections()
+    {
+        return m_pin_connections;
+    }
 
     /**
      * Change the unit number to \a aUnit

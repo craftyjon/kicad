@@ -110,7 +110,11 @@ void SCH_ITEM::AddConnectionTo( SCH_ITEM* aItem )
 
 void SCH_ITEM::InitializeConnection( SCH_SHEET_PATH aSheet )
 {
-    wxASSERT( !Connection( aSheet ) );
+    if( Connection( aSheet ) )
+    {
+        Connection( aSheet )->Reset();
+        return;
+    }
 
     auto connection = new SCH_CONNECTION( this );
     m_connection_map.insert( std::make_pair( aSheet, connection ) );
