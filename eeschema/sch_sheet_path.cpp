@@ -50,7 +50,7 @@
 
 namespace std
 {
-    size_t hash<const SCH_SHEET_PATH>::operator()( const SCH_SHEET_PATH& path ) const
+    size_t hash<SCH_SHEET_PATH>::operator()( const SCH_SHEET_PATH& path ) const
     {
         size_t seed = 0;
 

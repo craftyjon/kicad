@@ -530,7 +530,7 @@ void SCH_COMPONENT::UpdateAllPinCaches( const SCH_COLLECTOR& aComponents )
 
 
 // TODO(JE) do we need m_pin_connections to have a separate conn for each sheet?
-void SCH_COMPONENT::UpdatePinConnections( const SCH_SHEET_PATH aSheet )
+void SCH_COMPONENT::UpdatePinConnections( SCH_SHEET_PATH aSheet )
 {
     if( PART_SPTR part = m_part.lock() )
     {

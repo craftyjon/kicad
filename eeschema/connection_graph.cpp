@@ -164,7 +164,7 @@ void CONNECTION_GRAPH::Reset()
 }
 
 
-void CONNECTION_GRAPH::UpdateItemConnectivity( const SCH_SHEET_PATH aSheet,
+void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH aSheet,
                                                vector<SCH_ITEM*> aItemList )
 {
     PROF_COUNTER phase1;

@@ -308,7 +308,7 @@ public:
 
 namespace std
 {
-    template<> struct hash<const SCH_SHEET_PATH>
+    template<> struct hash<SCH_SHEET_PATH>
     {
         size_t operator()( const SCH_SHEET_PATH& path ) const;
     };

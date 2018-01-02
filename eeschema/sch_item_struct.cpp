@@ -79,7 +79,7 @@ bool SCH_ITEM::IsConnected( const wxPoint& aPosition ) const
 }
 
 
-SCH_CONNECTION* SCH_ITEM::Connection( const SCH_SHEET_PATH aSheet )
+SCH_CONNECTION* SCH_ITEM::Connection( SCH_SHEET_PATH aSheet )
 {
     SCH_CONNECTION* conn = nullptr;
 
@@ -108,7 +108,7 @@ void SCH_ITEM::AddConnectionTo( SCH_ITEM* aItem )
 }
 
 
-void SCH_ITEM::InitializeConnection( const SCH_SHEET_PATH aSheet )
+void SCH_ITEM::InitializeConnection( SCH_SHEET_PATH aSheet )
 {
     wxASSERT( !Connection( aSheet ) );
 

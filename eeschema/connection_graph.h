@@ -90,7 +90,7 @@ public:
      * @param aSheet is the path to the sheet of all items in the list
      * @param aItemList is a list of items to consider
      */
-    void UpdateItemConnectivity( const SCH_SHEET_PATH aSheet,
+    void UpdateItemConnectivity( SCH_SHEET_PATH aSheet,
                                  std::vector<SCH_ITEM*> aItemList );
 
     /**

@@ -140,7 +140,7 @@ protected:
     std::unordered_set<SCH_ITEM*> m_connected_items;
 
     /// Stores connectivity information, per sheet
-    std::unordered_map<const SCH_SHEET_PATH, SCH_CONNECTION*> m_connection_map;
+    std::unordered_map<SCH_SHEET_PATH, SCH_CONNECTION*> m_connection_map;
 
 public:
     SCH_ITEM( EDA_ITEM* aParent, KICAD_T aType );
@@ -331,7 +331,7 @@ public:
     /**
      * Retrieves the connection associated with this object in the given sheet
      */
-    SCH_CONNECTION* Connection( const SCH_SHEET_PATH aPath );
+    SCH_CONNECTION* Connection( SCH_SHEET_PATH aPath );
 
     /**
      * Retrieves the set of items connected to this item (schematic only)
@@ -348,7 +348,7 @@ public:
      *
      * @param aPath is the sheet path to initialize
      */
-    void InitializeConnection( const SCH_SHEET_PATH aPath );
+    void InitializeConnection( SCH_SHEET_PATH aPath );
 
     /**
      * Returns true if this item should propagate connection info to aItem
