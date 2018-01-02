@@ -428,7 +428,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
         if( !subgraph->ResolveDrivers() )
         {
-            // TODO(JE) ERC Error: multiple equivalent drivers
+            subgraph->m_dirty = false;
         }
         else
         {
