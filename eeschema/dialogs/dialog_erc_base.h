@@ -1,8 +1,8 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Nov 22 2017)
+// C++ code generated with wxFormBuilder (version Nov 30 2016)
 // http://www.wxformbuilder.org/
 //
-// PLEASE DO *NOT* EDIT THIS FILE!
+// PLEASE DO "NOT" EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
 
 #ifndef __DIALOG_ERC_BASE_H__
@@ -11,6 +11,7 @@
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/intl.h>
+class DIALOG_SHIM;
 class ERC_HTML_LISTFRAME;
 
 #include "dialog_shim.h"
@@ -73,6 +74,12 @@ class DIALOG_ERC_BASE : public DIALOG_SHIM
 		wxStaticText* m_staticText9;
 		wxCheckBox* m_cbTestSimilarLabels;
 		wxCheckBox* m_cbTestUniqueGlbLabels;
+		wxStaticLine* m_staticline3;
+		wxStaticText* m_staticText81;
+		wxCheckBox* m_cbCheckBusDriverConflicts;
+		wxCheckBox* m_cbCheckBusEntries;
+		wxCheckBox* m_cbCheckBusToBusConflicts;
+		wxCheckBox* m_cbCheckBusToNetConflicts;
 		
 		// Virtual event handlers, overide them in your derived class
 		virtual void OnCloseErcDialog( wxCloseEvent& event ) { event.Skip(); }

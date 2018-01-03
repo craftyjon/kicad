@@ -38,6 +38,7 @@
 #include <class_sch_screen.h>
 #include <sch_collectors.h>
 #include <connection_graph.h>
+#include <erc_settings.h>
 
 // enum PINSHEETLABEL_SHAPE
 #include <sch_text.h>
@@ -142,6 +143,7 @@ private:
 
     PARAM_CFG_ARRAY         m_projectFileParams;
     PARAM_CFG_ARRAY         m_configSettings;
+    ERC_SETTINGS            m_ercSettings;
     wxPageSetupDialogData   m_pageSetupData;
     wxFindReplaceData*      m_findReplaceData;
     wxPoint                 m_previewPosition;
@@ -313,6 +315,10 @@ public:
      * @return True if the project file was loaded correctly.
      */
     bool LoadProjectFile();
+
+    const ERC_SETTINGS& GetErcSettings() { return m_ercSettings; }
+
+    void UpdateErcSettings( const ERC_SETTINGS& aSettings ) { m_ercSettings = aSettings; }
 
     /**
      * Return a default symbol field name for field \a aFieldNdx for all components.

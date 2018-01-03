@@ -359,8 +359,26 @@ PARAM_CFG_ARRAY& SCH_EDIT_FRAME::GetProjectFileParametersList()
                                             &s_defaultTextSize,
                                             DEFAULT_SIZE_TEXT, 5, 1000 ) );
 
+    m_projectFileParams.push_back( new PARAM_CFG_BOOL( wxT( "ERC_WriteFile" ),
+                                   &m_ercSettings.write_erc_file, false ) );
+
     m_projectFileParams.push_back( new PARAM_CFG_BOOL( wxT( "ERC_TestSimilarLabels" ),
-                                            &DIALOG_ERC::m_TestSimilarLabels, true ) );
+                                   &m_ercSettings.check_similar_labels, true ) );
+
+    m_projectFileParams.push_back( new PARAM_CFG_BOOL( wxT( "ERC_CheckUniqueGlobalLabels" ),
+                                   &m_ercSettings.check_unique_global_labels, true ) );
+
+    m_projectFileParams.push_back( new PARAM_CFG_BOOL( wxT( "ERC_CheckBusDriverConflicts" ),
+                                   &m_ercSettings.check_bus_driver_conflicts, true ) );
+
+    m_projectFileParams.push_back( new PARAM_CFG_BOOL( wxT( "ERC_CheckBusEntryConflicts" ),
+                                   &m_ercSettings.check_bus_entry_conflicts, true ) );
+
+    m_projectFileParams.push_back( new PARAM_CFG_BOOL( wxT( "ERC_CheckBusToBusConflicts" ),
+                                   &m_ercSettings.check_bus_to_bus_conflicts, true ) );
+
+    m_projectFileParams.push_back( new PARAM_CFG_BOOL( wxT( "ERC_CheckBusToNetConflicts" ),
+                                   &m_ercSettings.check_bus_to_net_conflicts, true ) );
 
     return m_projectFileParams;
 }

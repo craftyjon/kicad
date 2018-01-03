@@ -24,6 +24,7 @@
 #include <vector>
 
 #include <common.h>
+#include <erc_settings.h>
 #include <sch_connection.h>
 #include <sch_item_struct.h>
 
@@ -120,7 +121,7 @@ public:
      * @param aCreateMarkers controls whether error markers are created
      * @return the number of errors found
      */
-    int RunERC( bool aCreateMarkers = true );
+    int RunERC( const ERC_SETTINGS& aSettings, bool aCreateMarkers = true );
 
 private:
 

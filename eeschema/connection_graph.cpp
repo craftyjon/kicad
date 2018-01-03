@@ -519,7 +519,7 @@ std::shared_ptr<BUS_ALIAS> CONNECTION_GRAPH::GetBusAlias( wxString aName )
 }
 
 
-int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
+int CONNECTION_GRAPH::RunERC( const ERC_SETTINGS& aSettings, bool aCreateMarkers )
 {
     int error_count = 0;
 
@@ -541,19 +541,21 @@ int CONNECTION_GRAPH::RunERC( bool aCreateMarkers )
          * format due to their TestDanglingEnds() implementation.
          */
 
-        if( !subgraph->ResolveDrivers( aCreateMarkers ) )
+        if( aSettings.check_bus_driver_conflicts &&
+            !subgraph->ResolveDrivers( aCreateMarkers ) )
             error_count++;
 
-        if( !ercCheckBusToNetConflicts( subgraph, aCreateMarkers ) )
+        if( aSettings.check_bus_to_net_conflicts &&
+            !ercCheckBusToNetConflicts( subgraph, aCreateMarkers ) )
             error_count++;
 
-        if( !ercCheckBusToBusEntryConflicts( subgraph, aCreateMarkers ) )
+        if( aSettings.check_bus_entry_conflicts &&
+            !ercCheckBusToBusEntryConflicts( subgraph, aCreateMarkers ) )
             error_count++;
 
-        if( !ercCheckBusToBusConflicts( subgraph, aCreateMarkers ) )
+        if( aSettings.check_bus_to_bus_conflicts &&
+            !ercCheckBusToBusConflicts( subgraph, aCreateMarkers ) )
             error_count++;
-
-
 
         /**
          * Check that no-connect subgraphs don't have anything other than pins

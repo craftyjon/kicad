@@ -1,8 +1,8 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Nov 22 2017)
+// C++ code generated with wxFormBuilder (version Nov 30 2016)
 // http://www.wxformbuilder.org/
 //
-// PLEASE DO *NOT* EDIT THIS FILE!
+// PLEASE DO "NOT" EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
 
 #include "dialog_erc_listbox.h"
@@ -139,6 +139,25 @@ DIALOG_ERC_BASE::DIALOG_ERC_BASE( wxWindow* parent, wxWindowID id, const wxStrin
 	m_cbTestUniqueGlbLabels->SetToolTip( _("Global labels are used to connect signals across the full hierarchy.\nThey are expected to be at least two labels with the same name.") );
 	
 	m_panelMatrixSizer->Add( m_cbTestUniqueGlbLabels, 0, wxBOTTOM|wxLEFT|wxRIGHT, 5 );
+	
+	m_staticline3 = new wxStaticLine( m_PanelERCOptions, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+	m_panelMatrixSizer->Add( m_staticline3, 0, wxEXPAND | wxALL, 5 );
+	
+	m_staticText81 = new wxStaticText( m_PanelERCOptions, wxID_ANY, _("Bus connections"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticText81->Wrap( -1 );
+	m_panelMatrixSizer->Add( m_staticText81, 0, wxALL, 5 );
+	
+	m_cbCheckBusDriverConflicts = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check buses for conflicting drivers"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_panelMatrixSizer->Add( m_cbCheckBusDriverConflicts, 0, wxALL, 5 );
+	
+	m_cbCheckBusEntries = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check that nets are members of buses they graphically connect to"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_panelMatrixSizer->Add( m_cbCheckBusEntries, 0, wxALL, 5 );
+	
+	m_cbCheckBusToBusConflicts = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check that bus-to-bus connections have shared members"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_panelMatrixSizer->Add( m_cbCheckBusToBusConflicts, 0, wxALL, 5 );
+	
+	m_cbCheckBusToNetConflicts = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check that bus wires are not connected to net pins and vice versa"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_panelMatrixSizer->Add( m_cbCheckBusToNetConflicts, 0, wxALL, 5 );
 	
 	
 	m_PanelERCOptions->SetSizer( m_panelMatrixSizer );
