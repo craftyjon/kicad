@@ -330,7 +330,10 @@ void OPENGL_COMPOSITOR::DrawBuffer( unsigned int aSourceHandle, unsigned int aDe
 
     // Depth test has to be disabled to make transparency working
     glDisable( GL_DEPTH_TEST );
-    glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
+
+    // Use source alpha only for direct (no AA) rendering
+    GLenum sfactor = ( aDestHandle == DIRECT_RENDERING ) ? GL_SRC_ALPHA : GL_ONE;
+    glBlendFunc( sfactor, GL_ONE_MINUS_SRC_ALPHA );
 
     // Enable texturing and bind the main texture
     glEnable( GL_TEXTURE_2D );
