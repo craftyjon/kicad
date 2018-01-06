@@ -50,11 +50,20 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
     auto right_pane = new wxBoxSizer( wxVERTICAL );
 
     // Left pane: alias list
+    auto lbl_aliases = new wxStaticText( this, wxID_ANY, _( "Bus Aliases" ),
+                                         wxDefaultPosition, wxDefaultSize,
+                                         wxALIGN_LEFT );
+
     m_bus_list_view = new wxListView( this, wxID_ANY, wxDefaultPosition,
                                       wxSize( 300, 300 ), wxLC_ALIGN_LEFT |
                                       wxLC_NO_HEADER | wxLC_REPORT |
                                       wxLC_SINGLE_SEL );
     m_bus_list_view->InsertColumn( 0, "" );
+
+    auto lbl_alias_edit = new wxStaticText( this, wxID_ANY, _( "Alias Name" ),
+                                            wxDefaultPosition, wxDefaultSize,
+                                            wxALIGN_LEFT );
+
     m_bus_edit = new wxTextCtrl( this, wxID_ANY, wxEmptyString,
             wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER );
 
@@ -68,16 +77,27 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
     left_button_sizer->Add( m_btn_rename_bus );
     left_button_sizer->Add( m_btn_remove_bus );
 
+    left_pane->Add( lbl_aliases, 0, wxEXPAND | wxALL, 5 );
     left_pane->Add( m_bus_list_view, 1, wxEXPAND | wxALL, 5 );
+    left_pane->Add( lbl_alias_edit, 0, wxEXPAND | wxALL, 5 );
     left_pane->Add( m_bus_edit, 0, wxEXPAND | wxALL, 5 );
     left_pane->Add( left_button_sizer, 0, wxEXPAND | wxALL, 5 );
 
     // Right pane: signal list
+    auto lbl_signals = new wxStaticText( this, wxID_ANY, _( "Alias Members" ),
+                                         wxDefaultPosition, wxDefaultSize,
+                                         wxALIGN_LEFT );
+
     m_signal_list_view = new wxListView( this, wxID_ANY, wxDefaultPosition,
                                          wxSize( 300, 300 ), wxLC_ALIGN_LEFT |
                                          wxLC_NO_HEADER | wxLC_REPORT |
                                          wxLC_SINGLE_SEL );
     m_signal_list_view->InsertColumn( 0, "" );
+
+    auto lbl_signal_edit = new wxStaticText( this, wxID_ANY, _( "Member Name" ),
+                                             wxDefaultPosition, wxDefaultSize,
+                                             wxALIGN_LEFT );
+
     m_signal_edit = new wxTextCtrl( this, wxID_ANY, wxEmptyString,
             wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER );
 
@@ -91,7 +111,9 @@ DIALOG_BUS_MANAGER::DIALOG_BUS_MANAGER( SCH_EDIT_FRAME* aParent )
     right_button_sizer->Add( m_btn_rename_signal );
     right_button_sizer->Add( m_btn_remove_signal );
 
+    right_pane->Add( lbl_signals, 0, wxEXPAND | wxALL, 5 );
     right_pane->Add( m_signal_list_view, 1, wxEXPAND | wxALL, 5 );
+    right_pane->Add( lbl_signal_edit, 0, wxEXPAND | wxALL, 5 );
     right_pane->Add( m_signal_edit, 0, wxEXPAND | wxALL, 5 );
     right_pane->Add( right_button_sizer, 0, wxEXPAND | wxALL, 5 );
 
