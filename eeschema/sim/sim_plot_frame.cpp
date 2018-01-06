@@ -706,7 +706,16 @@ bool SIM_PLOT_FRAME::loadWorkbook( const wxString& aPath )
 
 bool SIM_PLOT_FRAME::saveWorkbook( const wxString& aPath )
 {
-    wxTextFile file( aPath );
+    
+    wxString savePath = aPath;
+    
+    if( !savePath.Lower().EndsWith(".wbk"))
+    {
+        savePath += ".wbk";
+    };
+    
+    
+    wxTextFile file( savePath );
 
     if( file.Exists() )
     {
@@ -905,8 +914,7 @@ void SIM_PLOT_FRAME::menuShowGridUpdate( wxUpdateUIEvent& event )
 {
     SIM_PLOT_PANEL* plot = CurrentPlot();
 
-    if( plot )
-        event.Check( plot ? plot->IsGridShown() : false );
+    event.Check( plot ? plot->IsGridShown() : false );
 }
 
 

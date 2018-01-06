@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2012 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
- * Copyright (C) 2012-2016 KiCad Developers, see CHANGELOG.TXT for contributors.
+ * Copyright (C) 2012-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -126,6 +126,25 @@ protected:
      * wxInitDialogEvent handler wxDialog
      */
     void FinishDialogSettings();
+
+    /**
+     * Set the dialog to the given dimensions in "dialog units". These are units equivalent
+     * to 4* the average character width and 8* the average character height, allowing a dialog
+     * to be sized in a way that scales it with the system font.
+     */
+    void SetSizeInDU( int x, int y );
+
+    /**
+     * Convert an integer number of dialog units to pixels, horizontally. See SetSizeInDU or
+     * wxDialog documentation for more information.
+     */
+    int HorizPixelsFromDU( int x );
+
+    /**
+     * Convert an integer number of dialog units to pixels, vertically. See SetSizeInDU or
+     * wxDialog documentation for more information.
+     */
+    int VertPixelsFromDU( int y );
 
     bool m_fixupsRun;
 

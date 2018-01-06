@@ -71,7 +71,7 @@ OPENGL_GAL::OPENGL_GAL( GAL_DISPLAY_OPTIONS& aDisplayOptions, wxWindow* aParent,
     HIDPI_GL_CANVAS( aParent, wxID_ANY, (int*) glAttributes, wxDefaultPosition, wxDefaultSize,
                 wxEXPAND, aName ),
     mouseListener( aMouseListener ), paintListener( aPaintListener ), currentManager( nullptr ),
-    cachedManager( nullptr ), nonCachedManager( nullptr ), overlayManager( nullptr )
+    cachedManager( nullptr ), nonCachedManager( nullptr ), overlayManager( nullptr ), mainBuffer( 0 ), overlayBuffer( 0 )
 {
     if( glMainContext == NULL )
     {
@@ -1189,7 +1189,8 @@ void OPENGL_GAL::ClearScreen( )
 {
     // Clear screen
     compositor->SetBuffer( OPENGL_COMPOSITOR::DIRECT_RENDERING );
-    glClearColor( m_clearColor.r, m_clearColor.g, m_clearColor.b, m_clearColor.a );
+    // NOTE: Black used here instead of m_clearColor; it will be composited later
+    glClearColor( 0, 0, 0, 1 );
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
 }
 
@@ -1583,6 +1584,7 @@ int OPENGL_GAL::drawBitmapChar( unsigned long aChar )
     if( aChar == ' ' )
     {
         const FONT_GLYPH_TYPE* g = LookupGlyph( 'x' );
+        wxASSERT( g );
         Translate( VECTOR2D( g->advance, 0 ) );
         return g->advance;
     }

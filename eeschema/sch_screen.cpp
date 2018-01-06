@@ -1531,6 +1531,7 @@ bool SCH_SCREENS::HasNoFullyDefinedLibIds()
 
             cnt += 1;
             symbol = dynamic_cast< SCH_COMPONENT* >( item );
+            wxASSERT( symbol );
 
             if( !symbol->GetLibId().GetLibNickname().empty() )
                 return false;
@@ -1562,6 +1563,7 @@ size_t SCH_SCREENS::GetLibNicknames( wxArrayString& aLibNicknames )
                 continue;
 
             symbol = dynamic_cast< SCH_COMPONENT* >( item );
+            wxASSERT( symbol );
 
             nickname = symbol->GetLibId().GetLibNickname();
 
@@ -1592,6 +1594,7 @@ int SCH_SCREENS::ChangeSymbolLibNickname( const wxString& aFrom, const wxString&
                 continue;
 
             symbol = dynamic_cast< SCH_COMPONENT* >( item );
+            wxASSERT( symbol );
 
             if( symbol->GetLibId().GetLibNickname() != aFrom )
                 continue;
