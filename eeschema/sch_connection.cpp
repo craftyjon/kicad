@@ -115,7 +115,7 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
         std::vector<wxString> members;
         wxString group_name;
 
-        if( ParseBusGroup( aLabel, &group_name, members) )
+        if( ParseBusGroup( aLabel, &group_name, members ) )
         {
             // Named bus groups generate a net prefix, unnamed ones don't
             auto prefix = ( group_name != "" ) ? ( group_name + "." ) : "";
@@ -219,17 +219,41 @@ bool SCH_CONNECTION::IsDriver() const
 
 void SCH_CONNECTION::AppendInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const
 {
-    wxString msg;
+    wxString msg, group_name;
+    std::vector<wxString> group_members;
 
     aList.push_back( MSG_PANEL_ITEM( _( "Connection Name" ), m_name, BROWN ) );
 
     msg.Printf( "%d", m_net_code );
     aList.push_back( MSG_PANEL_ITEM( _( "Net Code" ), msg, BROWN ) );
 
-    if( auto driver = Driver() )
+    if( auto alias = g_ConnectionGraph->GetBusAlias( m_name ) )
     {
-        msg.Printf( "%s", driver->GetSelectMenuText(), driver );
-        aList.push_back( MSG_PANEL_ITEM( _( "Connection Source" ), msg, RED ) );
+        msg.Printf( _( "Bus Alias %s Members" ), m_name );
+
+        wxString members;
+
+        for( auto member : alias->Members() )
+            members << member << " ";
+
+        aList.push_back( MSG_PANEL_ITEM( msg, members, RED ) );
+    }
+    else if( ParseBusGroup( m_name, &group_name, group_members ) )
+    {
+        for( auto group_member : group_members )
+        {
+            if( auto group_alias = g_ConnectionGraph->GetBusAlias( group_member ) )
+            {
+                msg.Printf( _( "Bus Alias %s Members" ), group_alias->GetName() );
+
+                wxString members;
+
+                for( auto member : group_alias->Members() )
+                    members << member << " ";
+
+                aList.push_back( MSG_PANEL_ITEM( msg, members, RED ) );
+            }
+        }
     }
 }
 
@@ -238,10 +262,7 @@ void SCH_CONNECTION::AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const
 {
     wxString msg;
 
-    aList.push_back( MSG_PANEL_ITEM( _( "Connection Name" ), m_name, BROWN ) );
-
-    msg.Printf( "%d", m_net_code );
-    aList.push_back( MSG_PANEL_ITEM( _( "Net Code" ), msg, BROWN ) );
+    AppendInfoToMsgPanel( aList );
 
     msg.Printf( "%d", m_bus_code );
     aList.push_back( MSG_PANEL_ITEM( _( "Bus Code" ), msg, BROWN ) );
@@ -279,7 +300,7 @@ bool SCH_CONNECTION::IsBusGroupLabel( const wxString& aLabel )
 
 
 void SCH_CONNECTION::ParseBusVector( wxString aVector, wxString* aName,
-                                     long* begin, long* end )
+                                     long* begin, long* end ) const
 {
     auto ss_vector = std::string( aVector.mb_str() );
     boost::smatch matches;
@@ -330,7 +351,7 @@ void SCH_CONNECTION::ParseBusVector( wxString aVector, wxString* aName,
 
 
 bool SCH_CONNECTION::ParseBusGroup( wxString aGroup, wxString* aName,
-                                    std::vector<wxString>& aMemberList )
+                                    std::vector<wxString>& aMemberList ) const
 {
     auto ss_group = std::string( aGroup.mb_str() );
     boost::smatch matches;

@@ -220,7 +220,8 @@ public:
      * @param begin is the first entry in the vector
      * @param end is the last entry in the vector
      */
-    void ParseBusVector( wxString vector, wxString* name, long* begin, long* end );
+    void ParseBusVector( wxString vector, wxString* name,
+                         long* begin, long* end ) const;
 
     /**
      * Parses a bus group label into the name and a list of components
@@ -230,7 +231,8 @@ public:
      * @param aMemberList is a list of member strings, e.g. "DP", "DM"
      * @return true if aGroup was successfully parsed
      */
-    bool ParseBusGroup( wxString aGroup, wxString* name, std::vector<wxString>& aMemberList );
+    bool ParseBusGroup( wxString aGroup, wxString* name,
+                        std::vector<wxString>& aMemberList ) const;
 
     /**
      * Adds information about the connection object to aList
