@@ -67,6 +67,8 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
         }
     }
 
+    SendCrossProbeNetName( m_SelectedNetName );
+    SetStatusText( _( "Selected net: " ) + m_SelectedNetName );
     SetCurrentSheetHighlightFlags();
     m_canvas->Refresh();
 

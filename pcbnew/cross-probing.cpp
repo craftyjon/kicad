@@ -21,6 +21,8 @@
 #include <pcbnew_id.h>
 #include <class_board.h>
 #include <class_module.h>
+#include <class_track.h>
+#include <class_zone.h>
 
 #include <collectors.h>
 #include <pcbnew.h>
@@ -32,6 +34,7 @@
 #include <tool/tool_manager.h>
 #include <tools/selection_tool.h>
 #include <pcb_draw_panel_gal.h>
+#include <pcb_painter.h>
 
 /* Execute a remote command send by Eeschema via a socket,
  * port KICAD_PCB_PORT_SERVICE_NUMBER
@@ -39,6 +42,7 @@
  * Commands are
  * $PART: "reference"   put cursor on component
  * $PIN: "pin name"  $PART: "reference" put cursor on the footprint pin
+ * $NET: "net name" highlight the given net (if highlight tool is active)
  */
 void PCB_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
 {
@@ -58,7 +62,89 @@ void PCB_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
     idcmd = strtok( line, " \n\r" );
     text  = strtok( NULL, " \n\r" );
 
-    if( !idcmd || !text )
+    if( idcmd == NULL )
+        return;
+
+    if( strcmp( idcmd, "$NET:" ) == 0 )
+    {
+        if( GetToolId() == ID_PCB_HIGHLIGHT_BUTT )
+        {
+            wxString net_name = FROM_UTF8( text );
+            NETINFO_ITEM* netinfo = pcb->FindNet( net_name );
+            int netcode = 0;
+
+            if( netinfo )
+                netcode = netinfo->GetNet();
+
+            if( IsGalCanvasActive() )
+            {
+                auto view = m_toolManager->GetView();
+                auto rs = view->GetPainter()->GetSettings();
+                rs->SetHighlight( true, netcode );
+                view->UpdateAllLayersColor();
+
+                BOX2I bbox;
+                bool first = true;
+
+                auto merge_area = [netcode, &bbox, &first]( BOARD_CONNECTED_ITEM* aItem )
+                {
+                    if( aItem->GetNetCode() == netcode )
+                    {
+                        if( first )
+                        {
+                            bbox = aItem->GetBoundingBox();
+                            first = false;
+                        }
+                        else
+                        {
+                            bbox.Merge( aItem->GetBoundingBox() );
+                        }
+                    }
+                };
+
+                for( auto zone : pcb->Zones() )
+                    merge_area( zone );
+
+                for( auto track : pcb->Tracks() )
+                    merge_area( track );
+
+                for( auto mod : pcb->Modules() )
+                    for ( auto mod_pad : mod->Pads() )
+                        merge_area( mod_pad );
+
+                if( netcode > 0 && bbox.GetWidth() > 0 && bbox.GetHeight() > 0 )
+                {
+                    auto bbSize = bbox.Inflate( bbox.GetWidth() * 0.2f ).GetSize();
+                    auto screenSize = view->ToWorld( GetGalCanvas()->GetClientSize(), false );
+                    double ratio = std::max( fabs( bbSize.x / screenSize.x ),
+                                             fabs( bbSize.y / screenSize.y ) );
+                    double scale = view->GetScale() / ratio;
+
+                    view->SetScale( scale );
+                    view->SetCenter( bbox.Centre() );
+                }
+
+                GetGalCanvas()->Refresh();
+            }
+            else
+            {
+                if( netcode > 0 )
+                {
+                    pcb->HighLightON();
+                    pcb->SetHighLightNet( netcode );
+                }
+                else
+                {
+                    pcb->HighLightOFF();
+                    pcb->SetHighLightNet( -1 );
+                }
+            }
+        }
+
+        return;
+    }
+
+    if( text == NULL )
         return;
 
     if( strcmp( idcmd, "$PART:" ) == 0 )
@@ -230,6 +316,25 @@ void PCB_EDIT_FRAME::SendMessageToEESCHEMA( BOARD_ITEM* aSyncItem )
 #endif
 
     std::string packet = FormatProbeItem( aSyncItem );
+
+    if( packet.size() )
+    {
+        if( Kiface().IsSingle() )
+            SendCommand( MSG_TO_SCH, packet.c_str() );
+        else
+        {
+            // Typically ExpressMail is going to be s-expression packets, but since
+            // we have existing interpreter of the cross probe packet on the other
+            // side in place, we use that here.
+            Kiway().ExpressMail( FRAME_SCH, MAIL_CROSS_PROBE, packet, this );
+        }
+    }
+}
+
+
+void PCB_EDIT_FRAME::SendCrossProbeNetName( const wxString& aNetName )
+{
+    std::string packet = StrPrintf( "$NET: \"%s\"", TO_UTF8( aNetName ) );
 
     if( packet.size() )
     {
