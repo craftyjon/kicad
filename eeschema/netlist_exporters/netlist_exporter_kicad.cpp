@@ -45,6 +45,20 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
         return false;
     }
 
+#ifdef DEBUG
+
+    // TODO(JE) Remove debugging code
+
+    if( m_graph )
+    {
+        m_use_graph = true;
+        FILE_OUTPUTFORMATTER formatter( aOutFileName + ".new_algo" );
+        Format( &formatter, GNL_ALL );
+        m_use_graph = false;
+    }
+
+#endif
+
     return true;
 }
 

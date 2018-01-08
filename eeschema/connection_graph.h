@@ -152,6 +152,9 @@ public:
      */
     int RunERC( const ERC_SETTINGS& aSettings, bool aCreateMarkers = true );
 
+    // TODO(JE) firm up API and move to private
+    std::map<int, std::vector<CONNECTION_SUBGRAPH*> > m_net_code_to_subgraphs_map;
+
 private:
 
     std::vector<SCH_ITEM*> m_items;

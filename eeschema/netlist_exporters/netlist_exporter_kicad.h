@@ -38,8 +38,10 @@ class OUTPUTFORMATTER;
 class NETLIST_EXPORTER_KICAD : public NETLIST_EXPORTER_GENERIC
 {
 public:
-    NETLIST_EXPORTER_KICAD( NETLIST_OBJECT_LIST* aMasterList, SYMBOL_LIB_TABLE* aLibTable ) :
-        NETLIST_EXPORTER_GENERIC( aMasterList, aLibTable )
+    NETLIST_EXPORTER_KICAD( NETLIST_OBJECT_LIST* aMasterList,
+                            SYMBOL_LIB_TABLE* aLibTable,
+                            CONNECTION_GRAPH* aGraph = nullptr ) :
+        NETLIST_EXPORTER_GENERIC( aMasterList, aLibTable, aGraph )
     {
     }
 

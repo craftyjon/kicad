@@ -30,6 +30,7 @@
 
 #include <xnode.h>      // also nests: <wx/xml/xml.h>
 
+class CONNECTION_GRAPH;
 class SYMBOL_LIB_TABLE;
 
 #define GENERIC_INTERMEDIATE_NETLIST_EXT wxT( "xml" )
@@ -60,10 +61,20 @@ private:
 
     SYMBOL_LIB_TABLE*     m_libTable;
 
+protected:
+    CONNECTION_GRAPH*     m_graph;
+
+    // TODO(JE) Remove if not needed
+    bool m_use_graph;
+
 public:
-    NETLIST_EXPORTER_GENERIC( NETLIST_OBJECT_LIST* aMasterList, SYMBOL_LIB_TABLE* aLibTable ) :
+    NETLIST_EXPORTER_GENERIC( NETLIST_OBJECT_LIST* aMasterList,
+                              SYMBOL_LIB_TABLE* aLibTable,
+                              CONNECTION_GRAPH* aGraph = nullptr ) :
         NETLIST_EXPORTER( aMasterList ),
-        m_libTable( aLibTable )
+        m_libTable( aLibTable ),
+        m_graph( aGraph ),
+        m_use_graph( false )
     {
         wxASSERT( aLibTable );
     }

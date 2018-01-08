@@ -57,7 +57,9 @@ bool SCH_EDIT_FRAME::WriteNetListFile( NETLIST_OBJECT_LIST* aConnectedItemsList,
     switch( aFormat )
     {
     case NET_TYPE_PCBNEW:
-        helper = new NETLIST_EXPORTER_KICAD( aConnectedItemsList, Prj().SchSymbolLibTable() );
+        helper = new NETLIST_EXPORTER_KICAD( aConnectedItemsList,
+                                             Prj().SchSymbolLibTable(),
+                                             g_ConnectionGraph );
         break;
 
     case NET_TYPE_ORCADPCB2:
@@ -78,7 +80,9 @@ bool SCH_EDIT_FRAME::WriteNetListFile( NETLIST_OBJECT_LIST* aConnectedItemsList,
             tmpFile.SetExt( GENERIC_INTERMEDIATE_NETLIST_EXT );
             fileName = tmpFile.GetFullPath();
 
-            helper = new NETLIST_EXPORTER_GENERIC( aConnectedItemsList, Prj().SchSymbolLibTable() );
+            helper = new NETLIST_EXPORTER_GENERIC( aConnectedItemsList,
+                                                   Prj().SchSymbolLibTable(),
+                                                   g_ConnectionGraph );
             executeCommandLine = true;
         }
         break;
