@@ -145,9 +145,11 @@ void CONNECTION_GRAPH::Reset()
 {
     m_items.clear();
     m_subgraphs.clear();
+    m_bus_alias_cache.clear();
     m_net_name_to_code_map.clear();
     m_bus_name_to_code_map.clear();
     m_subgraph_code_map.clear();
+    m_net_code_to_subgraphs_map.clear();
     m_last_net_code = 1;
     m_last_bus_code = 1;
 }
@@ -394,9 +396,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         }
     }
 
-    m_last_net_code = 1;
-    m_last_bus_code = 1;
-
     /**
      * TODO(JE)
      *
@@ -475,37 +474,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 break;
             }
 
-            int code;
-
-            if( connection->IsBus() )
-            {
-                try
-                {
-                    code = m_bus_name_to_code_map.at( connection->Name() );
-                }
-                catch( const std::out_of_range& oor )
-                {
-                    code = m_last_bus_code++;
-                    m_bus_name_to_code_map[ connection->Name() ] = code;
-                }
-
-                connection->SetBusCode( code );
-            }
-            else
-            {
-                try
-                {
-                    code = m_net_name_to_code_map.at( connection->Name() );
-                }
-                catch( const std::out_of_range& oor )
-                {
-                    code = m_last_net_code++;
-                    m_net_name_to_code_map[ connection->Name() ] = code;
-                }
-
-                connection->SetNetCode( code );
-            }
-
             // std::cout << "Propagating SG " << subgraph.m_code << " driven by "
             //           << subgraph.m_driver->GetSelectMenuText() << " net "
             //           << subgraph.m_driver->Connection()->Name() << std::endl;
@@ -538,6 +506,37 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             continue;
 
         auto connection = subgraph->m_driver->Connection( subgraph->m_sheet );
+        int code;
+
+        if( connection->IsBus() )
+        {
+            try
+            {
+                code = m_bus_name_to_code_map.at( connection->Name() );
+            }
+            catch( const std::out_of_range& oor )
+            {
+                code = m_last_bus_code++;
+                m_bus_name_to_code_map[ connection->Name() ] = code;
+            }
+
+            connection->SetBusCode( code );
+        }
+        else
+        {
+            try
+            {
+                code = m_net_name_to_code_map.at( connection->Name() );
+            }
+            catch( const std::out_of_range& oor )
+            {
+                code = m_last_net_code++;
+                m_net_name_to_code_map[ connection->Name() ] = code;
+            }
+
+            connection->SetNetCode( code );
+        }
+
         m_net_code_to_subgraphs_map[ connection->NetCode() ].push_back( subgraph );
     }
 
