@@ -21,6 +21,12 @@
 #ifndef _ERC_SETTINGS_H
 #define _ERC_SETTINGS_H
 
+/**
+ * Container for ERC settings
+ *
+ * Currently only stores flags about checks to run, but could later be expanded
+ * to contain the matrix of electrical pin types.
+ */
 class ERC_SETTINGS
 {
 public:

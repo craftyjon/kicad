@@ -80,8 +80,16 @@ public:
      */
     void ConfigureFromLabel( wxString aLabel );
 
+    /**
+     * Clears connectivity information
+     */
     void Reset();
 
+    /**
+     * Copies connectivity information (but not parent) from another connection
+     *
+     * @param aOther is the connection to clone
+     */
     void Clone( SCH_CONNECTION& aOther );
 
     SCH_ITEM* Parent() const
@@ -104,6 +112,12 @@ public:
         m_driver = aItem;
     }
 
+    /**
+     * Checks if the SCH_ITEM this connection is attached to can drive connections
+     * Drivers can be labels, sheet pins, or component pins.
+     *
+     * @return true if the attached items is a driver
+     */
     bool IsDriver() const;
 
     bool IsBus() const
