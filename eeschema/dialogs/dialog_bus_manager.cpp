@@ -408,6 +408,9 @@ void DIALOG_BUS_MANAGER::OnRemoveBus( wxCommandEvent& aEvent )
     m_bus_edit->Clear();
 
     m_active_alias = NULL;
+
+    auto evt = wxListEvent( wxEVT_COMMAND_LIST_ITEM_DESELECTED );
+    OnSelectBus( evt );
 }
 
 
