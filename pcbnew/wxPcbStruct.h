@@ -2,26 +2,21 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2010 Jean-Pierre Charras, jp.charras@wanadoo.fr
- * Copyright (C) 1992-2016 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 /**
  * @file wxPcbStruct.h
  */
@@ -121,7 +116,7 @@ protected:
     /**
      * switches currently used canvas (default / Cairo / OpenGL).
      */
-    virtual void SwitchCanvas( wxCommandEvent& aEvent ) override;
+    virtual void OnSwitchCanvas( wxCommandEvent& aEvent ) override;
 
 #if defined(KICAD_SCRIPTING) && defined(KICAD_SCRIPTING_ACTION_MENU)
     /**
@@ -1417,11 +1412,11 @@ public:
      * Function Fill_All_Zones
      *  Fill all zones on the board
      * The old fillings are removed
-     * @param aActiveWindow = the current active window, if a progress bar is shown
-     *                      = NULL to do not display a progress bar
-     * @param aVerbose = true to show error messages
+     * @param aActiveWindow = the current active window, if a progress bar is shown.
+     * the progress bar will be on top of aActiveWindow
+     * aActiveWindow = NULL to do not display a progress bar
      */
-    int Fill_All_Zones( wxWindow * aActiveWindow, bool aVerbose = true );
+    int Fill_All_Zones( wxWindow * aActiveWindow );
 
 
     /**
@@ -1718,6 +1713,9 @@ public:
      * </p>
      */
     void UpdateTitle();
+
+    int GetIconScale() override;
+    void SetIconScale( int aScale ) override;
 
     DECLARE_EVENT_TABLE()
 };

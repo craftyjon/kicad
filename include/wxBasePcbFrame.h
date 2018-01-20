@@ -1,9 +1,9 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2017 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 2018 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008-2016 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -40,7 +40,6 @@
 #include <eda_text.h>                // EDA_DRAW_MODE_T
 #include <richio.h>
 #include <class_pcb_screen.h>
-
 #include <pcb_display_options.h>
 #include <pcb_general_settings.h>
 
@@ -271,13 +270,15 @@ public:
     GENERAL_COLLECTORS_GUIDE GetCollectorsGuide();
 
     /**
-     * Function CursorGoto
-     * positions the cursor at a given coordinate and reframes the drawing if the
-     * requested point is out of view.
+     * Useful to focus on a particular location, in find functions
+     * Move the graphic cursor (crosshair cursor) at a given coordinate and reframes
+     * the drawing if the requested point is out of view or if center on location is requested.
      * @param aPos is the point to go to.
-     * @param aWarp is true if the pointer should be warped to the new position.
+     * @param aWarpMouseCursor is true if the pointer should be warped to the new position.
+     * @param aCenterView is true if the new cursor position should be centered on canvas.
      */
-    void CursorGoto( const wxPoint& aPos, bool aWarp = true );
+    void FocusOnLocation( const wxPoint& aPos, bool aWarpMouseCursor = true,
+                          bool aCenterView = false );
 
     /**
      * Function SelectLibrary
@@ -646,6 +647,8 @@ public:
     void OnTogglePolarCoords( wxCommandEvent& aEvent );
     void OnTogglePadDrawMode( wxCommandEvent& aEvent );
 
+    virtual void OnSwitchCanvas( wxCommandEvent& aEvent );
+
     // User interface update event handlers.
     void OnUpdateCoordType( wxUpdateUIEvent& aEvent );
     void OnUpdatePadDrawMode( wxUpdateUIEvent& aEvent );
@@ -686,7 +689,7 @@ public:
     /**
      * switches currently used canvas (default / Cairo / OpenGL).
      */
-    virtual void SwitchCanvas( wxCommandEvent& aEvent );
+    bool SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType ) override;
 
     /**
      * Update UI called when switches currently used canvas (default / Cairo / OpenGL).

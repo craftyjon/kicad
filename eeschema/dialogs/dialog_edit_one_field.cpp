@@ -8,7 +8,7 @@
  *
  * Copyright (C) 2012 Jean-Pierre Charras, jean-pierre.charras@gipsa-lab.inpg.com
  * Copyright (C) 2016 Wayne Stambaugh, stambaughw@gmail.com
- * Copyright (C) 2004-2017 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2004-2018 KiCad Developers, see change_log.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -165,8 +165,6 @@ void DIALOG_EDIT_ONE_FIELD::OnTextValueSelectButtonClick( wxCommandEvent& aEvent
 
 bool DIALOG_EDIT_ONE_FIELD::TransferDataToWindow()
 {
-    wxLogDebug( "In DIALOG_EDIT_ONE_FIELD::TransferDataToWindow()" );
-
     m_TextValue->SetValue( m_text );
 
     if( m_fieldId == REFERENCE )
@@ -214,8 +212,6 @@ bool DIALOG_EDIT_ONE_FIELD::TransferDataToWindow()
 
 bool DIALOG_EDIT_ONE_FIELD::TransferDataFromWindow()
 {
-    wxLogDebug( "In DIALOG_EDIT_ONE_FIELD::TransferDataFromWindow()" );
-
     m_text = m_TextValue->GetValue();
 
     // There are lots of specific tests required to validate field text.
@@ -277,12 +273,13 @@ DIALOG_SCH_EDIT_ONE_FIELD::DIALOG_SCH_EDIT_ONE_FIELD( SCH_BASE_FRAME* aParent,
     wxASSERT_MSG( component != NULL && component->Type() == SCH_COMPONENT_T,
                   wxT( "Invalid schematic field parent item." ) );
 
+    // The library symbol may have been removed so using SCH_COMPONENT::GetPartRef() here
+    // could result in a segfault.  If the library symbol is no longer available, the
+    // schematic fields can still edit so set the power symbol flag to false.  This may not
+    // be entirely accurate if the power library is missing but it's better then a segfault.
     const LIB_PART* part = GetParent()->GetLibPart( component->GetLibId(), true );
 
-    wxASSERT_MSG( part, wxT( "Library symbol for schematic symbol <" ) +
-                  component->GetLibId().Format() + wxT( "> could not be found." ) );
-
-    m_isPower = part->IsPower();
+    m_isPower = ( part ) ? part->IsPower() : false;
 
     init();
 }
@@ -304,6 +301,25 @@ void DIALOG_SCH_EDIT_ONE_FIELD::UpdateField( SCH_FIELD* aField, SCH_SHEET_PATH* 
             component->SetRef( aSheetPath, m_text );
     }
 
+    bool modified = false;
+
+    modified = ( modified ||
+                 ( ( aField->GetTextAngle() == TEXT_ANGLE_VERT ) != m_orientation ) );
+
+    modified = ( modified ||
+                 ( ( aField->GetHorizJustify() !=
+                     IntToEdaTextHorizJustify( m_horizontalJustification - 1 ) ) ) );
+
+    modified = ( modified ||
+                 ( ( aField->GetVertJustify() !=
+                     IntToEdaTextVertJustify( m_verticalJustification - 1 ) ) ) );
+
     aField->SetText( m_text );
     updateText( aField );
+
+    if( modified )
+    {
+        auto component = static_cast< SCH_COMPONENT* >( aField->GetParent() );
+        component->ClearFieldsAutoplaced();
+    }
 }

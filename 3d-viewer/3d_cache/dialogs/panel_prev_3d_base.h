@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Nov 22 2017)
+// C++ code generated with wxFormBuilder (version Jan 12 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -20,7 +20,6 @@
 #include <wx/textctrl.h>
 #include <wx/spinbutt.h>
 #include <wx/sizer.h>
-#include <wx/statbox.h>
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/icon.h>
@@ -39,6 +38,7 @@ class PANEL_PREV_3D_BASE : public wxPanel
 	private:
 	
 	protected:
+		wxStaticText* m_staticTextScale;
 		wxStaticText* m_staticText1;
 		wxTextCtrl* xscale;
 		wxSpinButton* m_spinXscale;
@@ -48,6 +48,7 @@ class PANEL_PREV_3D_BASE : public wxPanel
 		wxStaticText* m_staticText3;
 		wxTextCtrl* zscale;
 		wxSpinButton* m_spinZscale;
+		wxStaticText* m_staticTextRot;
 		wxStaticText* m_staticText11;
 		wxTextCtrl* xrot;
 		wxSpinButton* m_spinXrot;
@@ -57,7 +58,7 @@ class PANEL_PREV_3D_BASE : public wxPanel
 		wxStaticText* m_staticText31;
 		wxTextCtrl* zrot;
 		wxSpinButton* m_spinZrot;
-		wxStaticBoxSizer* vbOffset;
+		wxStaticText* m_staticTextOffset;
 		wxStaticText* m_staticText12;
 		wxTextCtrl* xoff;
 		wxSpinButton* m_spinXoffset;

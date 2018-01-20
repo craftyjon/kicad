@@ -309,7 +309,7 @@ const DIFF_PAIR DP_GATEWAY::Entry() const
 void DP_GATEWAYS::BuildOrthoProjections( DP_GATEWAYS& aEntries,
         const VECTOR2I& aCursorPos, int aOrthoScore )
 {
-    for( DP_GATEWAY g : aEntries.Gateways() )
+    for( const DP_GATEWAY& g : aEntries.Gateways() )
     {
         VECTOR2I midpoint( ( g.AnchorP() + g.AnchorN() ) / 2 );
         SEG guide_s( midpoint, midpoint + VECTOR2I( 1, 0 ) );
@@ -423,7 +423,7 @@ static VECTOR2I makeGapVector( VECTOR2I dir, int length )
     return rv;
 }
 
-void DP_GATEWAYS::BuildFromPrimitivePair( DP_PRIMITIVE_PAIR aPair, bool aPreferDiagonal )
+void DP_GATEWAYS::BuildFromPrimitivePair( const DP_PRIMITIVE_PAIR& aPair, bool aPreferDiagonal )
 {
     VECTOR2I majorDirection;
     VECTOR2I p0_p, p0_n;
@@ -587,7 +587,7 @@ void DP_GATEWAYS::buildEntries( const VECTOR2I& p0_p, const VECTOR2I& p0_n )
 }
 
 
-void DP_GATEWAYS::buildDpContinuation( DP_PRIMITIVE_PAIR aPair, bool aIsDiagonal )
+void DP_GATEWAYS::buildDpContinuation( const DP_PRIMITIVE_PAIR& aPair, bool aIsDiagonal )
 {
     DP_GATEWAY gw( aPair.AnchorP(), aPair.AnchorN(), aIsDiagonal );
     gw.SetPriority( 100 );

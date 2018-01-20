@@ -688,6 +688,9 @@ void OPENGL_GAL::DrawRectangle( const VECTOR2D& aStartPoint, const VECTOR2D& aEn
     // Stroke the outline
     if( isStrokeEnabled )
     {
+        // Ensure stroke will be visible at current zoom
+        lineWidth = std::max( lineWidth, ( 1.01 / worldScale ) );
+
         currentManager->Color( strokeColor.r, strokeColor.g, strokeColor.b, strokeColor.a );
 
         std::deque<VECTOR2D> pointList;
@@ -889,7 +892,7 @@ void OPENGL_GAL::BitmapText( const wxString& aText, const VECTOR2D& aPosition,
     float commonOffset;
     std::tie( textSize, commonOffset ) = computeBitmapTextSize( text );
 
-    const double SCALE = GetGlyphSize().y / textSize.y;
+    const double SCALE = 1.4 * GetGlyphSize().y / textSize.y;
     bool overbar = false;
 
     int overbarLength = 0;
@@ -1545,7 +1548,7 @@ void OPENGL_GAL::drawPolygon( GLdouble* aPoints, int aPointCount )
 }
 
 
-void OPENGL_GAL::drawPolyline( std::function<VECTOR2D (int)> aPointGetter, int aPointCount )
+void OPENGL_GAL::drawPolyline( const std::function<VECTOR2D (int)>& aPointGetter, int aPointCount )
 {
     if( aPointCount < 2 )
         return;
@@ -1676,6 +1679,7 @@ std::pair<VECTOR2D, float> OPENGL_GAL::computeBitmapTextSize( const UTF8& aText 
 {
     VECTOR2D textSize( 0, 0 );
     float commonOffset = std::numeric_limits<float>::max();
+    static const auto defaultGlyph = LookupGlyph( '(' ); // for strange chars
 
     for( UTF8::uni_iter chIt = aText.ubegin(), end = aText.uend(); chIt < end; ++chIt )
     {
@@ -1688,18 +1692,17 @@ std::pair<VECTOR2D, float> OPENGL_GAL::computeBitmapTextSize( const UTF8& aText 
         if( !glyph || // Not coded in font
             c == '-' || c == '_' )     // Strange size of these 2 chars
         {
-            c = 'x';    // For calculation of the char size, replace by a medium sized char
-            glyph = LookupGlyph( c );
+            glyph = defaultGlyph;
         }
 
         if( glyph )
         {
             textSize.x  += glyph->advance;
-            textSize.y   = std::max<float>( textSize.y, font_information.max_y - glyph->miny );
-            commonOffset = std::min<float>( font_information.max_y - glyph->maxy, commonOffset );
         }
     }
 
+    textSize.y   = std::max<float>( textSize.y, font_information.max_y - defaultGlyph->miny );
+    commonOffset = std::min<float>( font_information.max_y - defaultGlyph->maxy, commonOffset );
     textSize.y -= commonOffset;
 
     return std::make_pair( textSize, commonOffset );

@@ -445,7 +445,8 @@ public:
      */
     SCH_ITEM* LocateAndShowItem( const wxPoint& aPosition,
                                  const KICAD_T aFilterList[] = SCH_COLLECTOR::AllItems,
-                                 int aHotKeyCommandId = 0 );
+                                 int aHotKeyCommandId = 0,
+                                 bool* clarifySelectionMenuCancelled = nullptr );
 
     /**
      * Check for items at \a aPosition matching the types in \a aFilterList.
@@ -1551,6 +1552,9 @@ public:
      * @param aSheetList is a list of sheets to recalculate
      */
     void RecalculateConnections( SCH_SHEET_LIST aSheetList );
+
+    int GetIconScale() override;
+    void SetIconScale( int aScale ) override;
 
     ///> Probe cursor, used by circuit simulator
     const static wxCursor CURSOR_PROBE;

@@ -142,6 +142,8 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
     m_hotkeysDescrList    = NULL;
 
     m_canvas              = NULL;
+    m_canvasType          = EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
+    m_canvasTypeDirty     = false;
     m_galCanvas           = NULL;
     m_galCanvasActive     = false;
     m_actions             = NULL;
@@ -166,7 +168,7 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
     m_movingCursorWithKeyboard = false;
     m_zoomLevelCoeff      = 1.0;
 
-    m_auimgr.SetFlags(wxAUI_MGR_DEFAULT|wxAUI_MGR_LIVE_RESIZE);
+    m_auimgr.SetFlags(wxAUI_MGR_DEFAULT);
 
     CreateStatusBar( 6 );
 
@@ -216,6 +218,9 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
 
 EDA_DRAW_FRAME::~EDA_DRAW_FRAME()
 {
+    if( m_canvasTypeDirty )
+        saveCanvasTypeSetting( m_canvasType );
+
     delete m_actions;
     delete m_toolManager;
     delete m_toolDispatcher;

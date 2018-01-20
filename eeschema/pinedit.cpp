@@ -1,9 +1,9 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2004 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 2018 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008-2011 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 2004-2011 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2004-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -171,7 +171,7 @@ void LIB_EDIT_FRAME::OnEditPin( wxCommandEvent& event )
     LastPinCommonUnit = dlg.GetAddToAllParts();
     LastPinVisible = dlg.GetVisible();
 
-    pin->EnableEditMode( true, m_editPinsPerPartOrConvert );
+    pin->EnableEditMode( true, m_editPinsSeparately );
     pin->SetName( dlg.GetPinName() );
     pin->SetNameTextSize( GetLastPinNameSize() );
     pin->SetNumber( dlg.GetPadName() );
@@ -199,7 +199,7 @@ void LIB_EDIT_FRAME::OnEditPin( wxCommandEvent& event )
         m_canvas->Refresh();
     }
 
-    pin->EnableEditMode( false, m_editPinsPerPartOrConvert );
+    pin->EnableEditMode( false, m_editPinsSeparately );
 
     // Restore pin flags, that can be changed by the dialog editor
     pin->ClearFlags();
@@ -241,9 +241,6 @@ static void AbortPinMove( EDA_DRAW_PANEL* Panel, wxDC* DC )
 void LIB_EDIT_FRAME::PlacePin()
 {
     LIB_PIN* cur_pin  = (LIB_PIN*) GetDrawItem();
-    bool     ask_for_pin = true;
-    wxPoint  newpos;
-    bool     status;
 
     // Some tests
     if( !cur_pin || cur_pin->Type() != LIB_PIN_T )
@@ -252,21 +249,31 @@ void LIB_EDIT_FRAME::PlacePin()
         return;
     }
 
+    wxPoint  newpos;
     newpos = GetCrossHairPosition( true );
 
     LIB_PART*      part = GetCurPart();
 
-    // Test for an other pin in same new position:
-    for( LIB_PIN* pin = part->GetNextPin();  pin;  pin = part->GetNextPin( pin ) )
+    // Test for an other pin in same new position in other units:
+    bool     ask_for_pin = true;
+
+    for( LIB_PIN* pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
     {
         if( pin == cur_pin || newpos != pin->GetPosition() || pin->GetFlags() )
+            continue;
+
+        // test for same body style
+        if( pin->GetConvert() && pin->GetConvert() != cur_pin->GetConvert() )
             continue;
 
         if( ask_for_pin && SynchronizePins() )
         {
             m_canvas->SetIgnoreMouseEvents( true );
+            wxString msg;
+            msg.Printf( _( "This position is already occupied by another pin, in unit %d.\n"
+                           "Continue?" ), pin->GetUnit() );
 
-            status = IsOK( this, _( "This position is already occupied by another pin. Continue?" ) );
+            bool status = IsOK( this, msg );
 
             m_canvas->MoveCursorToCrossHair();
             m_canvas->SetIgnoreMouseEvents( false );
@@ -295,7 +302,7 @@ void LIB_EDIT_FRAME::PlacePin()
         LastPinShape  = cur_pin->GetShape();
 
         if( SynchronizePins() )
-            CreateImagePins( cur_pin, m_unit, m_convert, m_showDeMorgan );
+            CreateImagePins( cur_pin );
 
         m_lastDrawItem = cur_pin;
         part->AddDrawItem( GetDrawItem() );
@@ -333,16 +340,22 @@ void LIB_EDIT_FRAME::StartMovePin( wxDC* DC )
 
     LIB_PART*      part = GetCurPart();
 
-    // Mark pins for moving.
-    for( LIB_PIN* pin = part->GetNextPin();  pin;  pin = part->GetNextPin( pin ) )
+    // Clear pin flags and mark pins for moving. All pins having the same location
+    // orientation, and body style are flagged.
+    for( LIB_PIN* pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
     {
         pin->ClearFlags();
+
+        if( !SynchronizePins() )
+            continue;
 
         if( pin == cur_pin )
             continue;
 
         if( pin->GetPosition() == cur_pin->GetPosition() &&
-            pin->GetOrientation() == cur_pin->GetOrientation() && SynchronizePins() )
+            pin->GetOrientation() == cur_pin->GetOrientation() &&
+            pin->GetConvert() == cur_pin->GetConvert()
+            )
         {
             pin->SetFlags( IS_LINKED | IS_MOVED );
         }
@@ -354,7 +367,6 @@ void LIB_EDIT_FRAME::StartMovePin( wxDC* DC )
     startPos.x = OldPos.x;
     startPos.y = -OldPos.y;
 
-//    m_canvas->CrossHairOff( DC );
     SetCrossHairPosition( startPos );
     m_canvas->MoveCursorToCrossHair();
 
@@ -363,7 +375,6 @@ void LIB_EDIT_FRAME::StartMovePin( wxDC* DC )
     cur_pin->GetMsgPanelInfo( items );
     SetMsgPanel( items );
     m_canvas->SetMouseCapture( DrawMovePin, AbortPinMove );
-//    m_canvas->CrossHairOn( DC );
 
     // Refresh the screen to avoid color artifacts when drawing
     // the pin in Edit mode and moving it from its start position
@@ -488,59 +499,40 @@ void LIB_EDIT_FRAME::CreatePin( wxDC* DC )
 }
 
 
-void LIB_EDIT_FRAME::CreateImagePins( LIB_PIN* aPin, int aUnit, int aConvert, bool aDeMorgan )
+void LIB_EDIT_FRAME::CreateImagePins( LIB_PIN* aPin )
 {
     int      ii;
-    LIB_PIN* NewPin;
+    LIB_PIN* newPin;
 
+    // if "synchronize pins edition" option is off, do not create any similar pin for other
+    // units and/or shapes: each unit is edited regardless other units or body
     if( !SynchronizePins() )
         return;
 
-    // Create "convert" pin at the current position.
-    if( aDeMorgan && ( aPin->GetConvert() != 0 ) )
-    {
-        NewPin = (LIB_PIN*) aPin->Clone();
+    if( aPin->GetUnit() == 0 )  // Pin common to all units: no need to create similar pins.
+        return;
 
-        if( aPin->GetConvert() > 1 )
-            NewPin->SetConvert( 1 );
-        else
-            NewPin->SetConvert( 2 );
-
-        aPin->GetParent()->AddDrawItem( NewPin );
-    }
+    // When units are interchangeable, all units are expected to have similar pins
+    // at the same position
+    // to facilitate pin edition, create pins for all other units for the current body style
+    // at the same position as aPin
 
     for( ii = 1; ii <= aPin->GetParent()->GetUnitCount(); ii++ )
     {
-        if( ii == aUnit || aPin->GetUnit() != 0 )
-            continue;                       // Pin common to all units.
+        if( ii == aPin->GetUnit() )
+            continue;
 
-        NewPin = (LIB_PIN*) aPin->Clone();
+        newPin = (LIB_PIN*) aPin->Clone();
 
         // To avoid mistakes, gives this pin a new pin number because
         // it does no have the save pin number as the master pin
-        // Because we do not know the actual number, give it '??'
-        wxString unknownNum( wxT( "??" ) );
-        NewPin->SetNumber( unknownNum );
+        // Because we do not know the actual number, give it a temporary number
+        wxString unknownNum;
+        unknownNum.Printf( "%s-U%c", aPin->GetNumber(), wxChar( 'A' + ii - 1 ) );
+        newPin->SetNumber( unknownNum );
 
-        if( aConvert != 0 )
-            NewPin->SetConvert( 1 );
-
-        NewPin->SetUnit( ii );
-        aPin->GetParent()->AddDrawItem( NewPin );
-
-        if( !( aDeMorgan && ( aPin->GetConvert() != 0 ) ) )
-            continue;
-
-        NewPin = (LIB_PIN*) aPin->Clone();
-        NewPin->SetConvert( 2 );
-        // Gives this pin a new pin number
-        // Because we do not know the actual number, give it '??'
-        NewPin->SetNumber( unknownNum );
-
-        if( aPin->GetUnit() != 0 )
-            NewPin->SetUnit( ii );
-
-        aPin->GetParent()->AddDrawItem( NewPin );
+        newPin->SetUnit( ii );
+        aPin->GetParent()->AddDrawItem( newPin );
     }
 }
 
@@ -755,7 +747,7 @@ void LIB_EDIT_FRAME::OnCheckComponent( wxCommandEvent& event )
 
         if( part->GetUnitCount() > 1 )
         {
-            msg += wxString::Format( _( " in part %c" ), 'A' + curr_pin->GetUnit() - 1 );
+            msg += wxString::Format( _( " in symbol %c" ), 'A' + curr_pin->GetUnit() - 1 );
         }
 
         if( m_showDeMorgan )
@@ -795,7 +787,7 @@ void LIB_EDIT_FRAME::OnCheckComponent( wxCommandEvent& event )
 
         if( part->GetUnitCount() > 1 )
         {
-            msg += wxString::Format( _( " in part %c" ), 'A' + pin->GetUnit() - 1 );
+            msg += wxString::Format( _( " in symbol %c" ), 'A' + pin->GetUnit() - 1 );
         }
 
         if( m_showDeMorgan )

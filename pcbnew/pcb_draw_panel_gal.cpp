@@ -37,6 +37,7 @@
 #include <class_track.h>
 #include <class_marker_pcb.h>
 #include <wxBasePcbFrame.h>
+#include <confirm.h>
 
 #include <gal/graphics_abstraction_layer.h>
 
@@ -297,18 +298,14 @@ void PCB_DRAW_PANEL_GAL::SyncLayersVisibility( const BOARD* aBoard )
 {
     // Load layer & elements visibility settings
     for( LAYER_NUM i = 0; i < PCB_LAYER_ID_COUNT; ++i )
-    {
         m_view->SetLayerVisible( i, aBoard->IsLayerVisible( PCB_LAYER_ID( i ) ) );
 
-        // Synchronize netname layers as well
-        if( IsCopperLayer( i ) )
-            m_view->SetLayerVisible( GetNetnameLayer( i ), aBoard->IsLayerVisible( PCB_LAYER_ID( i ) ) );
-    }
-
     for( GAL_LAYER_ID i = GAL_LAYER_ID_START; i < GAL_LAYER_ID_END; ++i )
-    {
         m_view->SetLayerVisible( i, aBoard->IsElementVisible( i ) );
-    }
+
+    // Always enable netname layers, as their visibility is controlled by layer dependencies
+    for( LAYER_NUM i = NETNAMES_LAYER_ID_START; i < NETNAMES_LAYER_ID_END; ++i )
+        m_view->SetLayerVisible( i, true );
 
     // Enable some layers that are GAL specific
     m_view->SetLayerVisible( LAYER_PADS_PLATEDHOLES, true );
@@ -356,6 +353,19 @@ void PCB_DRAW_PANEL_GAL::OnShow()
 {
     PCB_BASE_FRAME* frame = dynamic_cast<PCB_BASE_FRAME*>( GetParent() );
 
+    try
+    {
+        // Check if the current rendering backend can be properly initialized
+        m_view->UpdateItems();
+    }
+    catch( const std::runtime_error& e )
+    {
+        // Fallback to software renderer
+        DisplayError( frame, e.what() );
+        bool use_gal = SwitchBackend( GAL_TYPE_CAIRO );
+        frame->UseGalCanvas( use_gal );
+    }
+
     if( frame )
     {
         SetTopLayer( frame->GetActiveLayer() );
@@ -392,6 +402,15 @@ void PCB_DRAW_PANEL_GAL::RedrawRatsnest()
 {
     if( m_ratsnest )
         m_view->Update( m_ratsnest.get() );
+}
+
+
+BOX2I PCB_DRAW_PANEL_GAL::GetDefaultViewBBox() const
+{
+    if( m_worksheet )
+        return m_worksheet->ViewBBox();
+
+    return BOX2I();
 }
 
 

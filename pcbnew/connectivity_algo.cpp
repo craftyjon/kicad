@@ -34,7 +34,7 @@
 
 using namespace std::placeholders;
 
-bool operator<( const CN_ANCHOR_PTR a, const CN_ANCHOR_PTR b )
+bool operator<( const CN_ANCHOR_PTR& a, const CN_ANCHOR_PTR& b )
 {
     if( a->Pos().x == b->Pos().x )
         return a->Pos().y < b->Pos().y;
@@ -797,7 +797,7 @@ void CN_CONNECTIVITY_ALGO::Build( const std::vector<BOARD_ITEM*>& aItems )
 
 void CN_CONNECTIVITY_ALGO::propagateConnections()
 {
-    for( auto cluster : m_connClusters )
+    for( const auto& cluster : m_connClusters )
     {
         if( cluster->IsConflicting() )
         {
@@ -862,7 +862,7 @@ void CN_CONNECTIVITY_ALGO::FindIsolatedCopperIslands( ZONE_CONTAINER* aZone, std
 
     m_connClusters = SearchClusters( CSM_CONNECTIVITY_CHECK );
 
-    for( auto cluster : m_connClusters )
+    for( const auto& cluster : m_connClusters )
     {
         if( cluster->Contains( aZone ) && cluster->IsOrphaned() )
         {
@@ -897,7 +897,7 @@ void CN_CONNECTIVITY_ALGO::FindIsolatedCopperIslands( std::vector<CN_ZONE_ISOLAT
         if( zone.m_zone->GetFilledPolysList().IsEmpty() )
             continue;
 
-        for( auto cluster : m_connClusters )
+        for( const auto& cluster : m_connClusters )
         {
             if( cluster->Contains( zone.m_zone ) && cluster->IsOrphaned() )
             {
@@ -1033,35 +1033,35 @@ void CN_CONNECTIVITY_ALGO::Clear()
 }
 
 
-void CN_CONNECTIVITY_ALGO::ForEachItem( std::function<void(CN_ITEM*)> aFunc )
+void CN_CONNECTIVITY_ALGO::ForEachItem( const std::function<void( CN_ITEM& )>& aFunc )
 {
     for( auto item : m_padList )
-        aFunc( item );
+        aFunc( *item );
 
     for( auto item : m_viaList )
-        aFunc( item );
+        aFunc( *item );
 
     for( auto item : m_trackList )
-        aFunc( item );
+        aFunc( *item );
 
     for( auto item : m_zoneList )
-        aFunc( item );
+        aFunc( *item );
 }
 
 
-void CN_CONNECTIVITY_ALGO::ForEachAnchor( std::function<void(CN_ANCHOR_PTR)> aFunc )
+void CN_CONNECTIVITY_ALGO::ForEachAnchor( const std::function<void( CN_ANCHOR& )>& aFunc )
 {
-    for( auto anchor : m_padList.Anchors() )
-        aFunc( anchor );
+    for( const auto& anchor : m_padList.Anchors() )
+        aFunc( *anchor );
 
-    for( auto anchor : m_viaList.Anchors() )
-        aFunc( anchor );
+    for( const auto& anchor : m_viaList.Anchors() )
+        aFunc( *anchor );
 
-    for( auto anchor : m_trackList.Anchors() )
-        aFunc( anchor );
+    for( const auto& anchor : m_trackList.Anchors() )
+        aFunc( *anchor );
 
-    for( auto anchor : m_zoneList.Anchors() )
-        aFunc( anchor );
+    for( const auto& anchor : m_zoneList.Anchors() )
+        aFunc( *anchor );
 }
 
 

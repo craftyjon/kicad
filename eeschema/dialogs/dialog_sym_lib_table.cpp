@@ -217,7 +217,7 @@ DIALOG_SYMBOL_LIB_TABLE::DIALOG_SYMBOL_LIB_TABLE( wxTopLevelWindow* aParent,
         m_cur_grid = m_project_grid;
     }
 
-    SetSizeInDU( 360, 240 );
+    SetSizeInDU( 450, 400 );
 
     // On some window managers (Unity, XFCE), this dialog is
     // not always raised, depending on this dialog is run.
@@ -266,11 +266,11 @@ bool DIALOG_SYMBOL_LIB_TABLE::verifyTables()
                 // button.
                 model.DeleteRows( r, 1 );
             }
-            else if( nick.find( ':' ) != size_t( -1 ) )
+            else if( nick.find( ':' ) != size_t( -1 ) || nick.find( ' ' ) != size_t( -1 ) )
             {
                 wxString msg = wxString::Format(
                     _( "Illegal character \"%s\" found in Nickname: \"%s\" in row %d" ),
-                    ":", GetChars( nick ), r );
+                    ( nick.find( ':' ) != size_t( -1 ) ) ? ":" : " ", GetChars( nick ), r + 1 );
 
                 // show the tabbed panel holding the grid we have flunked:
                 if( &model != cur_model() )
@@ -421,10 +421,19 @@ void DIALOG_SYMBOL_LIB_TABLE::deleteRowHandler( wxCommandEvent& event )
     // If no candidate, just delete the row with the grid cursor.
     wxArrayInt selectedRows	= m_cur_grid->GetSelectedRows();
     wxGridCellCoordsArray cells = m_cur_grid->GetSelectedCells();
+    wxGridCellCoordsArray blockTopLeft = m_cur_grid->GetSelectionBlockTopLeft();
+    wxGridCellCoordsArray blockBotRight = m_cur_grid->GetSelectionBlockBottomRight();
 
     // Add all row having cell selected to list:
     for( unsigned ii = 0; ii < cells.GetCount(); ii++ )
         selectedRows.Add( cells[ii].GetRow() );
+
+    // Handle block selection
+    if( !blockTopLeft.IsEmpty() && !blockBotRight.IsEmpty() )
+    {
+        for( int i = blockTopLeft[0].GetRow(); i <= blockBotRight[0].GetRow(); ++i )
+            selectedRows.Add( i );
+    }
 
     // Use the row having the grid cursor only if we have no candidate:
     if( selectedRows.size() == 0 && getCursorRow() >= 0 )

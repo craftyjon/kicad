@@ -408,8 +408,9 @@ void DRC::RunTests( wxTextCtrl* aMessages )
         wxSafeYield();
     }
 
-    m_pcbEditorFrame->Fill_All_Zones( aMessages ? aMessages->GetParent() : m_pcbEditorFrame,
-                                  false );
+    // caller (a wxTopLevelFrame) is the wxDialog or the Pcb Editor frame that call DRC:
+    wxWindow* caller = aMessages ? aMessages->GetParent() : m_pcbEditorFrame;
+    m_pcbEditorFrame->Fill_All_Zones( caller );
 
     // test zone clearances to other zones
     if( aMessages )
@@ -501,7 +502,7 @@ void DRC::updatePointers()
 }
 
 
-bool DRC::doNetClass( NETCLASSPTR nc, wxString& msg )
+bool DRC::doNetClass( const NETCLASSPTR& nc, wxString& msg )
 {
     bool ret = true;
 
@@ -668,10 +669,11 @@ void DRC::testTracks( wxWindow *aActiveWindow, bool aShowProgressBar )
 
     if( aShowProgressBar && deltamax > 3 )
     {
+        // Do not use wxPD_APP_MODAL style here: it is not necessary and create issues
+        // on OSX
         progressDialog = new wxProgressDialog( _( "Track clearances" ), wxEmptyString,
                                                deltamax, aActiveWindow,
-                                               wxPD_AUTO_HIDE | wxPD_CAN_ABORT |
-                                               wxPD_APP_MODAL | wxPD_ELAPSED_TIME );
+                                               wxPD_AUTO_HIDE | wxPD_CAN_ABORT | wxPD_ELAPSED_TIME );
         progressDialog->Update( 0, wxEmptyString );
     }
 

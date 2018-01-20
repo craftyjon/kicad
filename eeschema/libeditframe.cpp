@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2013 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 2004-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2004-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -54,6 +54,7 @@
 
 #include <kicad_device_context.h>
 #include <hotkeys.h>
+#include <eeschema_config.h>
 
 #include <dialogs/dialog_lib_edit_text.h>
 #include <dialogs/dialog_edit_component_in_lib.h>
@@ -210,7 +211,7 @@ LIB_EDIT_FRAME::LIB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_drawSpecificConvert = true;
     m_drawSpecificUnit    = false;
     m_hotkeysDescrList    = g_Libedit_Hokeys_Descr;
-    m_editPinsPerPartOrConvert = false;
+    m_editPinsSeparately = false;
     m_repeatPinStep = DEFAULT_REPEAT_OFFSET_PIN;
     SetShowElectricalType( true );
 
@@ -280,7 +281,7 @@ LIB_EDIT_FRAME::LIB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
             m_aliasName = part->GetName();
     }
 
-    CreateOptionToolbar();
+    ReCreateOptToolbar();
     DisplayLibInfos();
     DisplayCmpDoc();
     UpdateAliasSelectList();
@@ -523,7 +524,7 @@ void LIB_EDIT_FRAME::OnUpdatePartModified( wxUpdateUIEvent& aEvent )
     if( aEvent.GetId() == ID_LIBEDIT_SAVE_PART )
     {
         bool readOnly = libName.IsEmpty() || m_libMgr->IsLibraryReadOnly( libName );
-        wxString text = AddHotkeyName( readOnly ? _( "&Save Part [Read Only]" ) : _( "&Save Part" ),
+        wxString text = AddHotkeyName( readOnly ? _( "&Save Symbol [Read Only]" ) : _( "&Save Symbol" ),
                 g_Libedit_Hokeys_Descr, HK_SAVE_PART );
 
         aEvent.SetText( text );
@@ -617,9 +618,9 @@ void LIB_EDIT_FRAME::OnUpdatePinByPin( wxUpdateUIEvent& event )
 {
     LIB_PART*      part = GetCurPart();
 
-    event.Enable( part && ( part->GetUnitCount() > 1 || m_showDeMorgan ) );
+    event.Enable( part && part->GetUnitCount() > 1 && !part->UnitsLocked() );
 
-    event.Check( m_editPinsPerPartOrConvert );
+    event.Check( m_editPinsSeparately );
 }
 
 
@@ -805,7 +806,7 @@ void LIB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_LIBEDIT_EDIT_PIN_BY_PIN:
-        m_editPinsPerPartOrConvert = m_mainToolBar->GetToolToggled( ID_LIBEDIT_EDIT_PIN_BY_PIN );
+        m_editPinsSeparately = m_mainToolBar->GetToolToggled( ID_LIBEDIT_EDIT_PIN_BY_PIN );
         break;
 
     case ID_POPUP_LIBEDIT_END_CREATE_ITEM:
@@ -1134,14 +1135,22 @@ void LIB_EDIT_FRAME::OnEditComponentProperties( wxCommandEvent& event )
     if( dlg.ShowModal() == wxID_CANCEL )
         return;
 
+    // if m_UnitSelectionLocked has changed, set some edit options or defaults
+    // to the best value
     if( partLocked != GetCurPart()->UnitsLocked() )
     {
-        // m_editPinsPerPartOrConvert is set to the better value, if m_UnitSelectionLocked
-        // has changed
-        m_editPinsPerPartOrConvert = GetCurPart()->UnitsLocked() ? true : false;
+        // m_editPinsSeparately is set to the better value
+        m_editPinsSeparately = GetCurPart()->UnitsLocked() ? true : false;
+        // also set default edit options to the better value
+        // Usually if units are locked, graphic items are specific to each unit
+        // and if units are interchangeable, graphic items are common to units
+        m_drawSpecificUnit = GetCurPart()->UnitsLocked() ? true : false;
     }
 
-    m_libMgr->UpdatePart( GetCurPart(), GetCurLib(), oldName );
+    if( oldName != GetCurPart()->GetName() )
+        m_libMgr->RemovePart( GetCurLib(), oldName );
+
+    m_libMgr->UpdatePart( GetCurPart(), GetCurLib() );
 
     UpdateAliasSelectList();
     UpdatePartSelectList();
@@ -1407,24 +1416,30 @@ void LIB_EDIT_FRAME::deleteItem( wxDC* aDC )
 
     if( item->Type() == LIB_PIN_T )
     {
-        LIB_PIN*    pin = (LIB_PIN*) item;
+        LIB_PIN*    pin = static_cast<LIB_PIN*>( item );
         wxPoint     pos = pin->GetPosition();
 
         part->RemoveDrawItem( (LIB_ITEM*) pin, m_canvas, aDC );
 
+        // when pin edition is synchronized, all pins of the same body style
+        // are removed:
         if( SynchronizePins() )
         {
-            LIB_PIN* tmp = part->GetNextPin();
+            int curr_convert = pin->GetConvert();
+            LIB_PIN* next_pin = part->GetNextPin();
 
-            while( tmp != NULL )
+            while( next_pin != NULL )
             {
-                pin = tmp;
-                tmp = part->GetNextPin( pin );
+                pin = next_pin;
+                next_pin = part->GetNextPin( pin );
 
                 if( pin->GetPosition() != pos )
                     continue;
 
-                part->RemoveDrawItem( (LIB_ITEM*) pin );
+                if( pin->GetConvert() != curr_convert )
+                    continue;
+
+                part->RemoveDrawItem( pin );
             }
         }
 
@@ -1490,8 +1505,7 @@ bool LIB_EDIT_FRAME::SynchronizePins()
 {
     LIB_PART*      part = GetCurPart();
 
-    return !m_editPinsPerPartOrConvert && ( part &&
-        ( part->HasConversion() || part->IsMulti() ) );
+    return !m_editPinsSeparately && part && part->IsMulti() && !part->UnitsLocked();
 }
 
 
@@ -1622,9 +1636,14 @@ wxString LIB_EDIT_FRAME::getTargetLib() const
 
 void LIB_EDIT_FRAME::SyncLibraries( bool aProgress )
 {
+    LIB_ID selected;
+
+    if( m_treePane )
+        selected = m_treePane->GetCmpTree()->GetSelectedLibId();
+
     if( aProgress )
     {
-        wxProgressDialog progressDlg( _( "Loading symbol libraries" ),
+        wxProgressDialog progressDlg( _( "Loading Symbol Libraries" ),
                 wxEmptyString, m_libMgr->GetAdapter()->GetLibrariesCount(), this );
 
         m_libMgr->Sync( true, [&]( int progress, int max, const wxString& libName ) {
@@ -1637,7 +1656,31 @@ void LIB_EDIT_FRAME::SyncLibraries( bool aProgress )
     }
 
     if( m_treePane )
+    {
+        wxDataViewItem found;
+
+        if( selected.IsValid() )
+        {
+            // Check if the previously selected item is still valid,
+            // if not - it has to be unselected to prevent crash
+            found = m_libMgr->GetAdapter()->FindItem( selected );
+
+            if( !found )
+                m_treePane->GetCmpTree()->Unselect();
+        }
+
         m_treePane->Regenerate();
+
+        // Try to select the parent library, in case the part is not found
+        if( !found && selected.IsValid() )
+        {
+            selected.SetLibItemName( "" );
+            found = m_libMgr->GetAdapter()->FindItem( selected );
+
+            if( found )
+                m_treePane->GetCmpTree()->SelectLibId( selected );
+        }
+    }
 }
 
 
@@ -1689,7 +1732,10 @@ void LIB_EDIT_FRAME::storeCurrentPart()
 
 bool LIB_EDIT_FRAME::isCurrentPart( const LIB_ID& aLibId ) const
 {
-    return ( GetCurPart() && aLibId == GetCurPart()->GetLibId() );
+    // This will return the root part of any alias
+    LIB_PART* part = m_libMgr->GetBufferedPart( aLibId.GetLibItemName(), aLibId.GetLibNickname() );
+    // Now we can compare the libId of the current part and the root part
+    return ( GetCurPart() && part->GetLibId() == GetCurPart()->GetLibId() );
 }
 
 
@@ -1704,4 +1750,24 @@ void LIB_EDIT_FRAME::emptyScreen()
     m_dummyScreen->ClearUndoRedoList();
     Zoom_Automatique( false );
     Refresh();
+}
+
+
+int LIB_EDIT_FRAME::GetIconScale()
+{
+    int scale = 0;
+    Kiface().KifaceSettings()->Read( LibIconScaleEntry, &scale, 0 );
+    return scale;
+}
+
+
+void LIB_EDIT_FRAME::SetIconScale( int aScale )
+{
+    Kiface().KifaceSettings()->Write( LibIconScaleEntry, aScale );
+    ReCreateMenuBar();
+    ReCreateVToolbar();
+    ReCreateHToolbar();
+    ReCreateOptToolbar();
+    Layout();
+    SendSizeEvent();
 }

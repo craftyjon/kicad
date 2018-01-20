@@ -1,10 +1,10 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2012 Jean-Pierre Charras, jean-pierre.charras@ujf-grenoble.fr
+ * Copyright (C) 2018 Jean-Pierre Charras, jean-pierre.charras@ujf-grenoble.fr
  * Copyright (C) 2012 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
  * Copyright (C) 2011 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -340,29 +340,43 @@ double PCB_BASE_FRAME::BestZoom()
 }
 
 
-void PCB_BASE_FRAME::CursorGoto( const wxPoint& aPos, bool aWarp )
+void PCB_BASE_FRAME::FocusOnLocation( const wxPoint& aPos,
+                                      bool aWarpMouseCursor, bool aCenterView )
 {
-    // factored out of pcbnew/find.cpp
-
-    INSTALL_UNBUFFERED_DC( dc, m_canvas );
-
-    // There may be need to reframe the drawing.
-    if( !m_canvas->IsPointOnDisplay( aPos ) )
+    if( IsGalCanvasActive() )
     {
-        SetCrossHairPosition( aPos );
-        RedrawScreen( aPos, aWarp );
+        if( aCenterView )
+            GetGalCanvas()->GetView()->SetCenter( aPos );
+
+        if( aWarpMouseCursor )
+            GetGalCanvas()->GetViewControls()->SetCursorPosition( aPos );
+        else
+            GetGalCanvas()->GetViewControls()->SetCrossHairCursorPosition( aPos );
     }
     else
     {
-        // Put cursor on item position
-        m_canvas->CrossHairOff( &dc );
-        SetCrossHairPosition( aPos );
+        INSTALL_UNBUFFERED_DC( dc, m_canvas );
 
-        if( aWarp )
-            m_canvas->MoveCursorToCrossHair();
+        // There may be need to reframe the drawing.
+        if( aCenterView || !m_canvas->IsPointOnDisplay( aPos ) )
+        {
+            SetCrossHairPosition( aPos );
+            RedrawScreen( aPos, aWarpMouseCursor );
+        }
+        else
+        {
+            // Put cursor on item position
+            m_canvas->CrossHairOff( &dc );
+            SetCrossHairPosition( aPos );
+
+            if( aWarpMouseCursor )
+                m_canvas->MoveCursorToCrossHair();
+        }
+
+        // Be sure cross hair cursor is ON:
+        m_canvas->CrossHairOn( &dc );
+        m_canvas->CrossHairOn( &dc );
     }
-    m_canvas->CrossHairOn( &dc );
-    m_canvas->CrossHairOn( &dc );
 }
 
 
@@ -463,6 +477,25 @@ void PCB_BASE_FRAME::OnTogglePadDrawMode( wxCommandEvent& aEvent )
     }
 
     m_canvas->Refresh();
+}
+
+
+void PCB_BASE_FRAME::OnSwitchCanvas( wxCommandEvent& aEvent )
+{
+    switch( aEvent.GetId() )
+    {
+    case ID_MENU_CANVAS_LEGACY:
+        SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE );
+        break;
+
+    case ID_MENU_CANVAS_CAIRO:
+        SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO );
+        break;
+
+    case ID_MENU_CANVAS_OPENGL:
+        SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL );
+        break;
+    }
 }
 
 
@@ -607,6 +640,9 @@ GENERAL_COLLECTORS_GUIDE PCB_BASE_FRAME::GetCollectorsGuide()
     guide.SetIgnorePadsOnFront( ! m_Pcb->IsElementVisible( LAYER_PAD_FR ) );
     guide.SetIgnoreModulesVals( ! m_Pcb->IsElementVisible( LAYER_MOD_VALUES ) );
     guide.SetIgnoreModulesRefs( ! m_Pcb->IsElementVisible( LAYER_MOD_REFERENCES ) );
+    guide.SetIgnoreThroughVias( ! m_Pcb->IsElementVisible( LAYER_VIA_THROUGH ) );
+    guide.SetIgnoreBlindBuriedVias( ! m_Pcb->IsElementVisible( LAYER_VIA_BBLIND ) );
+    guide.SetIgnoreMicroVias( ! m_Pcb->IsElementVisible( LAYER_VIA_MICROVIA ) );
 
     return guide;
 }
@@ -932,36 +968,6 @@ void PCB_BASE_FRAME::SetPrevGrid()
 }
 
 
-void PCB_BASE_FRAME::SwitchCanvas( wxCommandEvent& aEvent )
-{
-    bool use_gal = false;
-    EDA_DRAW_PANEL_GAL::GAL_TYPE canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
-
-    switch( aEvent.GetId() )
-    {
-    case ID_MENU_CANVAS_LEGACY:
-        break;
-
-    case ID_MENU_CANVAS_CAIRO:
-        use_gal = GetGalCanvas()->SwitchBackend( EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO );
-
-        if( use_gal )
-            canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO;
-        break;
-
-    case ID_MENU_CANVAS_OPENGL:
-        use_gal = GetGalCanvas()->SwitchBackend( EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL );
-
-        if( use_gal )
-            canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL;
-        break;
-    }
-
-    UseGalCanvas( use_gal );
-    saveCanvasTypeSetting( canvasType );
-}
-
-
 void PCB_BASE_FRAME::UseGalCanvas( bool aEnable )
 {
     EDA_DRAW_FRAME::UseGalCanvas( aEnable );
@@ -997,6 +1003,18 @@ void PCB_BASE_FRAME::UseGalCanvas( bool aEnable )
         // Redirect all events to the legacy canvas
         galCanvas->SetEventDispatcher( NULL );
     }
+}
+
+
+bool PCB_BASE_FRAME::SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType )
+{
+    bool use_gal = GetGalCanvas()->SwitchBackend( aCanvasType );
+    use_gal &= aCanvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
+    UseGalCanvas( use_gal );
+    m_canvasType = use_gal ? aCanvasType : EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
+    m_canvasTypeDirty = true;
+
+    return use_gal;
 }
 
 

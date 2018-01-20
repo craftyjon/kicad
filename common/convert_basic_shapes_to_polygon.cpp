@@ -4,8 +4,8 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2012 Jean-Pierre Charras, jp.charras at wanadoo.fr
- * Copyright (C) 1992-2012 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2018 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -48,8 +48,8 @@ void TransformCircleToPolygon( SHAPE_POLY_SET& aCornerBuffer,
                                int aCircleToSegmentsCount )
 {
     wxPoint corner_position;
-    int     delta       = 3600 / aCircleToSegmentsCount;    // rot angle in 0.1 degree
-    int     halfstep    = 1800 / aCircleToSegmentsCount;    // the starting value for rot angles
+    double delta    = 3600.0 / aCircleToSegmentsCount;    // rot angle in 0.1 degree
+    double halfstep = delta/2;    // the starting value for rot angles
 
     aCornerBuffer.NewOutline();
 
@@ -57,11 +57,108 @@ void TransformCircleToPolygon( SHAPE_POLY_SET& aCornerBuffer,
     {
         corner_position.x   = aRadius;
         corner_position.y   = 0;
-        int     angle = (ii * delta) + halfstep;
-        RotatePoint( &corner_position.x, &corner_position.y, angle );
+        double angle = (ii * delta) + halfstep;
+        RotatePoint( &corner_position, angle );
         corner_position += aCenter;
         aCornerBuffer.Append( corner_position.x, corner_position.y );
     }
+}
+
+void TransformOvalClearanceToPolygon( SHAPE_POLY_SET& aCornerBuffer,
+                                wxPoint aStart, wxPoint aEnd, int aWidth,
+                                int aCircleToSegmentsCount, double aCorrectionFactor )
+{
+    // To build the polygonal shape outside the actual shape, we use a bigger
+    // radius to build rounded ends.
+    // However, the width of the segment is too big.
+    // so, later, we will clamp the polygonal shape with the bounding box
+    // of the segment.
+    int     radius  = aWidth / 2;
+    radius = radius * aCorrectionFactor;    // make segments outside the circles
+
+    // end point is the coordinate relative to aStart
+    wxPoint endp    = aEnd - aStart;
+    wxPoint startp  = aStart;
+    wxPoint corner;
+    SHAPE_POLY_SET polyshape;
+
+    polyshape.NewOutline();
+
+    // normalize the position in order to have endp.x >= 0
+    // it makes calculations more easy to understand
+    if( endp.x < 0 )
+    {
+        endp    = aStart - aEnd;
+        startp  = aEnd;
+    }
+
+    // delta_angle is in radian
+    double delta_angle = atan2( (double)endp.y, (double)endp.x );
+    int seg_len        = KiROUND( EuclideanNorm( endp ) );
+
+    double delta = 3600 / aCircleToSegmentsCount;    // rot angle in 0.1 degree
+
+    // Compute the outlines of the segment, and creates a polygon
+    // Note: the polygonal shape is built from the equivalent horizontal
+    // segment starting ar 0,0, and ending at seg_len,0
+
+    // add right rounded end:
+    for( int ii = 0; ii < aCircleToSegmentsCount/2; ii++ )
+    {
+        corner = wxPoint( 0, radius );
+        RotatePoint( &corner, delta*ii );
+        corner.x += seg_len;
+        polyshape.Append( corner.x, corner.y );
+    }
+
+    // Finish arc:
+    corner = wxPoint( seg_len, -radius );
+    polyshape.Append( corner.x, corner.y );
+
+    // add left rounded end:
+    for( int ii = 0; ii < aCircleToSegmentsCount/2; ii++ )
+    {
+        corner = wxPoint( 0, -radius );
+        RotatePoint( &corner, delta*ii );
+        polyshape.Append( corner.x, corner.y );
+    }
+
+    // Finish arc:
+    corner = wxPoint( 0, radius );
+    polyshape.Append( corner.x, corner.y );
+
+    // Now, clamp the polygonal shape (too big) with the segment bounding box
+    // the polygonal shape bbox equivalent to the segment has a too big height,
+    // and the right width
+    if( aCorrectionFactor > 1.0 )
+    {
+        SHAPE_POLY_SET bbox;
+        bbox.NewOutline();
+        // Build the bbox (a horizontal rectangle).
+        int halfwidth = aWidth / 2;     // Use the exact segment width for the bbox height
+        corner.x = -radius - 2;         // use a bbox width slightly bigger to avoid
+                                        // creating useless corner at segment ends
+        corner.y = halfwidth;
+        bbox.Append( corner.x, corner.y );
+        corner.y = -halfwidth;
+        bbox.Append( corner.x, corner.y );
+        corner.x = radius + seg_len + 2;
+        bbox.Append( corner.x, corner.y );
+        corner.y = halfwidth;
+        bbox.Append( corner.x, corner.y );
+
+        // Now, clamp the shape
+        polyshape.BooleanIntersection( bbox, SHAPE_POLY_SET::PM_STRICTLY_SIMPLE );
+        // Note the final polygon is a simple, convex polygon with no hole
+        // due to the shape of initial polygons
+    }
+
+    // Rotate and move the polygon to its right location
+    polyshape.Rotate( delta_angle, VECTOR2I( 0, 0 ) );
+    polyshape.Move( startp );
+
+
+    aCornerBuffer.Append( polyshape);
 }
 
 /* Returns the centers of the rounded corners of a rect.
@@ -313,6 +410,7 @@ void TransformRingToPolygon( SHAPE_POLY_SET& aCornerBuffer,
     aCornerBuffer.Append( aCentre.x + inner_radius, aCentre.y );
 
     // Draw the outer circle of the ring
+    // the first point creates also a segment from the inner to the outer polygon
     for( int ii = 0; ii < 3600; ii += delta )
     {
         curr_point.x    = outer_radius;
@@ -324,5 +422,10 @@ void TransformRingToPolygon( SHAPE_POLY_SET& aCornerBuffer,
 
     // Draw the last point of outer circle
     aCornerBuffer.Append( aCentre.x + outer_radius, aCentre.y );
+
+    // And connect the outer polygon to the inner polygon,.
+    // because a segment from inner to the outer polygon was already created,
+    // the final polygon is the inner and the outer outlines connected by
+    // 2 overlapping segments
     aCornerBuffer.Append( aCentre.x + inner_radius, aCentre.y );
 }

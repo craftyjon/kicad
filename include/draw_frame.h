@@ -141,6 +141,12 @@ protected:
     /// One-shot to avoid a recursive mouse event during hotkey movement
     bool            m_movingCursorWithKeyboard;
 
+    /// Flag indicating that drawing canvas type needs to be saved to config
+    bool            m_canvasTypeDirty;
+
+    /// The current canvas type
+    EDA_DRAW_PANEL_GAL::GAL_TYPE    m_canvasType;
+
     void SetScreen( BASE_SCREEN* aScreen )  { m_currentScreen = aScreen; }
 
     /**
@@ -329,6 +335,12 @@ public:
     void SetShowBorderAndTitleBlock( bool aShow ) { m_showBorderAndTitleBlock = aShow; }
     bool ShowPageLimits() const { return m_showPageLimits; }
     void SetShowPageLimits( bool aShow ) { m_showPageLimits = aShow; }
+
+    virtual bool SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType )
+    {
+        wxFAIL_MSG( "SwitchCanvas not implemented" );
+        return false;
+    }
 
     EDA_DRAW_PANEL* GetCanvas() { return m_canvas; }
 

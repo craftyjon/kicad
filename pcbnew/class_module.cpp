@@ -850,7 +850,7 @@ EDA_ITEM* MODULE::Clone() const
 }
 
 
-void MODULE::RunOnChildren( std::function<void (BOARD_ITEM*)> aFunction )
+void MODULE::RunOnChildren( const std::function<void (BOARD_ITEM*)>& aFunction )
 {
     try
     {
@@ -1302,9 +1302,6 @@ double MODULE::CoverageRatio() const
     SHAPE_POLY_SET holes;
     for( D_PAD* pad = m_Pads; pad; pad = pad->Next() )
         addRect( holes, pad->GetBoundingBox() );
-
-    for( BOARD_ITEM* item = m_Drawings; item; item = item->Next() )
-        addRect( holes, item->GetBoundingBox() );
 
     addRect( holes, m_Reference->GetBoundingBox() );
     addRect( holes, m_Value->GetBoundingBox() );

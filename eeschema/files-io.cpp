@@ -506,7 +506,7 @@ bool SCH_EDIT_FRAME::AppendSchematic()
         newScreens.GetLibNicknames( names );
         wxArrayString newLibNames;
 
-        for( auto name : names )
+        for( const auto& name : names )
         {
             if( !Prj().SchSymbolLibTable()->HasLibrary( name ) )
                 newLibNames.Add( name );
@@ -531,7 +531,7 @@ bool SCH_EDIT_FRAME::AppendSchematic()
 
             if( !table.IsEmpty() )
             {
-                for( auto libName : newLibNames )
+                for( const auto& libName : newLibNames )
                 {
                     if( !table.HasLibrary( libName ) )
                         continue;
@@ -607,7 +607,7 @@ bool SCH_EDIT_FRAME::AppendSchematic()
     SCH_SCREEN* newScreen = newSheet->GetScreen();
     wxCHECK_MSG( newScreen, false, "No screen defined for imported sheet." );
 
-    for( auto duplicateName : duplicateSheetNames )
+    for( const auto& duplicateName : duplicateSheetNames )
     {
         SCH_SHEET* renamedSheet = newScreen->GetSheet( duplicateName );
 

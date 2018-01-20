@@ -100,7 +100,14 @@ public:
      * The library buffer creates a copy of the part.
      * It is required to save the library to use the updated part in the schematic editor.
      */
-    bool UpdatePart( LIB_PART* aPart, const wxString& aLibrary, wxString aOldName = wxEmptyString );
+    bool UpdatePart( LIB_PART* aPart, const wxString& aLibrary );
+
+    /**
+     * Updates the part buffer with a new version of the part when the name has changed.
+     * The old library buffer will be deleted and a new one created with the new name.
+     */
+    bool UpdatePartAfterRename( LIB_PART* aPart, const wxString& oldAlias,
+                                const wxString& aLibrary );
 
     /**
      * Removes the part from the part buffer.
@@ -192,9 +199,10 @@ public:
 
     /**
      * Reverts unsaved changes for a particular part.
-     * @return True on success, false otherwise.
+     * @return The LIB_ID of the reverted part (which may be different in the case
+     * of a rename)
      */
-    bool RevertPart( const wxString& aAlias, const wxString& aLibrary );
+    LIB_ID RevertPart( const wxString& aAlias, const wxString& aLibrary );
 
     /**
      * Reverts unsaved changes for a particular library.
@@ -274,7 +282,8 @@ private:
     ///> Helper function to add either existing or create new library
     bool addLibrary( const wxString& aFilePath, bool aCreate, SYMBOL_LIB_TABLE* aTable );
 
-    SYMBOL_LIB_TABLE* m_symbolTable;
+    ///> Returns the current Symbol Library Table
+    SYMBOL_LIB_TABLE* symTable() const;
 
     ///> Class to store a working copy of a LIB_PART object and editor context.
     class PART_BUFFER

@@ -5,8 +5,8 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2009 Jean-Pierre Charras <jean-pierre.charras@gipsa-lab.inpg.fr>
- * Copyright (C) 2007 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2009 Jean-Pierre Charras jp.charras at wanadoo.fr
+ * Copyright (C) 2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -90,8 +90,10 @@ void PCB_EDIT_FRAME::Delete_OldZone_Fill( SEGZONE* aZone, timestamp_t aTimestamp
     }
 }
 
-int PCB_EDIT_FRAME::Fill_All_Zones( wxWindow * aActiveWindow, bool aVerbose )
+int PCB_EDIT_FRAME::Fill_All_Zones( wxWindow * aActiveWindow )
 {
+    wxBusyCursor dummy;
+
     std::vector<ZONE_CONTAINER*> toFill;
 
     for( auto zone : GetBoard()->Zones() )
@@ -101,15 +103,17 @@ int PCB_EDIT_FRAME::Fill_All_Zones( wxWindow * aActiveWindow, bool aVerbose )
 
     ZONE_FILLER filler( GetBoard() );
 
-    if( aVerbose )
+    // progressReporter must be created *only* if needed
+    if( aActiveWindow )
     {
         std::unique_ptr<WX_PROGRESS_REPORTER> progressReporter(
-                new WX_PROGRESS_REPORTER( aActiveWindow, _( "Fill All Zones" ), 3 )
-                );
-        filler.SetProgressReporter( progressReporter.get() );
-    }
+            new WX_PROGRESS_REPORTER( aActiveWindow, _( "Fill All Zones" ), 3 ) );
 
-    filler.Fill( toFill );
+        filler.SetProgressReporter( progressReporter.get() );
+        filler.Fill( toFill );
+    }
+    else    // do not use a WX_PROGRESS_REPORTER in ZONE_FILLER instance
+        filler.Fill( toFill );
 
     return 0;
 }

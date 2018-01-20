@@ -130,7 +130,7 @@ bool LIB_EDIT_FRAME::LoadComponentFromCurrentLib( const wxString& aAliasName, in
     if( aConvert > 0 )
         m_convert = aConvert;
 
-    m_editPinsPerPartOrConvert = GetCurPart()->UnitsLocked() ? true : false;
+    m_editPinsSeparately = GetCurPart()->UnitsLocked() ? true : false;
 
     GetScreen()->ClearUndoRedoList();
     Zoom_Automatique( false );
@@ -313,8 +313,6 @@ void LIB_EDIT_FRAME::OnCreateNewPart( wxCommandEvent& event )
     // Initialize new_part.m_TextInside member:
     // if 0, pin text is outside the body (on the pin)
     // if > 0, pin text is inside the body
-    new_part.SetConversion( dlg.GetAlternateBodyStyle() );
-    SetShowDeMorgan( dlg.GetAlternateBodyStyle() );
 
     if( dlg.GetPinNameInside() )
     {
@@ -338,6 +336,12 @@ void LIB_EDIT_FRAME::OnCreateNewPart( wxCommandEvent& event )
 
     m_libMgr->UpdatePart( &new_part, lib );
     loadPart( name, lib, 1 );
+
+    new_part.SetConversion( dlg.GetAlternateBodyStyle() );
+    // must be called after loadPart, that calls SetShowDeMorgan, but
+    // because the symbol is empty,it looks like it has no alternate body
+    SetShowDeMorgan( dlg.GetAlternateBodyStyle() );
+
 }
 
 
@@ -374,10 +378,6 @@ void LIB_EDIT_FRAME::OnRemovePart( wxCommandEvent& aEvent )
     if( isCurrentPart( libId ) )
         emptyScreen();
 
-    // Keeping a removed item selected may lead to a crash
-    if( m_treePane->GetCmpTree()->GetSelectedLibId( nullptr ) == libId )
-        m_treePane->GetCmpTree()->SelectLibId( LIB_ID( libId.GetLibNickname(), "" ) );
-
     m_libMgr->RemovePart( libId.GetLibItemName(), libId.GetLibNickname() );
 }
 
@@ -385,7 +385,8 @@ void LIB_EDIT_FRAME::OnRemovePart( wxCommandEvent& aEvent )
 void LIB_EDIT_FRAME::OnCopyCutPart( wxCommandEvent& aEvent )
 {
     int unit = 0;
-    LIB_ID partId = m_treePane->GetCmpTree()->GetSelectedLibId( &unit );
+    auto cmpTree = m_treePane->GetCmpTree();
+    LIB_ID partId = cmpTree->GetSelectedLibId( &unit );
     LIB_PART* part = m_libMgr->GetBufferedPart( partId.GetLibItemName(), partId.GetLibNickname() );
 
     if( !part )
@@ -398,10 +399,6 @@ void LIB_EDIT_FRAME::OnCopyCutPart( wxCommandEvent& aEvent )
     {
         if( isCurrentPart( libId ) )
             emptyScreen();
-
-        // Keeping a removed item selected may lead to a crash
-        if( m_treePane->GetCmpTree()->GetSelectedLibId( nullptr ) == libId )
-            m_treePane->GetCmpTree()->SelectLibId( LIB_ID( libId.GetLibNickname(), "" ) );
 
         m_libMgr->RemovePart( libId.GetLibItemName(), libId.GetLibNickname() );
     }
@@ -469,8 +466,10 @@ void LIB_EDIT_FRAME::OnRevertPart( wxCommandEvent& aEvent )
     if( currentPart )
         emptyScreen();
 
-    if( m_libMgr->RevertPart( libId.GetLibItemName(), libId.GetLibNickname() ) )
-        m_libMgr->ClearPartModified( libId.GetLibItemName(), libId.GetLibNickname() );
+    libId = m_libMgr->RevertPart( libId.GetLibItemName(), libId.GetLibNickname() );
+
+    m_treePane->GetCmpTree()->SelectLibId( libId );
+    m_libMgr->ClearPartModified( libId.GetLibItemName(), libId.GetLibNickname() );
 
     if( currentPart && m_libMgr->PartExists( libId.GetLibItemName(), libId.GetLibNickname() ) )
         loadPart( libId.GetLibItemName(), libId.GetLibNickname(), unit );
@@ -485,7 +484,7 @@ void LIB_EDIT_FRAME::loadPart( const wxString& aAlias, const wxString& aLibrary,
 
     if( !alias )
     {
-        wxString msg = wxString::Format( _( "Part name \"%s\" not found in library \"%s\"" ),
+        wxString msg = wxString::Format( _( "Symbol name \"%s\" not found in library \"%s\"" ),
             GetChars( aAlias ), GetChars( aLibrary ) );
         DisplayError( this, msg );
         return;
@@ -495,6 +494,11 @@ void LIB_EDIT_FRAME::loadPart( const wxString& aAlias, const wxString& aLibrary,
     SetDrawItem( NULL );
     m_aliasName = aAlias;
     m_unit = ( aUnit <= part->GetUnitCount() ? aUnit : 1 );
+
+    // Optimize default edit options for this symbol
+    // Usually if units are locked, graphic items are specific to each unit
+    // and if units are interchangeable, graphic items are common to units
+    m_drawSpecificUnit = part->UnitsLocked() ? true : false;
 
     LoadOneLibraryPartAux( alias, aLibrary );
 }
@@ -667,7 +671,7 @@ void LIB_EDIT_FRAME::DisplayCmpDoc()
     if( part->IsPower() )
         msg = _( "Power Symbol" );
     else
-        msg = _( "Part" );
+        msg = _( "Symbol" );
 
     AppendMsgPanel( _( "Type" ), msg, MAGENTA, 8 );
     AppendMsgPanel( _( "Description" ), alias->GetDescription(), CYAN, 8 );

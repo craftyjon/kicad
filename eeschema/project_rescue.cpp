@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2015 Chris Pavlina <pavlina.chris@gmail.com>
- * Copyright (C) 2015-2017 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2015-2018 KiCad Developers, see change_log.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -91,7 +91,7 @@ static void get_components( std::vector<SCH_COMPONENT*>& aComponents )
  * @param aLibs - the loaded PART_LIBS
  * @param aCached - whether we are looking for the cached part
  */
-static LIB_PART* find_component( wxString aName, PART_LIBS* aLibs, bool aCached )
+static LIB_PART* find_component( const wxString& aName, PART_LIBS* aLibs, bool aCached )
 {
     LIB_PART *part = NULL;
 
@@ -288,14 +288,28 @@ void RESCUE_CACHE_CANDIDATE::FindRescues( RESCUER& aRescuer,
 wxString RESCUE_CACHE_CANDIDATE::GetActionDescription() const
 {
     wxString action;
-    action.Printf( _( "Rescue %s as %s" ), m_requested_name, m_new_name );
+
+    if( !m_cache_candidate && !m_lib_candidate )
+        action.Printf( _( "Cannot rescue symbol %s which is not available in any library or "
+                          "the cache." ), m_requested_name );
+    else if( m_cache_candidate && !m_lib_candidate )
+        action.Printf( _( "Rescue symbol %s found only in cache library to %s." ),
+                       m_requested_name, m_new_name );
+    else
+        action.Printf( _( "Rescue modified symbol %s to %s" ),
+                       m_requested_name, m_new_name );
+
     return action;
 }
 
 
 bool RESCUE_CACHE_CANDIDATE::PerformAction( RESCUER* aRescuer )
 {
-    LIB_PART new_part( *m_cache_candidate );
+    LIB_PART* tmp = ( m_cache_candidate ) ? m_cache_candidate : m_lib_candidate;
+
+    wxCHECK_MSG( tmp, false, "Both cache and library symbols undefined." );
+
+    LIB_PART new_part( *tmp );
     new_part.SetName( m_new_name );
     new_part.RemoveAllAliases();
     aRescuer->AddPart( &new_part );
@@ -352,8 +366,6 @@ void RESCUE_SYMBOL_LIB_TABLE_CANDIDATE::FindRescues(
     LIB_PART* lib_match = nullptr;
     LIB_ID old_part_id;
 
-    wxString part_name_suffix = aRescuer.GetPartNameSuffix();
-
     for( SCH_COMPONENT* each_component : *( aRescuer.GetComponents() ) )
     {
         LIB_ID part_id = each_component->GetLibId();
@@ -363,7 +375,7 @@ void RESCUE_SYMBOL_LIB_TABLE_CANDIDATE::FindRescues(
             // A new part name is found (a new group starts here).
             // Search the symbol names candidates only once for this group:
             old_part_id = part_id;
-            cache_match = find_component( part_id.GetLibItemName(), aRescuer.GetPrj()->SchLibs(),
+            cache_match = find_component( part_id.Format().wx_str(), aRescuer.GetPrj()->SchLibs(),
                                           true );
 
             lib_match = aRescuer.GetFrame()->GetLibPart( part_id );
@@ -378,13 +390,17 @@ void RESCUE_SYMBOL_LIB_TABLE_CANDIDATE::FindRescues(
               && !LIB_ID::HasIllegalChars( part_id.GetLibItemName() ) )
                 continue;
 
-            // May have been rescued already.
+            // Fix illegal LIB_ID name characters.
             wxString new_name = LIB_ID::FixIllegalChars( part_id.GetLibItemName() );
 
-            if( new_name.Find( part_name_suffix ) == wxNOT_FOUND )
-                new_name += part_name_suffix;
+            // Differentiate symbol name in the resue library by appending the symbol library
+            // table nickname to the symbol name to prevent name clashes in the rescue library.
+            wxString libNickname = GetRescueLibraryFileName().GetName();
 
-            LIB_ID new_id( GetRescueLibraryFileName().GetName(), new_name );
+            // Spaces in the file name will break the symbol name because they are not
+            // quoted in the symbol library file format.
+            libNickname.Replace( " ", "-" );
+            LIB_ID new_id( libNickname, new_name + "-" + part_id.GetLibNickname().wx_str() );
 
             RESCUE_SYMBOL_LIB_TABLE_CANDIDATE candidate( part_id, new_id, cache_match, lib_match );
 
@@ -403,14 +419,29 @@ void RESCUE_SYMBOL_LIB_TABLE_CANDIDATE::FindRescues(
 wxString RESCUE_SYMBOL_LIB_TABLE_CANDIDATE::GetActionDescription() const
 {
     wxString action;
-    action.Printf( _( "Rescue to %s" ), m_new_id.Format().wx_str() );
+
+    if( !m_cache_candidate && !m_lib_candidate )
+        action.Printf( _( "Cannot rescue symbol %s which is not available in any library or "
+                          "the cache." ), m_requested_id.GetLibItemName().wx_str() );
+    else if( m_cache_candidate && !m_lib_candidate )
+        action.Printf( _( "Rescue symbol %s found only in cache library to %s." ),
+                       m_requested_id.Format().wx_str(), m_new_id.Format().wx_str() );
+    else
+        action.Printf( _( "Rescue modified symbol %s to %s" ),
+                       m_requested_id.Format().wx_str(), m_new_id.Format().wx_str() );
+
     return action;
 }
 
 
 bool RESCUE_SYMBOL_LIB_TABLE_CANDIDATE::PerformAction( RESCUER* aRescuer )
 {
-    LIB_PART new_part( *m_cache_candidate );
+    LIB_PART* tmp = ( m_cache_candidate ) ? m_cache_candidate : m_lib_candidate;
+
+    wxCHECK_MSG( tmp, false, "Both cache and library symbols undefined." );
+
+    LIB_PART new_part( *tmp );
+    new_part.SetLibId( m_new_id );
     new_part.SetName( m_new_id.GetLibItemName() );
     new_part.RemoveAllAliases();
     aRescuer->AddPart( &new_part );
@@ -555,8 +586,6 @@ bool SCH_EDIT_FRAME::rescueProject( RESCUER& aRescuer, bool aRunningOnDemand )
     if( viewer )
         viewer->ReCreateListLib();
 
-    // Clean up wire ends
-    SchematicCleanUp();
     GetScreen()->ClearUndoORRedoList( GetScreen()->m_UndoList, 1 );
     m_canvas->Refresh( true );
     OnModify();
@@ -781,7 +810,13 @@ bool SYMBOL_LIB_TABLE_RESCUER::WriteRescueLibrary( SCH_EDIT_FRAME *aEditFrame )
         }
 
         wxString uri = "${KIPRJMOD}/" + fn.GetFullName();
-        SYMBOL_LIB_TABLE_ROW* row = new SYMBOL_LIB_TABLE_ROW( fn.GetName(), uri,
+        wxString libNickname = fn.GetName();
+
+        // Spaces in the file name will break the symbol name because they are not
+        // quoted in the symbol library file format.
+        libNickname.Replace( " ", "-" );
+
+        SYMBOL_LIB_TABLE_ROW* row = new SYMBOL_LIB_TABLE_ROW( libNickname, uri,
                                                               wxString( "Legacy" ) );
         m_prj->SchSymbolLibTable()->InsertRow( row );
 

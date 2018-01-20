@@ -4,24 +4,20 @@
  * Copyright (C) 2017 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2013 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
  * Copyright (C) 2013 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 2013-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2013-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /**
@@ -93,6 +89,7 @@ static const wxString MagneticTracksEntry =     "PcbMagTrackOpt";
 static const wxString ShowMicrowaveEntry =      "ShowMicrowaveTools";
 static const wxString ShowLayerManagerEntry =   "ShowLayerManagerTools";
 static const wxString ShowPageLimitsEntry =     "ShowPageLimits";
+static const wxString IconScaleEntry =          "PcbIconScale";
 
 ///@}
 
@@ -190,9 +187,9 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_MENU( ID_MENU_PCB_SHOW_3D_FRAME, PCB_EDIT_FRAME::Show3D_Frame )
 
     // Switching canvases
-    EVT_MENU( ID_MENU_CANVAS_LEGACY, PCB_EDIT_FRAME::SwitchCanvas )
-    EVT_MENU( ID_MENU_CANVAS_CAIRO, PCB_EDIT_FRAME::SwitchCanvas )
-    EVT_MENU( ID_MENU_CANVAS_OPENGL, PCB_EDIT_FRAME::SwitchCanvas )
+    EVT_MENU( ID_MENU_CANVAS_LEGACY, PCB_EDIT_FRAME::OnSwitchCanvas )
+    EVT_MENU( ID_MENU_CANVAS_CAIRO, PCB_EDIT_FRAME::OnSwitchCanvas )
+    EVT_MENU( ID_MENU_CANVAS_OPENGL, PCB_EDIT_FRAME::OnSwitchCanvas )
 
     // Menu Get Design Rules Editor
     EVT_MENU( ID_MENU_PCB_SHOW_DESIGN_RULES_DIALOG, PCB_EDIT_FRAME::ShowDesignRulesEditor )
@@ -1179,10 +1176,10 @@ void PCB_EDIT_FRAME::OnLayerColorChange( wxCommandEvent& aEvent )
 }
 
 
-void PCB_EDIT_FRAME::SwitchCanvas( wxCommandEvent& aEvent )
+void PCB_EDIT_FRAME::OnSwitchCanvas( wxCommandEvent& aEvent )
 {
     // switches currently used canvas (default / Cairo / OpenGL).
-    PCB_BASE_FRAME::SwitchCanvas( aEvent );
+    PCB_BASE_FRAME::OnSwitchCanvas( aEvent );
 
     // The base class method reinit the layers manager.
     // We must upate the layer widget to match board visibility states,
@@ -1231,13 +1228,22 @@ void PCB_EDIT_FRAME::OnUpdatePCBFromSch( wxCommandEvent& event )
     }
     else
     {
+        // Update PCB requires a netlist. Therefore the schematic editor must be running
+        // If this is not the case, open the schematic editor
         KIWAY_PLAYER* frame = Kiway().Player( FRAME_SCH, true );
-        wxFileName schfn( Prj().GetProjectPath(), Prj().GetProjectName(), SchematicFileExtension );
 
-        if( !frame->IsVisible() )
+        if( !frame->IsShown() )
         {
+            wxFileName schfn( Prj().GetProjectPath(), Prj().GetProjectName(), SchematicFileExtension );
+
             frame->OpenProjectFiles( std::vector<wxString>( 1, schfn.GetFullPath() ) );
-            frame->Show( false );
+            // Because the schematic editor frame is not on screen, iconize it:
+            // However, an other valid option is to do not iconize the schematic editor frame
+            // and show it
+            frame->Iconize( true );
+            // we show the schematic editor frame, because do not show is seen as
+            // a not yet opened schematic by Kicad manager, which is not the case
+            frame->Show( true );
         }
 
         Kiway().ExpressMail( FRAME_SCH, MAIL_SCH_PCB_UPDATE_REQUEST, "", this );
@@ -1277,4 +1283,26 @@ int PCB_EDIT_FRAME::InstallExchangeModuleFrame( MODULE* Module )
     DIALOG_EXCHANGE_MODULE dialog( this, Module );
 
     return dialog.ShowQuasiModal();
+}
+
+
+int PCB_EDIT_FRAME::GetIconScale()
+{
+    int scale = 0;
+    Kiface().KifaceSettings()->Read( IconScaleEntry, &scale, 0 );
+    return scale;
+}
+
+
+void PCB_EDIT_FRAME::SetIconScale( int aScale )
+{
+    Kiface().KifaceSettings()->Write( IconScaleEntry, aScale );
+    ReCreateMenuBar();
+    ReCreateHToolbar();
+    ReCreateAuxiliaryToolbar();
+    ReCreateVToolbar();
+    ReCreateOptToolbar();
+    ReCreateMicrowaveVToolbar();
+    Layout();
+    SendSizeEvent();
 }

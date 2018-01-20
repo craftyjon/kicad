@@ -150,11 +150,11 @@ bool dxfRW::write( DRW_Interface* interface_, DRW::Version ver, bool bin )
         writer->writeString( 999, comm );
     }
 
-    DRW_Header header;
-    iface->writeHeader( header );
+    DRW_Header h;
+    iface->writeHeader( h );
     writer->writeString( 0, "SECTION" );
     entCount = FIRSTHANDLE;
-    header.write( writer, version );
+    h.write( writer, version );
     writer->writeString( 0, "ENDSEC" );
     writer->writeString( 0, "SECTION" );
     writer->writeString( 2, "CLASSES" );
@@ -1685,7 +1685,7 @@ bool dxfRW::writeViewport( DRW_Viewport* ent )
 }
 
 
-DRW_ImageDef* dxfRW::writeImage( DRW_Image* ent, std::string name )
+DRW_ImageDef* dxfRW::writeImage( DRW_Image* ent, const std::string& name )
 {
     if( version > DRW::AC1009 )
     {
@@ -1741,7 +1741,7 @@ DRW_ImageDef* dxfRW::writeImage( DRW_Image* ent, std::string name )
 }
 
 
-bool dxfRW::writeBlockRecord( std::string name )
+bool dxfRW::writeBlockRecord( const std::string& name )
 {
     if( version > DRW::AC1009 )
     {

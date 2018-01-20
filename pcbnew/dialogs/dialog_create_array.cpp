@@ -176,7 +176,7 @@ static bool getNumberingOffset( const wxString& str,
         DIALOG_CREATE_ARRAY::ARRAY_NUMBERING_TYPE_T type,
         int& offsetToFill )
 {
-    const wxString alphabet = alphabetFromNumberingScheme( type );
+    const wxString& alphabet = alphabetFromNumberingScheme( type );
 
     int offset = 0;
     const int radix = alphabet.length();
@@ -265,7 +265,7 @@ static bool validateNumberingTypeAndOffset( const wxTextCtrl& offsetEntry,
  */
 static bool validateLongEntry( const wxTextEntry& entry,
                         long& dest,
-                        const wxString description,
+                        const wxString& description,
                         wxArrayString& errors )
 {
     bool ok = true;

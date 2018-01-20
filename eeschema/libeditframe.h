@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2014 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 2004-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2004-2018 KiCad Developers, see AUTHORS.txt for contributors.
  * Copyright (C) 2017 CERN
  * @author Maciej Suminski <maciej.suminski@cern.ch>
  *
@@ -79,12 +79,20 @@ class LIB_EDIT_FRAME : public SCH_BASE_FRAME
 
     /**
      * Set to true to not synchronize pins at the same position when editing
-     * components with multiple parts or multiple body styles.  Setting this
-     * to false allows editing each pin per part or body style individually.
+     * symbols with multiple units or multiple body styles.
+     * Therefore deleting, moving pins are made for all pins at the same location
+     * When units are interchangeable, synchronizing edition of pins is usually
+     * the best way, because if units are interchangeable, it imply all similar
+     * pins are on the same location
+     * When units are non interchangeable, do not synchronize edition of pins, because
+     * each part is specific, and there are no similar pins between units
+     *
+     * Setting this to false allows editing each pin per part or body style
+     * regardless other pins at the same location.
      * This requires the user to open each part or body style to make changes
-     * to the pin at the same location.
+     * to the other pins at the same location.
      */
-    bool m_editPinsPerPartOrConvert;
+    bool m_editPinsSeparately;
 
     /**
      * the option to show the pin electrical name in the component editor
@@ -202,9 +210,12 @@ public:
     void Process_Config( wxCommandEvent& event );
 
     /**
-     * @return True if the edit pins per part or convert is false and the current
-     *         component has multiple parts or body styles.  Otherwise false is
-     *         returned.
+     * Pin edition (add, delete, move...) can be synchronized between units
+     * when units are interchangeable because in this case similar pins are expected
+     * at the same location
+     * @return true if the edit pins separately option is false and the current symbol
+     * has multiple interchengeable units.
+     * Otherwise return false.
      */
     bool SynchronizePins();
 
@@ -366,7 +377,7 @@ public:
     void OnCloseWindow( wxCloseEvent& Event );
     void ReCreateHToolbar() override;
     void ReCreateVToolbar() override;
-    void CreateOptionToolbar();
+    void ReCreateOptToolbar();
     void OnLeftClick( wxDC* DC, const wxPoint& MousePos ) override;
     bool OnRightClick( const wxPoint& MousePos, wxMenu* PopMenu ) override;
     double BestZoom() override;         // Returns the best zoom
@@ -544,10 +555,10 @@ public:
     /**
      * Create a copy of the current component, and save it in the undo list.
      *
-     * Because a component in library editor does not a lot of primitives,
-     * the full data is duplicated. It is not worth to try to optimize this save funtion
+     * Because a component in library editor does not have a lot of primitives,
+     * the full data is duplicated. It is not worth to try to optimize this save function.
      */
-    void SaveCopyInUndoList( EDA_ITEM* ItemToCopy );
+    void SaveCopyInUndoList( EDA_ITEM* ItemToCopy, UNDO_REDO_T undoType = UR_LIBEDIT );
 
 private:
     void GetComponentFromUndoList( wxCommandEvent& event );
@@ -558,16 +569,11 @@ private:
     void StartMovePin( wxDC* DC );
 
     /**
-     * Adds copies of \a aPin for \a aUnit in components with multiple parts and
-     * \a aConvert for components that have multiple body styles.
+     * Adds copies of \a aPin in components with multiple units in all units
      *
-     * @param aPin The pin to copy.
-     * @param aUnit The unit to add a copy of \a aPin to.
-     * @param aConvert The alternate body style to add a copy of \a aPin to.
-     * @param aDeMorgan Flag to indicate if \a aPin should be created for the
-     *                  alternate body style.
+     * @param aPin The pin to copy to others units.
      */
-    void CreateImagePins( LIB_PIN* aPin, int aUnit, int aConvert, bool aDeMorgan );
+    void CreateImagePins( LIB_PIN* aPin );
 
     /**
      * Places an  anchor reference coordinate for the current component.
@@ -691,6 +697,9 @@ public:
      */
     void SyncLibraries( bool aLoad );
 
+    int GetIconScale() override;
+    void SetIconScale( int aScale ) override;
+
 private:
     ///> Helper screen used when no part is loaded
     SCH_SCREEN* m_dummyScreen;
@@ -728,7 +737,7 @@ private:
     ///> Stores the currently modified part in the library manager buffer.
     void storeCurrentPart();
 
-    ///> Returns true if currently modified part has the same LIB_ID.
+    ///> Returns true if \a aLibId is an alias for the editor screen part.
     bool isCurrentPart( const LIB_ID& aLibId ) const;
 
     ///> Restores the empty editor screen, without any part or library selected.
