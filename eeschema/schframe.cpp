@@ -1453,6 +1453,9 @@ void SCH_EDIT_FRAME::addCurrentItemToList( bool aRedraw )
                 wxLogMessage( wxT( "addCurrentItemToList: expected type = SCH_SHEET_PIN_T, actual type = %d" ),
                               item->Type() );
         }
+
+        // Update connectivity info for new item
+        RecalculateConnections();
     }
     else
     {
