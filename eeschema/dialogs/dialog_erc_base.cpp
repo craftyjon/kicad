@@ -156,7 +156,7 @@ DIALOG_ERC_BASE::DIALOG_ERC_BASE( wxWindow* parent, wxWindowID id, const wxStrin
 	m_cbCheckBusToBusConflicts = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check that bus-to-bus connections have shared members"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_panelMatrixSizer->Add( m_cbCheckBusToBusConflicts, 0, wxALL, 5 );
 	
-	m_cbCheckBusToNetConflicts = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check that bus wires are not connected to net pins and vice versa"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_cbCheckBusToNetConflicts = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check that bus wires are not connected to heirarchical net pins and vice versa"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_panelMatrixSizer->Add( m_cbCheckBusToNetConflicts, 0, wxALL, 5 );
 	
 	
