@@ -62,6 +62,7 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
         {
         case SCH_LABEL_T:               item_priority = 2; break;
         case SCH_HIERARCHICAL_LABEL_T:  item_priority = 3; break;
+        case SCH_SHEET_PIN_T:           item_priority = 4; break;
         case SCH_PIN_CONNECTION_T:
         {
             auto pin_connection = static_cast<SCH_PIN_CONNECTION*>( item );
@@ -575,7 +576,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
             connection->SetNetCode( code );
         }
-
 
         if( debug )
         {
