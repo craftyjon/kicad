@@ -351,6 +351,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
     bool debug = true;
     PROF_COUNTER phase2;
 
+    // Recache all bus aliases for later use
+
     SCH_SHEET_LIST all_sheets( g_RootSheet );
 
     for( unsigned i = 0; i < all_sheets.size(); i++ )
@@ -360,6 +362,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             m_bus_alias_cache[ alias->GetName() ] = alias;
         }
     }
+
+    // Build subgraphs from items (on a per-sheet basis)
 
     long subgraph_code = 1;
 
@@ -454,6 +458,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
      * the net will be the same.
      */
 
+    // Resolve drivers for subgraphs and propagate connectivity info
+
 #ifdef USE_OPENMP
     #pragma omp parallel for schedule(dynamic)
 #endif
@@ -538,6 +544,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         }
     }
 
+    // Generate net codes
+
     for( auto subgraph : m_subgraphs )
     {
         if( !subgraph->m_driver )
@@ -575,6 +583,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             }
 
             connection->SetNetCode( code );
+
+            m_net_code_to_subgraphs_map[ connection->NetCode() ].push_back( subgraph );
         }
 
         if( debug )
@@ -583,7 +593,64 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                       << " with name " << name << std::endl;
         }
 
-        m_net_code_to_subgraphs_map[ connection->NetCode() ].push_back( subgraph );
+        // Reset the flag for the next loop below
+        subgraph->m_dirty = true;
+    }
+
+    // Collapse net codes between hierarchical sheets
+
+#ifdef USE_OPENMP
+    #pragma omp parallel for schedule(dynamic)
+#endif
+    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
+    {
+        auto subgraph = *it;
+
+        if( !subgraph->m_dirty )
+            continue;
+
+        subgraph->m_dirty = false;
+
+        auto sheet = subgraph->m_sheet;
+        auto connection = subgraph->m_driver->Connection( sheet );
+
+        for( auto item : subgraph->m_items )
+        {
+            /**
+             * We want to investigate connections to sheet pins to see if they
+             * connect to a valid subgraph on the subsheet to merge with
+             */
+
+            if( item->Type() == SCH_SHEET_PIN_T )
+            {
+                auto sp = static_cast<SCH_SHEET_PIN*>( item );
+                auto subsheet = sheet;
+                subsheet.push_back( sp->GetParent() );
+
+                for( auto candidate : m_subgraphs )
+                {
+                    if( candidate->m_sheet == subsheet &&
+                        candidate->m_driver &&
+                        ( candidate->m_driver->Connection( subsheet )->Name() ==
+                          connection->Name() ) )
+                    {
+                        auto target = candidate->m_driver->Connection( subsheet );
+
+                        if( connection->IsBus() )
+                        {
+                            target->SetBusCode( connection->BusCode() );
+                        }
+                        else
+                        {
+                            auto old_code = target->NetCode();
+                            target->SetNetCode( connection->NetCode() );
+                            m_net_code_to_subgraphs_map[ target->NetCode() ].push_back( candidate );
+                            m_net_code_to_subgraphs_map.erase( old_code );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     phase2.Stop();
