@@ -56,6 +56,11 @@ public:
      */
     bool ResolveDrivers( bool aCreateMarkers = false );
 
+    /**
+     * Returns the fully-qualified net name for this subgraph (if one exists)
+     */
+    wxString GetNetName();
+
     bool m_dirty;
 
     long m_code;

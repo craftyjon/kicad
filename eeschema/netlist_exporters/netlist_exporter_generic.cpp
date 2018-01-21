@@ -509,14 +509,7 @@ XNODE* NETLIST_EXPORTER_GENERIC::makeListOfNets()
         {
             auto code = it.first;
             auto subgraphs = it.second;
-            auto sheet = subgraphs[0]->m_sheet;
-            auto driver = subgraphs[0]->m_driver;
-            auto connection = driver->Connection( sheet );
-
-            auto net_name = connection->Name();
-
-            if( driver->Type() != SCH_PIN_CONNECTION_T )
-                net_name = sheet.PathHumanReadable() + net_name;
+            auto net_name = subgraphs[0]->GetNetName();
 
             xnets->AddChild( xnet = node( "net" ) );
             netCodeTxt.Printf( "%d", code );
@@ -527,7 +520,7 @@ XNODE* NETLIST_EXPORTER_GENERIC::makeListOfNets()
 
             for( auto subgraph : subgraphs )
             {
-                sheet = subgraph->m_sheet;
+                auto sheet = subgraph->m_sheet;
 
                 for( auto item : subgraph->m_items )
                 {

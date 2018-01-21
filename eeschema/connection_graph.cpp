@@ -141,6 +141,44 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
 }
 
 
+wxString CONNECTION_SUBGRAPH::GetNetName()
+{
+    wxString ret = "";
+
+    if( !m_driver || m_dirty )
+        return ret;
+
+    ret = m_driver->Connection( m_sheet )->Name();
+
+    bool prepend_path = true;
+
+    switch( m_driver->Type() )
+    {
+    case SCH_PIN_CONNECTION_T:
+    {
+        auto pc = static_cast<SCH_PIN_CONNECTION*>( m_driver );
+
+        if( pc->m_pin->IsPowerConnection() )
+            prepend_path = false;
+
+        break;
+    }
+
+    case SCH_GLOBAL_LABEL_T:
+        prepend_path = false;
+        break;
+
+    default:
+        break;
+    }
+
+    if( prepend_path )
+        ret = m_sheet.PathHumanReadable() + ret;
+
+    return ret;
+}
+
+
 void CONNECTION_GRAPH::Reset()
 {
     m_items.clear();
@@ -309,6 +347,7 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH aSheet,
 
 void CONNECTION_GRAPH::BuildConnectionGraph()
 {
+    bool debug = true;
     PROF_COUNTER phase2;
 
     SCH_SHEET_LIST all_sheets( g_RootSheet );
@@ -325,8 +364,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
     for( auto item : m_items )
     {
-        bool debug = false;
-
         for( auto it : item->m_connection_map )
         {
             const auto sheet = it.first;
@@ -508,16 +545,18 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         auto connection = subgraph->m_driver->Connection( subgraph->m_sheet );
         int code;
 
+        auto name = subgraph->GetNetName();
+
         if( connection->IsBus() )
         {
             try
             {
-                code = m_bus_name_to_code_map.at( connection->Name() );
+                code = m_bus_name_to_code_map.at( name );
             }
             catch( const std::out_of_range& oor )
             {
                 code = m_last_bus_code++;
-                m_bus_name_to_code_map[ connection->Name() ] = code;
+                m_bus_name_to_code_map[ name ] = code;
             }
 
             connection->SetBusCode( code );
@@ -526,15 +565,22 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         {
             try
             {
-                code = m_net_name_to_code_map.at( connection->Name() );
+                code = m_net_name_to_code_map.at( name );
             }
             catch( const std::out_of_range& oor )
             {
                 code = m_last_net_code++;
-                m_net_name_to_code_map[ connection->Name() ] = code;
+                m_net_name_to_code_map[ name ] = code;
             }
 
             connection->SetNetCode( code );
+        }
+
+
+        if( debug )
+        {
+            std::cout << "SG " << subgraph->m_code << " got code " << code
+                      << " with name " << name << std::endl;
         }
 
         m_net_code_to_subgraphs_map[ connection->NetCode() ].push_back( subgraph );
