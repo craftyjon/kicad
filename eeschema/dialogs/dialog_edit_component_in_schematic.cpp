@@ -38,6 +38,7 @@
 
 #include <general.h>
 #include <sch_base_frame.h>
+#include <sch_reference_list.h>
 #include <class_library.h>
 #include <sch_component.h>
 #include <dialog_helpers.h>
@@ -118,7 +119,16 @@ private:
 
     void setRowItem( int aFieldNdx, const SCH_FIELD& aField )
     {
-        setRowItem( aFieldNdx, aField.GetName( false ), aField.GetText() );
+        // Use default field name for mandatory fields, because they are transalted
+        // according to the current locale
+        wxString f_name;
+
+        if( aFieldNdx < MANDATORY_FIELDS )
+            f_name = TEMPLATE_FIELDNAME::GetDefaultFieldName( aFieldNdx );
+        else
+            f_name = aField.GetName( false );
+
+        setRowItem( aFieldNdx, f_name, aField.GetText() );
     }
 
     // event handlers
@@ -509,6 +519,32 @@ void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::OnOKButtonClick( wxCommandEvent& event 
     // reference.
     m_cmp->SetRef( &GetParent()->GetCurrentSheet(), m_FieldsBuf[REFERENCE].GetText() );
 
+    // The value, footprint and datasheet fields should be kept in sync in multi-unit
+    // parts.
+    if( m_cmp->GetUnitCount() > 1 )
+    {
+        const LIB_ID   thisLibId = m_cmp->GetLibId();
+        const wxString thisRef   = m_cmp->GetRef( &( GetParent()->GetCurrentSheet() ) );
+        int            thisUnit  = m_cmp->GetUnit();
+
+        SCH_REFERENCE_LIST components;
+        GetParent()->GetCurrentSheet().GetComponents( components );
+        for( unsigned i = 0; i < components.GetCount(); i++ )
+        {
+            SCH_REFERENCE component = components[i];
+            if( component.GetLibPart()->GetLibId() == thisLibId
+                    && component.GetRef() == thisRef
+                    && component.GetUnit() != thisUnit )
+            {
+                SCH_COMPONENT* otherUnit = component.GetComp();
+                GetParent()->SaveCopyInUndoList( otherUnit, UR_CHANGED, true /* append */);
+                otherUnit->GetField( VALUE )->SetText( m_FieldsBuf[VALUE].GetText() );
+                otherUnit->GetField( FOOTPRINT )->SetText( m_FieldsBuf[FOOTPRINT].GetText() );
+                otherUnit->GetField( DATASHEET )->SetText( m_FieldsBuf[DATASHEET].GetText() );
+            }
+        }
+    }
+
     GetParent()->OnModify();
     GetParent()->GetScreen()->TestDanglingEnds();
 
@@ -764,6 +800,10 @@ void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::InitBuffers( SCH_COMPONENT* aComponent 
 
         // make the editable field position relative to the component
         m_FieldsBuf[i].Offset( -m_cmp->m_Pos );
+
+        // Ensure the Field name reflects the default name, even if the
+        // local has changed since schematic was read
+        m_FieldsBuf[i].SetName( TEMPLATE_FIELDNAME::GetDefaultFieldName( i ) );
     }
 
     // Add template fieldnames:

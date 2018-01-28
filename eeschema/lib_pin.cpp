@@ -155,7 +155,6 @@ LIB_PIN::LIB_PIN( LIB_PART*      aParent ) :
     m_numTextSize = LIB_EDIT_FRAME::GetPinNumDefaultSize();
     m_nameTextSize = LIB_EDIT_FRAME::GetPinNameDefaultSize();
     m_width = 0;
-    m_typeName = _( "Pin" );
 }
 
 
@@ -512,7 +511,7 @@ void LIB_PIN::SetVisible( bool visible )
 }
 
 
-void LIB_PIN::EnableEditMode( bool enable, bool editPinByPin )
+void LIB_PIN::EnableEditMode( bool aEnable, bool aEditPinByPin )
 {
     LIB_PINS pinList;
 
@@ -527,11 +526,11 @@ void LIB_PIN::EnableEditMode( bool enable, bool editPinByPin )
             continue;
 
         if( ( pinList[i]->m_position == m_position )
-           && ( pinList[i]->m_orientation == m_orientation )
-           && !IsNew()
-           && editPinByPin == false
-           && enable )
+            && ( pinList[i]->m_orientation == m_orientation )
+            && !IsNew() && !aEditPinByPin && aEnable )
+        {
             pinList[i]->SetFlags( IS_LINKED | IN_EDIT );
+        }
         else
             pinList[i]->ClearFlags( IS_LINKED | IN_EDIT );
     }

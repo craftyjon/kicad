@@ -280,20 +280,25 @@ GERBVIEW_FRAME::GERBVIEW_FRAME( KIWAY* aKiway, wxWindow* aParent ):
 
 GERBVIEW_FRAME::~GERBVIEW_FRAME()
 {
-    if( m_toolManager )
-        m_toolManager->DeactivateTool();
-
-    if( auto canvas = GetGalCanvas() )
-    {
-        canvas->GetView()->Clear();
-    }
-
     GetGerberLayout()->GetImagesList()->DeleteAllImages();
+    delete m_gerberLayout;
 }
 
 
 void GERBVIEW_FRAME::OnCloseWindow( wxCloseEvent& Event )
 {
+    if( m_toolManager )
+        m_toolManager->DeactivateTool();
+
+    if( IsGalCanvasActive() )
+    {
+        GetGalCanvas()->GetView()->Clear();
+        // Be sure any OpenGL event cannot be fired after frame deletion:
+        GetGalCanvas()->SetEvtHandlerEnabled( false );
+    }
+
+    GetGalCanvas()->StopDrawing();
+
     Destroy();
 }
 

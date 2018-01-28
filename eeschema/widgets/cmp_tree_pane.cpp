@@ -87,7 +87,6 @@ CMP_TREE_PANE::CMP_TREE_PANE( LIB_EDIT_FRAME* aParent, LIB_MANAGER* aLibMgr )
                  KiBitmap( copy_xpm ) );
     AddMenuItem( menuPart.get(), ID_LIBEDIT_DUPLICATE_PART, _( "Duplicate Symbol" ),
                  KiBitmap( duplicate_xpm ) );
-    menuPart->AppendSeparator();
 
     // Menu displayed when nothing is selected
     std::unique_ptr<wxMenu> menuNoSelection = std::make_unique<wxMenu>();
@@ -126,4 +125,7 @@ void CMP_TREE_PANE::onComponentSelected( wxCommandEvent& aEvent )
     //wxPostEvent( libEditFrame, evt );
     //wxQueueEvent( m_libEditFrame, new wxCommandEvent( ID_LIBEDIT_EDIT_PART ) );
     m_libEditFrame->OnEditPart( evt );
+
+    // Make sure current-part highlighting doesn't get lost in seleciton highlighting
+    m_tree->Unselect();
 }

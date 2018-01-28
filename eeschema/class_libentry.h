@@ -367,7 +367,16 @@ public:
     void SetPower()     { m_options = ENTRY_POWER; }
     void SetNormal()    { m_options = ENTRY_NORMAL; }
 
+    /**
+     * Set interchangeable the property for part units.
+     * @param aLockUnits when true then units are set as not interchangeable.
+     */
     void LockUnits( bool aLockUnits ) { m_unitsLocked = aLockUnits; }
+
+    /**
+     * Check whether part units are interchangeable.
+     * @return False when interchangeable, true otherwise.
+     */
     bool UnitsLocked() const { return m_unitsLocked; }
 
     /**
@@ -570,12 +579,11 @@ public:
      * @param aRect - The bounding rectangle to test in draw items are inside.
      * @param aUnit - The current unit number to test against.
      * @param aConvert - Are the draw items being selected a conversion.
-     * @param aEditPinByPin - Used to ignore pin selections when in edit pin
-     *                        by pin mode is enabled.
+     * @param aSyncPinEdit - Enable pin selection in other units.
      * @return The number of draw objects found inside the block select
      *         rectangle.
      */
-    int SelectItems( EDA_RECT& aRect, int aUnit, int aConvert, bool aEditPinByPin );
+    int SelectItems( EDA_RECT& aRect, int aUnit, int aConvert, bool aSyncPinEdit );
 
     /**
      * Clears all the draw items marked by a block select.
@@ -676,7 +684,7 @@ public:
 
     /**
      * @return true if the part has multiple units per part.
-     * When happens, the reference has a sub reference ti identify part
+     * When true, the reference has a sub reference to identify part.
      */
     bool IsMulti() const { return m_unitCount > 1; }
 

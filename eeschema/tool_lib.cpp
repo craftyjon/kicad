@@ -205,13 +205,10 @@ void LIB_EDIT_FRAME::ReCreateHToolbar()
 
     m_mainToolBar->AddSeparator();
     KiScaledSeparator( m_mainToolBar, this );
-    msg = _( "Allows disabling pin edition coupling between units.\n"
-             "When not disabled, adding, deleting and moving pins are synchronized\n"
-             "between units for pins at the same location.\n"
-             "For instance, adding a pin to a unit also add a similar pin to other units at the same location.\n"
-             "However, pins can have a different number or size because they are specific to a unit.\n"
-             "Usually synchronization is enabled when units are interchangeable and disabled if not." );
-    m_mainToolBar->AddTool( ID_LIBEDIT_EDIT_PIN_BY_PIN, wxEmptyString, KiScaledBitmap( pin2pin_xpm, this ),
+    msg = _( "Synchronized pin edit mode\n"
+             "Synchronized pin edit mode propagates to other units all pin changes except pin number modification.\n"
+             "Enabled by default for multiunit parts with interchangeable units." );
+    m_mainToolBar->AddTool( ID_LIBEDIT_SYNC_PIN_EDIT, wxEmptyString, KiScaledBitmap( pin2pin_xpm, this ),
                             msg, wxITEM_CHECK );
     m_mainToolBar->AddTool( ID_LIBEDIT_EDIT_PIN_BY_TABLE, wxEmptyString, KiScaledBitmap( pin_table_xpm, this ),
                             _( "Show pin table" ) );
@@ -244,7 +241,12 @@ void LIB_EDIT_FRAME::ReCreateOptToolbar()
     m_optionsToolBar->AddTool( ID_TB_OPTIONS_SELECT_CURSOR, wxEmptyString,
                                KiScaledBitmap( cursor_shape_xpm, this ),
                                _( "Change cursor shape" ), wxITEM_CHECK );
-#endif // !__APPLE__
+#else
+    m_optionsToolBar->AddTool( ID_TB_OPTIONS_SELECT_CURSOR, wxEmptyString,
+                               KiScaledBitmap( cursor_shape_xpm, this ),
+                               _( "Change cursor shape (not supported in Legacy graphics)" ),
+                               wxITEM_CHECK  );
+#endif
 
     m_optionsToolBar->AddTool( ID_LIBEDIT_SHOW_ELECTRICAL_TYPE, wxEmptyString,
                                KiScaledBitmap( pin_show_etype_xpm, this ),

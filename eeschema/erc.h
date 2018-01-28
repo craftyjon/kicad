@@ -31,9 +31,9 @@
 #define _ERC_H
 
 
-//class EDA_DRAW_PANEL;
 class NETLIST_OBJECT;
 class NETLIST_OBJECT_LIST;
+class SCH_SHEET_LIST;
 
 /* For ERC markers: error types (used in diags, and to set the color):
 */
@@ -62,6 +62,7 @@ enum ERCE_T
     ERCE_GLOBLABEL,             // global label not connected to any other global label
     ERCE_SIMILAR_LABELS,        // 2 labels are equal fir case insensitive comparisons
     ERCE_SIMILAR_GLBL_LABELS,   // 2 labels are equal fir case insensitive comparisons
+    ERCE_DIFFERENT_UNIT_FP,     // different units of the same component have different footprints assigned
     ERCE_BUS_ALIAS_CONFLICT,    // conflicting bus alias definitions across sheets
     ERCE_DRIVER_CONFLICT,       // conflicting drivers (labels, etc) on a subgraph
     ERCE_BUS_ENTRY_CONFLICT,    // a wire connected to a bus doesn't match the bus
@@ -128,6 +129,13 @@ int TestDuplicateSheetNames( bool aCreateMarker );
  * @return the error count
  */
 int TestConflictingBusAliases( bool aCreateMarker = true );
+
+/**
+ * Test if all units of each multiunit component have the same footprint assigned.
+ * @param aSheetList contains components to be validated.
+ * @return The error count.
+ */
+int TestMultiunitFootprints( SCH_SHEET_LIST& aSheetList );
 
 
 #endif  // _ERC_H

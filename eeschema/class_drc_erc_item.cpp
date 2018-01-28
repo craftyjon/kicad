@@ -58,6 +58,8 @@ wxString DRC_ITEM::GetErrorText() const
         return wxString( _("Labels are similar (lower/upper case difference only)") );
     case ERCE_SIMILAR_GLBL_LABELS:
         return wxString( _("Global labels are similar (lower/upper case difference only)") );
+    case ERCE_DIFFERENT_UNIT_FP:
+        return wxString( _("Different footprint assigned in another unit of the same component") );
     case ERCE_BUS_ALIAS_CONFLICT:
         return wxString( _("Conflict between bus alias definitions across schematic sheets") );
     case ERCE_DRIVER_CONFLICT:
@@ -70,9 +72,9 @@ wxString DRC_ITEM::GetErrorText() const
         return wxString( _( "No nets are shared between two bus items" ) );
     case ERCE_BUS_TO_NET_CONFLICT:
         return wxString( _( "Invalid connection between bus and net items" ) );
-
     default:
-        return wxString( wxT("Unknown.") );
+        wxFAIL_MSG( "Missing ERC error description" );
+        return wxString( wxT("Unkown.") );
     }
 }
 

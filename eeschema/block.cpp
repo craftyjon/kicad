@@ -127,6 +127,14 @@ void SCH_EDIT_FRAME::HandleBlockPlace( wxDC* DC )
         if( m_canvas->IsMouseCaptured() )
             m_canvas->CallMouseCapture( DC, wxDefaultPosition, false );
 
+        // If the block wasn't changed, don't update the schematic
+        if( block->GetMoveVector() == wxPoint( 0, 0 ) )
+        {
+            // This calls the block-abort command routine on cleanup
+            m_canvas->EndMouseCapture( GetToolId(), m_canvas->GetCurrentCursor() );
+            return;
+        }
+
         SaveCopyInUndoList( block->GetItems(), UR_CHANGED, false, block->GetMoveVector() );
         MoveItemsInList( block->GetItems(), block->GetMoveVector() );
         break;
@@ -252,6 +260,7 @@ bool SCH_EDIT_FRAME::HandleBlockEnd( wxDC* aDC )
             {
                 nextcmd = true;
                 GetScreen()->SelectBlockItems();
+                block->SetFlags( IS_MOVED );
                 m_canvas->CallMouseCapture( aDC, wxDefaultPosition, false );
                 m_canvas->SetMouseCaptureCallback( DrawMovingBlockOutlines );
                 m_canvas->CallMouseCapture( aDC, wxDefaultPosition, false );
@@ -445,11 +454,8 @@ void SCH_EDIT_FRAME::copyBlockItems( PICKED_ITEMS_LIST& aItemsList )
         /* Make a copy of the original picked item. */
         SCH_ITEM* copy = DuplicateStruct( (SCH_ITEM*) aItemsList.GetPickedItem( ii ) );
         copy->SetParent( NULL );
-
-        // In list the wrapper is owner of the schematic item, we can use the UR_DELETED
-        // status for the picker because pickers with this status are owner of the picked item
-        // (or TODO ?: create a new status like UR_DUPLICATE)
-        ITEM_PICKER item( copy, UR_DELETED );
+        copy->SetFlags( copy->GetFlags() | UR_TRANSIENT );
+        ITEM_PICKER item( copy, UR_NEW );
 
         m_blockItems.PushItem( item );
     }

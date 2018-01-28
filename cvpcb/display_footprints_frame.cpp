@@ -24,7 +24,7 @@
  */
 
 /**
- * @file class_DisplayFootprintsFrame.cpp
+ * @file display_footprints_frame.cpp
  */
 
 #include <fctsys.h>
@@ -44,9 +44,9 @@
 #include <class_board.h>
 
 #include <cvpcb_mainframe.h>
-#include <class_DisplayFootprintsFrame.h>
+#include <display_footprints_frame.h>
 #include <cvpcb_id.h>
-#include <listview_classes.h>
+#include <listboxes.h>
 
 #include <3d_viewer/eda_3d_viewer.h>
 
@@ -193,7 +193,12 @@ void DISPLAY_FOOTPRINTS_FRAME::ReCreateOptToolbar()
     m_optionsToolBar->AddTool( ID_TB_OPTIONS_SELECT_CURSOR, wxEmptyString,
                                KiBitmap( cursor_shape_xpm ),
                                _( "Change cursor shape" ), wxITEM_CHECK  );
-#endif // !__APPLE__
+#else
+    m_optionsToolBar->AddTool( ID_TB_OPTIONS_SELECT_CURSOR, wxEmptyString,
+                               KiBitmap( cursor_shape_xpm ),
+                               _( "Change cursor shape (not supported in Legacy graphics)" ),
+                               wxITEM_CHECK  );
+#endif
 
     m_optionsToolBar->AddSeparator();
     m_optionsToolBar->AddTool( ID_TB_OPTIONS_SHOW_PADS_SKETCH, wxEmptyString,
@@ -339,12 +344,12 @@ bool DISPLAY_FOOTPRINTS_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPositi
     switch( aHotKey )
     {
     case WXK_F1:
-        cmd.SetId( ID_POPUP_ZOOM_IN );
+        cmd.SetId( ID_KEY_ZOOM_IN );
         GetEventHandler()->ProcessEvent( cmd );
         break;
 
     case WXK_F2:
-        cmd.SetId( ID_POPUP_ZOOM_OUT );
+        cmd.SetId( ID_KEY_ZOOM_OUT );
         GetEventHandler()->ProcessEvent( cmd );
         break;
 

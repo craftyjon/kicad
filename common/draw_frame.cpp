@@ -113,10 +113,7 @@ BEGIN_EVENT_TABLE( EDA_DRAW_FRAME, KIWAY_PLAYER )
     EVT_TOOL_RANGE( ID_TB_OPTIONS_SELECT_UNIT_MM, ID_TB_OPTIONS_SELECT_UNIT_INCH,
                     EDA_DRAW_FRAME::OnSelectUnits )
 
-    // Cursor shape cannot be implemented on OS X
-#ifndef __APPLE__
     EVT_TOOL( ID_TB_OPTIONS_SELECT_CURSOR, EDA_DRAW_FRAME::OnToggleCrossHairStyle )
-#endif // !__APPLE__
 
     EVT_UPDATE_UI( wxID_UNDO, EDA_DRAW_FRAME::OnUpdateUndo )
     EVT_UPDATE_UI( wxID_REDO, EDA_DRAW_FRAME::OnUpdateRedo )
@@ -1188,6 +1185,20 @@ void EDA_DRAW_FRAME::UseGalCanvas( bool aEnable )
     SetNoToolSelected();
 
     m_galCanvasActive = aEnable;
+}
+
+
+bool EDA_DRAW_FRAME::SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType )
+{
+    auto galCanvas = GetGalCanvas();
+    wxCHECK( galCanvas, false );
+    bool use_gal = galCanvas->SwitchBackend( aCanvasType );
+    use_gal &= aCanvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
+    UseGalCanvas( use_gal );
+    m_canvasType = use_gal ? aCanvasType : EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
+    m_canvasTypeDirty = true;
+
+    return use_gal;
 }
 
 

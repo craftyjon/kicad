@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 1992-2012 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,128 +22,95 @@
  */
 
 /**
- * @file class_library_listbox.cpp
- * class to display used library and selecting it
+ * @file class_components_listbox.cpp
  */
 
 #include <fctsys.h>
 #include <wxstruct.h>
-#include <macros.h>
 
 #include <cvpcb.h>
 #include <cvpcb_mainframe.h>
-#include <listview_classes.h>
+#include <listboxes.h>
 #include <cvpcb_id.h>
 
 
-/***************************************/
-/* ListBox handling the library list */
-/***************************************/
-
-LIBRARY_LISTBOX::LIBRARY_LISTBOX( CVPCB_MAINFRAME* parent, wxWindowID id,
-                                  const wxPoint& loc, const wxSize& size ) :
-    ITEMS_LISTBOX_BASE( parent, id, loc, size, wxLC_SINGLE_SEL )
+COMPONENTS_LISTBOX::COMPONENTS_LISTBOX( CVPCB_MAINFRAME* parent, wxWindowID id,
+                                        const wxPoint& loc, const wxSize& size ) :
+    ITEMS_LISTBOX_BASE( parent, id, loc, size, 0 )
 {
 }
 
 
-LIBRARY_LISTBOX::~LIBRARY_LISTBOX()
+COMPONENTS_LISTBOX::~COMPONENTS_LISTBOX()
 {
 }
 
 
-int LIBRARY_LISTBOX::GetCount()
+BEGIN_EVENT_TABLE( COMPONENTS_LISTBOX, ITEMS_LISTBOX_BASE )
+    EVT_CHAR( COMPONENTS_LISTBOX::OnChar )
+    EVT_LIST_ITEM_SELECTED( ID_CVPCB_COMPONENT_LIST, COMPONENTS_LISTBOX::OnSelectComponent )
+END_EVENT_TABLE()
+
+
+void COMPONENTS_LISTBOX::Clear()
 {
-    return m_libraryList.Count();
+    m_ComponentList.Clear();
+    SetItemCount( 0 );
 }
 
 
-void LIBRARY_LISTBOX::SetString( unsigned linecount, const wxString& text )
+int COMPONENTS_LISTBOX::GetCount()
 {
-    unsigned count = m_libraryList.Count();
-    if( count > 0 )
+    return m_ComponentList.Count();
+}
+
+
+void COMPONENTS_LISTBOX::SetString( unsigned linecount, const wxString& text )
+{
+    if( linecount >= m_ComponentList.Count() )
+        linecount = m_ComponentList.Count() - 1;
+
+    if( m_ComponentList.Count() > 0 )
     {
-        if( linecount >= count )
-            linecount = count - 1;
-        m_libraryList[linecount] = text;
+        m_ComponentList[linecount] = text;
         UpdateWidth( linecount );
     }
 }
 
 
-wxString LIBRARY_LISTBOX::GetSelectedLibrary()
+void COMPONENTS_LISTBOX::AppendLine( const wxString& text )
 {
-    wxString libraryName;
-    int      ii = GetFirstSelected();
-
-    if( ii >= 0 )
-    {
-        libraryName = m_libraryList[ii];
-    }
-
-    return libraryName;
-}
-
-
-void LIBRARY_LISTBOX::AppendLine( const wxString& text )
-{
-    m_libraryList.Add( text );
-    int lines = m_libraryList.Count();
+    m_ComponentList.Add( text );
+    int lines = m_ComponentList.Count();
     SetItemCount( lines );
     UpdateWidth( lines - 1 );
 }
 
 
-wxString LIBRARY_LISTBOX::OnGetItemText( long item, long column ) const
+wxString COMPONENTS_LISTBOX::OnGetItemText( long item, long column ) const
 {
-    return m_libraryList.Item( item );
+    return m_ComponentList.Item( item );
 }
 
 
-void LIBRARY_LISTBOX::SetSelection( int index, bool State )
+void COMPONENTS_LISTBOX::SetSelection( int index, bool State )
 {
     if( index >= GetCount() )
         index = GetCount() - 1;
 
-    if( (index >= 0)  && (GetCount() > 0) )
+    if( (index >= 0) && (GetCount() > 0) )
     {
-#ifndef __WXMAC__
         Select( index, State );
-#endif
         EnsureVisible( index );
+
 #ifdef __WXMAC__
-        Refresh();
+        Update();
 #endif
     }
 }
 
 
-void LIBRARY_LISTBOX::SetLibraryList( const wxArrayString& aList )
-{
-    int oldSelection = GetSelection();
-
-    m_libraryList = aList;
-
-    SetItemCount( m_libraryList.GetCount() );
-
-    if(  GetCount() == 0 || oldSelection < 0 || oldSelection >= GetCount() )
-        SetSelection( 0, true );
-
-    if( m_libraryList.Count() )
-    {
-        RefreshItems( 0L, m_libraryList.Count()-1 );
-        UpdateWidth();
-    }
-}
-
-
-BEGIN_EVENT_TABLE( LIBRARY_LISTBOX, ITEMS_LISTBOX_BASE )
-    EVT_CHAR( LIBRARY_LISTBOX::OnChar )
-    EVT_LIST_ITEM_SELECTED( ID_CVPCB_LIBRARY_LIST, LIBRARY_LISTBOX::OnSelectLibrary )
-END_EVENT_TABLE()
-
-
-void LIBRARY_LISTBOX::OnChar( wxKeyEvent& event )
+void COMPONENTS_LISTBOX::OnChar( wxKeyEvent& event )
 {
     int key = event.GetKeyCode();
 
@@ -169,24 +136,24 @@ void LIBRARY_LISTBOX::OnChar( wxKeyEvent& event )
         event.Skip();
         return;
 
+
     default:
         break;
     }
 
     // Search for an item name starting by the key code:
-    key = toupper(key);
+    key = toupper( key );
 
-    for( unsigned ii = 0; ii < m_libraryList.GetCount(); ii++ )
+    for( unsigned ii = 0; ii < m_ComponentList.GetCount(); ii++ )
     {
-        wxString text = m_libraryList.Item( ii );
+        wxString text = m_ComponentList.Item( ii );
 
         // Search for the start char of the footprint name.  Skip the line number.
         text.Trim( false );      // Remove leading spaces in line
         unsigned jj = 0;
 
         for( ; jj < text.Len(); jj++ )
-        {
-            // skip line number
+        {   // skip line number
             if( text[jj] == ' ' )
                 break;
         }
@@ -201,7 +168,7 @@ void LIBRARY_LISTBOX::OnChar( wxKeyEvent& event )
 
         if( key == start_char )
         {
-            SetSelection( ii, true );   // Ensure visible
+            SetSelection( (int) ii, true );   // Ensure visible
             break;
         }
     }
@@ -210,7 +177,7 @@ void LIBRARY_LISTBOX::OnChar( wxKeyEvent& event )
 }
 
 
-void LIBRARY_LISTBOX::OnSelectLibrary( wxListEvent& event )
+void COMPONENTS_LISTBOX::OnSelectComponent( wxListEvent& event )
 {
     SetFocus();
     GetParent()->OnSelectComponent( event );

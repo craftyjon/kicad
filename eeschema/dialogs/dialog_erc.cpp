@@ -510,6 +510,10 @@ void DIALOG_ERC::TestErc( wxArrayString* aMessagesList )
     m_parent->RecalculateConnections();
     g_ConnectionGraph->RunERC( m_settings );
 
+    /* Test is all units of each multiunit component have the same footprint assigned.
+     */
+    TestMultiunitFootprints( sheets );
+
     std::unique_ptr<NETLIST_OBJECT_LIST> objectsConnectedList( m_parent->BuildNetListBase() );
 
     // Reset the connection type indicator
