@@ -31,10 +31,10 @@
 #include <fctsys.h>
 #include <class_drawpanel.h>
 #include <trigo.h>
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 
 #include <pcbnew.h>
-#include <drc_stuff.h>
+#include <drc.h>
 #include <protos.h>
 
 #include <class_board.h>

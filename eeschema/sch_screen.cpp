@@ -38,12 +38,12 @@
 #include <kiway.h>
 #include <class_drawpanel.h>
 #include <sch_item_struct.h>
-#include <schframe.h>
-#include <drawtxt.h>
+#include <draw_graphic_text.h>
+#include <sch_edit_frame.h>
 #include <plotter.h>
 
 #include <netlist.h>
-#include <class_netlist_object.h>
+#include <netlist_object.h>
 #include <class_library.h>
 #include <sch_junction.h>
 #include <sch_bus_entry.h>

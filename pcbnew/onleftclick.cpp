@@ -31,7 +31,7 @@
 #include <fctsys.h>
 #include <class_drawpanel.h>
 #include <confirm.h>
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 #include <msgpanel.h>
 
 #include <class_board.h>
@@ -586,7 +586,7 @@ void PCB_EDIT_FRAME::OnEditItemRequest( wxDC* aDC, BOARD_ITEM* aItem )
         break;
 
     case PCB_MODULE_T:
-        InstallModuleOptionsFrame( static_cast<MODULE*>( aItem ), aDC );
+        InstallFootprintPropertiesDialog( static_cast<MODULE*>( aItem ), aDC );
         break;
 
     case PCB_TARGET_T:

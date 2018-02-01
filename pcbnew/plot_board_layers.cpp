@@ -33,9 +33,9 @@
 #include <common.h>
 #include <plotter.h>
 #include <base_struct.h>
-#include <drawtxt.h>
+#include <draw_graphic_text.h>
 #include <trigo.h>
-#include <wxBasePcbFrame.h>
+#include <pcb_base_frame.h>
 #include <macros.h>
 
 #include <class_board.h>

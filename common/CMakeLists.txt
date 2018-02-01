@@ -187,8 +187,8 @@ set( COMMON_WIDGET_SRCS
 
 set( COMMON_PAGE_LAYOUT_SRCS
     page_layout/title_block_shapes.cpp
-    page_layout/class_worksheet_dataitem.cpp
-    page_layout/class_worksheet_layout.cpp
+    page_layout/worksheet_dataitem.cpp
+    page_layout/worksheet_layout.cpp
     page_layout/page_layout_default_description.cpp
     page_layout/page_layout_graphic_items.cpp
     page_layout/page_layout_reader_keywords.cpp
@@ -228,17 +228,13 @@ set( COMMON_SRCS
     ${COMMON_PREVIEW_ITEMS_SRCS}
     ${PLOTTERS_CONTROL_SRCS}
     base_struct.cpp
-    basicframe.cpp
     bezier_curves.cpp
     bin_mod.cpp
     bitmap.cpp
+    bitmap_base.cpp
     block_commande.cpp
     build_version.cpp
-    class_bitmap_base.cpp
-    class_colors_design_settings.cpp
-    class_layer_box_selector.cpp
-    class_marker_base.cpp
-    class_undoredo_container.cpp
+    colors_design_settings.cpp
     colors.cpp
     commit.cpp
     common.cpp
@@ -253,14 +249,15 @@ set( COMMON_SRCS
     draw_graphic_text.cpp
     dsnlexer.cpp
     eagle_parser.cpp
+    eda_base_frame.cpp
     eda_dde.cpp
     eda_doc.cpp
     eda_pattern_match.cpp
+    eda_graphic_text_ctrl.cpp
     env_paths.cpp
     exceptions.cpp
     executable_names.cpp
     filter_reader.cpp
-#    findkicadhelppath.cpp.notused      deprecated, use searchhelpfilefullpath.cpp
     footprint_filter.cpp
     footprint_info.cpp
     gbr_metadata.cpp
@@ -277,10 +274,12 @@ set( COMMON_SRCS
     kiway_express.cpp
     kiway_holder.cpp
     kiway_player.cpp
+    layer_box_selector.cpp
     lib_id.cpp
     lib_table_base.cpp
     lib_table_keywords.cpp
     lockfile.cpp
+    marker_base.cpp
     md5_hash.cpp
     msgpanel.cpp
     netlist_keywords.cpp
@@ -297,13 +296,13 @@ set( COMMON_SRCS
     settings.cpp
     systemdirsappend.cpp
     trigo.cpp
+    undo_redo_container.cpp
     utf8.cpp
     validators.cpp
     wildcards_and_files_ext.cpp
     worksheet.cpp
     wx_status_popup.cpp
     wxdataviewctrl_helpers.cpp
-    wxwineda.cpp
     xnode.cpp
     zoom.cpp
     )
@@ -372,13 +371,13 @@ target_link_libraries( common
 
 set( PCB_COMMON_SRCS
     base_screen.cpp
-    class_page_info.cpp
     eda_text.cpp
     fp_lib_table.cpp
     lset.cpp
+    page_info.cpp
     pcb_keywords.cpp
     pcb_plot_params_keywords.cpp
-    ../pcbnew/basepcbframe.cpp
+    ../pcbnew/pcb_base_frame.cpp
     ../pcbnew/board_commit.cpp
     ../pcbnew/board_items_to_polygon_shape_transform.cpp
     ../pcbnew/class_board.cpp
@@ -387,27 +386,23 @@ set( PCB_COMMON_SRCS
     ../pcbnew/class_board_item.cpp
     ../pcbnew/class_dimension.cpp
     ../pcbnew/class_drawsegment.cpp
-    ../pcbnew/class_drc_item.cpp
     ../pcbnew/class_edge_mod.cpp
     ../pcbnew/class_marker_pcb.cpp
     ../pcbnew/class_module.cpp
-    ../pcbnew/class_netclass.cpp
-    ../pcbnew/class_netinfo_item.cpp
-    ../pcbnew/class_netinfolist.cpp
+    ../pcbnew/netclass.cpp
+    ../pcbnew/netinfo_item.cpp
+    ../pcbnew/netinfo_list.cpp
     ../pcbnew/class_pad.cpp
-    ../pcbnew/class_pad_custom_shape_functions.cpp
-    ../pcbnew/class_pad_draw_functions.cpp
     ../pcbnew/class_pcb_target.cpp
     ../pcbnew/class_pcb_text.cpp
     ../pcbnew/class_text_mod.cpp
     ../pcbnew/class_track.cpp
     ../pcbnew/class_zone.cpp
-    ../pcbnew/class_zone_settings.cpp
-    ../pcbnew/classpcb.cpp
     ../pcbnew/collectors.cpp
     ../pcbnew/connectivity_algo.cpp
     ../pcbnew/connectivity_data.cpp
     ../pcbnew/convert_drawsegment_list_to_polygon.cpp
+    ../pcbnew/drc_item.cpp
     ../pcbnew/eagle_plugin.cpp
     ../pcbnew/gpcb_plugin.cpp
     ../pcbnew/io_mgr.cpp
@@ -417,6 +412,8 @@ set( PCB_COMMON_SRCS
     ../pcbnew/legacy_netlist_reader.cpp
     ../pcbnew/legacy_plugin.cpp
     ../pcbnew/netlist_reader.cpp
+    ../pcbnew/pad_custom_shape_functions.cpp
+    ../pcbnew/pad_draw_functions.cpp
     ../pcbnew/pcb_display_options.cpp
     ../pcbnew/pcb_draw_panel_gal.cpp
     ../pcbnew/pcb_general_settings.cpp
@@ -424,11 +421,13 @@ set( PCB_COMMON_SRCS
     ../pcbnew/pcb_painter.cpp
     ../pcbnew/pcb_parser.cpp
     ../pcbnew/pcb_plot_params.cpp
+    ../pcbnew/pcb_screen.cpp
     ../pcbnew/pcb_view.cpp
     ../pcbnew/plugin.cpp
     ../pcbnew/ratsnest_data.cpp
     ../pcbnew/ratsnest_viewitem.cpp
     ../pcbnew/sel_layer.cpp
+    ../pcbnew/zone_settings.cpp
     widgets/widget_net_selector.cpp
 )
 

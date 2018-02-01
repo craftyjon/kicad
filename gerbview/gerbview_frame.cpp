@@ -25,12 +25,12 @@
 #include <fctsys.h>
 #include <kiface_i.h>
 #include <pgm_base.h>
-#include <wxstruct.h>
+#include <eda_base_frame.h>
 #include <class_drawpanel.h>
 #include <build_version.h>
 #include <trigo.h>
 #include <base_units.h>
-#include <class_gbr_layer_box_selector.h>
+#include <gbr_layer_box_selector.h>
 #include <msgpanel.h>
 #include <bitmaps.h>
 #include <wildcards_and_files_ext.h>
@@ -39,11 +39,11 @@
 #include <gerbview_frame.h>
 #include <gerbview_id.h>
 #include <hotkeys.h>
-#include <class_gerber_file_image.h>
-#include <class_gerber_file_image_list.h>
+#include <gerber_file_image.h>
+#include <gerber_file_image_list.h>
 #include <dialog_helpers.h>
-#include <class_DCodeSelectionbox.h>
-#include <class_gerbview_layer_widget.h>
+#include <DCodeSelectionbox.h>
+#include <gerbview_layer_widget.h>
 
 #include <gerbview_draw_panel_gal.h>
 #include <gal/graphics_abstraction_layer.h>
@@ -86,6 +86,9 @@ GERBVIEW_FRAME::GERBVIEW_FRAME( KIWAY* aKiway, wxWindow* aParent ):
     m_hotkeysDescrList = GerbviewHokeysDescr;
     m_SelLayerBox   = NULL;
     m_DCodeSelector = NULL;
+    m_SelComponentBox = nullptr;
+    m_SelNetnameBox = nullptr;
+    m_SelAperAttributesBox = nullptr;
     m_displayMode   = 0;
     m_drillFileHistory.SetBaseId( ID_GERBVIEW_DRILL_FILE1 );
     m_zipFileHistory.SetBaseId( ID_GERBVIEW_ZIP_FILE1 );
@@ -137,12 +140,12 @@ GERBVIEW_FRAME::GERBVIEW_FRAME( KIWAY* aKiway, wxWindow* aParent ):
         m_LastGridSizeId = ID_POPUP_GRID_LEVEL_0_0_1MM-ID_POPUP_GRID_LEVEL_1000;
     GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId  );
 
+    m_auimgr.SetManagedWindow( this );
+
     ReCreateMenuBar();
     ReCreateHToolbar();
     ReCreateOptToolbar();
     ReCreateAuxiliaryToolbar();
-
-    m_auimgr.SetManagedWindow( this );
 
     EDA_PANEINFO    horiz;
     horiz.HorizontalToolbarPane();

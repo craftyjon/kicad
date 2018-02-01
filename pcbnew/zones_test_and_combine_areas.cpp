@@ -33,14 +33,14 @@
 #include <fctsys.h>
 #include <common.h>
 #include <confirm.h>
-#include <class_undoredo_container.h>
+#include <undo_redo_container.h>
 
 #include <class_board.h>
 #include <class_zone.h>
 #include <class_marker_pcb.h>
 
 #include <pcbnew.h>
-#include <drc_stuff.h>
+#include <drc.h>
 #include <math_for_graphics.h>
 
 #define STRAIGHT 0      // To be remove after math_for_graphics code cleanup

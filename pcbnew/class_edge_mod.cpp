@@ -31,21 +31,20 @@
 
 #include <fctsys.h>
 #include <gr_basic.h>
-#include <wxstruct.h>
 #include <trigo.h>
 #include <class_drawpanel.h>
-#include <class_pcb_screen.h>
+#include <pcb_screen.h>
 #include <confirm.h>
 #include <kicad_string.h>
 #include <richio.h>
 #include <macros.h>
 #include <math_for_graphics.h>
-#include <wxBasePcbFrame.h>
+#include <pcb_base_frame.h>
 #include <msgpanel.h>
 #include <base_units.h>
 #include <bitmaps.h>
 
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 #include <class_board.h>
 #include <class_module.h>
 #include <class_edge_mod.h>

@@ -34,10 +34,10 @@
 #include <confirm.h>
 #include <gestfich.h>
 #include <eeschema_id.h>
-#include <class_sch_screen.h>
+#include <sch_screen.h>
 
 #include <general.h>
-#include <libeditframe.h>
+#include <lib_edit_frame.h>
 #include <class_library.h>
 #include <dialogs/dialog_plot_schematic.h>
 

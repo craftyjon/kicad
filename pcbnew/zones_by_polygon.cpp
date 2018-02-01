@@ -32,7 +32,7 @@
 #include <kiface_i.h>
 #include <class_drawpanel.h>
 #include <confirm.h>
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 #include <board_commit.h>
 #include <view/view.h>
 
@@ -44,7 +44,7 @@
 #include <pcbnew_id.h>
 #include <protos.h>
 #include <zones_functions_for_undo_redo.h>
-#include <drc_stuff.h>
+#include <drc.h>
 #include <connectivity_data.h>
 
 #include <widgets/progress_reporter.h>

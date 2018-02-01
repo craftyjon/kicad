@@ -33,12 +33,11 @@
 #include <gr_basic.h>
 #include <class_drawpanel.h>
 #include <base_units.h>
-#include <wxstruct.h>
-#include <class_base_screen.h>
+#include <base_screen.h>
 
 #include <gerbview_frame.h>
-#include <class_gerber_file_image.h>
-#include <class_gerber_file_image_list.h>
+#include <gerber_file_image.h>
+#include <gerber_file_image_list.h>
 
 #include <printout_controler.h>
 

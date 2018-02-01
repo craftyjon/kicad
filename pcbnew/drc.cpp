@@ -28,7 +28,7 @@
  */
 
 #include <fctsys.h>
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 #include <trigo.h>
 #include <base_units.h>
 #include <class_board_design_settings.h>
@@ -50,7 +50,7 @@
 #include <tools/pcb_actions.h>
 
 #include <pcbnew.h>
-#include <drc_stuff.h>
+#include <drc.h>
 
 #include <dialog_drc.h>
 #include <wx/progdlg.h>

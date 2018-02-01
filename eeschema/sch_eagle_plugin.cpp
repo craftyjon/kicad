@@ -29,10 +29,10 @@
 
 #include <sch_junction.h>
 #include <sch_sheet.h>
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <template_fieldnames.h>
 #include <wildcards_and_files_ext.h>
-#include <class_sch_screen.h>
+#include <sch_screen.h>
 #include <class_library.h>
 #include <class_libentry.h>
 #include <lib_draw_item.h>
@@ -45,7 +45,7 @@
 #include <lib_pin.h>
 #include <lib_text.h>
 #include <sch_text.h>
-#include <drawtxt.h>
+#include <draw_graphic_text.h>
 #include <sch_marker.h>
 #include <sch_bus_entry.h>
 #include <eagle_parser.h>

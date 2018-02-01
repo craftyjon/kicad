@@ -36,15 +36,14 @@
 #include <class_drawpanel.h>
 #include <confirm.h>
 #include <gestfich.h>
-#include <class_sch_screen.h>
 
 #include <eeschema_id.h>
 #include <general.h>
-#include <libeditframe.h>
+#include <lib_edit_frame.h>
 #include <class_library.h>
 #include <template_fieldnames.h>
 #include <wildcards_and_files_ext.h>
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <symbol_lib_table.h>
 #include <lib_manager.h>
 #include <cmp_tree_pane.h>

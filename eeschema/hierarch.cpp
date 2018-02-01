@@ -34,7 +34,7 @@
 #include <bitmaps.h>
 #include <dialog_shim.h>
 
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <general.h>
 #include <sch_sheet.h>
 #include <sch_sheet_path.h>
@@ -42,7 +42,7 @@
 #include <wx/imaglist.h>
 #include <wx/treectrl.h>
 
-#include <class_netlist_object.h>
+#include <netlist_object.h>
 #include <sch_sheet_path.h>
 
 

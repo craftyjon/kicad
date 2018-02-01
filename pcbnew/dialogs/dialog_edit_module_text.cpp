@@ -36,9 +36,9 @@
 #include <common.h>
 #include <class_drawpanel.h>
 #include <pcbnew.h>
-#include <drawtxt.h>
+#include <draw_graphic_text.h>
 #include <confirm.h>
-#include <wxBasePcbFrame.h>
+#include <pcb_base_frame.h>
 #include <base_units.h>
 #include <wx/numformatter.h>
 #include <board_commit.h>
@@ -48,7 +48,7 @@
 #include <class_text_mod.h>
 #include <class_board.h>
 
-#include <class_pcb_layer_box_selector.h>
+#include <pcb_layer_box_selector.h>
 #include <dialog_edit_module_text.h>
 
 

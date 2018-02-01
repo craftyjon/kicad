@@ -23,7 +23,7 @@
 
 #include "dialog_shim.h"
 
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <wx/listctrl.h>
 
 #include <bus_alias.h>

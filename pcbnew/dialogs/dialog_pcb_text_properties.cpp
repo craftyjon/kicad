@@ -1,8 +1,8 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2004-2010 Jean-Pierre Charras <jean-pierre.charras@gpisa-lab.inpg.fr>
- * Copyright (C) 2010-2016 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2004-2018 Jean-Pierre Charras jp.charras at wanadoo.fr
+ * Copyright (C) 2010-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,8 +30,8 @@
 #include <gr_basic.h>
 #include <class_drawpanel.h>
 #include <pcbnew.h>
-#include <wxPcbStruct.h>
-#include <drawtxt.h>
+#include <pcb_edit_frame.h>
+#include <draw_graphic_text.h>
 #include <confirm.h>
 #include <base_units.h>
 #include <wx/valnum.h>
@@ -43,7 +43,7 @@
 #include <vector>
 #include <wx/wx.h>
 #include <dialog_pcb_text_properties_base.h>
-#include <class_pcb_layer_box_selector.h>
+#include <pcb_layer_box_selector.h>
 #include <board_commit.h>
 
 

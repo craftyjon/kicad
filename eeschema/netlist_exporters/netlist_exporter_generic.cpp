@@ -28,7 +28,7 @@
 #include <class_library.h>
 #include <connection_graph.h>
 
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <symbol_lib_table.h>
 
 #include "netlist_exporter_generic.h"

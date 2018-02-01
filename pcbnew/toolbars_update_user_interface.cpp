@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2012 Jean-Pierre Charras, jean-pierre.charras@ujf-grenoble.fr
+ * Copyright (C) 2012 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2012 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
  * Copyright (C) 2012 Wayne Stambaugh <stambaughw@verizon.net>
  * Copyright (C) 2012-2016 KiCad Developers, see AUTHORS.txt for contributors.
@@ -32,13 +32,13 @@
 #include <fctsys.h>
 #include <pgm_base.h>
 #include <class_drawpanel.h>
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 #include <dialog_helpers.h>
 #include <class_board.h>
 #include <pcbnew.h>
 #include <pcbnew_id.h>
-#include <drc_stuff.h>
-#include <class_pcb_layer_box_selector.h>
+#include <drc.h>
+#include <pcb_layer_box_selector.h>
 
 
 void PCB_EDIT_FRAME::OnUpdateLayerPair( wxUpdateUIEvent& aEvent )

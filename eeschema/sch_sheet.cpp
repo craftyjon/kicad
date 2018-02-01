@@ -29,10 +29,10 @@
 
 #include <fctsys.h>
 #include <class_drawpanel.h>
-#include <drawtxt.h>
+#include <draw_graphic_text.h>
 #include <trigo.h>
 #include <richio.h>
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <plotter.h>
 #include <kicad_string.h>
 #include <msgpanel.h>
@@ -40,7 +40,7 @@
 #include <sch_sheet.h>
 #include <sch_sheet_path.h>
 #include <sch_component.h>
-#include <class_netlist_object.h>
+#include <netlist_object.h>
 
 
 SCH_SHEET::SCH_SHEET( const wxPoint& pos ) :

@@ -28,17 +28,17 @@ set( DIALOGS_SRCS
 
 set( GERBVIEW_SRCS
     block.cpp
-    class_am_param.cpp
-    class_aperture_macro.cpp
-    class_DCodeSelectionbox.cpp
-    class_gbr_screen.cpp
-    class_gbr_layout.cpp
-    class_gerber_file_image.cpp
-    class_gerber_file_image_list.cpp
-    class_gerber_draw_item.cpp
-    class_gerbview_layer_widget.cpp
-    class_gbr_layer_box_selector.cpp
-    class_X2_gerber_attributes.cpp
+    am_param.cpp
+    am_primitive.cpp
+    DCodeSelectionbox.cpp
+    gbr_screen.cpp
+    gbr_layout.cpp
+    gerber_file_image.cpp
+    gerber_file_image_list.cpp
+    gerber_draw_item.cpp
+    gerbview_layer_widget.cpp
+    gbr_layer_box_selector.cpp
+    X2_gerber_attributes.cpp
     clear_gbr_drawlayers.cpp
     controle.cpp
     dcode.cpp
@@ -77,11 +77,11 @@ set( GERBVIEW_EXTRA_SRCS
     ../common/base_screen.cpp
     ../common/base_units.cpp
     ../common/eda_text.cpp
-    ../common/class_layer_box_selector.cpp
-    ../common/class_page_info.cpp
+    ../common/layer_box_selector.cpp
     ../common/lset.cpp
     ../common/settings.cpp
     ../pcbnew/layer_widget.cpp
+    ../common/page_info.cpp
 )
 
 if( MINGW )

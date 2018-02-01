@@ -33,8 +33,8 @@
 #include <macros.h>
 #include <trigo.h>
 #include <class_drawpanel.h>
-#include <drawtxt.h>
-#include <schframe.h>
+#include <draw_graphic_text.h>
+#include <sch_edit_frame.h>
 #include <plotter.h>
 #include <msgpanel.h>
 #include <gal/stroke_font.h>
@@ -42,7 +42,7 @@
 
 #include <list_operations.h>
 #include <sch_text.h>
-#include <class_netlist_object.h>
+#include <netlist_object.h>
 
 
 extern void IncrementLabelMember( wxString& name, int aIncrement );

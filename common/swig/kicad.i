@@ -82,16 +82,16 @@ principle should be easily implemented by adapting the current STL containers.
     #include <macros.h>
     #include <cstddef>
     #include <base_struct.h>
-    #include <class_eda_rect.h>
+    #include <eda_rect.h>
     #include <common.h>
     #include <wx_python_helpers.h>
     #include <cstddef>
     #include <vector>
     #include <bitset>
 
-    #include <class_title_block.h>
-    #include <class_colors_design_settings.h>
-    #include <class_marker_base.h>
+    #include <title_block.h>
+    #include <colors_design_settings.h>
+    #include <marker_base.h>
     #include <eda_text.h>
     #include <convert_to_biu.h>
 %}
@@ -104,12 +104,12 @@ principle should be easily implemented by adapting the current STL containers.
 %include macros.h
 %include core/typeinfo.h
 %include base_struct.h
-%include class_eda_rect.h
+%include eda_rect.h
 %include common.h
-%include class_title_block.h
+%include title_block.h
 %include gal/color4d.h
-%include class_colors_design_settings.h
-%include class_marker_base.h
+%include colors_design_settings.h
+%include marker_base.h
 %include eda_text.h
 
 

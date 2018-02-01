@@ -53,12 +53,12 @@
  */
 
 #include <fctsys.h>
-#include <class_eda_rect.h>
-#include <drawtxt.h>
+#include <eda_rect.h>
+#include <draw_graphic_text.h>
 #include <worksheet.h>
-#include <class_title_block.h>
+#include <title_block.h>
 #include <worksheet_shape_builder.h>
-#include <class_worksheet_dataitem.h>
+#include <worksheet_dataitem.h>
 #include <polygon_test_point_inside.h>
 
 /* a helper function to draw graphic symbols at start point or end point of

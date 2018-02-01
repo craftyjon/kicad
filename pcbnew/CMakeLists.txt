@@ -46,6 +46,7 @@ include_directories(
     ./import_dxf
     ../utils/idftools
     ${GLM_INCLUDE_DIR}
+    ./specctra_import_export
     ${INC_AFTER}
     )
 
@@ -165,6 +166,7 @@ set( PCBNEW_DIALOGS
     dialogs/wizard_add_fplib_base.cpp
     footprint_wizard.cpp
     footprint_wizard_frame.cpp
+    footprint_wizard_frame_functions.cpp
     ${GITHUB_3DLIBRARIES_WIZARD}
     )
 
@@ -199,6 +201,7 @@ set( PCBNEW_CLASS_SRCS
     autorouter/rect_placement/rect_placement.cpp
     autorouter/spread_footprints.cpp
 
+    action_plugin.cpp
     append_board_to_current.cpp
     array_creator.cpp
     attribut.cpp
@@ -206,11 +209,6 @@ set( PCBNEW_CLASS_SRCS
     block_module_editor.cpp
     board_netlist_updater.cpp
     build_BOM_from_board.cpp
-    class_action_plugin.cpp
-    class_footprint_wizard.cpp
-    class_pcb_layer_box_selector.cpp
-    class_pcb_layer_widget.cpp
-    clean.cpp
     connect.cpp
     controle.cpp
     cross-probing.cpp
@@ -225,13 +223,18 @@ set( PCBNEW_CLASS_SRCS
     edit_pcb_text.cpp
     edit_track_width.cpp
     editedge.cpp
-    editmod.cpp
     editrack-part2.cpp
     editrack.cpp
     edtxtmod.cpp
     event_handlers_tracks_vias_sizes.cpp
     files.cpp
     footprint_info_impl.cpp
+    footprint_wizard.cpp
+    footprint_editor_utils.cpp
+    footprint_editor_onclick.cpp
+    footprint_editor_options.cpp
+    footprint_edit_frame.cpp
+    footprint_viewer_frame.cpp
     globaleditpad.cpp
     highlight.cpp
     hotkeys.cpp
@@ -246,12 +249,6 @@ set( PCBNEW_CLASS_SRCS
     menubar_pcbframe.cpp
     microwave.cpp
     minimun_spanning_tree.cpp
-    modedit.cpp
-    modedit_onclick.cpp
-    modeditoptions.cpp
-    moduleframe.cpp
-    modules.cpp
-    modview_frame.cpp
     move-drag_pads.cpp
     move_or_drag_track.cpp
     muwave_command.cpp
@@ -260,29 +257,32 @@ set( PCBNEW_CLASS_SRCS
     onrightclick.cpp
     pad_edition_functions.cpp
     pcb_base_edit_frame.cpp
+    pcb_footprint_edit_utils.cpp
+    pcb_layer_box_selector.cpp
+    pcb_layer_widget.cpp
 #    pcb_draw_panel_gal.cpp
 #    pcb_view.cpp
-    pcbframe.cpp
+    pcb_edit_frame.cpp
     pcbnew_config.cpp
+    pcb_legacy_draw_utils.cpp
     pcbplot.cpp
     plot_board_layers.cpp
     plot_brditems_plotter.cpp
     print_board_functions.cpp
     printout_controler.cpp
     ratsnest.cpp
-    specctra.cpp
-    specctra_export.cpp
-    specctra_import.cpp
-    specctra_keywords.cpp
+    specctra_import_export/specctra.cpp
+    specctra_import_export/specctra_export.cpp
+    specctra_import_export/specctra_import.cpp
+    specctra_import_export/specctra_keywords.cpp
     swap_layers.cpp
     target_edit.cpp
-    tool_modedit.cpp
-    tool_modview.cpp
+    tool_footprint_editor.cpp
+    tool_footprint_viewer.cpp
     tool_onrightclick.cpp
-    tool_pcb.cpp
+    tool_pcb_editor.cpp
     toolbars_update_user_interface.cpp
-    tr_modif.cpp
-    tracepcb.cpp
+    tracks_cleaner.cpp
     undo_redo.cpp
     zone_filler.cpp
     zones_by_polygon.cpp
@@ -347,20 +347,20 @@ set( PCBNEW_SCRIPTING_PYTHON_HELPERS
 
 # auto-generate specctra_lexer.h and specctra_keywords.cpp
 make_lexer(
-    ${CMAKE_CURRENT_SOURCE_DIR}/specctra.keywords
-    ${CMAKE_CURRENT_SOURCE_DIR}/specctra_lexer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/specctra_keywords.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/specctra_import_export/specctra.keywords
+    ${CMAKE_CURRENT_SOURCE_DIR}/specctra_import_export/specctra_lexer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/specctra_import_export/specctra_keywords.cpp
     DSN
 
     # Pass header file with dependency on *_lexer.h as extra_arg
-    specctra.h
+    specctra_import_export/specctra.h
     )
 
 add_custom_target(
     specctra_lexer_source_files ALL
     DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/specctra_lexer.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/specctra_keywords.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/specctra_import_export/specctra_lexer.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/specctra_import_export/specctra_keywords.cpp
     )
 
 

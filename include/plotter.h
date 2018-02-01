@@ -34,8 +34,8 @@
 
 #include <vector>
 #include <math/box2.h>
-#include <drawtxt.h>
-#include <class_page_info.h>
+#include <draw_graphic_text.h>
+#include <page_info.h>
 #include <eda_text.h>       // FILL_T
 
 class SHAPE_POLY_SET;

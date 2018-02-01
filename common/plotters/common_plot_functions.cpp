@@ -31,11 +31,11 @@
 #include <base_struct.h>
 #include <plotter.h>
 #include <worksheet.h>
-#include <class_base_screen.h>
-#include <drawtxt.h>
-#include <class_title_block.h>
+#include <base_screen.h>
+#include <draw_graphic_text.h>
+#include <title_block.h>
 #include "worksheet_shape_builder.h"
-#include "class_worksheet_dataitem.h"
+#include "worksheet_dataitem.h"
 #include <wx/filename.h>
 
 

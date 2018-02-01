@@ -27,9 +27,8 @@
 #include <build_version.h>
 #include <confirm.h>
 
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <sch_reference_list.h>
-#include <class_netlist_object.h>
 
 #include "netlist_exporter_cadstar.h"
 

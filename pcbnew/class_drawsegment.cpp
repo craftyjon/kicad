@@ -31,16 +31,15 @@
 
 #include <fctsys.h>
 #include <macros.h>
-#include <wxstruct.h>
 #include <gr_basic.h>
 #include <bezier_curves.h>
 #include <class_drawpanel.h>
-#include <class_pcb_screen.h>
+#include <pcb_screen.h>
 #include <trigo.h>
 #include <msgpanel.h>
 #include <bitmaps.h>
 
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 
 #include <pcbnew.h>
 

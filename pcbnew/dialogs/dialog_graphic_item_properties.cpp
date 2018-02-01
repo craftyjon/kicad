@@ -41,7 +41,7 @@
 #include <confirm.h>
 #include <class_drawpanel.h>
 #include <pcbnew.h>
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 #include <class_board_design_settings.h>
 #include <base_units.h>
 #include <wx/valnum.h>
@@ -52,7 +52,7 @@
 #include <class_drawsegment.h>
 
 #include <dialog_graphic_item_properties_base.h>
-#include <class_pcb_layer_box_selector.h>
+#include <pcb_layer_box_selector.h>
 #include <html_messagebox.h>
 #include <widgets/text_ctrl_eval.h>
 

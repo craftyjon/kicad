@@ -23,22 +23,22 @@
  */
 
 /**
- * @file eeschema/dialogs/dialog_bom.cpp
+ * @file eeschema/dialogs/dialog_bom_editor.cpp
  * @brief Dialog box for creating bom and other documents from generic netlist.
  */
 
-#ifndef EESCHEMA_DIALOGS_DIALOG_BOM_EDITOR_H_
-#define EESCHEMA_DIALOGS_DIALOG_BOM_EDITOR_H_
+#ifndef DIALOG_BOM_EDITOR_H
+#define DIALOG_BOM_EDITOR_H
 
 #include <wx/dataview.h>
 
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <sch_sheet.h>
 #include <sch_sheet_path.h>
 #include <sch_component.h>
 #include <invoke_sch_dialog.h>
 #include <dialog_bom_editor_base.h>
-#include <class_netlist_object.h>
+#include <netlist_object.h>
 #include <sch_reference_list.h>
 #include <vector>
 
@@ -95,4 +95,4 @@ private:
 
 };
 
-#endif /* EESCHEMA_DIALOGS_DIALOG_BOM_EDITOR_H_ */
+#endif /* DIALOG_BOM_EDITOR_H */

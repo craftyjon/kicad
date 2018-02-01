@@ -22,11 +22,11 @@
 #include <unordered_map>
 #include <profile.h>
 
-#include <class_sch_screen.h>
 #include <erc.h>
 #include <sch_bus_entry.h>
 #include <sch_component.h>
 #include <sch_pin_connection.h>
+#include <sch_screen.h>
 #include <sch_sheet.h>
 #include <sch_sheet_path.h>
 #include <sch_text.h>

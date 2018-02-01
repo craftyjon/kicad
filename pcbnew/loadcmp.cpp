@@ -39,7 +39,7 @@ using namespace std::placeholders;
 #include <kicad_string.h>
 #include <pgm_base.h>
 #include <kiway.h>
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 #include <dialog_helpers.h>
 #include <filter_reader.h>
 #include <gr_basic.h>
@@ -52,13 +52,12 @@ using namespace std::placeholders;
 #include <io_mgr.h>
 
 #include <pcbnew.h>
-#include <module_editor_frame.h>
+#include <footprint_edit_frame.h>
 #include <footprint_info.h>
 #include <footprint_info_impl.h>
 #include <dialog_get_component.h>
-#include <modview_frame.h>
+#include <footprint_viewer_frame.h>
 #include <wildcards_and_files_ext.h>
-#include <class_pcb_layer_widget.h>
 
 
 static void DisplayCmpDoc( wxString& aName, void* aData );

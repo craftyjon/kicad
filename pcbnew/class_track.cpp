@@ -36,10 +36,9 @@
 #include <trigo.h>
 #include <macros.h>
 #include <class_drawpanel.h>
-#include <class_pcb_screen.h>
-#include <drawtxt.h>
-#include <wxstruct.h>
-#include <wxBasePcbFrame.h>
+#include <pcb_screen.h>
+#include <draw_graphic_text.h>
+#include <pcb_base_frame.h>
 #include <class_board.h>
 #include <class_track.h>
 #include <pcbnew.h>

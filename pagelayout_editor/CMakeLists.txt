@@ -17,8 +17,8 @@ set( PL_EDITOR_SRCS
     dialogs/dialogs_for_printing.cpp
     dialogs/dialog_new_dataitem_base.cpp
     dialogs/dialog_new_dataitem.cpp
-    class_pl_editor_screen.cpp
-    class_pl_editor_layout.cpp
+    pl_editor_screen.cpp
+    pl_editor_layout.cpp
     design_tree_frame.cpp
     events_functions.cpp
     controle.cpp
@@ -40,8 +40,8 @@ set( PL_EDITOR_EXTRA_SRCS
     ../common/base_screen.cpp
     ../common/base_units.cpp
     ../common/eda_text.cpp
-    ../common/class_page_info.cpp
     ../common/dialogs/dialog_page_settings.cpp
+    ../common/page_info.cpp
 )
 
 

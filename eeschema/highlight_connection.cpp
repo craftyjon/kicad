@@ -30,10 +30,10 @@
 
 #include <fctsys.h>
 #include <class_drawpanel.h>
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <erc.h>
 
-#include <class_netlist_object.h>
+#include <netlist_object.h>
 #include <sch_component.h>
 #include <sch_sheet.h>
 

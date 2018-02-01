@@ -32,8 +32,8 @@
 #include <confirm.h>
 #include <gr_basic.h>
 #include <class_drawpanel.h>
-#include <wxPcbStruct.h>
-#include <drawtxt.h>
+#include <pcb_edit_frame.h>
+#include <draw_graphic_text.h>
 #include <dialog_helpers.h>
 #include <macros.h>
 #include <base_units.h>
@@ -46,7 +46,7 @@
 
 #include <pcbnew.h>
 #include <dialog_dimension_editor_base.h>
-#include <class_pcb_layer_box_selector.h>
+#include <pcb_layer_box_selector.h>
 
 /* Local functions */
 static void BuildDimension( EDA_DRAW_PANEL* aPanel, wxDC* aDC,

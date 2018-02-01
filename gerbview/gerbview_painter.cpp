@@ -18,7 +18,7 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <class_colors_design_settings.h>
+#include <colors_design_settings.h>
 
 #include <gerbview_painter.h>
 #include <gal/graphics_abstraction_layer.h>
@@ -26,8 +26,8 @@
 #include <convert_to_biu.h>
 #include <gerbview.h>
 
-#include <class_gerber_draw_item.h>
-#include <class_gerber_file_image.h>
+#include <gerber_draw_item.h>
+#include <gerber_file_image.h>
 
 using namespace KIGFX;
 

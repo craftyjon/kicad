@@ -33,9 +33,9 @@
 
 
 #include <base_struct.h>
-#include <class_undoredo_container.h>
+#include <undo_redo_container.h>
 #include <gr_basic.h>
-#include <class_eda_rect.h>
+#include <eda_rect.h>
 
 /* Block state codes. */
 typedef enum {

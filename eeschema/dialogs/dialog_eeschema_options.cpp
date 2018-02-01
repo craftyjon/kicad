@@ -27,12 +27,12 @@
  */
 
 #include <fctsys.h>
-#include <class_base_screen.h>
+#include <base_screen.h>
 
 #include <dialog_eeschema_options.h>
 #include <widgets/widget_hotkey_list.h>
 #include "../widgets/widget_eeschema_color_config.h"
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <hotkeys.h>
 #include <bitmap_types.h>
 

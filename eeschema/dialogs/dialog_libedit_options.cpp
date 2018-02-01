@@ -28,10 +28,10 @@
  */
 
 #include <fctsys.h>
-#include <class_base_screen.h>
+#include <base_screen.h>
 
 #include <dialog_libedit_options.h>
-#include <libeditframe.h>
+#include <lib_edit_frame.h>
 
 
 DIALOG_LIBEDIT_OPTIONS::DIALOG_LIBEDIT_OPTIONS( LIB_EDIT_FRAME* parent ) :

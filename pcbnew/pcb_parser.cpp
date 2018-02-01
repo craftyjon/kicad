@@ -32,7 +32,7 @@
 #include <confirm.h>
 #include <macros.h>
 #include <trigo.h>
-#include <class_title_block.h>
+#include <title_block.h>
 
 #include <class_board.h>
 #include <class_dimension.h>
@@ -40,7 +40,7 @@
 #include <class_edge_mod.h>
 #include <class_pcb_target.h>
 #include <class_module.h>
-#include <class_netclass.h>
+#include <netclass.h>
 #include <class_pad.h>
 #include <class_track.h>
 #include <class_zone.h>

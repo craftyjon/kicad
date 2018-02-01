@@ -35,14 +35,14 @@
 #include <macros.h>
 #include <trigo.h>
 #include <class_drawpanel.h>
-#include <drawtxt.h>
+#include <draw_graphic_text.h>
 #include <plotter.h>
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <base_units.h>
 #include <msgpanel.h>
 
 #include <general.h>
-#include <libeditframe.h>
+#include <lib_edit_frame.h>
 #include <class_libentry.h>
 #include <lib_pin.h>
 #include <transform.h>

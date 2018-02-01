@@ -106,10 +106,8 @@ set( EESCHEMA_SRCS
     busentry.cpp
     bus-wire-junction.cpp
     busentry.cpp
-    class_drc_erc_item.cpp
     class_libentry.cpp
     class_library.cpp
-    class_netlist_object.cpp
     cmp_library_keywords.cpp
     cmp_library_lexer.cpp
     cmp_tree_model.cpp
@@ -119,6 +117,7 @@ set( EESCHEMA_SRCS
     controle.cpp
     connection_graph.cpp
     cross-probing.cpp
+    drc_erc_item.cpp
     edit_bitmap.cpp
     edit_component_in_schematic.cpp
     edit_label.cpp
@@ -153,12 +152,13 @@ set( EESCHEMA_SRCS
     libedit_onrightclick.cpp
     libedit_plot_component.cpp
     libedit_undo_redo.cpp
-    libeditframe.cpp
+    lib_edit_frame.cpp
     libfield.cpp
     menubar.cpp
     menubar_libedit.cpp
-    netform.cpp
-    netlist.cpp
+    netlist_generator.cpp
+    netlist_object_list.cpp
+    netlist_object.cpp
     onleftclick.cpp
     onrightclick.cpp
     operations_on_items_lists.cpp
@@ -197,7 +197,7 @@ set( EESCHEMA_SRCS
     sch_validators.cpp
     schedit.cpp
     schematic_undo_redo.cpp
-    schframe.cpp
+    sch_edit_frame.cpp
     selpart.cpp
     sheet.cpp
     sheetlab.cpp
@@ -226,8 +226,8 @@ set( EESCHEMA_COMMON_SRCS
     ../common/dialogs/dialog_page_settings.cpp
     ../common/base_screen.cpp
     ../common/base_units.cpp
-    ../common/class_page_info.cpp
     ../common/eda_text.cpp
+    ../common/page_info.cpp
     )
 
 

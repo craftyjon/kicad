@@ -31,10 +31,10 @@
 #include <fctsys.h>
 #include <class_drawpanel.h>
 #include <kicad_string.h>
-#include <schframe.h>
+#include <sch_edit_frame.h>
 
 #include <netlist.h>
-#include <class_netlist_object.h>
+#include <netlist_object.h>
 #include <lib_pin.h>
 #include <erc.h>
 #include <sch_marker.h>

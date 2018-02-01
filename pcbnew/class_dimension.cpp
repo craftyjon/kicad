@@ -32,12 +32,11 @@
 #include <macros.h>
 #include <gr_basic.h>
 #include <trigo.h>
-#include <wxstruct.h>
 #include <class_drawpanel.h>
 #include <kicad_string.h>
 #include <richio.h>
 #include <bitmaps.h>
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 
 #include <class_board.h>
 #include <class_pcb_text.h>

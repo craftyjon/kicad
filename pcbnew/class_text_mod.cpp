@@ -30,14 +30,13 @@
 
 #include <fctsys.h>
 #include <gr_basic.h>
-#include <wxstruct.h>
 #include <trigo.h>
 #include <class_drawpanel.h>
-#include <drawtxt.h>
+#include <draw_graphic_text.h>
 #include <kicad_string.h>
 #include <richio.h>
 #include <macros.h>
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 #include <msgpanel.h>
 #include <base_units.h>
 #include <bitmaps.h>

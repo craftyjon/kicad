@@ -37,19 +37,19 @@
 #include <eda_doc.h>
 #include <gestfich.h>
 #include <kicad_device_context.h>
-#include <wxPcbStruct.h>
+#include <pcb_edit_frame.h>
 
 #include <pcbnew_id.h>
 #include <pcbnew.h>
-#include <module_editor_frame.h>
+#include <footprint_edit_frame.h>
 
 #include <class_board.h>
 #include <class_module.h>
 #include <class_track.h>
 #include <class_zone.h>
 #include <class_pcb_text.h>
-#include <modview_frame.h>
-#include <class_pcb_layer_box_selector.h>
+#include <footprint_viewer_frame.h>
+#include <pcb_layer_box_selector.h>
 #include <dialog_drc.h>
 #include <dialog_global_edit_tracks_and_vias.h>
 #include <invoke_pcb_dialog.h>
@@ -876,7 +876,7 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         if( !GetCurItem() || GetCurItem()->Type() != PCB_MODULE_T )
             break;
 
-        InstallModuleOptionsFrame( (MODULE*) GetCurItem(), &dc );
+        InstallFootprintPropertiesDialog( (MODULE*) GetCurItem(), &dc );
         m_canvas->MoveCursorToCrossHair();
         break;
 

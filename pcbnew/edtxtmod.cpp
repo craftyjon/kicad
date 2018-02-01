@@ -24,21 +24,21 @@
 
 /**
  * @file edtxtmod.cpp
- * @brief Edit module text.
+ * @brief Edit texts in footprints.
  */
 
 #include <fctsys.h>
 #include <gr_basic.h>
 #include <common.h>
 #include <class_drawpanel.h>
-#include <drawtxt.h>
+#include <draw_graphic_text.h>
 #include <trigo.h>
-#include <wxBasePcbFrame.h>
+#include <pcb_base_frame.h>
 #include <macros.h>
 
 #include <pcbnew.h>
-#include <wxPcbStruct.h>
-#include <module_editor_frame.h>
+#include <pcb_edit_frame.h>
+#include <footprint_edit_frame.h>
 
 #include <class_board.h>
 #include <class_module.h>

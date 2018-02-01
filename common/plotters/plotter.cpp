@@ -40,13 +40,13 @@
 #include <fctsys.h>
 
 #include <trigo.h>
-#include <wxstruct.h>
+#include <eda_base_frame.h>
 #include <base_struct.h>
 #include <common.h>
 #include <plotter.h>
 #include <macros.h>
-#include <class_base_screen.h>
-#include <drawtxt.h>
+#include <base_screen.h>
+#include <draw_graphic_text.h>
 #include <geometry/shape_line_chain.h>
 
 

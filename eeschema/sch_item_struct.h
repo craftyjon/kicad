@@ -33,7 +33,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <class_base_screen.h>
+#include <base_screen.h>
 #include <general.h>
 #include <sch_connection.h>
 #include <sch_sheet_path.h>

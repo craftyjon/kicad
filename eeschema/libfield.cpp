@@ -26,11 +26,9 @@
 #include <gr_basic.h>
 #include <class_drawpanel.h>
 #include <confirm.h>
-#include <class_sch_screen.h>
 
-#include <general.h>
 #include <sch_component.h>
-#include <libeditframe.h>
+#include <lib_edit_frame.h>
 #include <class_library.h>
 #include <symbol_lib_table.h>
 #include <template_fieldnames.h>

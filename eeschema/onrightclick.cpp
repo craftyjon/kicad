@@ -31,12 +31,13 @@
 #include <eeschema_id.h>
 #include <class_drawpanel.h>
 #include <confirm.h>
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <menus_helpers.h>
 
+#include <class_library.h>
 #include <general.h>
 #include <hotkeys.h>
-#include <class_library.h>
+#include <netlist_object.h>
 #include <sch_bus_entry.h>
 #include <sch_marker.h>
 #include <sch_text.h>
@@ -48,7 +49,6 @@
 #include <sch_sheet_path.h>
 #include <sch_bitmap.h>
 #include <symbol_lib_table.h>
-#include <class_netlist_object.h>
 #include <sch_connection.h>
 
 #include <iostream>

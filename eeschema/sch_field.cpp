@@ -39,9 +39,9 @@
 #include <class_drawpanel.h>
 #include <base_struct.h>
 #include <gr_basic.h>
-#include <drawtxt.h>
+#include <draw_graphic_text.h>
 #include <macros.h>
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <plotter.h>
 #include <bitmaps.h>
 

@@ -22,7 +22,7 @@
 #include <wx/tokenzr.h>
 
 #include <connection_graph.h>
-#include <class_sch_screen.h>
+#include <sch_screen.h>
 
 #include <sch_connection.h>
 

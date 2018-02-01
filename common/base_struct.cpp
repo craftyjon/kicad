@@ -32,9 +32,9 @@
 #include <common.h>
 #include <macros.h>
 #include <kicad_string.h>
-#include <wxstruct.h>
+#include <eda_base_frame.h>
 #include <class_drawpanel.h>
-#include <class_base_screen.h>
+#include <base_screen.h>
 #include <bitmaps.h>
 
 #include "../eeschema/dialogs/dialog_schematic_find.h"

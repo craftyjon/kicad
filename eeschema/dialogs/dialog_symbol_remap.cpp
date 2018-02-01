@@ -35,8 +35,8 @@
 #include <sch_io_mgr.h>
 #include <sch_sheet.h>
 #include <sch_component.h>
-#include <class_sch_screen.h>
-#include <schframe.h>
+#include <sch_screen.h>
+#include <sch_edit_frame.h>
 #include <symbol_lib_table.h>
 #include <env_paths.h>
 

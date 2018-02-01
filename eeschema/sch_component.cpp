@@ -33,7 +33,7 @@
 #include <gr_basic.h>
 #include <kicad_string.h>
 #include <richio.h>
-#include <schframe.h>
+#include <sch_edit_frame.h>
 #include <plotter.h>
 #include <msgpanel.h>
 #include <bitmaps.h>
@@ -46,7 +46,7 @@
 #include <sch_component.h>
 #include <sch_sheet.h>
 #include <sch_sheet_path.h>
-#include <class_netlist_object.h>
+#include <netlist_object.h>
 #include <lib_draw_item.h>
 #include <symbol_lib_table.h>
 

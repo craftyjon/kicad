@@ -31,8 +31,8 @@
 #include <common.h>
 #include <class_drawpanel.h>
 #include <confirm.h>
-#include <wxBasePcbFrame.h>
-#include <class_layer_box_selector.h>
+#include <pcb_base_frame.h>
+#include <layer_box_selector.h>
 #include <class_board.h>
 #include <dialogs/dialog_layer_selection_base.h>
 
