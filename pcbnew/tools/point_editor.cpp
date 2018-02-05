@@ -288,7 +288,7 @@ int POINT_EDITOR::OnSelectionChange( const TOOL_EVENT& aEvent )
         return 0;
 
     view->Add( m_editPoints.get() );
-    m_editedPoint = NULL;
+    setEditedPoint( nullptr );
     bool modified = false;
     bool revert = false;
 
@@ -679,12 +679,10 @@ void POINT_EDITOR::setEditedPoint( EDIT_POINT* aPoint )
     {
         controls->ForceCursorPosition( true, aPoint->GetPosition() );
         controls->ShowCursor( true );
-        controls->SetSnapping( true );
     }
     else
     {
         controls->ShowCursor( false );
-        controls->SetSnapping( false );
         controls->ForceCursorPosition( false );
     }
 
