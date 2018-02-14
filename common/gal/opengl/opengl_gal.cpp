@@ -785,7 +785,7 @@ void OPENGL_GAL::drawTriangulatedPolyset( const SHAPE_POLY_SET& aPolySet )
         {
             auto triPoly = aPolySet.TriangulatedPolygon( j );
 
-            for ( int i = 0; i < triPoly->TriangleCount(); i++ )
+            for( int i = 0; i < triPoly->GetTriangleCount(); i++ )
             {
                 VECTOR2I a, b, c;
                 triPoly->GetTriangle( i ,a,b,c);
@@ -1773,6 +1773,12 @@ void OPENGL_GAL::init()
     GL_CONTEXT_MANAGER::Get().LockCtx( glPrivContext, this );
 
     GLenum err = glewInit();
+
+#if defined (__LINUX__)      // calling enableGlDebug crashes opengl on some OS (OSX and some Windows)
+#ifdef DEBUG
+    enableGlDebug( true );
+#endif
+#endif
 
     try
     {

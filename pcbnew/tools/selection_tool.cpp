@@ -99,6 +99,11 @@ TOOL_ACTION PCB_ACTIONS::selectCopper( "pcbnew.InteractiveSelection.SelectCopper
         AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_SEL_COPPER_CONNECTION ),
         _( "Copper Connection" ), _( "Selects whole copper connection." ) );
 
+TOOL_ACTION PCB_ACTIONS::expandSelectedConnection( "pcbnew.InteractiveSelection.ExpandConnection",
+        AS_GLOBAL, 0,
+        _( "Expand Selected Connection" ),
+        _( "Expands the current selection to select a connection between two junctions." ) );
+
 TOOL_ACTION PCB_ACTIONS::selectNet( "pcbnew.InteractiveSelection.SelectNet",
         AS_GLOBAL, 0,
         _( "Whole Net" ), _( "Selects all tracks & vias belonging to the same net." ) );
@@ -114,14 +119,16 @@ TOOL_ACTION PCB_ACTIONS::selectSameSheet( "pcbnew.InteractiveSelection.SelectSam
 
 TOOL_ACTION PCB_ACTIONS::find( "pcbnew.InteractiveSelection.Find",
         AS_GLOBAL, 0, //TOOL_ACTION::LegacyHotKey( HK_FIND_ITEM ), // handled by wxWidgets
-        _( "Find Item" ),_( "Searches the document for an item" ), find_xpm );
+        _( "Find Item..." ),_( "Searches the document for an item" ), find_xpm );
 
 TOOL_ACTION PCB_ACTIONS::findMove( "pcbnew.InteractiveSelection.FindMove",
-        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_GET_AND_MOVE_FOOTPRINT ) );
+        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_GET_AND_MOVE_FOOTPRINT ),
+        _( "Get and Move Footprint" ),
+        _( "Selects a footprint by reference and places it under the cursor for moving"));
 
 TOOL_ACTION PCB_ACTIONS::filterSelection( "pcbnew.InteractiveSelection.FilterSelection",
         AS_GLOBAL, 0,
-        _( "Filter Selection" ), _( "Filter the types of items in the selection" ),
+        _( "Filter Selection..." ), _( "Filter the types of items in the selection" ),
         nullptr );
 
 class SELECT_MENU: public CONTEXT_MENU
@@ -129,7 +136,7 @@ class SELECT_MENU: public CONTEXT_MENU
 public:
     SELECT_MENU()
     {
-        SetTitle( _( "Select..." ) );
+        SetTitle( _( "Select" ) );
 
         Add( PCB_ACTIONS::filterSelection );
 
@@ -204,7 +211,6 @@ bool SELECTION_TOOL::Init()
     auto& menu = m_menu.GetMenu();
 
     menu.AddMenu( selectMenu.get(), false, SELECTION_CONDITIONS::NotEmpty );
-    // only show separator if there is a Select menu to show above it
     menu.AddSeparator( SELECTION_CONDITIONS::NotEmpty, 1000 );
 
     auto frame = getEditFrame<PCB_BASE_FRAME>();
@@ -659,6 +665,7 @@ void SELECTION_TOOL::setTransitions()
     Go( &SELECTION_TOOL::findMove, PCB_ACTIONS::findMove.MakeEvent() );
     Go( &SELECTION_TOOL::filterSelection, PCB_ACTIONS::filterSelection.MakeEvent() );
     Go( &SELECTION_TOOL::selectConnection, PCB_ACTIONS::selectConnection.MakeEvent() );
+    Go( &SELECTION_TOOL::expandSelectedConnection, PCB_ACTIONS::expandSelectedConnection.MakeEvent() );
     Go( &SELECTION_TOOL::selectCopper, PCB_ACTIONS::selectCopper.MakeEvent() );
     Go( &SELECTION_TOOL::selectNet, PCB_ACTIONS::selectNet.MakeEvent() );
     Go( &SELECTION_TOOL::selectSameSheet, PCB_ACTIONS::selectSameSheet.MakeEvent() );
@@ -831,6 +838,12 @@ int SELECTION_TOOL::selectConnection( const TOOL_EVENT& aEvent )
     if( !selectCursor( true, connectedTrackFilter ) )
         return 0;
 
+    return expandSelectedConnection( aEvent );
+}
+
+
+int SELECTION_TOOL::expandSelectedConnection( const TOOL_EVENT& aEvent )
+{
     // copy the selection, since we're going to iterate and modify
     auto selection = m_selection.GetItems();
 
@@ -1944,7 +1957,9 @@ void SELECTION_TOOL::guessSelectionCandidates( GENERAL_COLLECTOR& aCollector ) c
         }
     }
 
-    if( aCollector.CountType( PCB_MODULE_T ) > 0 )
+    int moduleCount = aCollector.CountType( PCB_MODULE_T );
+
+    if( moduleCount > 0 )
     {
         double maxArea = calcMaxArea( aCollector, PCB_MODULE_T );
         BOX2D viewportD = getView()->GetViewport();
@@ -1964,7 +1979,8 @@ void SELECTION_TOOL::guessSelectionCandidates( GENERAL_COLLECTOR& aCollector ) c
                 // if a footprint is much smaller than the largest overlapping
                 // footprint then it should be considered for selection; reject
                 // all other footprints
-                else if( calcRatio( calcArea( mod ), maxArea ) > footprintToFootprintMinRatio )
+                else if( moduleCount > 1
+                        && calcRatio( calcArea( mod ), maxArea ) > footprintToFootprintMinRatio )
                     rejected.insert( mod );
             }
         }

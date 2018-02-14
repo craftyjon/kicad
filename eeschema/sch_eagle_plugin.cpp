@@ -30,6 +30,7 @@
 #include <sch_junction.h>
 #include <sch_sheet.h>
 #include <sch_edit_frame.h>
+#include <worksheet_shape_builder.h>
 #include <template_fieldnames.h>
 #include <wildcards_and_files_ext.h>
 #include <sch_screen.h>
@@ -424,6 +425,24 @@ SCH_SHEET* SCH_EAGLE_PLUGIN::Load( const wxString& aFileName, KIWAY* aKiway,
 
     m_pi->SaveLibrary( getLibFileName().GetFullPath() );
 
+    // Eagle sheets do not use a worksheet frame by default
+    WORKSHEET_LAYOUT& pglayout = WORKSHEET_LAYOUT::GetTheInstance();
+    pglayout.SetEmptyLayout();
+
+    wxFileName layoutfn( m_kiway->Prj().GetProjectPath(), "empty.kicad_wks" );
+    wxFile layoutfile;
+
+    if( layoutfile.Create( layoutfn.GetFullPath() ) )
+    {
+        layoutfile.Write( WORKSHEET_LAYOUT::EmptyLayout() );
+        layoutfile.Close();
+    }
+
+    BASE_SCREEN::m_PageLayoutDescrFileName = "empty.kicad_wks";
+
+    SCH_EDIT_FRAME* editor = (SCH_EDIT_FRAME*) m_kiway->Player( FRAME_SCH, true );
+    editor->SaveProjectSettings( false );
+
     return m_rootSheet;
 }
 
@@ -811,7 +830,7 @@ void SCH_EAGLE_PLUGIN::loadSegments( wxXmlNode* aSegmentsNode, const wxString& n
             if( m_netCounts[netName.ToStdString()] > 1 )
             {
                 std::unique_ptr<SCH_GLOBALLABEL> glabel( new SCH_GLOBALLABEL );
-                glabel->SetPosition( wire->MidPoint() );
+                glabel->SetPosition( wire->GetStartPoint() );
                 glabel->SetText( netname );
                 glabel->SetTextSize( wxSize( 10, 10 ) );
                 glabel->SetLabelSpinStyle( 0 );
@@ -820,7 +839,7 @@ void SCH_EAGLE_PLUGIN::loadSegments( wxXmlNode* aSegmentsNode, const wxString& n
             else if( segmentCount > 1 )
             {
                 std::unique_ptr<SCH_LABEL> label( new SCH_LABEL );
-                label->SetPosition( wire->MidPoint() );
+                label->SetPosition( wire->GetStartPoint() );
                 label->SetText( netname );
                 label->SetTextSize( wxSize( 10, 10 ) );
                 label->SetLabelSpinStyle( 0 );

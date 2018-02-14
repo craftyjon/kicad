@@ -601,7 +601,22 @@ SCH_SHEET* SCH_LEGACY_PLUGIN::Load( const wxString& aFileName, KIWAY* aKiway,
     // always be an absolute path so the project path can be used for load child sheet files.
     wxASSERT( fn.IsAbsolute() );
 
-    m_path = fn.GetPath();
+    if( aAppendToMe )
+    {
+        wxLogDebug( "Append \"%s\" to sheet \"%s\".", aFileName, aAppendToMe->GetFileName() );
+
+        wxFileName normedFn = aAppendToMe->GetFileName();
+
+        if( !normedFn.IsAbsolute() )
+        {
+            if( aFileName.Right( normedFn.GetFullPath().Length() ) == normedFn.GetFullPath() )
+                m_path = aFileName.Left( aFileName.Length() - normedFn.GetFullPath().Length() );
+        }
+    }
+    else
+    {
+        m_path = aKiway->Prj().GetProjectPath();
+    }
 
     init( aKiway, aProperties );
 
@@ -643,6 +658,13 @@ void SCH_LEGACY_PLUGIN::loadHierarchy( SCH_SHEET* aSheet )
 
         if( !fileName.IsAbsolute() )
             fileName.MakeAbsolute( m_path );
+
+        // Save the current path so that it gets restored when decending and ascending the
+        // sheet hierarchy which allows for sheet schematic files to be nested in folders
+        // relative to the last path a schematic was loaded from.
+        m_path = fileName.GetPath();
+
+        wxLogDebug( "Saving last path \"%s\"", m_path );
 
         m_rootSheet->SearchHierarchy( fileName.GetFullPath(), &screen );
 
@@ -696,6 +718,9 @@ void SCH_LEGACY_PLUGIN::loadHierarchy( SCH_SHEET* aSheet )
                 m_error += ioe.What();
             }
         }
+
+        wxLogDebug( "Restoring last path \"%s\"", fileName.GetPath() );
+        m_path = fileName.GetPath();
     }
 }
 

@@ -33,6 +33,7 @@
 #include <common.h>
 #include <gr_basic.h>
 #include <gal/graphics_abstraction_layer.h>
+#include <view/view_controls.h>
 #include <trigo.h>
 #include <class_drawpanel.h>
 #include <confirm.h>
@@ -41,6 +42,7 @@
 #include <base_units.h>
 #include <unit_format.h>
 #include <board_commit.h>
+#include <bitmaps.h>
 
 #include <class_board.h>
 #include <class_module.h>
@@ -207,6 +209,8 @@ void DIALOG_PAD_PROPERTIES::prepareCanvas()
     {
         m_panelShowPadGal->UseColorScheme( &m_parent->Settings().Colors() );
         m_panelShowPadGal->SwitchBackend( m_parent->GetGalCanvas()->GetBackend() );
+        m_panelShowPadGal->GetViewControls()->
+                EnableMousewheelPan( m_parent->GetCanvas()->GetEnableMousewheelPan() );
 
         m_panelShowPadGal->Show();
         m_panelShowPad->Hide();
@@ -512,6 +516,8 @@ void DIALOG_PAD_PROPERTIES::initValues()
 
         if( m_isFlipped )
             m_staticModuleSideValue->SetLabel( _( "Back side (footprint is mirrored)" ) );
+        else
+            m_staticModuleSideValue->SetLabel( _( "Front side" ) );
 
         // Diplay footprint rotation ( angles are in 0.1 degree )
         MODULE* footprint = m_currentPad->GetParent();
@@ -543,7 +549,8 @@ void DIALOG_PAD_PROPERTIES::initValues()
 
     m_primitives = m_dummyPad->GetPrimitives();
 
-    m_staticTextWarningPadFlipped->Show(m_isFlipped);
+    m_FlippedWarningIcon->SetBitmap( KiBitmap( dialog_warning_xpm ) );
+    m_FlippedWarningSizer->Show(m_isFlipped);
 
     m_PadNumCtrl->SetValue( m_dummyPad->GetName() );
     m_PadNetNameCtrl->SetValue( m_dummyPad->GetNetname() );

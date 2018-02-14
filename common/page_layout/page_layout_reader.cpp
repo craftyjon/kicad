@@ -36,6 +36,9 @@
 #include <worksheet_dataitem.h>
 #include <page_layout_reader_lexer.h>
 
+#include <wx/file.h>
+#include <wx/mstream.h>
+
 
 using namespace TB_READER_T;
 
@@ -330,7 +333,7 @@ void PAGE_LAYOUT_READER_PARSER::parsePolyOutline( WORKSHEET_DATAITEM_POLYPOLYGON
     }
 }
 
-#include <wx/mstream.h>
+
 void PAGE_LAYOUT_READER_PARSER::parseBitmap( WORKSHEET_DATAITEM_BITMAP * aItem )
 {
     T token;
@@ -760,24 +763,34 @@ extern const char defaultPageLayout[];
 
 void WORKSHEET_LAYOUT::SetDefaultLayout()
 {
-    ClearList();
-    PAGE_LAYOUT_READER_PARSER lp_parser( defaultPageLayout, wxT( "default page" ) );
-
-    try
-    {
-        lp_parser.Parse( this );
-    }
-    catch( const IO_ERROR& ioe )
-    {
-        wxLogMessage( ioe.What() );
-    }
+    SetPageLayout( defaultPageLayout, false, wxT( "default page" ) );
 }
 
-/**
- * Populates the list from a S expr description stored in a string
- * @param aPageLayout = the S expr string
- */
-void WORKSHEET_LAYOUT::SetPageLayout( const char* aPageLayout, bool Append )
+// Returns defaultPageLayout as a string;
+wxString WORKSHEET_LAYOUT::DefaultLayout()
+{
+    return wxString( defaultPageLayout );
+}
+
+// emptyPageLayout is a "empty" page layout description
+// there is a 0 length line to fool something somewhere.
+// using the S expr.
+// see page_layout_empty_description.cpp
+extern const char emptyPageLayout[];
+
+void WORKSHEET_LAYOUT::SetEmptyLayout()
+{
+    SetPageLayout( emptyPageLayout, false, wxT( "empty page" ) );
+}
+
+
+wxString WORKSHEET_LAYOUT::EmptyLayout()
+{
+    return wxString( emptyPageLayout );
+}
+
+
+void WORKSHEET_LAYOUT::SetPageLayout( const char* aPageLayout, bool Append, const wxString& aSource )
 {
     if( ! Append )
         ClearList();
@@ -794,12 +807,7 @@ void WORKSHEET_LAYOUT::SetPageLayout( const char* aPageLayout, bool Append )
     }
 }
 
-#include <wx/file.h>
 
-// SetLayout() try to load the aFullFileName custom layout file,
-// if aFullFileName is empty, try the filename defined by the
-// environment variable KICAD_WKSFILE (a *.kicad_wks filename).
-// if does not exists, loads the default page layout.
 void WORKSHEET_LAYOUT::SetPageLayout( const wxString& aFullFileName, bool Append )
 {
     wxString fullFileName = aFullFileName;
@@ -859,4 +867,3 @@ void WORKSHEET_LAYOUT::SetPageLayout( const wxString& aFullFileName, bool Append
 
     delete[] buffer;
 }
-

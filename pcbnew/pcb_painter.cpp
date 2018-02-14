@@ -90,6 +90,7 @@ void PCB_RENDER_SETTINGS::ImportLegacyColors( const COLORS_DESIGN_SETTINGS* aSet
     // Default colors for specific layers (not really board layers).
     m_layerColors[LAYER_VIAS_HOLES]         = COLOR4D( 0.5, 0.4, 0.0, 0.8 );
     m_layerColors[LAYER_PADS_PLATEDHOLES]   = aSettings->GetItemColor( LAYER_PCB_BACKGROUND );
+    m_layerColors[LAYER_VIAS_NETNAMES]      = COLOR4D( 0.2, 0.2, 0.2, 0.9 );
     m_layerColors[LAYER_PADS_NETNAMES]      = COLOR4D( 1.0, 1.0, 1.0, 0.9 );
     m_layerColors[LAYER_PAD_FR_NETNAMES]    = COLOR4D( 1.0, 1.0, 1.0, 0.9 );
     m_layerColors[LAYER_PAD_BK_NETNAMES]    = COLOR4D( 1.0, 1.0, 1.0, 0.9 );
@@ -220,6 +221,10 @@ const COLOR4D& PCB_RENDER_SETTINGS::GetColor( const VIEW_ITEM* aItem, int aLayer
         {
             return m_selectionCandidateColor;
         }
+
+        // Don't let pads that *should* be NPTHs get lost
+        if( item->Type() == PCB_PAD_T && dyn_cast<const D_PAD*>( item )->PadShouldBeNPTH() )
+            aLayer = LAYER_MOD_TEXT_INVISIBLE;
 
         if( item->IsSelected() )
         {
@@ -673,9 +678,11 @@ void PCB_PAINTER::draw( const D_PAD* aPad, int aLayer )
     {
         // Hole color is the background color for plated holes, but a specific color
         // for not plated holes (LAYER_NON_PLATEDHOLES color layer )
-        if( aPad->GetAttribute() == PAD_ATTRIB_HOLE_NOT_PLATED /*&&
-            brd->IsElementVisible( LAYER_NON_PLATEDHOLES )*/ )
+        if( aPad->GetAttribute() == PAD_ATTRIB_HOLE_NOT_PLATED )
             color = m_pcbSettings.GetColor( nullptr, LAYER_NON_PLATEDHOLES );
+        // Don't let pads that *should* be NPTH get lost
+        else if( aPad->PadShouldBeNPTH() )
+            color = m_pcbSettings.GetColor( aPad, aLayer );
         else
             color = m_pcbSettings.GetBackgroundColor();
     }
@@ -1072,8 +1079,25 @@ void PCB_PAINTER::draw( const ZONE_CONTAINER* aZone, int aLayer )
         m_gal->SetIsFill( false );
         m_gal->SetIsStroke( true );
         m_gal->SetLineWidth( m_pcbSettings.m_outlineWidth );
-        m_gal->DrawPolygon( *outline );
 
+        // Draw each contour (main contour and holes)
+
+        /* This line:
+         * m_gal->DrawPolygon( *outline );
+         * should be enough, but currently does not work to draw holes contours in a complex polygon
+         * so each contour is draw as a simple polygon
+         */
+
+        // Draw the main contour
+        m_gal->DrawPolyline( outline->COutline( 0 ) );
+
+        // Draw holes
+        int holes_count = outline->HoleCount( 0 );
+
+        for( int ii = 0; ii < holes_count; ++ii )
+            m_gal->DrawPolyline(  outline->CHole( 0, ii ) );
+
+        // Draw hatch lines
         for( const SEG& hatchLine : aZone->GetHatchLines() )
             m_gal->DrawLine( hatchLine.A, hatchLine.B );
     }

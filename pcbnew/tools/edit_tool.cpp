@@ -80,18 +80,19 @@ TOOL_ACTION PCB_ACTIONS::editFootprintInFpEditor( "pcbnew.InteractiveEdit.editFo
 
 TOOL_ACTION PCB_ACTIONS::copyPadToSettings( "pcbnew.InteractiveEdit.copyPadToSettings",
         AS_GLOBAL, 0,
-        _( "Copy Pad Settings to Current Settings" ),
-        _( "Copies the properties of selected pad to the current template pad settings." ) );
+        _( "Copy Pad Properties to Default Pad Properties" ),
+        _( "Copies the properties of the selected pad to the default pad properties." ) );
 
 TOOL_ACTION PCB_ACTIONS::copySettingsToPads( "pcbnew.InteractiveEdit.copySettingsToPads",
         AS_GLOBAL, 0,
-        _( "Copy Current Settings to Pads" ),
-        _( "Copies the current template pad settings to the selected pad(s)." ) );
+        _( "Copy Default Pad Properties to Pads" ),
+        _( "Copies the default pad properties to the selected pad(s)." ) );
 
 TOOL_ACTION PCB_ACTIONS::globalEditPads( "pcbnew.InteractiveEdit.globalPadEdit",
         AS_GLOBAL, 0,
-        _( "Global Pad Edition" ),
-        _( "Changes pad properties globally." ), push_pad_settings_xpm );
+        _( "Push Pad Settings..." ),
+        _( "Copies the selected pad's properties to all pads in its footprint (or similar footprints)." ),
+        push_pad_settings_xpm );
 
 TOOL_ACTION PCB_ACTIONS::editActivate( "pcbnew.InteractiveEdit",
         AS_GLOBAL, 0,
@@ -111,12 +112,12 @@ TOOL_ACTION PCB_ACTIONS::duplicateIncrement( "pcbnew.InteractiveEdit.duplicateIn
 
 TOOL_ACTION PCB_ACTIONS::moveExact( "pcbnew.InteractiveEdit.moveExact",
         AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_MOVE_ITEM_EXACT ),
-        _( "Move Exactly" ), _( "Moves the selected item(s) by an exact amount" ),
+        _( "Move Exactly..." ), _( "Moves the selected item(s) by an exact amount" ),
         move_exactly_xpm );
 
 TOOL_ACTION PCB_ACTIONS::createArray( "pcbnew.InteractiveEdit.createArray",
         AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_CREATE_ARRAY ),
-        _( "Create Array" ), _( "Create array" ), array_xpm, AF_ACTIVATE );
+        _( "Create Array..." ), _( "Create array" ), array_xpm, AF_ACTIVATE );
 
 TOOL_ACTION PCB_ACTIONS::rotateCw( "pcbnew.InteractiveEdit.rotateCw",
         AS_GLOBAL, MD_SHIFT + 'R',
@@ -148,17 +149,17 @@ TOOL_ACTION PCB_ACTIONS::removeAlt( "pcbnew.InteractiveEdit.removeAlt",
 
 TOOL_ACTION PCB_ACTIONS::updateFootprints( "pcbnew.InteractiveEdit.updateFootprints",
         AS_GLOBAL, 0,
-        _( "Update Footprint" ), _( "Update the footprint from the library" ),
+        _( "Update Footprint..." ), _( "Update the footprint from the library" ),
         reload_xpm );
 
 TOOL_ACTION PCB_ACTIONS::exchangeFootprints( "pcbnew.InteractiveEdit.ExchangeFootprints",
         AS_GLOBAL, 0,
-        _( "Change Footprint" ), _( "Assign a different footprint from the library" ),
+        _( "Change Footprint..." ), _( "Assign a different footprint from the library" ),
         exchange_xpm );
 
 TOOL_ACTION PCB_ACTIONS::properties( "pcbnew.InteractiveEdit.properties",
         AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_EDIT_ITEM ),
-        _( "Properties" ), _( "Displays item properties dialog" ), config_xpm );
+        _( "Properties..." ), _( "Displays item properties dialog" ), config_xpm );
 
 TOOL_ACTION PCB_ACTIONS::selectionModified( "pcbnew.InteractiveEdit.ModifiedSelection",
         AS_GLOBAL, 0,
@@ -166,7 +167,7 @@ TOOL_ACTION PCB_ACTIONS::selectionModified( "pcbnew.InteractiveEdit.ModifiedSele
 
 TOOL_ACTION PCB_ACTIONS::measureTool( "pcbnew.InteractiveEdit.measureTool",
         AS_GLOBAL, MD_CTRL + MD_SHIFT + 'M',
-        _( "Measuring tool" ), _( "Interactively measure distance between points" ),
+        _( "Measuring Tool" ), _( "Interactively measure distance between points" ),
         nullptr, AF_ACTIVATE );
 
 TOOL_ACTION PCB_ACTIONS::copyToClipboard( "pcbnew.InteractiveEdit.CopyToClipboard",
@@ -287,6 +288,10 @@ bool EDIT_TOOL::Init()
     auto singleModuleCondition = SELECTION_CONDITIONS::OnlyType( PCB_MODULE_T )
                                     && SELECTION_CONDITIONS::Count( 1 );
 
+    auto noActiveToolCondition = [ this ] ( const SELECTION& aSelection ) {
+        return ( frame()->GetToolId() == ID_NO_TOOL_SELECTED );
+    };
+
     // Add context menu entries that are displayed when selection tool is active
     CONDITIONAL_MENU& menu = m_selectionTool->GetToolMenu().GetMenu();
 
@@ -309,8 +314,10 @@ bool EDIT_TOOL::Init()
 
     menu.AddItem( PCB_ACTIONS::copyToClipboard, SELECTION_CONDITIONS::NotEmpty );
     menu.AddItem( PCB_ACTIONS::cutToClipboard, SELECTION_CONDITIONS::NotEmpty );
-    menu.AddItem( PCB_ACTIONS::pasteFromClipboard );
-    menu.AddSeparator();
+    // Selection tool handles the context menu for some other tools, such as the Picker.
+    // Don't add things like Paste when another tool is active.
+    menu.AddItem( PCB_ACTIONS::pasteFromClipboard, noActiveToolCondition );
+    menu.AddSeparator( noActiveToolCondition );
 
     // Mirror only available in modedit
     menu.AddItem( PCB_ACTIONS::mirror, editingModuleCondition && SELECTION_CONDITIONS::NotEmpty );
@@ -843,29 +850,26 @@ int EDIT_TOOL::Remove( const TOOL_EVENT& aEvent )
     if( m_selectionTool->CheckLock() == SELECTION_LOCKED )
         return 0;
 
+    // is this "alternative" remove?
+    const bool isAlt = aEvent.Parameter<intptr_t>() == (int) PCB_ACTIONS::REMOVE_FLAGS::ALT;
+
+    // in "alternative" mode, deletion is not just a simple list of selected items,
+    // it removes whole tracks, not just segments
+    if( isAlt && selection.IsHover()
+            && ( selection.HasType( PCB_TRACE_T ) || selection.HasType( PCB_VIA_T ) ) )
+    {
+        m_toolMgr->RunAction( PCB_ACTIONS::expandSelectedConnection, true );
+        selection = m_selectionTool->GetSelection();
+    }
+
     if( selection.Empty() )
         return 0;
-
-    // is this "alternative" remove?
-    const bool isAlt = aEvent.Parameter<intptr_t>() ==
-            (int) PCB_ACTIONS::REMOVE_FLAGS::ALT;
-
-    // in "alternative" mode, deletion is not just a simple list
-    // of selected items, it is:
-    //   - whole tracks, not just segments
-    if( isAlt && selection.IsHover() )
-    {
-        m_toolMgr->RunAction( PCB_ACTIONS::selectConnection, true );
-        selection = m_selectionTool->RequestSelection( SELECTION_DELETABLE | SELECTION_SANITIZE_PADS );
-    }
 
     // As we are about to remove items, they have to be removed from the selection first
     m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
 
     for( auto item : selection )
-    {
         m_commit->Remove( item );
-    }
 
     m_commit->Push( _( "Delete" ) );
 

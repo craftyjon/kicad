@@ -26,6 +26,7 @@
 #include <class_libentry.h>
 #include <class_library.h>
 #include <lib_edit_frame.h>
+#include <confirm.h>
 
 #include <kiway.h>
 #include <profile.h>
@@ -90,6 +91,12 @@ wxArrayString LIB_MANAGER::GetLibraryNames() const
 }
 
 
+SYMBOL_LIB_TABLE_ROW* LIB_MANAGER::GetLibrary( const wxString& aLibrary )
+{
+    return symTable()->FindRow( aLibrary );
+}
+
+
 bool LIB_MANAGER::FlushAll()
 {
     bool result = true;
@@ -111,13 +118,19 @@ bool LIB_MANAGER::FlushLibrary( const wxString& aLibrary )
     LIB_BUFFER& libBuf = it->second;
     wxArrayString aliases;
 
-    try {
+    try
+    {
         symTable()->EnumerateSymbolLib( aLibrary, aliases );
 
         // TODO probably this could be implemented more efficiently
         for( const auto& alias : aliases )
             symTable()->DeleteAlias( aLibrary, alias );
-    } catch( IO_ERROR& e) {}
+    }
+    catch( const IO_ERROR& e )
+    {
+        DisplayErrorMessage( &m_frame, wxString::Format( _( "Cannot flush "
+                        "library changes (\"%s\")" ), aLibrary ), e.What() );
+    }
 
     // Assume all libraries are successfully saved
     bool res = true;
@@ -165,9 +178,18 @@ bool LIB_MANAGER::SaveLibrary( const wxString& aLibrary, const wxString& aFileNa
         }
 
         // clear the deleted parts buffer only if data is saved to the original file
+        wxFileName original, destination( aFileName );
         auto row = symTable()->FindRow( aLibrary );
 
-        if( res && row && row->GetFullURI( true ) == aFileName )
+        if( row )
+        {
+            original = row->GetFullURI( true );
+            original.Normalize();
+        }
+
+        destination.Normalize();
+
+        if( res && original == destination )
             libBuf.ClearDeletedBuffer();
     }
     else
@@ -258,9 +280,15 @@ wxArrayString LIB_MANAGER::GetAliasNames( const wxString& aLibrary ) const
 
     if( it == m_libs.end() )
     {
-        try {
+        try
+        {
             symTable()->EnumerateSymbolLib( aLibrary, names );
-        } catch( IO_ERROR& e ) {}
+        }
+        catch( const IO_ERROR& e )
+        {
+            DisplayErrorMessage( &m_frame, wxString::Format( _( "Cannot enumerate "
+                    "library \"%s\"" ), aLibrary ), e.What() );
+        }
     }
     else
     {
@@ -294,7 +322,11 @@ std::list<LIB_ALIAS*> LIB_MANAGER::GetAliases( const wxString& aLibrary ) const
         {
             symTable()->LoadSymbolLib( aliases, aLibrary );
         }
-        catch( IO_ERROR& ) {}
+        catch( const IO_ERROR& e )
+        {
+            DisplayErrorMessage( &m_frame, wxString::Format( _( "Cannot load "
+                "aliases from library \"%s\"" ), aLibrary ), e.What() );
+        }
 
         std::copy( aliases.begin(), aliases.end(), std::back_inserter( ret ) );
     }
@@ -314,14 +346,17 @@ LIB_PART* LIB_MANAGER::GetBufferedPart( const wxString& aAlias, const wxString& 
     if( !bufferedPart ) // no buffer part found
     {
         // create a copy of the part
-        try {
+        try
+        {
             LIB_ALIAS* alias = symTable()->LoadSymbol( aLibrary, aAlias );
             wxCHECK( alias, nullptr );
             bufferedPart = new LIB_PART( *alias->GetPart(), nullptr );
             libBuf.CreateBuffer( bufferedPart, new SCH_SCREEN( &m_frame.Kiway() ) );
         }
-        catch( IO_ERROR& e )
+        catch( const IO_ERROR& e )
         {
+            DisplayErrorMessage( &m_frame, wxString::Format( _( "Cannot load "
+                    "symbol \"%s\" from library \"%s\"" ), aAlias, aLibrary ), e.What() );
             bufferedPart = nullptr;
         }
     }
@@ -479,9 +514,15 @@ LIB_ALIAS* LIB_MANAGER::GetAlias( const wxString& aAlias, const wxString& aLibra
     // Get the original part
     LIB_ALIAS* alias = nullptr;
 
-    try {
+    try
+    {
         alias = symTable()->LoadSymbol( aLibrary, aAlias );
-    } catch( IO_ERROR& e ) {}
+    }
+    catch( const IO_ERROR& e )
+    {
+        DisplayErrorMessage( &m_frame, wxString::Format( _( "Cannot load "
+                "symbol \"%s\" from library \"%s\"" ), aAlias, aLibrary ), e.What() );
+    }
 
     return alias;
 }
@@ -495,9 +536,13 @@ bool LIB_MANAGER::PartExists( const wxString& aAlias, const wxString& aLibrary )
     if( libBufIt != m_libs.end() )
         return !!libBufIt->second.GetBuffer( aAlias );
 
-    try {
+    try
+    {
         alias = symTable()->LoadSymbol( aLibrary, aAlias );
-    } catch( IO_ERROR& e ) {}
+    } catch( IO_ERROR& )
+    {
+        // checking if certain symbol exists, so its absence is perfectly fine
+    }
 
     return alias != nullptr;
 }
@@ -609,7 +654,8 @@ std::set<LIB_PART*> LIB_MANAGER::getOriginalParts( const wxString& aLibrary )
     std::set<LIB_PART*> parts;
     wxCHECK( LibraryExists( aLibrary ), parts );
 
-    try {
+    try
+    {
         wxArrayString aliases;
         symTable()->EnumerateSymbolLib( aLibrary, aliases );
 
@@ -618,7 +664,11 @@ std::set<LIB_PART*> LIB_MANAGER::getOriginalParts( const wxString& aLibrary )
             LIB_ALIAS* alias = symTable()->LoadSymbol( aLibrary, aliasName );
             parts.insert( alias->GetPart() );
         }
-    } catch( IO_ERROR& e ) {}
+    } catch( const IO_ERROR& e )
+    {
+        DisplayErrorMessage( &m_frame, wxString::Format( _( "Cannot enumerate "
+                "library \"%s\"" ), aLibrary ), e.What() );
+    }
 
     return parts;
 }

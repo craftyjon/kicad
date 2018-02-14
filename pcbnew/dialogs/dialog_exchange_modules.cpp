@@ -4,7 +4,7 @@
  * Copyright (C) 2015 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2013 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
  * Copyright (C) 2013 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -48,10 +48,15 @@
 static bool RecreateCmpFile( BOARD * aBrd, const wxString& aFullCmpFileName );
 
 
-int DIALOG_EXCHANGE_MODULE::m_matchModeForUpdate           = wxID_MATCH_FP_ALL;
-int DIALOG_EXCHANGE_MODULE::m_matchModeForExchange         = wxID_MATCH_FP_REF;
-int DIALOG_EXCHANGE_MODULE::m_matchModeForUpdateSelected   = wxID_MATCH_FP_REF;
-int DIALOG_EXCHANGE_MODULE::m_matchModeForExchangeSelected = wxID_MATCH_FP_REF;
+#define ID_MATCH_FP_ALL 4200
+#define ID_MATCH_FP_REF 4201
+#define ID_MATCH_FP_VAL 4202
+#define ID_MATCH_FP_ID  4203
+
+int DIALOG_EXCHANGE_MODULE::m_matchModeForUpdate           = ID_MATCH_FP_ALL;
+int DIALOG_EXCHANGE_MODULE::m_matchModeForExchange         = ID_MATCH_FP_REF;
+int DIALOG_EXCHANGE_MODULE::m_matchModeForUpdateSelected   = ID_MATCH_FP_REF;
+int DIALOG_EXCHANGE_MODULE::m_matchModeForExchangeSelected = ID_MATCH_FP_REF;
 
 
 DIALOG_EXCHANGE_MODULE::DIALOG_EXCHANGE_MODULE( PCB_EDIT_FRAME* parent, MODULE* Module,
@@ -68,9 +73,12 @@ DIALOG_EXCHANGE_MODULE::DIALOG_EXCHANGE_MODULE( PCB_EDIT_FRAME* parent, MODULE* 
     // because the update and change versions of this dialog have different controls.
     m_hash_key = TO_UTF8( GetTitle() );
 
-    GetSizer()->Fit( this );
-    GetSizer()->SetSizeHints( this );
-    Center();
+    // Ensure m_closeButton (with id = wxID_CANCEL) has the right label
+    // (to fix automatic renaming of button label )
+    m_closeButton->SetLabel( _( "Close" ) );
+
+    // Now all widgets have the size fixed, call FinishDialogSettings
+    FinishDialogSettings();
 }
 
 
@@ -148,19 +156,19 @@ void DIALOG_EXCHANGE_MODULE::init( bool updateMode )
     wxCommandEvent event;
     switch( getMatchMode() )
     {
-    case wxID_MATCH_FP_ALL:
+    case ID_MATCH_FP_ALL:
         if( m_currentModule )
             OnMatchRefClicked( event );
         else
             OnMatchAllClicked( event );
         break;
-    case wxID_MATCH_FP_REF:
+    case ID_MATCH_FP_REF:
         OnMatchRefClicked( event );
         break;
-    case wxID_MATCH_FP_VAL:
+    case ID_MATCH_FP_VAL:
         OnMatchValueClicked( event );
         break;
-    case wxID_MATCH_FP_ID:
+    case ID_MATCH_FP_ID:
         OnMatchIDClicked( event );
     }
 }
@@ -198,13 +206,13 @@ bool DIALOG_EXCHANGE_MODULE::isMatch( MODULE* aModule )
 {
     switch( getMatchMode() )
     {
-    case wxID_MATCH_FP_ALL:
+    case ID_MATCH_FP_ALL:
         return true;
-    case wxID_MATCH_FP_REF:
+    case ID_MATCH_FP_REF:
         // currentModule case goes through changeCurrentFootprint, so we only have
         // to handle specifiedRef case
         return aModule->GetReference() == m_specifiedRef->GetValue();
-    case wxID_MATCH_FP_VAL:
+    case ID_MATCH_FP_VAL:
         // currentValue must also check FPID so we don't get accidental matches that
         // the user didn't intend
         if( m_currentModule )
@@ -212,7 +220,7 @@ bool DIALOG_EXCHANGE_MODULE::isMatch( MODULE* aModule )
                     && aModule->GetFPID() == m_currentModule->GetFPID();
         else
             return aModule->GetValue() == m_specifiedValue->GetValue();
-    case wxID_MATCH_FP_ID:
+    case ID_MATCH_FP_ID:
         return aModule->GetFPID() == m_specifiedID->GetValue();
     }
     return false;   // just to quiet compiler warnings....
@@ -223,13 +231,13 @@ wxRadioButton* DIALOG_EXCHANGE_MODULE::getRadioButtonForMode()
 {
     switch( getMatchMode() )
     {
-    case wxID_MATCH_FP_ALL:
+    case ID_MATCH_FP_ALL:
         return( m_matchAll );
-    case wxID_MATCH_FP_REF:
+    case ID_MATCH_FP_REF:
         return( m_matchCurrentRef->IsShown() ? m_matchCurrentRef : m_matchSpecifiedRef );
-    case wxID_MATCH_FP_VAL:
+    case ID_MATCH_FP_VAL:
         return( m_matchCurrentValue->IsShown() ? m_matchCurrentValue : m_matchSpecifiedValue );
-    case wxID_MATCH_FP_ID:
+    case ID_MATCH_FP_ID:
         return( m_matchSpecifiedID );
     default:
         return nullptr;
@@ -239,26 +247,40 @@ wxRadioButton* DIALOG_EXCHANGE_MODULE::getRadioButtonForMode()
 
 void DIALOG_EXCHANGE_MODULE::updateMatchModeRadioButtons( wxUpdateUIEvent& )
 {
-    wxRadioButton* button = getRadioButtonForMode();
+    wxRadioButton* rb_button = getRadioButtonForMode();
 
-    m_matchAll->SetValue( m_matchAll == button );
-    m_matchCurrentRef->SetValue( m_matchCurrentRef == button );
-    m_matchSpecifiedRef->SetValue( m_matchSpecifiedRef == button );
-    m_matchCurrentValue->SetValue( m_matchCurrentValue == button );
-    m_matchSpecifiedValue->SetValue( m_matchSpecifiedValue == button );
-    m_matchSpecifiedID->SetValue(m_matchSpecifiedID == button );
+    wxRadioButton* rb_butt_list[] =
+    {
+        m_matchCurrentRef, m_matchSpecifiedRef,
+        m_matchCurrentValue, m_matchCurrentValue,
+        m_matchSpecifiedValue, m_matchSpecifiedValue,
+        m_matchSpecifiedID, m_matchSpecifiedID,
+        nullptr     // end of list
+    };
+
+    // Ensure the button state is ok. Only one button can be checked
+    // Change button state only if its state is incorrect, otherwise
+    // we have issues depending on the platform.
+    for( int ii = 0; rb_butt_list[ii]; ++ii )
+    {
+        bool state = rb_butt_list[ii] == rb_button;
+
+        if( rb_butt_list[ii]->GetValue() != state )
+            rb_butt_list[ii]->SetValue( state );
+    }
 }
 
 
 void DIALOG_EXCHANGE_MODULE::OnMatchAllClicked( wxCommandEvent& event )
 {
-    setMatchMode( wxID_MATCH_FP_ALL );
+    setMatchMode( ID_MATCH_FP_ALL );
     m_matchAll->SetFocus();
 }
 
+
 void DIALOG_EXCHANGE_MODULE::OnMatchRefClicked( wxCommandEvent& event )
 {
-    setMatchMode( wxID_MATCH_FP_REF );
+    setMatchMode( ID_MATCH_FP_REF );
 
     if( m_specifiedRef->IsShown() && event.GetEventObject() != m_specifiedRef )
         m_specifiedRef->SetFocus();
@@ -267,7 +289,7 @@ void DIALOG_EXCHANGE_MODULE::OnMatchRefClicked( wxCommandEvent& event )
 
 void DIALOG_EXCHANGE_MODULE::OnMatchValueClicked( wxCommandEvent& event )
 {
-    setMatchMode( wxID_MATCH_FP_VAL );
+    setMatchMode( ID_MATCH_FP_VAL );
 
     if( m_specifiedValue->IsShown() && event.GetEventObject() != m_specifiedValue )
         m_specifiedValue->SetFocus();
@@ -276,21 +298,21 @@ void DIALOG_EXCHANGE_MODULE::OnMatchValueClicked( wxCommandEvent& event )
 
 void DIALOG_EXCHANGE_MODULE::OnMatchIDClicked( wxCommandEvent& event )
 {
-    setMatchMode( wxID_MATCH_FP_ID );
+    setMatchMode( ID_MATCH_FP_ID );
 
     if( m_specifiedID->IsShown() && event.GetEventObject() != m_specifiedID )
         m_specifiedID->SetFocus();
 }
 
 
-void DIALOG_EXCHANGE_MODULE::OnOkClick( wxCommandEvent& event )
+void DIALOG_EXCHANGE_MODULE::OnApplyClick( wxCommandEvent& event )
 {
     bool result = false;
 
     m_MessageWindow->Clear();
     m_MessageWindow->Flush();
 
-    if( getMatchMode() == wxID_MATCH_FP_REF && m_currentModule )
+    if( getMatchMode() == ID_MATCH_FP_REF && m_currentModule )
         result = changeCurrentFootprint();
     else
         result = changeSameFootprints();

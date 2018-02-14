@@ -78,6 +78,27 @@ void EDA_DRAW_FRAME::RedrawScreen2( const wxPoint& posBefore )
 }
 
 
+// Factor out the calculation portion of the various BestZoom() implementations.
+//
+// Note that like it's forerunners this routine has an intentional side-effect: it
+// sets the scroll centre position.  While I'm not happy about that, it's probably
+// not worth fixing as its days are numbered (GAL canvases use a different method).
+double EDA_DRAW_FRAME::bestZoom( double sizeX, double sizeY, double scaleFactor, wxPoint centre )
+{
+    double bestzoom = std::max( sizeX * scaleFactor / (double) m_canvas->GetClientSize().x,
+                                sizeY * scaleFactor / (double) m_canvas->GetClientSize().y );
+
+    // Take scrollbars into account
+    DSIZE scrollbarSize = m_canvas->GetSize() - m_canvas->GetClientSize();
+    centre.x -= int( bestzoom * scrollbarSize.x / 2.0 );
+    centre.y -= int( bestzoom * scrollbarSize.y / 2.0 );
+
+    SetScrollCenterPosition( centre );
+
+    return bestzoom;
+}
+
+
 void EDA_DRAW_FRAME::Zoom_Automatique( bool aWarpPointer )
 {
     BASE_SCREEN* screen = GetScreen();
@@ -251,13 +272,13 @@ void EDA_DRAW_FRAME::AddMenuZoomAndGrid( wxMenu* MasterMenu )
 
     msg = AddHotkeyName( _( "Center" ), m_hotkeysDescrList, HK_ZOOM_CENTER );
     AddMenuItem( MasterMenu, ID_POPUP_ZOOM_CENTER, msg, KiBitmap( zoom_center_on_screen_xpm ) );
-    msg = AddHotkeyName( _( "Zoom in" ), m_hotkeysDescrList, HK_ZOOM_IN );
+    msg = AddHotkeyName( _( "Zoom In" ), m_hotkeysDescrList, HK_ZOOM_IN );
     AddMenuItem( MasterMenu, ID_POPUP_ZOOM_IN, msg, KiBitmap( zoom_in_xpm ) );
-    msg = AddHotkeyName( _( "Zoom out" ), m_hotkeysDescrList, HK_ZOOM_OUT );
+    msg = AddHotkeyName( _( "Zoom Out" ), m_hotkeysDescrList, HK_ZOOM_OUT );
     AddMenuItem( MasterMenu, ID_POPUP_ZOOM_OUT, msg, KiBitmap( zoom_out_xpm ) );
-    msg = AddHotkeyName( _( "Redraw view" ), m_hotkeysDescrList, HK_ZOOM_REDRAW );
+    msg = AddHotkeyName( _( "Redraw View" ), m_hotkeysDescrList, HK_ZOOM_REDRAW );
     AddMenuItem( MasterMenu, ID_POPUP_ZOOM_REDRAW, msg, KiBitmap( zoom_redraw_xpm ) );
-    msg = AddHotkeyName( _( "Zoom auto" ), m_hotkeysDescrList, HK_ZOOM_AUTO );
+    msg = AddHotkeyName( _( "Zoom Auto" ), m_hotkeysDescrList, HK_ZOOM_AUTO );
     AddMenuItem( MasterMenu, ID_POPUP_ZOOM_PAGE, msg, KiBitmap( zoom_fit_in_page_xpm ) );
 
 

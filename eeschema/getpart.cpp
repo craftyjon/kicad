@@ -145,7 +145,7 @@ SCH_BASE_FRAME::COMPONENT_SELECTION SCH_BASE_FRAME::SelectComponentFromLibrary(
                 history_list.push_back( alias );
         }
 
-        adapter->AddAliasList( "-- " + _( "History" ) + " --", history_list );
+        adapter->AddAliasList( "-- " + _( "History" ) + " --", _( "Recently used items" ), history_list );
         adapter->SetPreselectNode( aHistoryList[0].LibId, aHistoryList[0].Unit );
     }
 
@@ -159,7 +159,11 @@ SCH_BASE_FRAME::COMPONENT_SELECTION SCH_BASE_FRAME::SelectComponentFromLibrary(
     if( aHighlight && aHighlight->IsValid() )
         adapter->SetPreselectNode( *aHighlight, /* aUnit */ 0 );
 
-    dialogTitle.Printf( _( "Choose Symbol (%d items loaded)" ), adapter->GetComponentsCount() );
+    if( adapter->GetFilter() == CMP_TREE_MODEL_ADAPTER::CMP_FILTER_POWER )
+        dialogTitle.Printf( _( "Choose Power Symbol (%d items loaded)" ), adapter->GetComponentsCount() );
+    else
+        dialogTitle.Printf( _( "Choose Symbol (%d items loaded)" ), adapter->GetComponentsCount() );
+
     DIALOG_CHOOSE_COMPONENT dlg( this, dialogTitle, adapter, aConvert, aAllowFields, aShowFootprints );
 
     if( dlg.ShowQuasiModal() == wxID_CANCEL )

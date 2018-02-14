@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2013-2017 CERN
+ * Copyright (C) 2013-2018 CERN
  * @author Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
  * @author Maciej Suminski <maciej.suminski@cern.ch>
  *
@@ -774,9 +774,10 @@ bool TOOL_MANAGER::ProcessEvent( const TOOL_EVENT& aEvent )
     {
         auto f = dynamic_cast<EDA_DRAW_FRAME*>( GetEditFrame() );
 
-    if( f )
-        f->GetGalCanvas()->Refresh();    // fixme: ugly hack, provide a method in TOOL_DISPATCHER.
-#ifdef __WXMAC__
+        if( f )
+            f->GetGalCanvas()->Refresh(); // fixme: ugly hack, provide a method in TOOL_DISPATCHER.
+
+#if defined( __WXMAC__ ) || defined( __WINDOWS__ )
         wxTheApp->ProcessPendingEvents(); // required for updating brightening behind a popup menu
 #endif
     }
@@ -902,10 +903,6 @@ void TOOL_MANAGER::saveViewControls( TOOL_STATE* aState )
 void TOOL_MANAGER::applyViewControls( TOOL_STATE* aState )
 {
     m_viewControls->ApplySettings( aState->vcSettings );
-
-    // Override the cursor position if menu is active
-    if( m_menuActive )
-        m_viewControls->ForceCursorPosition( true, m_menuCursor );
 }
 
 
