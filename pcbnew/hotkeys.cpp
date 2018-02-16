@@ -138,13 +138,13 @@ static EDA_HOTKEY HkCanvasDefault( _HKI( "Switch to Legacy Canvas" ),
                                    GR_KB_ALT +
 #endif
                                    WXK_F9 );
-static EDA_HOTKEY HkCanvasOpenGL( _HKI( "Switch to OpenGL Canvas" ),
+static EDA_HOTKEY HkCanvasOpenGL( _HKI( "Switch to Modern Canvas (hardware accelerated)" ),
                                   HK_CANVAS_OPENGL,
 #ifdef __WXMAC__
                                   GR_KB_ALT +
 #endif
                                   WXK_F11 );
-static EDA_HOTKEY HkCanvasCairo( _HKI( "Switch to Cairo Canvas" ),
+static EDA_HOTKEY HkCanvasCairo( _HKI( "Switch to Modern Canvas (software renderer)" ),
                                  HK_CANVAS_CAIRO,
 #ifdef __WXMAC__
                                  GR_KB_ALT +
@@ -192,19 +192,6 @@ static EDA_HOTKEY Hk3DViewer( _HKI( "3D Viewer" ), HK_3D_VIEWER, GR_KB_ALT + '3'
 
 static EDA_HOTKEY HkHelp( _HKI( "Help (this window)" ), HK_HELP, '?' );
 
-
-/* Undo */
-static EDA_HOTKEY HkUndo( _HKI( "Undo" ), HK_UNDO, GR_KB_CTRL + 'Z', (int) wxID_UNDO );
-
-/* Redo */
-#if !defined( __WXMAC__ )
-static EDA_HOTKEY HkRedo( _HKI( "Redo" ), HK_REDO, GR_KB_CTRL + 'Y', (int) wxID_REDO );
-#else
-static EDA_HOTKEY HkRedo( _HKI( "Redo" ), HK_REDO,
-                          GR_KB_SHIFT + GR_KB_CTRL + 'Z',
-                          (int) wxID_REDO );
-#endif
-
 static EDA_HOTKEY HkSwitchTrackWidthToNext( _HKI( "Switch Track Width To Next" ),
                                             HK_SWITCH_TRACK_WIDTH_TO_NEXT, 'W' );
 
@@ -251,13 +238,29 @@ static EDA_HOTKEY HkViaSizeInc( _HKI( "Increase Via Size" ), HK_VIA_SIZE_INC, '\
 
 static EDA_HOTKEY HkViaSizeDec( _HKI( "Decrease Via Size" ), HK_VIA_SIZE_DEC, '\\' );
 
+
+static EDA_HOTKEY HkUndo( _HKI( "Undo" ), HK_UNDO, GR_KB_CTRL + 'Z', (int) wxID_UNDO );
+
+#if !defined( __WXMAC__ )
+static EDA_HOTKEY HkRedo( _HKI( "Redo" ), HK_REDO, GR_KB_CTRL + 'Y', (int) wxID_REDO );
+#else
+static EDA_HOTKEY HkRedo( _HKI( "Redo" ), HK_REDO,
+                          GR_KB_SHIFT + GR_KB_CTRL + 'Z',
+                          (int) wxID_REDO );
+#endif
+
+static EDA_HOTKEY HkEditCut( _HKI( "Cut" ), HK_EDIT_CUT, GR_KB_CTRL + 'X', (int) wxID_CUT );
+static EDA_HOTKEY HkEditCopy( _HKI( "Copy" ), HK_EDIT_COPY, GR_KB_CTRL + 'C', (int) wxID_COPY );
+static EDA_HOTKEY HkEditPaste( _HKI( "Paste" ), HK_EDIT_PASTE, GR_KB_CTRL + 'V', (int) wxID_PASTE );
+
 // List of common hotkey descriptors
 EDA_HOTKEY* common_Hotkey_List[] =
 {
+    &HkUndo,        &HkRedo,
+    &HkEditCut,     &HkEditCopy,        &HkEditPaste,
     &HkHelp,        &HkZoomIn,          &HkZoomOut,
     &HkZoomRedraw,  &HkZoomCenter,      &HkZoomAuto,      &HkZoomSelection, &Hk3DViewer,
     &HkSwitchUnits, &HkResetLocalCoord, &HkSetGridOrigin, &HkResetGridOrigin,
-    &HkUndo,        &HkRedo,
     &HkMouseLeftClick,
     &HkMouseLeftDClick,
     &HkIncLayerAlhpa, &HkDecLayerAlhpa,
@@ -336,7 +339,7 @@ static wxString moduleEditSectionTitle( _HKI( "Footprint Editor" ) );
 
 // list of sections and corresponding hotkey list for Pcbnew
 // (used to create an hotkey config file, and edit hotkeys )
-struct EDA_HOTKEY_CONFIG g_Pcbnew_Editor_Hokeys_Descr[] = {
+struct EDA_HOTKEY_CONFIG g_Pcbnew_Editor_Hotkeys_Descr[] = {
     { &g_CommonSectionTag,      common_Hotkey_List,         &commonSectionTitle      },
     { &boardEditorSectionTag,   board_edit_Hotkey_List,     &boardEditorSectionTitle },
     { &moduleEditSectionTag,  module_edit_Hotkey_List,    &moduleEditSectionTitle  },
@@ -345,7 +348,7 @@ struct EDA_HOTKEY_CONFIG g_Pcbnew_Editor_Hokeys_Descr[] = {
 
 // list of sections and corresponding hotkey list for the board editor
 // (used to list current hotkeys in the board editor)
-struct EDA_HOTKEY_CONFIG g_Board_Editor_Hokeys_Descr[] = {
+struct EDA_HOTKEY_CONFIG g_Board_Editor_Hotkeys_Descr[] = {
     { &g_CommonSectionTag,      common_Hotkey_List,      &commonSectionTitle },
     { &boardEditorSectionTag,   board_edit_Hotkey_List,  &boardEditorSectionTitle },
     { NULL, NULL, NULL }
@@ -353,7 +356,7 @@ struct EDA_HOTKEY_CONFIG g_Board_Editor_Hokeys_Descr[] = {
 
 // list of sections and corresponding hotkey list for the footprint editor
 // (used to list current hotkeys in the module editor)
-struct EDA_HOTKEY_CONFIG g_Module_Editor_Hokeys_Descr[] = {
+struct EDA_HOTKEY_CONFIG g_Module_Editor_Hotkeys_Descr[] = {
     { &g_CommonSectionTag,     common_Hotkey_List,      &commonSectionTitle },
     { &moduleEditSectionTag, module_edit_Hotkey_List, &moduleEditSectionTitle },
     { NULL,                    NULL,                    NULL }
@@ -361,7 +364,7 @@ struct EDA_HOTKEY_CONFIG g_Module_Editor_Hokeys_Descr[] = {
 
 // list of sections and corresponding hotkey list for the footprint viewer
 // (used to list current hotkeys in the module viewer)
-struct EDA_HOTKEY_CONFIG g_Module_Viewer_Hokeys_Descr[] = {
+struct EDA_HOTKEY_CONFIG g_Module_Viewer_Hotkeys_Descr[] = {
     { &g_CommonSectionTag, common_basic_Hotkey_List, &commonSectionTitle },
     { NULL,                NULL,                     NULL }
 };
@@ -407,7 +410,7 @@ bool FOOTPRINT_VIEWER_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aP
         return false;
 
     case HK_HELP:                   // Display Current hotkey list
-        DisplayHotkeyList( this, g_Module_Viewer_Hokeys_Descr );
+        DisplayHotkeyList( this, g_Module_Viewer_Hotkeys_Descr );
         break;
 
     case HK_RESET_LOCAL_COORD:      // set local (relative) coordinate origin

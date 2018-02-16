@@ -45,6 +45,7 @@ public:
         m_p0 = aOther.m_p0;
         m_p1 = aOther.m_p1;
         m_pc = aOther.m_pc;
+        m_width = aOther.m_width;
     }
 
     ~SHAPE_ARC() {};
@@ -104,15 +105,15 @@ public:
     double  GetEndAngle() const;
 
 
-    bool ConstructFromCorners( VECTOR2I aP0, VECTOR2I aP1, double aCenterAngle );
+    bool ConstructFromCorners( const VECTOR2I& aP0, const VECTOR2I& aP1, double aCenterAngle );
 
 
-    bool ConstructFromCornerAndAngles( VECTOR2I aP0,
+    bool ConstructFromCornerAndAngles( const VECTOR2I& aP0,
             double aStartAngle,
             double aCenterAngle,
             double aRadius );
 
-    const SHAPE_LINE_CHAIN ConvertToPolyline( double aAccuracy = 0.02f ) const;
+    SHAPE_LINE_CHAIN ConvertToPolyline( double aAccuracy = 0.02 ) const;
 
 private:
 

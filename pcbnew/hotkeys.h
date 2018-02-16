@@ -110,23 +110,20 @@ enum hotkey_id_commnand {
     HK_CUSTOM_TRACK_WIDTH,
     HK_DP_DIMENSIONS,
     HK_VIA_SIZE_INC,
-    HK_VIA_SIZE_DEC,
-    HK_EDIT_CUT,
-    HK_EDIT_PASTE,
-    HK_EDIT_COPY
+    HK_VIA_SIZE_DEC
 };
 
 // Full list of hotkey descriptors for board editor and footprint editor
-extern struct EDA_HOTKEY_CONFIG g_Pcbnew_Editor_Hokeys_Descr[];
+extern struct EDA_HOTKEY_CONFIG g_Pcbnew_Editor_Hotkeys_Descr[];
 
 // List of hotkey descriptors for the board editor only
-extern struct EDA_HOTKEY_CONFIG g_Board_Editor_Hokeys_Descr[];
+extern struct EDA_HOTKEY_CONFIG g_Board_Editor_Hotkeys_Descr[];
 
 // List of hotkey descriptors for the footprint editor only
-extern struct EDA_HOTKEY_CONFIG g_Module_Editor_Hokeys_Descr[];
+extern struct EDA_HOTKEY_CONFIG g_Module_Editor_Hotkeys_Descr[];
 
 // List of hotkey descriptors for the footprint editor only
-extern struct EDA_HOTKEY_CONFIG g_Module_Viewer_Hokeys_Descr[];
+extern struct EDA_HOTKEY_CONFIG g_Module_Viewer_Hotkeys_Descr[];
 
 // List of common hotkey descriptors
 // used in hotkeys_board_editor.cpp and hotkeys_module_editor.cpp
