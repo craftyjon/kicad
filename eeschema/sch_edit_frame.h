@@ -588,7 +588,7 @@ public:
                         const wxString& aFullFileName,
                         unsigned        aNetlistOptions,
                         REPORTER*       aReporter = NULL,
-                        bool silent = false ) override;
+                        bool silent = false );
 
     /**
      * Create a netlist file.
@@ -1559,6 +1559,16 @@ public:
      * @param aSheetList is a list of sheets to recalculate
      */
     void RecalculateConnections( SCH_SHEET_LIST aSheetList );
+
+    /**
+     * Updates netlist and sends it to pcbnew.
+     * @param aUpdateOptions is a string defining update options:
+     * - "no-annotate" does not perform schematic annotation
+     * - "quiet-annotate" performs schematic annotation without showing annotation dialog
+     * aUpdateOptions may also contain other options accepted for netlist reader.
+     * @see PCB_EDIT_FRAME::KiwayMailIn()
+     */
+    void doUpdatePcb( const wxString& aUpdateOptions = "" );
 
     int GetIconScale() override;
     void SetIconScale( int aScale ) override;

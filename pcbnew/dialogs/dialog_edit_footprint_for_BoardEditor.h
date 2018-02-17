@@ -23,16 +23,16 @@
  */
 
 
-#ifndef __DIALOG_EDIT_MODULE_FOR_BOARDEDITOR__
-#define __DIALOG_EDIT_MODULE_FOR_BOARDEDITOR__
+#ifndef DIALOG_EDIT_FOOTPRINT_FOR_BOARDEDITOR_H
+#define DIALOG_EDIT_FOOTPRINT_FOR_BOARDEDITOR_H
 
 
-#include <dialog_edit_module_for_BoardEditor_base.h>
+#include <dialog_edit_footprint_for_BoardEditor_base.h>
 #include <wx/valnum.h>
 
 class PANEL_PREV_3D;
 
-class DIALOG_MODULE_BOARD_EDITOR: public DIALOG_MODULE_BOARD_EDITOR_BASE
+class DIALOG_FOOTPRINT_BOARD_EDITOR: public DIALOG_FOOTPRINT_BOARD_EDITOR_BASE
 {
 private:
     PCB_EDIT_FRAME *            m_Parent;
@@ -63,8 +63,8 @@ public:
 
 public:
     // Constructor and destructor
-    DIALOG_MODULE_BOARD_EDITOR( PCB_EDIT_FRAME* aParent, MODULE* aModule, wxDC* aDC );
-    ~DIALOG_MODULE_BOARD_EDITOR();
+    DIALOG_FOOTPRINT_BOARD_EDITOR( PCB_EDIT_FRAME* aParent, MODULE* aModule, wxDC* aDC );
+    ~DIALOG_FOOTPRINT_BOARD_EDITOR();
 
 private:
     void BrowseAndAdd3DShapeFile();
@@ -106,4 +106,4 @@ private:
 };
 
 
-#endif      // __DIALOG_EDIT_MODULE_FOR_BOARDEDITOR__
+#endif      // DIALOG_EDIT_FOOTPRINT_FOR_BOARDEDITOR_H

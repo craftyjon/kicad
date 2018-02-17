@@ -57,6 +57,16 @@ TOOL_ACTION PCB_ACTIONS::alignRight( "pcbnew.AlignAndDistribute.alignRight",
         _( "Align to Right" ),
         _( "Aligns selected items to the right edge" ), right_xpm );
 
+TOOL_ACTION PCB_ACTIONS::alignCenterX( "pcbnew.AlignAndDistribute.alignCenterX",
+        AS_GLOBAL, 0,
+        _( "Align to Middle" ),
+        _( "Aligns selected items to the vertical center" ), align_items_middle_xpm );
+
+TOOL_ACTION PCB_ACTIONS::alignCenterY( "pcbnew.AlignAndDistribute.alignCenterY",
+        AS_GLOBAL, 0,
+        _( "Align to Center" ),
+        _( "Aligns selected items to the horizontal center" ), align_items_center_xpm );
+
 TOOL_ACTION PCB_ACTIONS::distributeHorizontally( "pcbnew.AlignAndDistribute.distributeHorizontally",
         AS_GLOBAL, 0,
         _( "Distribute Horizontally" ),
@@ -100,6 +110,8 @@ bool ALIGN_DISTRIBUTE_TOOL::Init()
     m_placementMenu->Add( PCB_ACTIONS::alignBottom );
     m_placementMenu->Add( PCB_ACTIONS::alignLeft );
     m_placementMenu->Add( PCB_ACTIONS::alignRight );
+    m_placementMenu->Add( PCB_ACTIONS::alignCenterX );
+    m_placementMenu->Add( PCB_ACTIONS::alignCenterY );
     m_placementMenu->AppendSeparator();
     m_placementMenu->Add( PCB_ACTIONS::distributeHorizontally );
     m_placementMenu->Add( PCB_ACTIONS::distributeVertically );
@@ -126,29 +138,39 @@ bool SortTopmostY( const std::pair<BOARD_ITEM*, EDA_RECT> left, const std::pair<
     return ( left.second.GetY() < right.second.GetY() );
 }
 
+bool SortCenterX( const std::pair<BOARD_ITEM*, EDA_RECT> left, const std::pair<BOARD_ITEM*, EDA_RECT> right)
+{
+    return ( left.second.GetCenter().x < right.second.GetCenter().x );
+}
+
+bool SortCenterY( const std::pair<BOARD_ITEM*, EDA_RECT> left, const std::pair<BOARD_ITEM*, EDA_RECT> right)
+{
+    return ( left.second.GetCenter().y < right.second.GetCenter().y );
+}
+
 bool SortBottommostY( const std::pair<BOARD_ITEM*, EDA_RECT> left, const std::pair<BOARD_ITEM*, EDA_RECT> right)
 {
     return ( left.second.GetBottom() > right.second.GetBottom() );
 }
 
-ALIGNMENT_SET GetBoundingBoxesV( const SELECTION& sel )
+ALIGNMENT_RECTS GetBoundingBoxes( const SELECTION &sel )
 {
     const SELECTION& selection = sel;
 
-    ALIGNMENT_SET aSet;
+    ALIGNMENT_RECTS rects;
 
     for( auto item : selection )
     {
         if( item->Type() == PCB_MODULE_T )
         {
-            aSet.push_back( std::make_pair( static_cast<BOARD_ITEM*>( item ), static_cast<MODULE*>( item )->GetFootprintRect() ) );
+            rects.emplace_back( std::make_pair( dynamic_cast<BOARD_ITEM*>( item ), dynamic_cast<MODULE*>( item )->GetFootprintRect() ) );
         }
         else
         {
-            aSet.push_back( std::make_pair( static_cast<BOARD_ITEM*>( item ), static_cast<MODULE*>( item )->GetBoundingBox() ) );
+            rects.emplace_back( std::make_pair( dynamic_cast<BOARD_ITEM*>( item ), dynamic_cast<MODULE*>( item )->GetBoundingBox() ) );
         }
     }
-    return aSet;
+    return rects;
 }
 
 
@@ -162,16 +184,16 @@ int ALIGN_DISTRIBUTE_TOOL::AlignTop( const TOOL_EVENT& aEvent )
     BOARD_COMMIT commit( getEditFrame<PCB_BASE_FRAME>() );
     commit.StageItems( selection, CHT_MODIFY );
 
-    // Compute the topmost point of selection - it will be the edge of alignment
-    auto alignMap = GetBoundingBoxesV( selection );
-    std::sort( alignMap.begin(), alignMap.end(), SortTopmostY );
+    auto itemsToAlign = GetBoundingBoxes( selection );
+    std::sort( itemsToAlign.begin(), itemsToAlign.end(), SortTopmostY );
 
-    int top = alignMap.begin()->second.GetY();
+    // after sorting, the fist item acts as the target for all others
+    const int targetTop = itemsToAlign.begin()->second.GetY();
 
     // Move the selected items
-    for( auto& i : alignMap )
+    for( auto& i : itemsToAlign )
     {
-        int difference = top - i.second.GetY();
+        int difference = targetTop - i.second.GetY();
         i.first->Move( wxPoint( 0, difference ) );
     }
 
@@ -191,16 +213,16 @@ int ALIGN_DISTRIBUTE_TOOL::AlignBottom( const TOOL_EVENT& aEvent )
     BOARD_COMMIT commit( getEditFrame<PCB_BASE_FRAME>() );
     commit.StageItems( selection, CHT_MODIFY );
 
-    // Compute the lowest point of selection - it will be the edge of alignment
-    auto alignMap = GetBoundingBoxesV( selection );
-    std::sort( alignMap.begin(), alignMap.end(), SortBottommostY );
+    auto itemsToAlign = GetBoundingBoxes( selection );
+    std::sort( itemsToAlign.begin(), itemsToAlign.end(), SortBottommostY );
 
-   int bottom = alignMap.begin()->second.GetBottom();
+    // after sorting, the fist item acts as the target for all others
+   const int targetBottom = itemsToAlign.begin()->second.GetBottom();
 
     // Move the selected items
-    for( auto& i : alignMap )
+    for( auto& i : itemsToAlign )
     {
-        int difference = bottom - i.second.GetBottom();
+        int difference = targetBottom - i.second.GetBottom();
         i.first->Move( wxPoint( 0, difference ) );
     }
 
@@ -235,17 +257,16 @@ int ALIGN_DISTRIBUTE_TOOL::doAlignLeft()
     BOARD_COMMIT commit( getEditFrame<PCB_BASE_FRAME>() );
     commit.StageItems( selection, CHT_MODIFY );
 
-    // Compute the leftmost point of selection - it will be the edge of alignment
-   auto alignMap = GetBoundingBoxesV( selection );
+    auto itemsToAlign = GetBoundingBoxes( selection );
+    std::sort( itemsToAlign.begin(), itemsToAlign.end(), SortLeftmostX );
 
-   std::sort( alignMap.begin(), alignMap.end(), SortLeftmostX );
-
-   int left = alignMap.begin()->second.GetX();
+    // after sorting, the fist item acts as the target for all others
+    const int targetLeft = itemsToAlign.begin()->second.GetX();
 
     // Move the selected items
-    for( auto& i : alignMap )
+    for( auto& i : itemsToAlign )
     {
-        int difference = left - i.second.GetX();
+        int difference = targetLeft - i.second.GetX();
         i.first->Move( wxPoint( difference, 0 ) );
     }
 
@@ -280,20 +301,78 @@ int ALIGN_DISTRIBUTE_TOOL::doAlignRight()
     BOARD_COMMIT commit( getEditFrame<PCB_BASE_FRAME>() );
     commit.StageItems( selection, CHT_MODIFY );
 
-    // Compute the rightmost point of selection - it will be the edge of alignment
-    auto alignMap = GetBoundingBoxesV( selection );
-    std::sort( alignMap.begin(), alignMap.end(), SortRightmostX );
+    auto itemsToAlign = GetBoundingBoxes( selection );
+    std::sort( itemsToAlign.begin(), itemsToAlign.end(), SortRightmostX );
 
-    int right = alignMap.begin()->second.GetRight();
+    // after sorting, the fist item acts as the target for all others
+    const int targetRight = itemsToAlign.begin()->second.GetRight();
 
     // Move the selected items
-    for( auto& i : alignMap )
+    for( auto& i : itemsToAlign )
     {
-        int difference = right - i.second.GetRight();
+        int difference = targetRight - i.second.GetRight();
         i.first->Move( wxPoint( difference, 0 ) );
     }
 
     commit.Push( _( "Align to right" ) );
+
+    return 0;
+}
+
+
+int ALIGN_DISTRIBUTE_TOOL::AlignCenterX( const TOOL_EVENT& aEvent )
+{
+    const SELECTION& selection = m_selectionTool->GetSelection();
+
+    if( selection.Size() <= 1 )
+        return 0;
+
+    BOARD_COMMIT commit( getEditFrame<PCB_BASE_FRAME>() );
+    commit.StageItems( selection, CHT_MODIFY );
+
+    auto itemsToAlign = GetBoundingBoxes( selection );
+    std::sort( itemsToAlign.begin(), itemsToAlign.end(), SortCenterX );
+
+    // after sorting use the x coordinate of the middle item as a target for all other items
+    const int targetX = itemsToAlign.at( itemsToAlign.size() / 2 ).second.GetCenter().x;
+
+    // Move the selected items
+    for( auto& i : itemsToAlign )
+    {
+        int difference = targetX - i.second.GetCenter().x;
+        i.first->Move( wxPoint( difference, 0 ) );
+    }
+
+    commit.Push( _( "Align to middle" ) );
+
+    return 0;
+}
+
+
+int ALIGN_DISTRIBUTE_TOOL::AlignCenterY( const TOOL_EVENT& aEvent )
+{
+    const SELECTION& selection = m_selectionTool->GetSelection();
+
+    if( selection.Size() <= 1 )
+        return 0;
+
+    BOARD_COMMIT commit( getEditFrame<PCB_BASE_FRAME>() );
+    commit.StageItems( selection, CHT_MODIFY );
+
+    auto itemsToAlign = GetBoundingBoxes( selection );
+    std::sort( itemsToAlign.begin(), itemsToAlign.end(), SortCenterY );
+
+    // after sorting use the y coordinate of the middle item as a target for all other items
+    const int targetY = itemsToAlign.at( itemsToAlign.size() / 2 ).second.GetCenter().y;
+
+    // Move the selected items
+    for( auto& i : itemsToAlign )
+    {
+        int difference = targetY - i.second.GetCenter().y;
+        i.first->Move( wxPoint( 0, difference ) );
+    }
+
+    commit.Push( _( "Align to center" ) );
 
     return 0;
 }
@@ -309,28 +388,28 @@ int ALIGN_DISTRIBUTE_TOOL::DistributeHorizontally( const TOOL_EVENT& aEvent )
     BOARD_COMMIT commit( getEditFrame<PCB_BASE_FRAME>() );
     commit.StageItems( selection, CHT_MODIFY );
 
-    auto alignMap = GetBoundingBoxesV( selection );
+    auto itemsToDistribute = GetBoundingBoxes( selection );
 
     // find the last item by reverse sorting
-    std::sort( alignMap.begin(), alignMap.end(), SortRightmostX );
-    const auto maxRight = alignMap.begin()->second.GetRight();
-    const auto lastItem = alignMap.begin()->first;
+    std::sort( itemsToDistribute.begin(), itemsToDistribute.end(), SortRightmostX );
+    const auto maxRight = itemsToDistribute.begin()->second.GetRight();
+    const auto lastItem = itemsToDistribute.begin()->first;
 
     // sort to get starting order
-    std::sort( alignMap.begin(), alignMap.end(), SortLeftmostX );
+    std::sort( itemsToDistribute.begin(), itemsToDistribute.end(), SortLeftmostX );
 
-    auto totalGap = maxRight - alignMap.begin()->second.GetX();
+    auto totalGap = maxRight - itemsToDistribute.begin()->second.GetX();
 
-    for( auto& i : alignMap )
+    for( auto& i : itemsToDistribute )
     {
         totalGap -= i.second.GetWidth();
     }
 
-    const auto itemGap = totalGap / ( alignMap.size() - 1 );
+    const auto itemGap = totalGap / ( itemsToDistribute.size() - 1 );
 
-    auto targetX = alignMap.begin()->second.GetX();
+    auto targetX = itemsToDistribute.begin()->second.GetX();
 
-    for( auto& i : alignMap )
+    for( auto& i : itemsToDistribute )
     {
         // cover the corner case where the last item is wider than the previous item and gap
         if( lastItem == i.first )
@@ -357,28 +436,29 @@ int ALIGN_DISTRIBUTE_TOOL::DistributeVertically( const TOOL_EVENT& aEvent )
     BOARD_COMMIT commit( getEditFrame<PCB_BASE_FRAME>() );
     commit.StageItems( selection, CHT_MODIFY );
 
-    auto alignMap = GetBoundingBoxesV( selection );
+    auto itemsToDistribute = GetBoundingBoxes( selection );
 
     // find the last item by reverse sorting
-    std::sort( alignMap.begin(), alignMap.end(), SortBottommostY );
-    const auto maxBottom = alignMap.begin()->second.GetBottom();
-    const auto lastItem = alignMap.begin()->first;
+    std::sort( itemsToDistribute.begin(), itemsToDistribute.end(), SortBottommostY );
+    const auto maxBottom = itemsToDistribute.begin()->second.GetBottom();
+    const auto lastItem = itemsToDistribute.begin()->first;
 
     // sort to get starting order
-    std::sort( alignMap.begin(), alignMap.end(), SortTopmostY );
+    std::sort( itemsToDistribute.begin(), itemsToDistribute.end(), SortTopmostY );
 
-    auto totalGap = maxBottom - alignMap.begin()->second.GetY();
+    // determine the distance between the bottommost and topmost Y coordinates
+    auto totalGap = maxBottom - itemsToDistribute.begin()->second.GetY();
 
-    for( auto& i : alignMap )
+    for( auto& i : itemsToDistribute )
     {
         totalGap -= i.second.GetHeight();
     }
 
-    const auto itemGap = totalGap / ( alignMap.size() - 1 );
+    const auto itemGap = totalGap / ( itemsToDistribute.size() - 1 );
 
-    auto targetY = alignMap.begin()->second.GetY();
+    auto targetY = itemsToDistribute.begin()->second.GetY();
 
-    for( auto& i : alignMap )
+    for( auto& i : itemsToDistribute )
     {
         // cover the corner case where the last item is wider than the previous item and gap
         if( lastItem == i.first )
@@ -401,6 +481,8 @@ void ALIGN_DISTRIBUTE_TOOL::setTransitions()
     Go( &ALIGN_DISTRIBUTE_TOOL::AlignBottom, PCB_ACTIONS::alignBottom.MakeEvent() );
     Go( &ALIGN_DISTRIBUTE_TOOL::AlignLeft,   PCB_ACTIONS::alignLeft.MakeEvent() );
     Go( &ALIGN_DISTRIBUTE_TOOL::AlignRight,  PCB_ACTIONS::alignRight.MakeEvent() );
+    Go( &ALIGN_DISTRIBUTE_TOOL::AlignCenterX,  PCB_ACTIONS::alignCenterX.MakeEvent() );
+    Go( &ALIGN_DISTRIBUTE_TOOL::AlignCenterY,  PCB_ACTIONS::alignCenterY.MakeEvent() );
 
     Go( &ALIGN_DISTRIBUTE_TOOL::DistributeHorizontally,  PCB_ACTIONS::distributeHorizontally.MakeEvent() );
     Go( &ALIGN_DISTRIBUTE_TOOL::DistributeVertically,    PCB_ACTIONS::distributeVertically.MakeEvent() );

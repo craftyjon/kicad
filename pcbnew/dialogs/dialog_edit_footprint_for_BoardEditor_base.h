@@ -1,12 +1,12 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Jul  2 2017)
+// C++ code generated with wxFormBuilder (version Aug  4 2017)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef __DIALOG_EDIT_MODULE_FOR_BOARDEDITOR_BASE_H__
-#define __DIALOG_EDIT_MODULE_FOR_BOARDEDITOR_BASE_H__
+#ifndef __DIALOG_EDIT_FOOTPRINT_FOR_BOARDEDITOR_BASE_H__
+#define __DIALOG_EDIT_FOOTPRINT_FOR_BOARDEDITOR_BASE_H__
 
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
@@ -48,9 +48,9 @@ class TEXT_CTRL_EVAL;
 #define ID_REMOVE_3D_SHAPE 1006
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Class DIALOG_MODULE_BOARD_EDITOR_BASE
+/// Class DIALOG_FOOTPRINT_BOARD_EDITOR_BASE
 ///////////////////////////////////////////////////////////////////////////////
-class DIALOG_MODULE_BOARD_EDITOR_BASE : public DIALOG_SHIM
+class DIALOG_FOOTPRINT_BOARD_EDITOR_BASE : public DIALOG_SHIM
 {
 	private:
 		wxBoxSizer* m_GeneralBoxSizer;
@@ -136,9 +136,9 @@ class DIALOG_MODULE_BOARD_EDITOR_BASE : public DIALOG_SHIM
 	
 	public:
 		
-		DIALOG_MODULE_BOARD_EDITOR_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Footprint Properties"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER ); 
-		~DIALOG_MODULE_BOARD_EDITOR_BASE();
+		DIALOG_FOOTPRINT_BOARD_EDITOR_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Footprint Properties"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER ); 
+		~DIALOG_FOOTPRINT_BOARD_EDITOR_BASE();
 	
 };
 
-#endif //__DIALOG_EDIT_MODULE_FOR_BOARDEDITOR_BASE_H__
+#endif //__DIALOG_EDIT_FOOTPRINT_FOR_BOARDEDITOR_BASE_H__

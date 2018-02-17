@@ -52,6 +52,9 @@ typedef std::map<wxString, MODULE*> MODULE_MAP;
 typedef std::map<wxString, EINSTANCE*> EINSTANCE_MAP;
 typedef std::map<wxString, std::unique_ptr<EPART>> EPART_MAP;
 
+///> Translates Eagle special characters to their counterparts in KiCad.
+wxString escapeName( const wxString& aNetName );
+
 static inline wxXmlNode* getChildrenNodes( NODE_MAP& aMap, const wxString& aName )
 {
     auto it = aMap.find( aName );
@@ -285,6 +288,7 @@ public:
     void Set( const wxString& aString )
     {
         m_data = Convert<T>( aString );
+        m_isAvailable = !aString.IsEmpty();
     }
 
     /**

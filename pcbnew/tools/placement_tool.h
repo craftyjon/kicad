@@ -28,7 +28,7 @@
 #include <tool/tool_interactive.h>
 #include <class_board_item.h>
 
-typedef std::vector<std::pair<BOARD_ITEM*, EDA_RECT>> ALIGNMENT_SET;
+typedef std::vector<std::pair<BOARD_ITEM*, EDA_RECT>> ALIGNMENT_RECTS;
 
 class SELECTION_TOOL;
 
@@ -67,6 +67,20 @@ public:
      * Sets X coordinate of the selected items to the value of the right-most selected item X coordinate.
      */
     int AlignRight( const TOOL_EVENT& aEvent );
+
+    /**
+     * Function AlignCenterX()
+     * Sets the x coordinate of the midpoint of each of the selected items to
+     * the value of the x coordinate of the center of the middle selected item.
+     */
+    int AlignCenterX( const TOOL_EVENT& aEvent );
+
+    /**
+     * Function AlignCenterX()
+     * Sets the y coordinate of the midpoint of each of the selected items to
+     * the value of the y coordinate of the center of the middle selected item.
+     */
+    int AlignCenterY( const TOOL_EVENT& aEvent );
 
     /**
      * Function DistributeHorizontally()

@@ -1,12 +1,12 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Jul  2 2017)
+// C++ code generated with wxFormBuilder (version Aug  4 2017)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef __DIALOG_EXCHANGE_MODULES_BASE_H__
-#define __DIALOG_EXCHANGE_MODULES_BASE_H__
+#ifndef __DIALOG_EXCHANGE_FOOTPRINTS_BASE_H__
+#define __DIALOG_EXCHANGE_FOOTPRINTS_BASE_H__
 
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
@@ -38,9 +38,9 @@ class WX_HTML_REPORT_PANEL;
 
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Class DIALOG_EXCHANGE_MODULE_BASE
+/// Class DIALOG_EXCHANGE_FOOTPRINTS_BASE
 ///////////////////////////////////////////////////////////////////////////////
-class DIALOG_EXCHANGE_MODULE_BASE : public DIALOG_SHIM
+class DIALOG_EXCHANGE_FOOTPRINTS_BASE : public DIALOG_SHIM
 {
 	private:
 	
@@ -79,9 +79,9 @@ class DIALOG_EXCHANGE_MODULE_BASE : public DIALOG_SHIM
 	
 	public:
 		
-		DIALOG_EXCHANGE_MODULE_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("%s"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER ); 
-		~DIALOG_EXCHANGE_MODULE_BASE();
+		DIALOG_EXCHANGE_FOOTPRINTS_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("%s"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER ); 
+		~DIALOG_EXCHANGE_FOOTPRINTS_BASE();
 	
 };
 
-#endif //__DIALOG_EXCHANGE_MODULES_BASE_H__
+#endif //__DIALOG_EXCHANGE_FOOTPRINTS_BASE_H__

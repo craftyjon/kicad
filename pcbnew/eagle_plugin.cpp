@@ -766,7 +766,7 @@ void EAGLE_PLUGIN::loadLibrary( wxXmlNode* aLib, const wxString* aLibName )
 
         const wxString& pack_ref = package->GetAttribute( "name" );
         std::string pack_name( pack_ref );
-        ReplaceIllegalFileNameChars( &pack_name );
+        ReplaceIllegalFileNameChars( &pack_name, '_' );
 
         m_xpath->Value( pack_name.c_str() );
 
@@ -1717,7 +1717,7 @@ void EAGLE_PLUGIN::loadSignals( wxXmlNode* aSignals )
 
         zones.clear();
 
-        const wxString& netName = net->GetAttribute( "name" );
+        const wxString& netName = escapeName( net->GetAttribute( "name" ) );
         m_board->Add( new NETINFO_ITEM( m_board, netName, netCode ) );
 
         m_xpath->Value( netName.c_str() );

@@ -1,16 +1,17 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Nov 22 2017)
+// C++ code generated with wxFormBuilder (version Aug  4 2017)
 // http://www.wxformbuilder.org/
 //
-// PLEASE DO *NOT* EDIT THIS FILE!
+// PLEASE DO "NOT" EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef __DIALOG_GEN_MODULE_POSITION_FILE_BASE_H__
-#define __DIALOG_GEN_MODULE_POSITION_FILE_BASE_H__
+#ifndef __DIALOG_GEN_FOOTPRINT_POSITION_FILE_BASE_H__
+#define __DIALOG_GEN_FOOTPRINT_POSITION_FILE_BASE_H__
 
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/intl.h>
+class DIALOG_SHIM;
 class WX_HTML_REPORT_PANEL;
 
 #include "dialog_shim.h"
@@ -30,9 +31,9 @@ class WX_HTML_REPORT_PANEL;
 ///////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Class DIALOG_GEN_MODULE_POSITION_BASE
+/// Class DIALOG_GEN_FOOTPRINT_POSITION_BASE
 ///////////////////////////////////////////////////////////////////////////////
-class DIALOG_GEN_MODULE_POSITION_BASE : public DIALOG_SHIM
+class DIALOG_GEN_FOOTPRINT_POSITION_BASE : public DIALOG_SHIM
 {
 	private:
 	
@@ -57,9 +58,9 @@ class DIALOG_GEN_MODULE_POSITION_BASE : public DIALOG_SHIM
 	
 	public:
 		
-		DIALOG_GEN_MODULE_POSITION_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Generate Footprint Position Files"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER ); 
-		~DIALOG_GEN_MODULE_POSITION_BASE();
+		DIALOG_GEN_FOOTPRINT_POSITION_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Generate Footprint Position Files"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER ); 
+		~DIALOG_GEN_FOOTPRINT_POSITION_BASE();
 	
 };
 
-#endif //__DIALOG_GEN_MODULE_POSITION_FILE_BASE_H__
+#endif //__DIALOG_GEN_FOOTPRINT_POSITION_FILE_BASE_H__
