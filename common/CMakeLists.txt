@@ -163,6 +163,8 @@ set( COMMON_DLG_SRCS
     dialogs/dialog_image_editor_base.cpp
     dialogs/dialog_list_selector_base.cpp
     dialogs/dialog_page_settings_base.cpp
+    dialogs/dialog_text_entry_base.cpp
+    dialogs/dialog_text_entry.cpp
     dialogs/wx_html_report_panel.cpp
     dialogs/wx_html_report_panel_base.cpp
     )
@@ -294,6 +296,7 @@ set( COMMON_SRCS
     searchhelpfilefullpath.cpp
     selcolor.cpp
     settings.cpp
+    status_popup.cpp
     systemdirsappend.cpp
     trigo.cpp
     undo_redo_container.cpp
@@ -301,7 +304,6 @@ set( COMMON_SRCS
     validators.cpp
     wildcards_and_files_ext.cpp
     worksheet.cpp
-    wx_status_popup.cpp
     wxdataviewctrl_helpers.cpp
     xnode.cpp
     zoom.cpp
@@ -350,6 +352,7 @@ set( COMMON_SRCS
     tool/zoom_tool.cpp
 
     geometry/convex_hull.cpp
+    geometry/geometry_utils.cpp
     geometry/seg.cpp
     geometry/shape.cpp
     geometry/shape_collisions.cpp
@@ -431,11 +434,6 @@ set( PCB_COMMON_SRCS
     ../pcbnew/zone_settings.cpp
     widgets/widget_net_selector.cpp
 )
-
-set( PCB_COMMON_SRCS
-    ${PCB_COMMON_SRCS}
-    ../pcbnew/pcb_painter.cpp
-    )
 
 # add -DPCBNEW to compilation of these PCBNEW sources
 set_source_files_properties( ${PCB_COMMON_SRCS} PROPERTIES

@@ -42,10 +42,14 @@
 #include <class_track.h>
 #include <macros.h>
 #include <html_messagebox.h>
+#include <dialog_text_entry.h>
 
 #include <dialog_design_rules.h>
 #include <wx/generic/gridctrl.h>
 #include <dialog_design_rules_aux_helper_class.h>
+
+#include <tool/tool_event.h>
+#include <tool/tool_manager.h>
 
 // Column labels for net lists
 #define NET_TITLE       _( "Net" )
@@ -245,6 +249,9 @@ void DIALOG_DESIGN_RULES::InitDialogRules()
 
     // Initialize the Rules List
     InitRulesList();
+
+    // Reassure that all nets have net classes assigned
+    m_Pcb->BuildListOfNets();
 
     // copy all NETs into m_AllNets by adding them as NETCUPs.
 
@@ -708,6 +715,13 @@ bool DIALOG_DESIGN_RULES::TransferDataFromWindow()
     CopyGlobalRulesToBoard();
     CopyDimensionsListsToBoard();
     m_BrdSettings->SetCurrentNetClass( NETCLASS::Default );
+
+    //this event causes the routing tool to reload its design rules information
+    TOOL_MANAGER* toolManager = m_Parent->GetToolManager();
+    TOOL_EVENT event( TC_COMMAND, TA_MODEL_CHANGE, AS_ACTIVE );
+    toolManager->ProcessEvent( event );
+
+
     return true;
 }
 
@@ -718,7 +732,7 @@ void DIALOG_DESIGN_RULES::OnAddNetclassClick( wxCommandEvent& event )
 
     // @todo set validator to ensure net class name is valid rather than all of the checks
     //       after the OK button has been selected.
-    wxTextEntryDialog dlg( this, _( "New Net Class Name:" ), wxEmptyString, class_name );
+    WX_TEXT_ENTRY_DIALOG dlg( this, _( "New Net Class Name:" ), wxEmptyString, class_name );
 
     if( dlg.ShowModal() != wxID_OK )
         return;         // canceled by user
@@ -1198,3 +1212,7 @@ bool DIALOG_DESIGN_RULES::TestDataValidity( wxString* aErrorMsg )
 
     return result;
 }
+
+
+
+

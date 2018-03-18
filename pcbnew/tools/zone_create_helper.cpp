@@ -65,7 +65,7 @@ std::unique_ptr<ZONE_CONTAINER> ZONE_CREATE_HELPER::createNewZone( bool aKeepout
     zoneInfo.m_NetcodeSelection = board.GetHighLightNetCode();
     zoneInfo.SetIsKeepout( m_params.m_keepout );
 
-    if ( m_params.m_mode != DRAWING_TOOL::ZONE_MODE::GRAPHIC_POLYGON  )
+    if( m_params.m_mode != DRAWING_TOOL::ZONE_MODE::GRAPHIC_POLYGON )
     {
         // Get the current default settings for zones
 
@@ -177,7 +177,7 @@ void ZONE_CREATE_HELPER::commitZone( std::unique_ptr<ZONE_CONTAINER> aZone )
             auto poly = m_tool.m_editModules ? new EDGE_MODULE( (MODULE *) parent ) : new DRAWSEGMENT();
 
             poly->SetShape ( S_POLYGON );
-            poly->SetLayer( aZone->GetLayer() );
+            poly->SetLayer( m_tool.getDrawingLayer() );
             poly->SetPolyShape ( *aZone->Outline() );
 
             bCommit.Add( poly );
@@ -189,7 +189,7 @@ void ZONE_CREATE_HELPER::commitZone( std::unique_ptr<ZONE_CONTAINER> aZone )
 }
 
 
-bool ZONE_CREATE_HELPER::OnFirstPoint()
+bool ZONE_CREATE_HELPER::OnFirstPoint( POLYGON_GEOM_MANAGER& aMgr )
 {
     // if we don't have a zone, create one
     // the user's choice here can affect things like the colour
@@ -211,6 +211,10 @@ bool ZONE_CREATE_HELPER::OnFirstPoint()
             m_previewItem.SetFillColor( color.WithAlpha( 0.2 ) );
 
             m_parentView.SetVisible( &m_previewItem, true );
+
+            aMgr.SetLeaderMode( m_zone.get()->GetHV45()
+                                ? POLYGON_GEOM_MANAGER::LEADER_MODE::DEG45
+                                : POLYGON_GEOM_MANAGER::LEADER_MODE::DIRECT );
         }
     }
 
@@ -235,7 +239,7 @@ void ZONE_CREATE_HELPER::OnComplete( const POLYGON_GEOM_MANAGER& aMgr )
 {
     auto& finalPoints = aMgr.GetLockedInPoints();
 
-    if( finalPoints.size() < 3 )
+    if( finalPoints.PointCount() < 3 )
     {
         // just scrap the zone in progress
         m_zone = nullptr;
@@ -245,14 +249,15 @@ void ZONE_CREATE_HELPER::OnComplete( const POLYGON_GEOM_MANAGER& aMgr )
         // if m_params.m_mode == DRAWING_TOOL::ZONE_MODE::CUTOUT, m_zone
         // will be merged to the existing zone as a new hole.
         m_zone->Outline()->NewOutline();
+        auto* outline = m_zone->Outline();
 
-        for( const auto& pt : finalPoints )
+        for( int i = 0; i < finalPoints.PointCount(); ++i )
         {
-            m_zone->Outline()->Append( pt );
+            outline->Append( finalPoints.CPoint( i ) );
         }
 
-        m_zone->Outline()->Outline( 0 ).SetClosed( true );
-        m_zone->Outline()->RemoveNullSegments();
+        outline->Outline( 0 ).SetClosed( true );
+        outline->RemoveNullSegments();
 
         // hand the zone over to the committer
         commitZone( std::move( m_zone ) );

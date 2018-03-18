@@ -179,18 +179,6 @@ public:
         return false;
     }
 
-    /**
-     * Function ImportFile
-     *  load the given filename but sets the path to the current project path.
-     *  @param full filepath of file to be imported.
-     *  @param aFileType enum value for filetype
-     */
-    VTBL_ENTRY bool ImportFile( const wxString& aFileName, int aFileType )
-    {
-        // overload me for your wxFrame type.
-
-        return false;
-    }
 
     /**
      * Function ShowModal

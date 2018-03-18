@@ -62,6 +62,7 @@ class SCH_FIELD;
 class LIB_PIN;
 class SCH_JUNCTION;
 class DIALOG_SCH_FIND;
+class DIALOG_ANNOTATE;
 class wxFindDialogEvent;
 class wxFindReplaceData;
 class SCHLIB_FILTER;
@@ -151,6 +152,7 @@ private:
     wxSize                  m_printDialogSize;
     bool                    m_printMonochrome;     ///< Print monochrome instead of grey scale.
     bool                    m_printSheetReference;
+    DIALOG_ANNOTATE*        m_annotateDialog;
     DIALOG_SCH_FIND*        m_dlgFindReplace;
     wxPoint                 m_findDialogPosition;
     wxSize                  m_findDialogSize;
@@ -628,6 +630,7 @@ public:
      *                           the current sheet only.
      * @param aSortOption Define the annotation order.  See #ANNOTATE_ORDER_T.
      * @param aAlgoOption Define the annotation style.  See #ANNOTATE_OPTION_T.
+     * @param aStartNumber The start number for non-sheet-based annotation styles.
      * @param aResetAnnotation Clear any previous annotation if true.  Otherwise, keep the
      *                         existing component annotation.
      * @param aRepairTimestamps Test for and repair any duplicate time stamps if true.
@@ -642,14 +645,16 @@ public:
      *                          usual behavior of annotating each part individually is
      *                          performed.
      *                          When aResetAnnotation is false, this option has no effect.
+     * @param aReporter A sink for error messages.  Use NULL_REPORTER if you don't need errors.
      *
      * When the sheet number is used in annotation, each sheet annotation starts from sheet
      * number * 100.  In other words the first sheet uses 100 to 199, the second sheet uses
      * 200 to 299, and so on.
      */
     void AnnotateComponents( bool aAnnotateSchematic, ANNOTATE_ORDER_T aSortOption,
-                             ANNOTATE_OPTION_T aAlgoOption, bool aResetAnnotation,
-                             bool aRepairTimestamps, bool aLockUnits );
+                             ANNOTATE_OPTION_T aAlgoOption, int aStartNumber,
+                             bool aResetAnnotation, bool aRepairTimestamps, bool aLockUnits,
+                             REPORTER& aReporter );
 
     /**
      * Check for annotation errors.
@@ -663,11 +668,18 @@ public:
      *   between parts.
      *
      * @return Number of annotation errors found.
-     * @param aMessageList A wxArrayString to store error messages.
+     * @param aReporter A sink for error messages.  Use NULL_REPORTER if you don't need errors.
      * @param aOneSheetOnly Check the current sheet only if true.  Otherwise check
      *                      the entire schematic.
      */
-    int CheckAnnotate( wxArrayString* aMessageList, bool aOneSheetOnly );
+    int CheckAnnotate( REPORTER& aReporter, bool aOneSheetOnly );
+
+    /**
+     * Run a modal version of the Annotate dialog for a specific purpose.
+     * @param aMessage A user message indicating the purpose.
+     * @return the result of ShowModal()
+     */
+    int ModalAnnotate( const wxString& aMessage );
 
     // Functions used for hierarchy handling
     SCH_SHEET_PATH& GetCurrentSheet();
@@ -832,14 +844,6 @@ public:
     // General search:
 
     bool IsSearchCacheObsolete( const SCH_FIND_REPLACE_DATA& aSearchCriteria );
-
-    /**
-     *  Load the given filename but sets the path to the current project path.
-     *
-     *  @param full filepath of file to be imported.
-     *  @param aFileType SCH_FILE_T value for file type
-     */
-    bool ImportFile( const wxString& aFileName, int aFileType ) override;
 
     /**
      * Checks if any of the screens has unsaved changes and asks the user whether to save or
@@ -1174,6 +1178,14 @@ public:
     wxPoint GetLastSheetPinPosition() const { return m_lastSheetPinPosition; }
 
 private:
+    /**
+     *  Load the given filename but sets the path to the current project path.
+     *
+     *  @param full filepath of file to be imported.
+     *  @param aFileType SCH_FILE_T value for file type
+     */
+    bool importFile( const wxString& aFileName, int aFileType );
+
     bool validateSheet( SCH_SHEET* aSheet, SCH_SHEET_PATH* aHierarchy );
 
     /**

@@ -7,7 +7,7 @@ from source on the supported platforms.  It is not intended as a guide for insta
 [library dependencies](#library_dependencies).  Please consult your platforms documentation for
 installing packages or the source code when building the library dependencies.  Currently the
 supported platforms are Windows Versions 7-10, just about any version of Linux, and macOS
-10.9-10.12.  You may be able to build KiCad on other platforms but it is not supported.  On
+10.9-10.13.  You may be able to build KiCad on other platforms but it is not supported.  On
 Windows and Linux the [GNU GCC][] is the only supported compiler and on macOS [Clang][] is the
 only supported compiler.
 
@@ -95,22 +95,35 @@ available and is always required to build KiCad.
 
 ## Python Programming Language ## {#python}
 
-The [Python][] programming language is used to provide scripting support to KiCad.  It only needs
-to be install if the [KiCad scripting](#kicad_scripting) build configuration option is enabled.
+The [Python][] programming language is used to provide scripting support to KiCad.  It needs
+to be installed unless the [KiCad scripting](#kicad_scripting) build configuration option is
+disabled.
 
 ## wxPython Library ## {#wxpython}
 
-The [wxPython][] library is used to provide a scripting console for Pcbnew.  It only needs to be
-installed if the [wxPython scripting](#wxpython_scripting) build configuration option is enabled.
-When building KiCad with wxPython support, make sure the version of the wxWidgets library and
-the version of wxPython installed on your system are the same.  Mismatched versions have been
-known to cause runtime issues.
+The [wxPython][] library is used to provide a scripting console for Pcbnew.  It needs to be
+installed unless the [wxPython scripting](#wxpython_scripting) build configuration option is
+disabled.  When building KiCad with wxPython support, make sure the version of the wxWidgets
+library and the version of wxPython installed on your system are the same.  Mismatched versions
+have been known to cause runtime issues.
 
 ## Curl Multi-Protocol File Transfer Library ## {#curl}
 
 The [Curl Multi-Protocol File Transfer Library][libcurl] is used to provide secure internet
-file transfer access for the [GitHub][] plug in.  This library only needs to be installed if
-the GitHub plug build option is enabled.
+file transfer access for the [GitHub][] plug in.  This library needs to be installed unless
+the GitHub plug build option is disabled.
+
+## OpenCascade Community Edition (OCE) ## {#oce}
+
+The [OpenCascade Community Edition][liboce] is used to provide support for loading and saving
+3D model file formats such as STEP.  This library needs to be installed unless the OCE build
+option is disabled.
+
+## Ngspice Library ## {#ngspice}
+
+The [Ngspice Library][libngsice] is used to provide Spice simulation support in the schematic
+editor.  Make sure the the version of ngspice library used was built with the--with-ngshared
+option.  This library needs to be installed unless the Spice build option is disabled.
 
 # KiCad Build Configuration Options # {#build_opts}
 
@@ -175,29 +188,22 @@ The KICAD_SCRIPTING_ACTION_MENU option allows Python scripts to be added directl
 menu.  This option is disabled by default.  Please note that this option is highly experimental
 and can cause Pcbnew to crash if Python scripts create an invalid object state within Pcbnew.
 
-## Setting the Build Version and Repository Name ## {#build_version_opt}
+## KiCad Build Version ## {#build_version_opt}
 
-The KiCad version string is defined by the three CMake variables KICAD_VERSION, KICAD_BRANCH_NAME,
-and KICAD_VERSION_EXTRA.  Variables KICAD_BRANCH_NAME and KICAD_VERSION_EXTRA are defined as empty
-strings and can be set at configuration.  Unless the source branch is a stable release archive,
-KICAD_VERSION is set to "no-vcs-found".  If an optional variable is not define, it is not appended
-to the full version string.  If an optional variable is defined it is appended along with a leading
-'-' to the full version string as follows:
+The KiCad version string is defined by the output of `git describe --dirty` when git is available
+or the version string defined in CMakeModules/KiCadVersion.cmake with the value of
+KICAD_VERSION_EXTRA appended to the former.  If the KICAD_VERSION_EXTRA variable is not define,
+it is not appended to the version string.  If the KICAD_VERSION_EXTRA  variable is defined it
+is appended along with a leading '-' to the full version string as follows:
 
-    KICAD_VERSION[-KICAD_BRANCH_NAME][-KICAD_VERSION_EXTRA]
+    (KICAD_VERSION[-KICAD_VERSION_EXTRA])
 
-When the version string is set to "no-vcs-found", the build script automatically creates the
-version string information from the [git][] repository information as follows:
+The build script automatically creates the version string information from the [git][] repository
+information as follows:
 
-    (2016-08-26 revision 67230ac)-master
-     |                   |        |
-     |                   |        branch name, "HEAD" if not on a branch,
-     |                   |        or "unknown" if no .git present
-     |                   |
-     |                   abbreviated commit hash, or no-git if no .git
-     |                   present
+    (5.0.0-rc2-dev-100-g5a33f0960)
      |
-     date of commit, or date of build if no .git present
+     output of `git describe --dirty` if git is available.
 
 # Getting the KiCad Source Code ## {#getting_src}
 
@@ -215,7 +221,7 @@ copy on your machine by using the following command:
 
 Here is a list of source links:
 
-Stable release archive: https://launchpad.net/kicad/4.0/4.0.2/+download/kicad-4.0.2.tar.xz
+Stable release archive: https://launchpad.net/kicad/4.0/4.0.7/+download/kicad-4.0.7.tar.xz
 
 Development branch: https://code.launchpad.net/~kicad-product-committers/kicad/+git/product-git/+ref/master
 
@@ -230,9 +236,6 @@ To perform a full build on Linux, run the following commands:
     mkdir build/debug               # Optional for debug build.
     cd build/release
     cmake -DCMAKE_BUILD_TYPE=Release \
-          -DKICAD_SCRIPTING=ON \
-          -DKICAD_SCRIPTING_MODULES=ON \
-          -DKICAD_SCRIPTING_WXPYTHON=ON \
           ../../
     make
     sudo make install
@@ -281,6 +284,7 @@ the `mingw64_shell.bat` file located in the MSYS2 install path.  At the command 
 the following commands:
 
     pacman -S base-devel \
+              git \
               mingw-w64-x86_64-cmake \
               mingw-w64-x86_64-doxygen \
               mingw-w64-x86_64-gcc \
@@ -294,7 +298,9 @@ the following commands:
               mingw-w64-x86_64-wxPython \
               mingw-w64-x86_64-wxWidgets \
               mingw-w64-x86_64-toolchain \
-              mingw-w64-x86_64-glm
+              mingw-w64-x86_64-glm \
+              mingw-w64-x86_64-oce \
+              mingw-w64-x86_64-ngspice
     cd kicad-source
     mkdir -p build/release
     mkdir build/debug               # Optional for debug build.
@@ -304,9 +310,6 @@ the following commands:
           -DCMAKE_PREFIX_PATH=/mingw64 \
           -DCMAKE_INSTALL_PREFIX=/mingw64 \
           -DDEFAULT_INSTALL_PATH=/mingw64 \
-          -DKICAD_SCRIPTING=ON \
-          -DKICAD_SCRIPTING_MODULES=ON \
-          -DKICAD_SCRIPTING_WXPYTHON=ON \
           ../../
     make install
 
@@ -328,13 +331,27 @@ to crash.  You must downgrade to version 1.57 by running the command:
     pacman -U /var/cache/pacman/pkg/mingw-w64-x86_64-boost-1.57.0-4-any.pkg.tar.xz
 
 If the file mingw-w64-x86_64-boost-1.57.0-4-any.pkg.tar.xz is no longer in your pacman cache,
-you will have to down load it from the [MSYS2 64-bit SourceForge repo][].  You should also
+you will have to download it from the [MSYS2 64-bit SourceForge repo][].  You should also
 configure pacman to prevent upgrading the 64-bit Boost package by adding:
 
     IgnorePkg = mingw-w64-x86_64-boost
 
 to your /etc/pacman.conf file.
 
+### Building OCE from source
+
+KiCad requires OCE by default, and the version installed by `pacman` can cause build errors in
+x86_64 systems as of March 2018.  In order to work around this, you can build OCE from source on
+these systems.  Building OCE on Windows requires that you place the source code in a very short
+directory path, otherwise you will run into errors caused by the maximum path length on Windows.
+In the example below, the `MINGW-packages` repository is cloned to `/c/mwp`, which is equivalent to
+`C:\mwp` in Windows path terminology.  You may wish to change the destination of the `git clone`
+command if you do not want to place it on the root of your C drive, but if you run in to strange
+compilation errors about missing files, it is probably because your path is too long.
+
+    git clone https://github.com/Alexpux/MINGW-packages /c/mwp
+    cd /c/mwp/mingw-w64-oce
+    makepkg-mingw -is
 
 # Building KiCad on macOS # {#build_osx}
 
@@ -345,20 +362,18 @@ building and packaging KiCad on macOS, see the [macOS bundle build scripts][].
 In the following set of commands, replace the macOS version number (i.e. 10.9) with the desired
 minimum version.  It may be easiest to build for the same version you are running.
 
-Download the wxPython source and build using the following commands:
+KiCad currently won't work with a stock version of wxWidgets that can be downloaded or installed by
+package managers like MacPorts or Homebrew. To avoid having to deal with patches a [KiCad fork of
+wxWidgets][] is being maintained on GitHub. All the needed patches and some other fixes/improvements
+are contained in the `kicad/macos-wx-3.0` branch.
 
-    cd path-to-wxwidgets-src
-    patch -p0 < path-to-kicad-src/patches/wxwidgets-3.0.0_macosx.patch
-    patch -p0 < path-to-kicad-src/patches/wxwidgets-3.0.0_macosx_bug_15908.patch
-    patch -p0 < path-to-kicad-src/patches/wxwidgets-3.0.0_macosx_soname.patch
-    patch -p0 < path-to-kicad-src/patches/wxwidgets-3.0.2_macosx_yosemite.patch
-    patch -p0 < path-to-kicad-src/patches/wxwidgets-3.0.0_macosx_scrolledwindow.patch
-    patch -p0 < path-to-kicad-src/patches/wxwidgets-3.0.2_macosx_sierra.patch
-    patch -p0 < path-to-kicad-src/patches/wxwidgets-3.0.2_macosx_unicode_pasteboard.patch
-    mkdir build
-    cd build
-    export MAC_OS_X_VERSION_MIN_REQUIRED=10.9
-    ../configure \
+To perform a wxWidgets build, execute the following commands:
+
+    cd <your wxWidgets build folder>
+    git clone -b kicad/macos-wx-3.0 https://github.com/KiCad/wxWidgets
+    mkdir wx-build
+    cd wx-build
+    ../wxWidgets/configure \
         --prefix=`pwd`/../wx-bin \
         --with-opengl \
         --enable-aui \
@@ -376,27 +391,48 @@ Download the wxPython source and build using the following commands:
         --enable-universal-binary=i386,x86_64 \
         CC=clang \
         CXX=clang++
+    make
+    make install
 
-Build KiCad using the following commands:
+If everything works you will find the wxWidgets binaries in `<your wxWidgets build folder>/wx-bin`.
+Now, build a basic KiCad without Python scripting using the following commands:
 
-    cd kicad-source
+    cd <your kicad source mirror>
     mkdir -p build/release
     mkdir build/debug               # Optional for debug build.
     cd build/release
     cmake -DCMAKE_C_COMPILER=clang \
           -DCMAKE_CXX_COMPILER=clang++ \
           -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9 \
-          -DwxWidgets_CONFIG_EXECUTABLE=path-to-wx-install/bin/wx-config \
-          -DKICAD_SCRIPTING=ON \
-          -DKICAD_SCRIPTING_MODULES=ON \
-          -DKICAD_SCRIPTING_WXPYTHON=ON \
-          -DPYTHON_EXECUTABLE=path-to-python-exe/python \
-          -DPYTHON_SITE_PACKAGE_PATH=wx/wx-bin/lib/python2.7/site-packages \
+          -DwxWidgets_CONFIG_EXECUTABLE=<your wxWidgets build folder>/wx-bin/bin/wx-config \
+          -DKICAD_SCRIPTING=OFF \
+          -DKICAD_SCRIPTING_MODULES=OFF \
+          -DKICAD_SCRIPTING_WXPYTHON=OFF \
           -DCMAKE_INSTALL_PREFIX=../bin \
           -DCMAKE_BUILD_TYPE=Release \
           ../../
     make
     make install
+
+If the CMake configuration fails, determine the missing dependencies and install them on your
+system or disable the corresponding KiCad feature. If everything works you will get self-contained
+application bundles in the `build/bin` folder.
+
+Building KiCad with Python scripting is more complex and won't be covered in detail here.
+You will have to build wxPython against the wxWidgets source of the KiCad fork - a stock wxWidgets
+that might be bundled with the wxPython package won't work. Please see wxPython documentation
+or [macOS bundle build scripts][] (`compile_wx.sh`) on how to do this. Then, use a CMake
+configuration as follows to point it to your own wxWidgets/wxPython:
+
+    cmake -DCMAKE_C_COMPILER=clang \
+          -DCMAKE_CXX_COMPILER=clang++ \
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9 \
+          -DwxWidgets_CONFIG_EXECUTABLE=<your wxWidgets build folder>/wx-bin/bin/wx-config \
+          -DPYTHON_EXECUTABLE=<path-to-python-exe>/python \
+          -DPYTHON_SITE_PACKAGE_PATH=<your wxWidgets build folder>/wx-bin/lib/python2.7/site-packages \
+          -DCMAKE_INSTALL_PREFIX=../bin \
+          -DCMAKE_BUILD_TYPE=Release \
+          ../../
 
 # Known Issues # {#known_issues}
 
@@ -434,11 +470,12 @@ you will have to apply the Boost patches in the KiCad source [patches folder][].
 [Cairo]: http://cairographics.org/
 [Python]: https://www.python.org/
 [wxPython]: http://wxpython.org/
-[MSYS2]: http://msys2.github.io/
-[MSYS2 32-bit Installer]: http://repo.msys2.org/distrib/i686/msys2-i686-20150916.exe
-[MSYS2 64-bit Installer]: http://repo.msys2.org/distrib/x86_64/msys2-x86_64-20150916.exe
+[MSYS2]: http://www.msys2.org/
+[MSYS2 32-bit Installer]: http://repo.msys2.org/distrib/i686/msys2-i686-20161025.exe
+[MSYS2 64-bit Installer]: http://repo.msys2.org/distrib/x86_64/msys2-x86_64-20161025.exe
 [PKGBUILD]: https://github.com/Alexpux/MINGW-packages/blob/master/mingw-w64-kicad-git/PKGBUILD
-[OSX bundle build scripts]:http://bazaar.launchpad.net/~adamwolf/+junk/kicad-mac-packaging/files
+[macOS bundle build scripts]:http://bazaar.launchpad.net/~adamwolf/+junk/kicad-mac-packaging/files
+[KiCad fork of wxWidgets]:https://github.com/KiCad/wxWidgets
 [MinGW]: http://mingw.org/
 [build Boost]: http://www.boost.org/doc/libs/1_59_0/more/getting_started/index.html
 [MSYS2 64-bit SourceForge repo]: http://sourceforge.net/projects/msys2/files/REPOS/MINGW/x86_64/
@@ -446,3 +483,5 @@ you will have to apply the Boost patches in the KiCad source [patches folder][].
 [GLM]: http://glm.g-truc.net/
 [git]: https://git-scm.com/
 [OCE]: https://github.com/tpaviot/oce
+[liboce]: https://github.com/tpaviot/oce
+[libngspice]: https://sourceforge.net/projects/ngspice/

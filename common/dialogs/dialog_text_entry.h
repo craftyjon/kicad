@@ -1,8 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2014-2015 CERN
- * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
+ * Copyright (C) 2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,37 +21,32 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#ifndef __WX_STATUS_POPUP_H_
-#define __WX_STATUS_POPUP_H_
-
-
-#include <common.h>
-#include <wx/popupwin.h>
-
-class PCB_EDIT_FRAME;
 
 /**
- * Class WX_STATUS_POPUP
- *
- * A tiny, headerless popup window used to display useful status (e.g. line length
- * tuning info) next to the mouse cursor.
+ * A KICAD version of wxTextEntryDialog which supports the various improvments/work-arounds
+ * from DIALOG_SHIM.
  */
 
-class WX_STATUS_POPUP: public wxPopupWindow
+
+#ifndef _DIALOG_TEXT_ENTRY_H_
+#define _DIALOG_TEXT_ENTRY_H_
+
+#include <dialog_text_entry_base.h>
+
+
+class wxTextValidator;
+
+
+class WX_TEXT_ENTRY_DIALOG : public WX_TEXT_ENTRY_DIALOG_BASE
 {
 public:
-    WX_STATUS_POPUP( PCB_EDIT_FRAME* aParent );
-    virtual ~WX_STATUS_POPUP();
+    WX_TEXT_ENTRY_DIALOG( wxWindow* aParent, const wxString& aLabel, const wxString& aCaption,
+                          const wxString& aDefaultValue = wxEmptyString );
 
-    virtual void Popup(wxWindow* aFocus = NULL);
-    virtual void Move( const wxPoint &aWhere );
+    void SetTextValidator( wxTextValidatorStyle style );
+    void SetTextValidator( const wxTextValidator& validator );
 
-protected:
-
-    void updateSize();
-
-    wxPanel* m_panel;
-    wxBoxSizer* m_topSizer;
+    wxString GetValue();
 };
 
-#endif /* __WX_STATUS_POPUP_H_*/
+#endif      // _DIALOG_TEXT_ENTRY_H_

@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2017 CERN
+ * Copyright (C) 2018 CERN
  * @author Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
  *
  * This program is free software; you can redistribute it and/or
@@ -36,19 +36,23 @@ public:
     SHAPE_ARC() :
         SHAPE( SH_ARC ), m_width( 0 ) {};
 
-    SHAPE_ARC( const VECTOR2I& pa, const VECTOR2I& pb, const VECTOR2I& pCenter, int aWidth = 0 ) :
-        SHAPE( SH_ARC ), m_p0( pa ), m_p1( pb ), m_pc( pCenter ), m_width( aWidth ) {};
+    SHAPE_ARC( const VECTOR2I& aArcCenter, const VECTOR2I& aArcStartPoint,
+               double aCenterAngle, int aWidth = 0 ) :
+        SHAPE( SH_ARC ), m_p0( aArcStartPoint ), m_pc( aArcCenter ), m_centralAngle( aCenterAngle ),
+        m_width( aWidth )
+    {
+    }
 
     SHAPE_ARC( const SHAPE_ARC& aOther )
         : SHAPE( SH_ARC )
     {
         m_p0 = aOther.m_p0;
-        m_p1 = aOther.m_p1;
         m_pc = aOther.m_pc;
+        m_centralAngle = aOther.m_centralAngle;
         m_width = aOther.m_width;
     }
 
-    ~SHAPE_ARC() {};
+    ~SHAPE_ARC() {}
 
     SHAPE* Clone() const override
     {
@@ -56,7 +60,7 @@ public:
     }
 
     const VECTOR2I& GetP0() const { return m_p0; }
-    const VECTOR2I& GetP1() const { return m_p1; }
+    const VECTOR2I GetP1() const;
     const VECTOR2I& GetCenter() const { return m_pc; }
 
     const BOX2I BBox( int aClearance = 0 ) const override
@@ -65,8 +69,8 @@ public:
         return BOX2I();    // fixme
     }
 
-    bool    Collide( const SEG& aSeg, int aClearance = 0 ) const override;
-    bool    Collide( const VECTOR2I& aP, int aClearance = 0 ) const override;
+    bool Collide( const SEG& aSeg, int aClearance = 0 ) const override;
+    bool Collide( const VECTOR2I& aP, int aClearance = 0 ) const override;
 
     void SetWidth( int aWidth )
     {
@@ -86,34 +90,32 @@ public:
     void Move( const VECTOR2I& aVector ) override
     {
         m_p0 += aVector;
-        m_p1 += aVector;
         m_pc += aVector;
     }
 
-    int GetRadius() const
-    {
-        return (m_pc - m_p0).EuclideanNorm();
-    }
+    int GetRadius() const;
 
     SEG GetChord() const
     {
-        return SEG( m_p0, m_p1 );
+        return SEG( m_p0, GetP1() );
     }
 
     double  GetCentralAngle() const;
     double  GetStartAngle() const;
     double  GetEndAngle() const;
 
+/*
+    bool ConstructFromCorners( VECTOR2I aP0, VECTOR2I aP1, double aCenterAngle );
+    bool ConstructFromCircle( VECTOR2I aP0, double aRadius );
 
-    bool ConstructFromCorners( const VECTOR2I& aP0, const VECTOR2I& aP1, double aCenterAngle );
+    bool ConstructFromCenterAndAngles( VECTOR2I aCenter, double aRadius, double aStartAngle, double aCenterAngle );
 
-
-    bool ConstructFromCornerAndAngles( const VECTOR2I& aP0,
+    bool ConstructFromCornerAndAngles( VECTOR2I aP0,
             double aStartAngle,
             double aCenterAngle,
             double aRadius );
-
-    SHAPE_LINE_CHAIN ConvertToPolyline( double aAccuracy = 0.02 ) const;
+*/
+    const SHAPE_LINE_CHAIN ConvertToPolyline( double aAccuracy = 0.02f ) const;
 
 private:
 
@@ -123,7 +125,10 @@ private:
                (ecoord) ( aB.y - aA.y ) * ( aC.x - aA.x );
     }
 
-    VECTOR2I m_p0, m_p1, m_pc;
+
+    VECTOR2I m_p0, m_pc;
+    double m_centralAngle;
+
     int m_width;
 };
 

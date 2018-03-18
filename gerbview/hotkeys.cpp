@@ -86,24 +86,27 @@ static EDA_HOTKEY   HkSwitch2NextCopperLayer( _HKI( "Switch to Next Layer" ),
 static EDA_HOTKEY   HkSwitch2PreviousCopperLayer( _HKI( "Switch to Previous Layer" ),
                                               HK_SWITCH_LAYER_TO_PREVIOUS, '-' );
 
-static EDA_HOTKEY HkCanvasDefault( _HKI( "Switch to Legacy Canvas" ),
+static EDA_HOTKEY HkCanvasDefault( _HKI( "Switch to Legacy Toolset" ),
                                    HK_CANVAS_LEGACY,
 #ifdef __WXMAC__
                                    GR_KB_ALT +
 #endif
                                    WXK_F9 );
-static EDA_HOTKEY HkCanvasOpenGL( _HKI( "Switch to Modern Canvas (hardware accelerated)" ),
+static EDA_HOTKEY HkCanvasOpenGL( _HKI( "Switch to Modern Toolset with hardware-accelerated graphics (recommended)" ),
                                   HK_CANVAS_OPENGL,
 #ifdef __WXMAC__
                                   GR_KB_ALT +
 #endif
                                   WXK_F11 );
-static EDA_HOTKEY HkCanvasCairo( _HKI( "Switch to Modern Canvas (software renderer)" ),
+static EDA_HOTKEY HkCanvasCairo( _HKI( "Switch to Modern Toolset with software graphics (fall-back)" ),
                                  HK_CANVAS_CAIRO,
 #ifdef __WXMAC__
                                  GR_KB_ALT +
 #endif
                                  WXK_F12 );
+
+static EDA_HOTKEY HkMeasureTool( _HKI( "Measure Distance (Modern Toolset only)" ),
+                                HK_MEASURE_TOOL, 'M' + GR_KB_SHIFTCTRL );
 
 // List of common hotkey descriptors
 EDA_HOTKEY* gerbviewHotkeyList[] = {
@@ -117,6 +120,7 @@ EDA_HOTKEY* gerbviewHotkeyList[] = {
     &HkCanvasDefault,
     &HkCanvasOpenGL,
     &HkCanvasCairo,
+    &HkMeasureTool,
     NULL
 };
 
@@ -229,8 +233,7 @@ bool GERBVIEW_FRAME::OnHotKey( wxDC* aDC, int aHotkeyCode, const wxPoint& aPosit
     case HK_SWITCH_LAYER_TO_PREVIOUS:
         if( GetActiveLayer() > 0 )
         {
-            SetActiveLayer( GetActiveLayer() - 1 );
-            m_LayersManager->OnLayerSelected();
+            SetActiveLayer( GetActiveLayer() - 1, true );
             m_canvas->Refresh();
         }
         break;
@@ -238,8 +241,7 @@ bool GERBVIEW_FRAME::OnHotKey( wxDC* aDC, int aHotkeyCode, const wxPoint& aPosit
     case HK_SWITCH_LAYER_TO_NEXT:
         if( GetActiveLayer() < GERBER_DRAWLAYERS_COUNT - 1 )
         {
-            SetActiveLayer( GetActiveLayer() + 1 );
-            m_LayersManager->OnLayerSelected();
+            SetActiveLayer( GetActiveLayer() + 1, true );
             m_canvas->Refresh();
         }
         break;

@@ -47,6 +47,12 @@ public:
 
     const wxString  GetFileExtension() const override;
 
+    long long GetLibraryTimestamp( const wxString& aLibraryPath ) const override
+    {
+        // No support for libraries....
+        return 0;
+    }
+
     // -----</PUBLIC PLUGIN API>-------------------------------------------------
 
     PCAD_PLUGIN();

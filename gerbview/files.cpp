@@ -39,8 +39,10 @@
 #include <gerbview_frame.h>
 #include <gerbview_id.h>
 #include <gerber_file_image.h>
+#include <gerber_file_image_list.h>
 #include <gerbview_layer_widget.h>
 #include <wildcards_and_files_ext.h>
+#include <widgets/progress_reporter.h>
 
 // HTML Messages used more than one time:
 #define MSG_NO_MORE_LAYER\
@@ -108,7 +110,6 @@ void GERBVIEW_FRAME::Files_io( wxCommandEvent& event )
     switch( id )
     {
     case wxID_FILE:
-        Erase_Current_DrawLayer( false );
         LoadGerberFiles( wxEmptyString );
         break;
 
@@ -195,7 +196,7 @@ bool GERBVIEW_FRAME::LoadGerberFiles( const wxString& aFullFileName )
                 currentPath.RemoveLast();
         }
 
-        wxFileDialog dlg( this, _( "Open Gerber File" ),
+        wxFileDialog dlg( this, _( "Open Gerber File(s)" ),
                           currentPath,
                           filename.GetFullName(),
                           filetypes,
@@ -205,42 +206,67 @@ bool GERBVIEW_FRAME::LoadGerberFiles( const wxString& aFullFileName )
             return false;
 
         dlg.GetPaths( filenamesList );
-
-        // @todo Take a closer look at the CWD switching here.  The current working directory
-        // gets changed by wxFileDialog because the wxFD_CHANGE_DIR flag is set.  Is this the
-        // appropriate behavior?  The current working directory is not returned to the previous
-        // value so this may be an issue elsewhere.
-        currentPath = wxGetCwd();
-        m_mruPath = currentPath;
+        m_mruPath = currentPath = dlg.GetDirectory();
     }
     else
     {
         filenamesList.Add( aFullFileName );
-        currentPath = filename.GetPath();
-        m_mruPath = currentPath;
+        m_mruPath = currentPath = filename.GetPath();
     }
+
+    Erase_Current_DrawLayer( false );
 
     // Set the busy cursor
     wxBusyCursor wait;
 
+    return loadListOfGerberFiles( currentPath, filenamesList );
+}
+
+
+bool GERBVIEW_FRAME::loadListOfGerberFiles( const wxString& aPath,
+                                            const wxArrayString& aFilenameList )
+{
+    wxFileName filename;
+
     // Read gerber files: each file is loaded on a new GerbView layer
     bool success = true;
     int layer = GetActiveLayer();
+    int visibility = GetVisibleLayers();
 
     // Manage errors when loading files
     wxString msg;
     WX_STRING_REPORTER reporter( &msg );
 
-    for( unsigned ii = 0; ii < filenamesList.GetCount(); ii++ )
+    // Show progress dialog after 1 second of loading
+    static const long long progressShowDelay = 1000;
+
+    auto startTime = wxGetUTCTimeMillis();
+    std::unique_ptr<WX_PROGRESS_REPORTER> progress = nullptr;
+
+    for( unsigned ii = 0; ii < aFilenameList.GetCount(); ii++ )
     {
-        filename = filenamesList[ii];
+        if( !progress && wxGetUTCTimeMillis() - startTime > progressShowDelay )
+        {
+            progress = std::make_unique<WX_PROGRESS_REPORTER>( this,
+                            _( "Loading Gerber files..." ), 1, false );
+            progress->SetMaxProgress( aFilenameList.GetCount() - 1 );
+            progress->Report( _("Loading Gerber files..." ) );
+        }
+        else if( progress )
+        {
+            progress->KeepRefreshing();
+        }
+
+        filename = aFilenameList[ii];
 
         if( !filename.IsAbsolute() )
-            filename.SetPath( currentPath );
+            filename.SetPath( aPath );
 
         m_lastFileName = filename.GetFullPath();
 
         SetActiveLayer( layer, false );
+
+        visibility |= ( 1 << layer );
 
         if( Read_GERBER_File( filename.GetFullPath() ) )
         {
@@ -248,16 +274,16 @@ bool GERBVIEW_FRAME::LoadGerberFiles( const wxString& aFullFileName )
 
             layer = getNextAvailableLayer( layer );
 
-            if( layer == NO_AVAILABLE_LAYERS && ii < filenamesList.GetCount()-1 )
+            if( layer == NO_AVAILABLE_LAYERS && ii < aFilenameList.GetCount()-1 )
             {
                 success = false;
                 reporter.Report( MSG_NO_MORE_LAYER, REPORTER::RPT_ERROR );
 
                 // Report the name of not loaded files:
                 ii += 1;
-                while( ii < filenamesList.GetCount() )
+                while( ii < aFilenameList.GetCount() )
                 {
-                    filename = filenamesList[ii++];
+                    filename = aFilenameList[ii++];
                     wxString txt;
                     txt.Printf( MSG_NOT_LOADED,
                                 GetChars( filename.GetFullName() ) );
@@ -268,22 +294,39 @@ bool GERBVIEW_FRAME::LoadGerberFiles( const wxString& aFullFileName )
 
             SetActiveLayer( layer, false );
         }
+
+        if( progress )
+            progress->AdvanceProgress();
     }
 
     if( !success )
     {
+        wxSafeYield();  // Allows slice of time to redraw the screen
+                        // to refresh widgets, before displaying messages
         HTML_MESSAGE_BOX mbox( this, _( "Errors" ) );
         mbox.ListSet( msg );
         mbox.ShowModal();
     }
 
+    SetVisibleLayers( visibility );
+
     Zoom_Automatique( false );
 
     // Synchronize layers tools with actual active layer:
     ReFillLayerWidget();
-    SetActiveLayer( GetActiveLayer() );
+
+    // TODO: it would be nice if we could set the active layer to one of the
+    // ones that was just loaded, but to maintain the previous user experience
+    // we need to set it to a blank layer in case they load another file.
+    // We can't start with the next available layer when loading files because
+    // some users expect the behavior of overwriting the active layer on load.
+    SetActiveLayer( getNextAvailableLayer( layer ), true );
+
     m_LayersManager->UpdateLayerIcons();
-    syncLayerBox();
+    syncLayerBox( true );
+
+    GetGalCanvas()->Refresh();
+
     return success;
 }
 
@@ -309,7 +352,7 @@ bool GERBVIEW_FRAME::LoadExcellonFiles( const wxString& aFullFileName )
         else
             currentPath = m_mruPath;
 
-        wxFileDialog dlg( this, _( "Open Drill File" ),
+        wxFileDialog dlg( this, _( "Open Excellon Drill File(s)" ),
                           currentPath, filename.GetFullName(), filetypes,
                           wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_MULTIPLE | wxFD_CHANGE_DIR );
 

@@ -313,10 +313,10 @@ int SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
             else if( m_selection.Empty() )
             {
                 // There is nothing selected, so try to select something
-                if( !selectCursor() )
+                if( getEditFrame<PCB_BASE_FRAME>()->Settings().m_dragSelects || !selectCursor() )
                 {
-                    // If nothings has been selected or user wants to select more
-                    // draw the selection box
+                    // If nothings has been selected, user wants to select more or selection
+                    // box is preferred to dragging - draw selection box
                     selectMultiple();
                 }
                 else
@@ -444,6 +444,7 @@ const GENERAL_COLLECTORS_GUIDE SELECTION_TOOL::getCollectorsGuide() const
     guide.SetIgnoreThroughVias( ! board()->IsElementVisible( LAYER_VIA_THROUGH ) );
     guide.SetIgnoreBlindBuriedVias( ! board()->IsElementVisible( LAYER_VIA_BBLIND ) );
     guide.SetIgnoreMicroVias( ! board()->IsElementVisible( LAYER_VIA_MICROVIA ) );
+    guide.SetIgnoreTracks( ! board()->IsElementVisible( LAYER_TRACKS ) );
 
     return guide;
 }
@@ -542,7 +543,6 @@ bool SELECTION_TOOL::selectMultiple()
     bool cancelled = false;     // Was the tool cancelled while it was running?
     m_multiple = true;          // Multiple selection mode is active
     KIGFX::VIEW* view = getView();
-    getViewControls()->SetAutoPan( true );
 
     KIGFX::PREVIEW::SELECTION_AREA area;
     view->Add( &area );
@@ -565,10 +565,13 @@ bool SELECTION_TOOL::selectMultiple()
 
             view->SetVisible( &area, true );
             view->Update( &area );
+            getViewControls()->SetAutoPan( true );
         }
 
         if( evt->IsMouseUp( BUT_LEFT ) )
         {
+            getViewControls()->SetAutoPan( false );
+
             // End drawing the selection box
             view->SetVisible( &area, false );
 
@@ -643,7 +646,6 @@ bool SELECTION_TOOL::selectMultiple()
     // Stop drawing the selection box
     view->Remove( &area );
     m_multiple = false;         // Multiple selection mode is inactive
-    getViewControls()->SetAutoPan( false );
 
     if( !cancelled )
         m_selection.ClearReferencePoint();
@@ -835,7 +837,10 @@ void connectedTrackFilter( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
 
 int SELECTION_TOOL::selectConnection( const TOOL_EVENT& aEvent )
 {
-    if( !selectCursor( true, connectedTrackFilter ) )
+    if( !m_selection.HasType( PCB_TRACE_T ) && !m_selection.HasType( PCB_VIA_T ) )
+        selectCursor( true, connectedTrackFilter );
+
+    if( !m_selection.HasType( PCB_TRACE_T ) && !m_selection.HasType( PCB_VIA_T ) )
         return 0;
 
     return expandSelectedConnection( aEvent );
@@ -885,11 +890,19 @@ void connectedItemFilter( const VECTOR2I&, GENERAL_COLLECTOR& aCollector )
 
 int SELECTION_TOOL::selectCopper( const TOOL_EVENT& aEvent )
 {
-    if( !selectCursor( true, connectedItemFilter ) )
-        return 0;
+    bool haveCopper = false;
+
+    for( auto item : m_selection.GetItems() )
+    {
+        if( dynamic_cast<BOARD_CONNECTED_ITEM*>( item ) )
+            haveCopper = true;;
+    }
+
+    if( !haveCopper )
+        selectCursor( true, connectedItemFilter );
 
     // copy the selection, since we're going to iterate and modify
-    auto selection = m_selection.GetItems();
+    auto selection  = m_selection.GetItems();
 
     for( auto item : selection )
     {
@@ -1159,9 +1172,7 @@ void SELECTION_TOOL::findCallback( BOARD_ITEM* aItem )
     if( aItem )
     {
         select( aItem );
-        EDA_RECT bbox = aItem->GetBoundingBox();
-        BOX2D viewport( VECTOR2D( bbox.GetOrigin() ), VECTOR2D( bbox.GetSize() ) );
-        getView()->SetViewport( viewport );
+        getView()->SetCenter( aItem->GetPosition() );
 
         // Inform other potentially interested tools
         m_toolMgr->ProcessEvent( SelectedEvent );
@@ -1542,6 +1553,13 @@ bool SELECTION_TOOL::selectable( const BOARD_ITEM* aItem ) const
         }
         break;
 
+    case PCB_TRACE_T:
+        {
+            if( !board()->IsElementVisible( LAYER_TRACKS ) )
+                return false;
+        }
+        break;
+
     case PCB_VIA_T:
         {
             const VIA* via = static_cast<const VIA*>( aItem );
@@ -1587,18 +1605,42 @@ bool SELECTION_TOOL::selectable( const BOARD_ITEM* aItem ) const
         float viewArea = getView()->GetViewport().GetArea();
         float modArea = aItem->ViewBBox().GetArea();
 
-        // Do not select modules that cover more than 90% of the view area
+        // Do not select modules that are larger the view area
         // (most likely footprints representing shield connectors)
-        if( viewArea > 0.0 && modArea / viewArea > 0.9 )
+        if( viewArea > 0.0 && modArea > viewArea )
             return false;
 
-        if( aItem->IsOnLayer( F_Cu ) && board()->IsElementVisible( LAYER_MOD_FR ) )
-            return !m_editModules;
+        // Allow selection of footprints if at least one draw layer is on and
+        // the appropriate LAYER_MOD is on
 
-        if( aItem->IsOnLayer( B_Cu ) && board()->IsElementVisible( LAYER_MOD_BK ) )
-            return !m_editModules;
+        bool layer_mod = ( ( aItem->IsOnLayer( F_Cu ) && board()->IsElementVisible( LAYER_MOD_FR ) ) ||
+                           ( aItem->IsOnLayer( B_Cu ) && board()->IsElementVisible( LAYER_MOD_BK ) ) );
 
-        return false;
+        bool draw_layer_visible = false;
+        int draw_layers[KIGFX::VIEW::VIEW_MAX_LAYERS], draw_layers_count;
+
+        static_cast<const MODULE*>( aItem )->GetAllDrawingLayers( draw_layers,
+                                                                  draw_layers_count,
+                                                                  true );
+
+        for( int i = 0; i < draw_layers_count; ++i )
+        {
+            // NOTE: Pads return LAYER_PADS_PLATEDHOLES but the visibility
+            // control only directly switches LAYER_PADS_TH, so we overwrite it
+            // here so that the visibility check is accurate
+            if( draw_layers[i] == LAYER_PADS_PLATEDHOLES )
+                draw_layers[i] = LAYER_PADS_TH;
+
+            if( ( ( draw_layers[i] < PCB_LAYER_ID_COUNT ) &&
+                  board()->IsLayerVisible( static_cast<PCB_LAYER_ID>( draw_layers[i] ) ) ) ||
+                ( ( draw_layers[i] >= GAL_LAYER_ID_START ) &&
+                  board()->IsElementVisible( static_cast<GAL_LAYER_ID>( draw_layers[i] ) ) ) )
+            {
+                draw_layer_visible = true;
+            }
+        }
+
+        return ( draw_layer_visible && layer_mod );
 
         break;
     }
@@ -1840,7 +1882,19 @@ double calcRatio( double a, double b )
 }
 
 
-// todo: explain the selection heuristics
+// The general idea here is that if the user clicks directly on a small item inside a larger
+// one, then they want the small item.  The quintessential case of this is clicking on a pad
+// within a footprint, but we also apply it for text within a footprint, footprints within
+// larger footprints, and vias within either larger pads or longer tracks.
+//
+// These "guesses" presume there is area within the larger item to click in to select it.  If
+// an item is mostly covered by smaller items within it, then the guesses are inappropriate as
+// there might not be any area left to click to select the larger item.  In this case we must
+// leave the items in the collector and bring up a Selection Clarification menu.
+//
+// We currently check for pads and text mostly covering a footprint, but we don’t check for
+// smaller footprints mostly covering a larger footprint.
+//
 void SELECTION_TOOL::guessSelectionCandidates( GENERAL_COLLECTOR& aCollector ) const
 {
     std::set<BOARD_ITEM*> rejected;
@@ -1974,13 +2028,15 @@ void SELECTION_TOOL::guessSelectionCandidates( GENERAL_COLLECTOR& aCollector ) c
                     rejected.insert( mod );
                 // footprints completely covered with other features have no other
                 // means of selection, so must be kept
-                else if ( mod->CoverageRatio() > footprintMaxCoverRatio )
+                else if( mod->CoverageRatio( aCollector ) > footprintMaxCoverRatio )
                     rejected.erase( mod );
                 // if a footprint is much smaller than the largest overlapping
-                // footprint then it should be considered for selection; reject
-                // all other footprints
-                else if( moduleCount > 1
-                        && calcRatio( calcArea( mod ), maxArea ) > footprintToFootprintMinRatio )
+                // footprint then it should be considered for selection
+                else if( calcRatio( calcArea( mod ), maxArea ) <= footprintToFootprintMinRatio )
+                    continue;
+                // reject ALL OTHER footprints (whether there are one or more of
+                // them); the other items in the list should have precedence
+                else
                     rejected.insert( mod );
             }
         }

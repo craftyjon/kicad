@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2013 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -259,6 +259,27 @@ inline double NormalizeAngleDegreesPos( double Angle )
 inline void NORMALIZE_ANGLE_DEGREES_POS( double& Angle )
 {
     Angle = NormalizeAngleDegreesPos( Angle );
+}
+
+
+inline double NormalizeAngleRadiansPos( double Angle )
+{
+    while( Angle < 0 )
+        Angle += (2 * M_PI );
+    while( Angle >= ( 2 * M_PI ) )
+        Angle -= ( 2 * M_PI );
+    return Angle;
+}
+
+/// Normalize angle to be aMin < angle <= aMax
+/// angle is in degrees
+inline double NormalizeAngleDegrees( double Angle, double aMin, double aMax )
+{
+    while( Angle < aMin )
+        Angle += 360.0;
+    while( Angle >= aMax )
+        Angle -= 360.0;
+    return Angle;
 }
 
 /// Add two angles (keeping the result normalized). T2 is here

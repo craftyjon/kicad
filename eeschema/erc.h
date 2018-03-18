@@ -63,6 +63,7 @@ enum ERCE_T
     ERCE_SIMILAR_LABELS,        // 2 labels are equal fir case insensitive comparisons
     ERCE_SIMILAR_GLBL_LABELS,   // 2 labels are equal fir case insensitive comparisons
     ERCE_DIFFERENT_UNIT_FP,     // different units of the same component have different footprints assigned
+    ERCE_DIFFERENT_UNIT_NET,    // a shared pin in a multi-unit component is connected to more than one net
     ERCE_BUS_ALIAS_CONFLICT,    // conflicting bus alias definitions across sheets
     ERCE_DRIVER_CONFLICT,       // conflicting drivers (labels, etc) on a subgraph
     ERCE_BUS_ENTRY_CONFLICT,    // a wire connected to a bus doesn't match the bus

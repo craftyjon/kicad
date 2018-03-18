@@ -36,11 +36,13 @@
 #include <invoke_sch_dialog.h>
 #include <dialog_annotate_base.h>
 #include <kiface_i.h>
+#include <wx_html_report_panel.h>
 
 #define KEY_ANNOTATE_SORT_OPTION          wxT( "AnnotateSortOption" )
 #define KEY_ANNOTATE_ALGO_OPTION          wxT( "AnnotateAlgoOption" )
 #define KEY_ANNOTATE_KEEP_OPEN_OPTION     wxT( "AnnotateKeepOpenOption" )
-#define KEY_ANNOTATE_ASK_FOR_CONFIRMATION wxT( "AnnotateRequestConfirmation" )
+#define KEY_ANNOTATE_SKIP_CONFIRMATION    wxT( "AnnotateSkipConfirmation" )
+#define KEY_ANNOTATE_MESSAGES_FILTER      wxT( "AnnotateFilterMsg" )
 
 
 class wxConfigBase;
@@ -53,7 +55,7 @@ class DIALOG_ANNOTATE: public DIALOG_ANNOTATE_BASE
 {
 public:
     DIALOG_ANNOTATE( SCH_EDIT_FRAME* parent, const wxString& message );
-
+    ~DIALOG_ANNOTATE();
 
 private:
     SCH_EDIT_FRAME* m_Parent;
@@ -61,7 +63,6 @@ private:
 
     /// Initialises member variables
     void InitValues();
-    void OnCancelClick( wxCommandEvent& event ) override;
     void OnClearAnnotationCmpClick( wxCommandEvent& event ) override;
     void OnApplyClick( wxCommandEvent& event ) override;
 
@@ -74,26 +75,27 @@ private:
      * Function GetSortOrder
      * @return 0 if annotation by X position,
      *         1 if annotation by Y position,
-     *         2 if annotation by value
      */
     int GetSortOrder();
 
     /**
      * Function GetAnnotateAlgo
-     * @return 0 if annotation using first not used Id value
-     *         1 if annotation using first not used Id value inside sheet num * 100 to  sheet num * 100 + 99
-     *         2 if annotation using first nhot used Id value inside sheet num * 1000 to  sheet num * 1000 + 999
+     * @return 0 if annotation using first free Id value
+     *         1 for first free Id value inside sheet num * 100 to sheet num * 100 + 99
+     *         2 for first free Id value inside sheet num * 1000 to sheet num * 1000 + 999
      */
     int GetAnnotateAlgo();
+
+    int GetStartNumber();
 
     bool GetAnnotateKeepOpen()
     {
         return m_cbKeepDlgOpen->GetValue();
     }
 
-    bool GetAnnotateAskForConfirmation()
+    bool GetAnnotateSkipConfirmation()
     {
-        return m_cbAskForConfirmation->GetValue();
+        return m_cbSkipConfirmation->GetValue();
     }
 };
 
@@ -102,8 +104,17 @@ DIALOG_ANNOTATE::DIALOG_ANNOTATE( SCH_EDIT_FRAME* parent, const wxString& messag
     : DIALOG_ANNOTATE_BASE( parent )
 {
     m_Parent = parent;
-    m_userMessage->SetLabelText( message );
-    m_userMessage->Show( !message.empty() );
+
+    if( !message.IsEmpty() )
+    {
+        m_userMessage->SetLabelText( message );
+        m_userMessage->Show( true );
+
+        m_rbScope->Enable( false );
+        m_cbKeepDlgOpen->Show( false );
+    }
+
+    m_MessageWindow->SetLabel( _( "Annotation Messages:" ) );
 
     InitValues();
     Layout();
@@ -113,59 +124,71 @@ DIALOG_ANNOTATE::DIALOG_ANNOTATE( SCH_EDIT_FRAME* parent, const wxString& messag
 }
 
 
+DIALOG_ANNOTATE::~DIALOG_ANNOTATE()
+{
+    m_Config->Write( KEY_ANNOTATE_SORT_OPTION, GetSortOrder() );
+    m_Config->Write( KEY_ANNOTATE_ALGO_OPTION, GetAnnotateAlgo() );
+    m_Config->Write( KEY_ANNOTATE_KEEP_OPEN_OPTION, GetAnnotateKeepOpen() );
+    m_Config->Write( KEY_ANNOTATE_SKIP_CONFIRMATION, GetAnnotateSkipConfirmation() );
+
+    m_Config->Write( KEY_ANNOTATE_MESSAGES_FILTER,
+                    (long) m_MessageWindow->GetVisibleSeverities() );
+}
+
+
 void DIALOG_ANNOTATE::InitValues()
 {
     m_Config = Kiface().KifaceSettings();
+    long option;
 
-    if( m_Config )
+    // These are always reset to attempt to keep the user out of trouble...
+    m_rbScope->SetSelection( 0 );
+    m_rbOptions->SetSelection( 0 );
+
+    m_Config->Read( KEY_ANNOTATE_SORT_OPTION, &option, 0L );
+    switch( option )
     {
-        long option;
+    default:
+    case 0:
+        m_rbSortBy_X_Position->SetValue( 1 );
+        break;
 
-        m_Config->Read( KEY_ANNOTATE_SORT_OPTION, &option, 0L );
-        switch( option )
-        {
-        default:
-        case 0:
-            m_rbSortBy_X_Position->SetValue( 1 );
-            break;
-
-        case 1:
-            m_rbSortBy_Y_Position->SetValue( 1 );
-            break;
-
-        case 2:
-            m_rbUseIncremental->SetValue( 1 );
-            break;
-        }
-
-        m_Config->Read( KEY_ANNOTATE_ALGO_OPTION, &option, 0L );
-        switch( option )
-        {
-        default:
-        case 0:
-            m_rbUseIncremental->SetValue( 1 );
-            break;
-
-        case 1:
-            m_rbUseSheetNum->SetValue( 1 );
-            break;
-
-        case 2:
-            m_rbStartSheetNumLarge->SetValue( 1 );
-            break;
-        }
-
-
-        m_Config->Read( KEY_ANNOTATE_KEEP_OPEN_OPTION, &option, 0L );
-        m_cbKeepDlgOpen->SetValue( option );
-
-
-        m_Config->Read( KEY_ANNOTATE_ASK_FOR_CONFIRMATION, &option, 1L );
-        m_cbAskForConfirmation->SetValue( option );
+    case 1:
+        m_rbSortBy_Y_Position->SetValue( 1 );
+        break;
     }
+
+    m_Config->Read( KEY_ANNOTATE_ALGO_OPTION, &option, 0L );
+    switch( option )
+    {
+    default:
+    case 0:
+        m_rbFirstFree->SetValue( 1 );
+        break;
+
+    case 1:
+        m_rbSheetX100->SetValue( 100 );
+        break;
+
+    case 2:
+        m_rbSheetX1000->SetValue( 1000 );
+        break;
+    }
+    m_textNumberAfter->SetValue( wxT( "0" ) );
+
+    m_Config->Read( KEY_ANNOTATE_KEEP_OPEN_OPTION, &option, 0L );
+    m_cbKeepDlgOpen->SetValue( option );
+
+    m_Config->Read( KEY_ANNOTATE_SKIP_CONFIRMATION, &option, 0L );
+    m_cbSkipConfirmation->SetValue( option );
 
     annotate_down_right_bitmap->SetBitmap( KiBitmap( annotate_down_right_xpm ) );
     annotate_right_down_bitmap->SetBitmap( KiBitmap( annotate_right_down_xpm ) );
+
+    int severities = m_Config->Read( KEY_ANNOTATE_MESSAGES_FILTER, -1l );
+    m_MessageWindow->SetVisibleSeverities( severities );
+
+    m_MessageWindow->MsgPanelSetMinSize( wxSize( -1, 160 ) );
 
     m_btnApply->SetDefault();
 }
@@ -176,64 +199,45 @@ void DIALOG_ANNOTATE::OnApplyClick( wxCommandEvent& event )
     int         response;
     wxString    message;
 
-    if( m_Config )
-    {
-        m_Config->Write( KEY_ANNOTATE_SORT_OPTION, GetSortOrder() );
-        m_Config->Write( KEY_ANNOTATE_ALGO_OPTION, GetAnnotateAlgo() );
-        m_Config->Write( KEY_ANNOTATE_KEEP_OPEN_OPTION, GetAnnotateKeepOpen() );
-        m_Config->Write( KEY_ANNOTATE_ASK_FOR_CONFIRMATION, GetAnnotateAskForConfirmation() );
-    }
-
-    // Display a message info if we always ask for confirmation
-    // or if a reset of the previous annotation is asked.
-    bool promptUser = GetAnnotateAskForConfirmation();
-
-    if( GetResetItems() )
+    // Ask for confirmation of destructive actions unless the user asked us not to.
+    if( GetResetItems() && !GetAnnotateSkipConfirmation() )
     {
         if( GetLevel() )
             message += _( "Clear and annotate all of the symbols on the entire schematic?" );
         else
             message += _( "Clear and annotate all of the symbols on the current sheet?" );
-        promptUser = true;
-    }
-    else
-    {
-        if( GetLevel() )
-            message += _( "Annotate only the unannotated symbols on the entire schematic?" );
-        else
-            message += _( "Annotate only the unannotated symbols on the current sheet?" );
-    }
 
-    message += _( "\n\nThis operation will change the current annotation and cannot be undone." );
+        message += _( "\n\nThis operation will change the current annotation and cannot be undone." );
 
-    if( promptUser )
-    {
-        // TODO(hzeller): ideally, this would be a wxMessageDialog that contains
-        // a checkbox asking the 'ask for confirmation' flag for better
-        // discoverability (and it should only show in the 'benign' case, so if
-        // !GetResetItems())
         response = wxMessageBox( message, wxT( "" ), wxICON_EXCLAMATION | wxOK | wxCANCEL );
 
         if( response == wxCANCEL )
             return;
     }
 
+    m_MessageWindow->Clear();
+    REPORTER& reporter = m_MessageWindow->Reporter();
+    m_MessageWindow->SetLazyUpdate( true );     // Don't update after each message
+
     m_Parent->AnnotateComponents( GetLevel(), (ANNOTATE_ORDER_T) GetSortOrder(),
-                                  (ANNOTATE_OPTION_T) GetAnnotateAlgo(),
-                                  GetResetItems() , true, GetLockUnits() );
+                                  (ANNOTATE_OPTION_T) GetAnnotateAlgo(), GetStartNumber(),
+                                  GetResetItems() , true, GetLockUnits(), reporter );
+
+    m_MessageWindow->Flush();                   // Now update to show all messages
+
     m_Parent->GetCanvas()->Refresh();
 
     m_btnClear->Enable();
 
-    if( !GetAnnotateKeepOpen() )
+    // Don't close dialog if there are things the user needs to address
+    if( reporter.HasMessage() )
+        return;
+
+    if( m_userMessage->IsShown() || !GetAnnotateKeepOpen() )
     {
-        if( IsModal() )
-            EndModal( wxID_OK );
-        else
-        {
-            SetReturnCode( wxID_OK );
-            this->Show( false );
-        }
+        // Close the dialog by calling the default handler for a wxID_OK event
+        event.SetId( wxID_OK );
+        event.Skip();
     }
 }
 
@@ -243,77 +247,86 @@ void DIALOG_ANNOTATE::OnClearAnnotationCmpClick( wxCommandEvent& event )
     int         response;
     wxString    message;
 
-    if( GetLevel() )
-        message = _( "Clear the existing annotation for the entire schematic?" );
-    else
-        message = _( "Clear the existing annotation for the current sheet?" );
+    if( !GetAnnotateSkipConfirmation() )
+    {
+        if( GetLevel() )
+            message = _( "Clear the existing annotation for the entire schematic?" );
+        else
+            message = _( "Clear the existing annotation for the current sheet?" );
 
-    message += _( "\n\nThis operation will clear the existing annotation and cannot be undone." );
-    response = wxMessageBox( message, wxT( "" ), wxICON_EXCLAMATION | wxOK | wxCANCEL );
+        message += _( "\n\nThis operation will clear the existing annotation and cannot be undone." );
+        response = wxMessageBox( message, wxT( "" ), wxICON_EXCLAMATION | wxOK | wxCANCEL );
 
-    if( response == wxCANCEL )
-        return;
+        if( response == wxCANCEL )
+            return;
+    }
 
     m_Parent->DeleteAnnotation( GetLevel() ? false : true );
     m_btnClear->Enable( false );
 }
 
 
-void DIALOG_ANNOTATE::OnCancelClick( wxCommandEvent& event )
-{
-    if( IsModal() )
-        EndModal( wxID_CANCEL );
-    else
-    {
-        SetReturnCode( wxID_CANCEL );
-        this->Show( false );
-    }
-}
-
-
 bool DIALOG_ANNOTATE::GetLevel()
 {
-    return m_rbEntireSchematic->GetValue();
+    return m_rbScope->GetSelection() == 0;
 }
 
 
 bool DIALOG_ANNOTATE::GetResetItems()
 {
-    return m_rbResetAnnotation->GetValue() || m_rbResetButLock->GetValue();
+    return m_rbOptions->GetSelection() >= 1;
 }
+
 
 bool DIALOG_ANNOTATE::GetLockUnits()
 {
-    return m_rbResetButLock->GetValue();
+    return m_rbOptions->GetSelection() == 2;
 }
+
 
 int DIALOG_ANNOTATE::GetSortOrder()
 {
-    if( m_rbSortBy_X_Position->GetValue() )
-        return 0;
-
     if( m_rbSortBy_Y_Position->GetValue() )
         return 1;
-
-    return 2;
+    else
+        return 0;
 }
 
 
 int DIALOG_ANNOTATE::GetAnnotateAlgo()
 {
-    if( m_rbUseIncremental->GetValue() )
-        return 0;
-
-    if( m_rbUseSheetNum->GetValue() )
+    if( m_rbSheetX100->GetValue() )
         return 1;
-
-    return 2;
+    else if( m_rbSheetX1000->GetValue() )
+        return 2;
+    else
+        return 0;
 }
 
 
-int InvokeDialogAnnotate( SCH_EDIT_FRAME* aCaller, const wxString& message )
+int DIALOG_ANNOTATE::GetStartNumber()
 {
-    DIALOG_ANNOTATE dlg( aCaller, message );
+    return ValueFromString( EDA_UNITS_T::UNSCALED_UNITS, m_textNumberAfter->GetValue() );
+}
+
+
+void SCH_EDIT_FRAME::OnAnnotate( wxCommandEvent& event )
+{
+    if( !m_annotateDialog )
+    {
+        m_annotateDialog = new DIALOG_ANNOTATE( this, wxEmptyString );
+        m_annotateDialog->Show( true );
+    }
+    else    // The dialog is just not visible
+    {
+        m_annotateDialog->Show( true );
+    }
+}
+
+
+int SCH_EDIT_FRAME::ModalAnnotate( const wxString& aMessage )
+{
+    DIALOG_ANNOTATE dlg( this, aMessage );
 
     return dlg.ShowModal();
 }

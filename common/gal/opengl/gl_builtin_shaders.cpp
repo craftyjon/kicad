@@ -191,8 +191,8 @@ void filledCircle( vec2 aCoord )
 
 void strokedCircle( vec2 aCoord, float aRadius, float aWidth )
 {
-    float outerRadius = aRadius + ( aWidth / 2 );
-    float innerRadius = aRadius - ( aWidth / 2 );
+    float outerRadius = max( aRadius + ( aWidth / 2 ), 0.0 );
+    float innerRadius = max( aRadius - ( aWidth / 2 ), 0.0 );
     float relWidth = innerRadius / outerRadius;
 
     if( ( dot( aCoord, aCoord ) < 1.0 ) &&
@@ -223,7 +223,7 @@ void main()
     {
         vec2 tex           = shaderParams.yz;
 
-        // Unless we're streching chars it is okay to consider
+        // Unless we're stretching chars it is okay to consider
         // one derivative for filtering
         float derivative   = length( dFdx( tex ) ) * fontTextureWidth / 4;
 
@@ -404,7 +404,7 @@ const char smaa_base_shader_p1[] = R"SHADER_SOURCE(
  *     half-rate linear filtering on GCN.
  *
  *     If SMAA is applied to 64-bit color buffers, switching to point filtering
- *     when accesing them will increase the performance. Search for
+ *     when accessing them will increase the performance. Search for
  *     'SMAASamplePoint' to see which textures may benefit from point
  *     filtering, and where (which is basically the color input in the edge
  *     detection and resolve passes).

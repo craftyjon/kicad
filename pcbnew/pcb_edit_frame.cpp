@@ -151,8 +151,6 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_MENU( ID_CONFIG_READ, PCB_EDIT_FRAME::Process_Config )
     EVT_MENU_RANGE( ID_PREFERENCES_HOTKEY_START, ID_PREFERENCES_HOTKEY_END,
                     PCB_EDIT_FRAME::Process_Config )
-    EVT_MENU( ID_MENU_PCB_SHOW_HIDE_LAYERS_MANAGER, PCB_EDIT_FRAME::Process_Config )
-    EVT_MENU( ID_MENU_PCB_SHOW_HIDE_MUWAVE_TOOLBAR, PCB_EDIT_FRAME::Process_Config )
     EVT_MENU( wxID_PREFERENCES, PCB_EDIT_FRAME::Process_Config )
     EVT_MENU( ID_PCB_LAYERS_SETUP, PCB_EDIT_FRAME::Process_Config )
     EVT_MENU( ID_PCB_MASK_CLEARANCE, PCB_EDIT_FRAME::Process_Config )
@@ -237,8 +235,6 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
                     PCB_EDIT_FRAME::OnSelectOptionToolbar )
     EVT_TOOL( ID_TB_OPTIONS_SHOW_RATSNEST,
                     PCB_EDIT_FRAME::OnSelectOptionToolbar )
-    EVT_TOOL( ID_TB_OPTIONS_AUTO_DEL_TRACK,
-                    PCB_EDIT_FRAME::OnSelectOptionToolbar )
     EVT_TOOL( ID_TB_OPTIONS_SHOW_VIAS_SKETCH,
                     PCB_EDIT_FRAME::OnSelectOptionToolbar )
     EVT_TOOL( ID_TB_OPTIONS_SHOW_TRACKS_SKETCH,
@@ -284,7 +280,6 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_UPDATE_UI( ID_TOOLBARH_PCB_SELECT_LAYER, PCB_EDIT_FRAME::OnUpdateLayerSelectBox )
     EVT_UPDATE_UI( ID_TB_OPTIONS_DRC_OFF, PCB_EDIT_FRAME::OnUpdateDrcEnable )
     EVT_UPDATE_UI( ID_TB_OPTIONS_SHOW_RATSNEST, PCB_EDIT_FRAME::OnUpdateShowBoardRatsnest )
-    EVT_UPDATE_UI( ID_TB_OPTIONS_AUTO_DEL_TRACK, PCB_EDIT_FRAME::OnUpdateAutoDeleteTrack )
     EVT_UPDATE_UI( ID_TB_OPTIONS_SHOW_VIAS_SKETCH, PCB_EDIT_FRAME::OnUpdateViaDrawMode )
     EVT_UPDATE_UI( ID_TB_OPTIONS_SHOW_TRACKS_SKETCH, PCB_EDIT_FRAME::OnUpdateTraceDrawMode )
     EVT_UPDATE_UI( ID_TB_OPTIONS_SHOW_HIGH_CONTRAST_MODE,
@@ -310,8 +305,6 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
                          PCB_EDIT_FRAME::OnUpdateSelectViaSize )
     EVT_UPDATE_UI_RANGE( ID_PCB_HIGHLIGHT_BUTT, ID_PCB_MEASUREMENT_TOOL,
                          PCB_EDIT_FRAME::OnUpdateVerticalToolbar )
-    EVT_UPDATE_UI_RANGE( ID_TB_OPTIONS_SHOW_ZONES, ID_TB_OPTIONS_SHOW_ZONES_OUTLINES_ONLY,
-                         PCB_EDIT_FRAME::OnUpdateZoneDisplayStyle )
     EVT_UPDATE_UI_RANGE( ID_PCB_MUWAVE_START_CMD, ID_PCB_MUWAVE_END_CMD,
                          PCB_EDIT_FRAME::OnUpdateMuWaveToolbar )
 
@@ -335,6 +328,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_hotkeysDescrList = g_Board_Editor_Hotkeys_Descr;
     m_hasAutoSave = true;
     m_microWaveToolBar = NULL;
+    m_Layers = nullptr;
 
     m_rotationAngle = 900;
 
@@ -362,6 +356,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_Layers = new PCB_LAYER_WIDGET( this, GetCanvas(), pointSize );
 
     m_drc = new DRC( this );        // these 2 objects point to each other
+    m_plotDialog = nullptr;
 
     wxIcon  icon;
     icon.CopyFromBitmap( KiBitmap( icon_pcbnew_xpm ) );
@@ -379,7 +374,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     SetSize( m_FramePos.x, m_FramePos.y, m_FrameSize.x, m_FrameSize.y );
 
-    GetScreen()->AddGrid( m_UserGridSize, m_UserGridUnit, ID_POPUP_GRID_USER );
+    GetScreen()->AddGrid( m_UserGridSize, EDA_UNITS_T::UNSCALED_UNITS, ID_POPUP_GRID_USER );
     GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId  );
 
     if( m_canvas )
@@ -479,8 +474,8 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
                               "and faster experience. This option is turned off by "
                               "default since it is not compatible with all computers.\n\n"
                               "Would you like to try enabling graphics acceleration?\n\n"
-                              "If you'd like to choose later, select the Modern "
-                              "(Accelerated) graphics mode in the View menu." );
+                              "If you'd like to choose later, select Modern Toolset "
+                              "(Accelerated) in the Preferences menu." );
 
             wxMessageDialog dlg( this, msg, _( "Enable Graphics Acceleration" ),
                                  wxYES_NO );
@@ -544,6 +539,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 PCB_EDIT_FRAME::~PCB_EDIT_FRAME()
 {
     delete m_drc;
+    delete m_plotDialog;
 }
 
 
@@ -830,6 +826,7 @@ void PCB_EDIT_FRAME::ShowDesignRulesEditor( wxCommandEvent& event )
     {
         ReCreateLayerBox();
         ReCreateAuxiliaryToolbar();
+        m_Layers->ReFillRender();
         OnModify();
     }
 }
@@ -944,6 +941,35 @@ void PCB_EDIT_FRAME::SetActiveLayer( PCB_LAYER_ID aLayer )
 }
 
 
+void PCB_EDIT_FRAME::onBoardLoaded()
+{
+    UpdateTitle();
+
+    // Re-create layers manager based on layer info in board
+    ReFillLayerWidget();
+    ReCreateLayerBox();
+
+    // Sync layer and item visibility
+    syncLayerVisibilities();
+    syncLayerWidgetLayer();
+    syncRenderStates();
+
+    // Update the tracks / vias available sizes list:
+    ReCreateAuxiliaryToolbar();
+
+    // Update the RATSNEST items, which were not loaded at the time
+    // BOARD::SetVisibleElements() was called from within any PLUGIN.
+    // See case LAYER_RATSNEST: in BOARD::SetElementVisibility()
+    GetBoard()->SetVisibleElements( GetBoard()->GetVisibleElements() );
+
+    // Display the loaded board:
+    Zoom_Automatique( false );
+
+    SetMsgPanel( GetBoard() );
+    SetStatusText( wxEmptyString );
+}
+
+
 void PCB_EDIT_FRAME::syncLayerWidgetLayer()
 {
     m_Layers->SelectLayer( GetActiveLayer() );
@@ -953,7 +979,7 @@ void PCB_EDIT_FRAME::syncLayerWidgetLayer()
 
 void PCB_EDIT_FRAME::syncRenderStates()
 {
-    m_Layers->SyncRenderStates();
+    m_Layers->ReFillRender();
 }
 
 
@@ -961,6 +987,12 @@ void PCB_EDIT_FRAME::syncLayerVisibilities()
 {
     m_Layers->SyncLayerVisibilities();
     static_cast<PCB_DRAW_PANEL_GAL*>( GetGalCanvas() )->SyncLayersVisibility( m_Pcb );
+}
+
+
+void PCB_EDIT_FRAME::OnUpdateLayerAlpha( wxUpdateUIEvent & )
+{
+    m_Layers->SyncLayerAlphaIndicators();
 }
 
 
@@ -1000,13 +1032,26 @@ void PCB_EDIT_FRAME::ShowChangedLanguage()
     // call my base class
     PCB_BASE_FRAME::ShowChangedLanguage();
 
-    m_Layers->SetLayersManagerTabsText();
+    // update the layer manager
+    m_Layers->Freeze();
 
     wxAuiPaneInfo& pane_info = m_auimgr.GetPane( m_Layers );
-
     pane_info.Caption( _( "Visibles" ) );
     m_auimgr.Update();
+
+    m_Layers->SetLayersManagerTabsText();
     ReFillLayerWidget();
+    m_Layers->ReFillRender();
+
+    // upate the layer widget to match board visibility states, both layers and render columns.
+    syncLayerVisibilities();
+    syncLayerWidgetLayer();
+    syncRenderStates();
+
+    m_Layers->Thaw();
+
+    // pcbnew-specific toolbars
+    ReCreateMicrowaveVToolbar();
 }
 
 
@@ -1077,9 +1122,7 @@ void PCB_EDIT_FRAME::UpdateTitle()
 
     if( fileName.IsOk() && fileName.FileExists() )
     {
-        fileinfo = fileName.IsFileWritable()
-            ? wxString( wxEmptyString )
-            : _( " [Read Only]" );
+        fileinfo = fileName.IsFileWritable() ? wxString( wxEmptyString ) : _( " [Read Only]" );
     }
     else
     {
@@ -1087,9 +1130,9 @@ void PCB_EDIT_FRAME::UpdateTitle()
     }
 
     wxString title;
-    title.Printf( L"Pcbnew \u2014 %s%s",
-            fileName.GetFullPath(),
-            fileinfo );
+    title.Printf( _( "Pcbnew" ) + wxT( " \u2014 %s%s" ),
+                  fileName.GetFullPath(),
+                  fileinfo );
 
     SetTitle( title );
 }
@@ -1194,9 +1237,10 @@ void PCB_EDIT_FRAME::OnSwitchCanvas( wxCommandEvent& aEvent )
 
 void PCB_EDIT_FRAME::ToPlotter( wxCommandEvent& event )
 {
-    DIALOG_PLOT dlg( this );
+    if( !m_plotDialog )
+        m_plotDialog = new DIALOG_PLOT( this );
 
-    dlg.ShowModal();
+    m_plotDialog->Show( true );
 }
 
 

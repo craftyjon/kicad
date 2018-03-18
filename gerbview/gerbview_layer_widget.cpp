@@ -34,6 +34,7 @@
 #include <class_drawpanel.h>
 #include <macros.h>
 #include <gbr_layer_box_selector.h>
+#include <menus_helpers.h>
 
 #include <gerbview.h>
 #include <gerbview_frame.h>
@@ -92,8 +93,8 @@ bool GERBER_LAYER_WIDGET::AreArbitraryColorsAllowed()
 
 void GERBER_LAYER_WIDGET::SetLayersManagerTabsText( )
 {
-    m_notebook->SetPageText(0, _("Layer") );
-    m_notebook->SetPageText(1, _("Render") );
+    m_notebook->SetPageText(0, _("Layers") );
+    m_notebook->SetPageText(1, _("Items") );
 }
 
 /**
@@ -134,24 +135,26 @@ void GERBER_LAYER_WIDGET::ReFillRender()
 }
 
 
-void GERBER_LAYER_WIDGET::AddRightClickMenuItems( wxMenu& menu )
+void GERBER_LAYER_WIDGET::AddRightClickMenuItems( wxMenu* aMenu )
 {
     // Remember: menu text is capitalized (see our rules_for_capitalization_in_Kicad_UI.txt)
-    menu.Append( new wxMenuItem( &menu, ID_SHOW_ALL_LAYERS,
-                                 _("Show All Layers") ) );
+    AddMenuItem( aMenu, ID_SHOW_ALL_LAYERS, _( "Show All Layers" ),
+                 KiBitmap( show_all_layers_xpm ) );
 
-    menu.Append( new wxMenuItem( &menu, ID_SHOW_NO_LAYERS_BUT_ACTIVE,
-                                 _( "Hide All Layers But Active" ) ) );
+    AddMenuItem( aMenu, ID_SHOW_NO_LAYERS_BUT_ACTIVE,
+                 _( "Hide All Layers But Active" ),
+                 KiBitmap( select_w_layer_xpm ) );
 
-    menu.Append( new wxMenuItem( &menu, ID_ALWAYS_SHOW_NO_LAYERS_BUT_ACTIVE,
-                                 _( "Always Hide All Layers But Active" ) ) );
+    AddMenuItem( aMenu, ID_ALWAYS_SHOW_NO_LAYERS_BUT_ACTIVE,
+                 _( "Always Hide All Layers But Active" ),
+                 KiBitmap( select_w_layer_xpm ) );
 
-    menu.Append( new wxMenuItem( &menu, ID_SHOW_NO_LAYERS,
-                                 _( "Hide All Layers" ) ) );
+    AddMenuItem( aMenu, ID_SHOW_NO_LAYERS, _( "Hide All Layers" ),
+                 KiBitmap( show_no_layers_xpm ) );
 
-    menu.AppendSeparator();
-    menu.Append( new wxMenuItem( &menu, ID_SORT_GBR_LAYERS,
-                                 _( "Sort Layers if X2 Mode" ) ) );
+    aMenu->AppendSeparator();
+    AddMenuItem( aMenu, ID_SORT_GBR_LAYERS, _( "Sort Layers if X2 Mode" ),
+                 KiBitmap( reload_xpm ) );
 }
 
 
@@ -159,7 +162,7 @@ void GERBER_LAYER_WIDGET::onRightDownLayers( wxMouseEvent& event )
 {
     wxMenu          menu;
 
-    AddRightClickMenuItems( menu );
+    AddRightClickMenuItems( &menu );
     PopupMenu( &menu );
 
     passOnFocus();
@@ -173,16 +176,17 @@ void GERBER_LAYER_WIDGET::onPopupSelection( wxCommandEvent& event )
     long visibleLayers = 0;
     bool force_active_layer_visible;
 
-    m_alwaysShowActiveLayer = ( menuId == ID_ALWAYS_SHOW_NO_LAYERS_BUT_ACTIVE );
-    force_active_layer_visible = ( menuId == ID_SHOW_NO_LAYERS_BUT_ACTIVE ||
-                                   menuId == ID_ALWAYS_SHOW_NO_LAYERS_BUT_ACTIVE );
-
     switch( menuId )
     {
     case ID_SHOW_ALL_LAYERS:
     case ID_SHOW_NO_LAYERS:
     case ID_ALWAYS_SHOW_NO_LAYERS_BUT_ACTIVE:
     case ID_SHOW_NO_LAYERS_BUT_ACTIVE:
+        // Set the display layers options. Sorting layers has no effect to these options
+        m_alwaysShowActiveLayer = ( menuId == ID_ALWAYS_SHOW_NO_LAYERS_BUT_ACTIVE );
+        force_active_layer_visible = ( menuId == ID_SHOW_NO_LAYERS_BUT_ACTIVE ||
+                                       menuId == ID_ALWAYS_SHOW_NO_LAYERS_BUT_ACTIVE );
+        // Update icons and check boxes
         rowCount = GetLayerRowCount();
         for( int row=0; row < rowCount; ++row )
         {
@@ -191,7 +195,7 @@ void GERBER_LAYER_WIDGET::onPopupSelection( wxCommandEvent& event )
             bool loc_visible = visible;
 
             if( force_active_layer_visible &&
-                (layer == GERBER_DRAW_LAYER( myframe->GetActiveLayer() ) ) )
+                (layer == myframe->GetActiveLayer() ) )
             {
                 loc_visible = true;
             }
@@ -209,20 +213,7 @@ void GERBER_LAYER_WIDGET::onPopupSelection( wxCommandEvent& event )
         break;
 
     case ID_SORT_GBR_LAYERS:
-        GetImagesList()->SortImagesByZOrder();
-        myframe->ReFillLayerWidget();
-        myframe->syncLayerBox( true );
-
-        if( myframe->IsGalCanvasActive() )
-        {
-            for( int layer = 0; layer < GERBER_DRAWLAYERS_COUNT; ++layer )
-            {
-                myframe->SetLayerColor( GERBER_DRAW_LAYER( layer ),
-                                        GetLayerColor( GERBER_DRAW_LAYER( layer ) ) );
-            }
-        }
-
-        myframe->GetCanvas()->Refresh();
+        myframe->SortLayersByX2Attributes();
         break;
     }
 }
@@ -252,6 +243,7 @@ void GERBER_LAYER_WIDGET::ReFill()
         wxString msg = GetImagesList()->GetDisplayName( layer );
 
         bool visible = true;
+
         if( auto canvas = myframe->GetGalCanvas() )
         {
             visible = canvas->GetView()->IsLayerVisible( GERBER_DRAW_LAYER( layer ) );
@@ -261,7 +253,7 @@ void GERBER_LAYER_WIDGET::ReFill()
             visible = myframe->IsLayerVisible( layer );
         }
 
-        AppendLayerRow( LAYER_WIDGET::ROW( msg, GERBER_DRAW_LAYER( layer ),
+        AppendLayerRow( LAYER_WIDGET::ROW( msg, layer,
                         myframe->GetLayerColor( GERBER_DRAW_LAYER( layer ) ),
                         wxEmptyString, visible, true ) );
     }
@@ -273,35 +265,39 @@ void GERBER_LAYER_WIDGET::ReFill()
 
 void GERBER_LAYER_WIDGET::OnLayerRightClick( wxMenu& aMenu )
 {
-    AddRightClickMenuItems( aMenu );
+    AddRightClickMenuItems( &aMenu );
 }
+
 
 void GERBER_LAYER_WIDGET::OnLayerColorChange( int aLayer, COLOR4D aColor )
 {
-    myframe->SetLayerColor( aLayer, aColor );
+    // NOTE: Active layer in GerbView is stored as 0-indexed, but layer color is
+    //       stored according to the GERBER_DRAW_LAYER() offset.
+
+    myframe->SetLayerColor( GERBER_DRAW_LAYER( aLayer ), aColor );
     myframe->m_SelLayerBox->ResyncBitmapOnly();
 
     if( myframe->IsGalCanvasActive() )
     {
         KIGFX::VIEW* view = myframe->GetGalCanvas()->GetView();
         view->GetPainter()->GetSettings()->ImportLegacyColors( myframe->m_colorsSettings );
-        view->UpdateLayerColor( aLayer );
+        view->UpdateLayerColor( GERBER_DRAW_LAYER( aLayer ) );
     }
 
     myframe->GetCanvas()->Refresh();
 }
 
+
 bool GERBER_LAYER_WIDGET::OnLayerSelect( int aLayer )
 {
     // the layer change from the GERBER_LAYER_WIDGET can be denied by returning
     // false from this function.
-    int layer = myframe->GetActiveLayer( );
-    // TODO(JE) ActiveLayer is stored as an index from 0 rather than as a layer
-    // id matching GERBER_DRAW_LAYER( idx ), is this what we want long-term?
-    myframe->SetActiveLayer( GERBER_DRAW_LAYER_INDEX( aLayer ), false );
+    int layer = myframe->GetActiveLayer();
+
+    myframe->SetActiveLayer( aLayer, false );
     myframe->syncLayerBox();
 
-    if( layer != myframe->GetActiveLayer( ) )
+    if( layer != myframe->GetActiveLayer() )
     {
         if( ! OnLayerSelected() )
             myframe->GetCanvas()->Refresh();
@@ -310,20 +306,22 @@ bool GERBER_LAYER_WIDGET::OnLayerSelect( int aLayer )
     return true;
 }
 
+
 void GERBER_LAYER_WIDGET::OnLayerVisible( int aLayer, bool isVisible, bool isFinal )
 {
     long visibleLayers = myframe->GetVisibleLayers();
 
     if( isVisible )
-        visibleLayers |= 1 << ( aLayer - GERBVIEW_LAYER_ID_START );
+        visibleLayers |= 1 << aLayer ;
     else
-        visibleLayers &= ~( 1 << ( aLayer - GERBVIEW_LAYER_ID_START ) );
+        visibleLayers &= ~( 1 << aLayer );
 
     myframe->SetVisibleLayers( visibleLayers );
 
     if( isFinal )
         myframe->GetCanvas()->Refresh();
 }
+
 
 void GERBER_LAYER_WIDGET::OnRenderColorChange( int aId, COLOR4D aColor )
 {
@@ -336,9 +334,9 @@ void GERBER_LAYER_WIDGET::OnRenderColorChange( int aId, COLOR4D aColor )
         auto view = galCanvas->GetView();
         view->GetPainter()->GetSettings()->ImportLegacyColors( myframe->m_colorsSettings );
         view->UpdateLayerColor( aId );
-        // TODO(JE) Why are the below two lines needed? Not needed in pcbnew
+
         view->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
-        view->RecacheAllItems();
+        view->UpdateAllItems( KIGFX::COLOR );
     }
 
     if( galCanvas && myframe->IsGalCanvasActive() )
@@ -346,6 +344,7 @@ void GERBER_LAYER_WIDGET::OnRenderColorChange( int aId, COLOR4D aColor )
     else
         myframe->GetCanvas()->Refresh();
 }
+
 
 void GERBER_LAYER_WIDGET::OnRenderEnable( int aId, bool isEnabled )
 {
@@ -359,8 +358,6 @@ void GERBER_LAYER_WIDGET::OnRenderEnable( int aId, bool isEnabled )
         {
             galCanvas->GetGAL()->SetGridVisibility( myframe->IsGridVisible() );
             galCanvas->GetView()->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
-            // TODO(JE) Why is the below line needed? Not needed in pcbnew
-            galCanvas->GetView()->RecacheAllItems();
         }
         else
             galCanvas->GetView()->SetLayerVisible( aId, isEnabled );

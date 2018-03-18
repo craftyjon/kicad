@@ -56,6 +56,10 @@ void GERBVIEW_RENDER_SETTINGS::ImportLegacyColors( const COLORS_DESIGN_SETTINGS*
          i < GERBVIEW_LAYER_ID_START + GERBER_DRAWLAYERS_COUNT; i++ )
     {
         COLOR4D baseColor = aSettings->GetLayerColor( i );
+
+        if( m_diffMode )
+            baseColor.a = 0.75;
+
         m_layerColors[i] = baseColor;
         m_layerColorsHi[i] = baseColor.Brightened( 0.5 );
         m_layerColorsSel[i] = baseColor.Brightened( 0.8 );
@@ -189,12 +193,9 @@ void GERBVIEW_PAINTER::draw( /*const*/ GERBER_DRAW_ITEM* aItem, int aLayer )
     // TODO(JE) This doesn't actually work properly for ImageNegative
     bool     isNegative = ( aItem->GetLayerPolarity() ^ aItem->m_GerberImageFile->m_ImageNegative );
 
-    // Draw DCODEs if enabled
+    // Draw DCODE overlay text
     if( IsDCodeLayer( aLayer ) )
     {
-        if( !m_gerbviewSettings.m_showCodes )
-            return;
-
         wxString codeText;
         VECTOR2D textPosition;
         double textSize;
@@ -227,11 +228,6 @@ void GERBVIEW_PAINTER::draw( /*const*/ GERBER_DRAW_ITEM* aItem, int aLayer )
     // TODO: Should brightened color be a preference?
     if( aItem->IsBrightened() )
         color = COLOR4D( 0.0, 1.0, 0.0, 0.75 );
-
-    if( m_gerbviewSettings.m_diffMode )
-    {
-        color.a = 0.75;
-    }
 
     m_gal->SetNegativeDrawMode( isNegative );
     m_gal->SetStrokeColor( color );

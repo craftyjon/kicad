@@ -47,6 +47,7 @@
 #include <bitmaps.h>
 #include <hotkeys.h>
 #include <painter.h>
+#include <status_popup.h>
 
 #include <preview_items/arc_assistant.h>
 
@@ -94,7 +95,7 @@ TOOL_ACTION PCB_ACTIONS::drawZone( "pcbnew.InteractiveDrawing.zone",
 
 TOOL_ACTION PCB_ACTIONS::drawVia( "pcbnew.InteractiveDrawing.via",
         AS_GLOBAL, 0,
-        _( "Add Vias" ), _( "Add free-stanging vias" ), NULL, AF_ACTIVATE );
+        _( "Add Vias" ), _( "Add free-standing vias" ), NULL, AF_ACTIVATE );
 
 TOOL_ACTION PCB_ACTIONS::drawZoneKeepout( "pcbnew.InteractiveDrawing.keepout",
         AS_GLOBAL, 0,
@@ -658,11 +659,13 @@ int DRAWING_TOOL::DrawZoneCutout( const TOOL_EVENT& aEvent )
     return drawZone( false, ZONE_MODE::CUTOUT );
 }
 
+
 int DRAWING_TOOL::DrawGraphicPolygon( const TOOL_EVENT& aEvent )
 {
     SCOPED_DRAW_MODE scopedDrawMode( m_mode, MODE::GRAPHIC_POLYGON );
 
-    m_frame->SetToolID( ID_PCB_ADD_POLYGON_BUTT, wxCURSOR_PENCIL, _( "Add graphic polygon" ) );
+    m_frame->SetToolID( m_editModules ? ID_MODEDIT_POLYGON_TOOL : ID_PCB_ADD_POLYGON_BUTT,
+                        wxCURSOR_PENCIL, _( "Add graphic polygon" ) );
 
     return drawZone( false, ZONE_MODE::GRAPHIC_POLYGON );
 }
@@ -1251,6 +1254,10 @@ void DRAWING_TOOL::runPolygonEventLoop( POLYGON_GEOM_MANAGER& polyGeomMgr )
     auto&   controls    = *getViewControls();
     bool    started     = false;
 
+    STATUS_TEXT_POPUP status( m_frame );
+    status.SetTextColor( wxColour( 255, 0, 0 ) );
+    status.SetText( _( "Self-intersecting polygons are not allowed" ) );
+
     while( OPT_TOOL_EVENT evt = Wait() )
     {
         VECTOR2I cursorPos = controls.GetCursorPosition();
@@ -1295,6 +1302,7 @@ void DRAWING_TOOL::runPolygonEventLoop( POLYGON_GEOM_MANAGER& polyGeomMgr )
                 controls.SetAutoPan( false );
                 controls.CaptureCursor( false );
             }
+
             // adding a corner
             else if( polyGeomMgr.AddPoint( cursorPos ) )
             {
@@ -1305,6 +1313,7 @@ void DRAWING_TOOL::runPolygonEventLoop( POLYGON_GEOM_MANAGER& polyGeomMgr )
                     controls.CaptureCursor( true );
                 }
             }
+
         }
         else if( evt->IsAction( &deleteLastPoint ) )
         {
@@ -1324,10 +1333,21 @@ void DRAWING_TOOL::runPolygonEventLoop( POLYGON_GEOM_MANAGER& polyGeomMgr )
         else if( polyGeomMgr.IsPolygonInProgress()
                  && ( evt->IsMotion() || evt->IsDrag( BUT_LEFT ) ) )
         {
-            bool draw45 = evt->Modifier( MD_CTRL );
-            polyGeomMgr.SetLeaderMode( draw45 ? POLYGON_GEOM_MANAGER::LEADER_MODE::DEG45
-                    : POLYGON_GEOM_MANAGER::LEADER_MODE::DIRECT );
-            polyGeomMgr.SetCursorPosition( cursorPos );
+            polyGeomMgr.SetCursorPosition( cursorPos, evt->Modifier( MD_CTRL )
+                                                      ? POLYGON_GEOM_MANAGER::LEADER_MODE::DEG45
+                                                      : POLYGON_GEOM_MANAGER::LEADER_MODE::DIRECT );
+
+            if( polyGeomMgr.IsSelfIntersecting( true ) )
+            {
+                wxPoint p = wxGetMousePosition() + wxPoint( 20, 20 );
+                status.Move( p );
+                status.Popup( m_frame );
+                status.Expire( 1500 );
+            }
+            else
+            {
+                status.Hide();
+            }
         }
     }    // end while
 }

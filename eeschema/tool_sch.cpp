@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2013 Jean-Pierre Charras, jp.charras at wanadoo.fr
- * Copyright (C) 2008-2017 Wayne Stambaugh <stambaughw@verizon.net>
+ * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
  * Copyright (C) 2004-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
@@ -302,7 +302,7 @@ void SCH_EDIT_FRAME::ReCreateOptToolbar()
 #else
     m_optionsToolBar->AddTool( ID_TB_OPTIONS_SELECT_CURSOR, wxEmptyString,
                                KiScaledBitmap( cursor_shape_xpm, this ),
-                               _( "Change cursor shape (not supported in Legacy graphics)" ),
+                               _( "Change cursor shape (not supported in Legacy Toolset)" ),
                                wxITEM_CHECK  );
 #endif
 
@@ -328,7 +328,7 @@ void SCH_EDIT_FRAME::OnSelectOptionToolbar( wxCommandEvent& event )
     switch( id )
     {
     case ID_TB_OPTIONS_HIDDEN_PINS:
-        m_showAllPins = m_optionsToolBar->GetToolToggled( id );
+        m_showAllPins = !m_showAllPins;
 
         if( m_canvas )
             m_canvas->Refresh();

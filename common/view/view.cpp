@@ -189,6 +189,31 @@ private:
         return m_groupsSize > 0;
     }
 
+
+    /**
+     * Reorders the stored groups (to facilitate reordering of layers)
+     * @see VIEW::ReorderLayerData
+     *
+     * @param aReorderMap is the mapping of old to new layer ids
+     */
+    void reorderGroups( std::unordered_map<int, int> aReorderMap )
+    {
+        for( int i = 0; i < m_groupsSize; ++i )
+        {
+            int orig_layer = m_groups[i].first;
+            int new_layer = orig_layer;
+
+            try
+            {
+                new_layer = aReorderMap.at( orig_layer );
+            }
+            catch( std::out_of_range ) {}
+
+            m_groups[i].first = new_layer;
+        }
+    }
+
+
     /// Stores layer numbers used by the item.
     std::vector<int> m_layers;
 
@@ -626,6 +651,52 @@ void VIEW::SortLayers( int aLayers[], int& aCount ) const
 }
 
 
+void VIEW::ReorderLayerData( std::unordered_map<int, int> aReorderMap )
+{
+    LAYER_MAP new_map;
+
+    for( auto it : m_layers )
+    {
+        int orig_idx = it.first;
+        VIEW_LAYER layer = it.second;
+        int new_idx;
+
+        try
+        {
+            new_idx = aReorderMap.at( orig_idx );
+        }
+        catch( std::out_of_range )
+        {
+            new_idx = orig_idx;
+        }
+
+        layer.id = new_idx;
+        new_map[new_idx] = layer;
+    }
+
+    m_layers = new_map;
+
+    for( VIEW_ITEM* item : m_allItems )
+    {
+        auto viewData = item->viewPrivData();
+
+        if( !viewData )
+            continue;
+
+        int layers[VIEW::VIEW_MAX_LAYERS], layers_count;
+
+        item->ViewGetLayers( layers, layers_count );
+        viewData->saveLayers( layers, layers_count );
+
+        viewData->reorderGroups( aReorderMap );
+
+        viewData->m_requiredUpdate |= COLOR;
+    }
+
+    UpdateItems();
+}
+
+
 struct VIEW::updateItemsColor
 {
     updateItemsColor( int aLayer, PAINTER* aPainter, GAL* aGal ) :
@@ -671,21 +742,26 @@ void VIEW::UpdateLayerColor( int aLayer )
 
 void VIEW::UpdateAllLayersColor()
 {
-    BOX2I r;
-
-    r.SetMaximum();
     m_gal->BeginUpdate();
 
-    for( LAYER_MAP_ITER i = m_layers.begin(); i != m_layers.end(); ++i )
+    for( VIEW_ITEM* item : m_allItems )
     {
-        VIEW_LAYER* l = &( ( *i ).second );
+        auto viewData = item->viewPrivData();
 
-        // There is no point in updating non-cached layers
-        if( !IsCached( l->id ) )
+        if( !viewData )
             continue;
 
-        updateItemsColor visitor( l->id, m_painter, m_gal );
-        l->items->Query( r, visitor );
+        int layers[VIEW::VIEW_MAX_LAYERS], layers_count;
+        viewData->getLayers( layers, layers_count );
+
+        for( int i = 0; i < layers_count; ++i )
+        {
+            const COLOR4D color = m_painter->GetSettings()->GetColor( item, layers[i] );
+            int group = viewData->getGroup( layers[i] );
+
+            if( group >= 0 )
+                m_gal->ChangeGroupColor( group, color );
+        }
     }
 
     m_gal->EndUpdate();
@@ -793,17 +869,26 @@ void VIEW::ClearTopLayers()
 
 void VIEW::UpdateAllLayersOrder()
 {
-    BOX2I r;
-    r.SetMaximum();
-
     sortLayers();
     m_gal->BeginUpdate();
 
-    for( LAYER_MAP::value_type& l : m_layers )
+    for( VIEW_ITEM* item : m_allItems )
     {
-        int layer = l.first;
-        changeItemsDepth visitor( layer, l.second.renderingOrder, m_gal );
-        m_layers[layer].items->Query( r, visitor );
+        auto viewData = item->viewPrivData();
+
+        if( !viewData )
+            continue;
+
+        int layers[VIEW::VIEW_MAX_LAYERS], layers_count;
+        viewData->getLayers( layers, layers_count );
+
+        for( int i = 0; i < layers_count; ++i )
+        {
+            int group = viewData->getGroup( layers[i] );
+
+            if( group >= 0 )
+                m_gal->ChangeGroupDepth( group, m_layers[layers[i]].renderingOrder );
+        }
     }
 
     m_gal->EndUpdate();
@@ -1017,7 +1102,7 @@ void VIEW::Redraw()
 
 #ifdef __WXDEBUG__
     totalRealTime.Stop();
-    wxLogTrace( "GAL_PROFILE", wxT( "VIEW::Redraw(): %.1f ms" ), totalRealTime.msecs() );
+    wxLogTrace( "GAL_PROFILE", "VIEW::Redraw(): %.1f ms", totalRealTime.msecs() );
 #endif /* __WXDEBUG__ */
 }
 
@@ -1092,7 +1177,7 @@ void VIEW::invalidateItem( VIEW_ITEM* aItem, int aUpdateFlags )
 
         if( IsCached( layerId ) )
         {
-            if( aUpdateFlags & ( GEOMETRY | LAYERS ) )
+            if( aUpdateFlags & ( GEOMETRY | LAYERS | REPAINT ) )
                 updateItemGeometry( aItem, layerId );
             else if( aUpdateFlags & COLOR )
                 updateItemColor( aItem, layerId );
@@ -1285,6 +1370,38 @@ void VIEW::UpdateItems()
     }
 
     m_gal->EndUpdate();
+}
+
+
+void VIEW::UpdateAllItems( int aUpdateFlags )
+{
+    for( VIEW_ITEM* item : m_allItems )
+    {
+        auto viewData = item->viewPrivData();
+
+        if( !viewData )
+            continue;
+
+        viewData->m_requiredUpdate |= aUpdateFlags;
+    }
+}
+
+
+void VIEW::UpdateAllItemsConditionally( int aUpdateFlags,
+                                        std::function<bool( VIEW_ITEM* )> aCondition )
+{
+    for( VIEW_ITEM* item : m_allItems )
+    {
+        if( aCondition( item ) )
+        {
+            auto viewData = item->viewPrivData();
+
+            if( !viewData )
+                continue;
+
+            viewData->m_requiredUpdate |= aUpdateFlags;
+        }
+    }
 }
 
 

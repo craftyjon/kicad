@@ -254,6 +254,8 @@ SEARCH_RESULT GENERAL_COLLECTOR::Inspect( EDA_ITEM* testItem, void* testData )
         break;
 
     case PCB_TRACE_T:
+        if( m_Guide->IgnoreTracks() )
+            goto exit;
         break;
 
     case PCB_ZONE_T:
@@ -399,7 +401,8 @@ SEARCH_RESULT GENERAL_COLLECTOR::Inspect( EDA_ITEM* testItem, void* testData )
                 {
                     if( item->HitTest( m_RefPos ) )
                     {
-                        Append( item );
+                        if( !module || module->HitTestAccurate( m_RefPos ) )
+                            Append( item );
                         goto exit;
                     }
                 }

@@ -119,13 +119,7 @@ void PCB_EDIT_FRAME::OnUpdateScriptingConsoleState( wxUpdateUIEvent& aEvent )
 
 void PCB_EDIT_FRAME::OnUpdateZoneDisplayStyle( wxUpdateUIEvent& aEvent )
 {
-    int selected = aEvent.GetId() - ID_TB_OPTIONS_SHOW_ZONES;
-    auto displ_opts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
 
-    if( aEvent.IsChecked() && ( displ_opts->m_DisplayZonesMode == selected ) )
-        return;
-
-    aEvent.Check( displ_opts->m_DisplayZonesMode == selected );
 }
 
 
@@ -135,8 +129,8 @@ void PCB_EDIT_FRAME::OnUpdateDrcEnable( wxUpdateUIEvent& aEvent )
     aEvent.Check( state );
     m_optionsToolBar->SetToolShortHelp( ID_TB_OPTIONS_DRC_OFF,
                                         Settings().m_legacyDrcOn ?
-                                        _( "Disable design rule checking while routing/editing tracks using Legacy Graphics.\nUse Preferences > Interactive Routing... for Modern Canvas." ) :
-                                        _( "Enable design rule checking while routing/editing tracks using Legacy Graphics.\nUse Preferences > Interactive Routing... for Modern Canvas." ) );
+                                        _( "Disable design rule checking while routing/editing tracks using Legacy Toolset.\nUse Route > Interactive Router Settings... for Modern Toolset." ) :
+                                        _( "Enable design rule checking while routing/editing tracks using Legacy Toolset.\nUse Route > Interactive Router Settings... for Modern Toolset." ) );
 }
 
 void PCB_EDIT_FRAME::OnUpdateShowBoardRatsnest( wxUpdateUIEvent& aEvent )
@@ -146,16 +140,6 @@ void PCB_EDIT_FRAME::OnUpdateShowBoardRatsnest( wxUpdateUIEvent& aEvent )
                                         GetBoard()->IsElementVisible( LAYER_RATSNEST ) ?
                                         _( "Hide board ratsnest" ) :
                                         _( "Show board ratsnest" ) );
-}
-
-
-void PCB_EDIT_FRAME::OnUpdateAutoDeleteTrack( wxUpdateUIEvent& aEvent )
-{
-    aEvent.Check( Settings().m_legacyAutoDeleteOldTrack );
-    m_optionsToolBar->SetToolShortHelp( ID_TB_OPTIONS_AUTO_DEL_TRACK,
-                                        Settings().m_legacyAutoDeleteOldTrack ?
-                                        _( "Disable auto delete old track" ) :
-                                        _( "Enable auto delete old track" ) );
 }
 
 
@@ -230,4 +214,46 @@ void PCB_EDIT_FRAME::OnUpdateAutoPlaceTracksMode( wxUpdateUIEvent& aEvent )
 void PCB_EDIT_FRAME::OnUpdateAutoPlaceModulesMode( wxUpdateUIEvent& aEvent )
 {
     //Nothing to do.
+}
+
+void PCB_EDIT_FRAME::SyncMenusAndToolbars( wxEvent& aEvent )
+{
+    auto displOpts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
+    auto menuBar = GetMenuBar();
+
+    m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SHOW_ZONES, false );
+    m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SHOW_ZONES_DISABLE, false );
+    m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SHOW_ZONES_OUTLINES_ONLY, false );
+
+    switch( displOpts->m_DisplayZonesMode )
+    {
+        case 0:
+            menuBar->FindItem( ID_TB_OPTIONS_SHOW_ZONES )->Check( true );
+            m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SHOW_ZONES, true );
+            break;
+
+        case 1:
+            menuBar->FindItem( ID_TB_OPTIONS_SHOW_ZONES_DISABLE )->Check( true );
+            m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SHOW_ZONES_DISABLE, true );
+            break;
+
+        case 2:
+            menuBar->FindItem( ID_TB_OPTIONS_SHOW_ZONES_OUTLINES_ONLY )->Check( true );
+            m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SHOW_ZONES_OUTLINES_ONLY, true );
+            break;
+    }
+
+    m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SELECT_UNIT_MM, false );
+    m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SELECT_UNIT_INCH, false );
+
+    if( g_UserUnit == INCHES )
+    {
+        menuBar->FindItem( ID_TB_OPTIONS_SELECT_UNIT_INCH )->Check( true );
+        m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SELECT_UNIT_INCH, true );
+    }
+    else
+    {
+        menuBar->FindItem( ID_TB_OPTIONS_SELECT_UNIT_MM )->Check( true );
+        m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SELECT_UNIT_MM, true );
+    }
 }

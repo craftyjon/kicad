@@ -789,7 +789,7 @@ void SCH_LEGACY_PLUGIN::loadHeader( FILE_LINE_READER& aReader, SCH_SCREEN* aScre
 {
     const char* line = aReader.ReadLine();
 
-    if( !strCompare( "Eeschema Schematic File Version", line, &line ) )
+    if( !line || !strCompare( "Eeschema Schematic File Version", line, &line ) )
     {
         m_error.Printf( _( "\"%s\" does not appear to be an Eeschema file" ),
                         GetChars( aScreen->GetFileName() ) );
@@ -2417,7 +2417,6 @@ void SCH_LEGACY_PLUGIN_CACHE::Load()
         {
             // Read one DEF/ENDDEF part entry from library:
             loadPart( reader );
-
         }
     }
 
@@ -2676,12 +2675,44 @@ LIB_PART* SCH_LEGACY_PLUGIN_CACHE::loadPart( FILE_LINE_READER& aReader )
             loadFootprintFilters( part, aReader );
         else if( strCompare( "ENDDEF", line, &line ) )   // End of part description
         {
-            // Now all is good, Add the root alias to the cache alias list.
-            m_aliases[ part->GetName() ] = part->GetAlias( part->GetName() );
-
-            // Add aliases when exist
+            // Add aliases
             for( size_t ii = 0; ii < part->GetAliasCount(); ++ii )
-                m_aliases[ part->GetAlias( ii )->GetName() ] = part->GetAlias( ii );
+            {
+                LIB_ALIAS* alias = part->GetAlias( ii );
+                const wxString& aliasName = alias->GetName();
+                auto it = m_aliases.find( aliasName );
+
+                if( it != m_aliases.end() )
+                {
+                    // Find a new name for the alias
+                    wxString newName;
+                    int idx = 0;
+                    LIB_ALIAS_MAP::const_iterator jt;
+
+                    do
+                    {
+                        newName = wxString::Format( "%s_%d", aliasName, idx );
+                        jt = m_aliases.find( newName );
+                        ++idx;
+                    }
+                    while( jt != m_aliases.end() );
+
+                    wxLogWarning( "Symbol name conflict in library:\n%s\n"
+                                  "'%s' has been renamed to '%s'",
+                                  m_fileName, aliasName, newName );
+
+                    if( alias->IsRoot() )
+                        part->SetName( newName );
+                    else
+                        alias->SetName( newName );
+
+                    m_aliases[newName] = alias;
+                }
+                else
+                {
+                    m_aliases[aliasName] = alias;
+                }
+            }
 
             return part.release();
         }

@@ -735,11 +735,9 @@ void CVPCB_MAINFRAME::UpdateTitle()
 
     if( fn.IsOk() && !prj.GetProjectFullName().IsEmpty() && fn.FileExists() )
     {
-        title.Printf( L"Cvpcb \u2014 %s%s",
-                fn.GetFullPath(),
-                fn.IsFileWritable()
-                    ? wxString( wxEmptyString )
-                    : _( " [Read Only]" ) );
+        title.Printf( _( "Cvpcb" ) + wxT( " \u2014 %s%s" ),
+                      fn.GetFullPath(),
+                      fn.IsFileWritable() ? wxString( wxEmptyString ) : _( " [Read Only]" ) );
     }
     else
     {
@@ -953,6 +951,14 @@ const wxString CVPCB_MAINFRAME::GetSelectedFootprint()
 void CVPCB_MAINFRAME::OnConfigurePaths( wxCommandEvent& aEvent )
 {
     Pgm().ConfigurePaths( this );
+}
+
+
+void CVPCB_MAINFRAME::ShowChangedLanguage()
+{
+    EDA_BASE_FRAME::ShowChangedLanguage();
+    ReCreateHToolbar();
+    DisplayStatus();
 }
 
 

@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2004-2015 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2011 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 2016-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2016-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -329,8 +329,9 @@ void PCB_EDIT_FRAME::Files_io_from_id( int id )
         fn.SetExt( PcbFileExtension );
 
         GetBoard()->SetFileName( fn.GetFullPath() );
-        UpdateTitle();
-        ReCreateLayerBox();
+
+        onBoardLoaded();
+
         OnModify();
         break;
     }
@@ -532,12 +533,6 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         loadedBoard->BuildListOfNets();
         loadedBoard->SynchronizeNetsAndNetClasses();
 
-        SetStatusText( wxEmptyString );
-        Zoom_Automatique( false );
-
-        // update the layer names in the listbox
-        ReCreateLayerBox( false );
-
         GetScreen()->ClrModify();
 
         {
@@ -567,8 +562,6 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         GetBoard()->SetFileName( fname );
     }
 
-    UpdateTitle();
-
     if( !converted )
         UpdateFileHistory( GetBoard()->GetFileName() );
 
@@ -582,27 +575,7 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
     Compile_Ratsnest( NULL, true );
     GetBoard()->BuildConnectivity();
 
-    // Update info shown by the horizontal toolbars
-    ReFillLayerWidget();
-    ReCreateLayerBox();
-
-    // upate the layer widget to match board visibility states, both layers and render columns.
-    syncLayerVisibilities();
-    syncLayerWidgetLayer();
-    syncRenderStates();
-
-    // Update the tracks / vias available sizes list:
-    ReCreateAuxiliaryToolbar();
-
-    // Update the RATSNEST items, which were not loaded at the time
-    // BOARD::SetVisibleElements() was called from within any PLUGIN.
-    // See case LAYER_RATSNEST: in BOARD::SetElementVisibility()
-    GetBoard()->SetVisibleElements( GetBoard()->GetVisibleElements() );
-
-    // Display the loaded board:
-    Zoom_Automatique( false );
-
-    SetMsgPanel( GetBoard() );
+    onBoardLoaded();
 
     // Refresh the 3D view, if any
     EDA_3D_VIEWER* draw3DFrame = Get3DViewerFrame();
@@ -863,49 +836,51 @@ bool PCB_EDIT_FRAME::doAutoSave()
 }
 
 
-bool PCB_EDIT_FRAME::ImportFile( const wxString& aFileName, int aFileType )
+bool PCB_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
 {
     switch( (IO_MGR::PCB_FILE_T) aFileType )
     {
     case IO_MGR::EAGLE:
-        if( OpenProjectFiles( std::vector<wxString>( 1, aFileName ),
-                    KICTL_EAGLE_BRD ) )
+        if( OpenProjectFiles( std::vector<wxString>( 1, aFileName ), KICTL_EAGLE_BRD ) )
         {
             wxString projectpath = Kiway().Prj().GetProjectPath();
-            wxFileName newfilename = Prj().AbsolutePath( Prj().GetProjectName() );
+            wxFileName newfilename;
 
+            newfilename.SetPath( Prj().GetProjectPath() );
+            newfilename.SetName( Prj().GetProjectName() );
             newfilename.SetExt( KiCadPcbFileExtension );
 
             GetBoard()->SetFileName( newfilename.GetFullPath() );
             UpdateTitle();
+            OnModify();
 
+            // Extract a footprint library from the design and add it to the fp-lib-table
             wxString newLibPath;
             ArchiveModulesOnBoard( true, newfilename.GetName(), &newLibPath );
 
-            if( newLibPath.Length()>0 )
+            if( newLibPath.Length() > 0 )
             {
                 FP_LIB_TABLE* prjlibtable = Prj().PcbFootprintLibs();
                 const wxString& project_env = PROJECT_VAR_NAME;
-                wxString rel_path;
-                wxString env_path;
+                wxString rel_path, env_path;
 
                 wxGetEnv( project_env, &env_path );
 
                 wxString result( newLibPath );
-                rel_path =  result.Replace( env_path, wxString( "$(" + project_env + ")" ) ) ? result : "" ;
+                rel_path =  result.Replace( env_path,
+                                            wxString( "$(" + project_env + ")" ) ) ? result : "" ;
 
-                if( !rel_path.IsEmpty() ) newLibPath = rel_path;
+                if( !rel_path.IsEmpty() )
+                    newLibPath = rel_path;
 
                 FP_LIB_TABLE_ROW* row = new FP_LIB_TABLE_ROW( newfilename.GetName(),
-                                                          newLibPath,
-                                                          wxT( "KiCad" ),
-                                                          wxEmptyString );     // options
+                        newLibPath, wxT( "KiCad" ), wxEmptyString );
                 prjlibtable->InsertRow( row );
             }
 
             if( !GetBoard()->GetFileName().IsEmpty() )
             {
-                wxString    tblName   = Prj().FootprintLibTblName();
+                wxString tblName = Prj().FootprintLibTblName();
 
                 try
                 {
@@ -914,14 +889,66 @@ bool PCB_EDIT_FRAME::ImportFile( const wxString& aFileName, int aFileType )
                 catch( const IO_ERROR& ioe )
                 {
                     wxString msg = wxString::Format( _(
-                        "Error occurred saving project specific footprint library "
-                        "table:\n\n%s" ),
-                        GetChars( ioe.What() )
-                        );
+                                    "Error occurred saving project specific footprint library "
+                                    "table:\n\n%s" ),
+                            GetChars( ioe.What() ) );
                     wxMessageBox( msg, _( "File Save Error" ), wxOK | wxICON_ERROR );
                 }
             }
 
+
+            // Update module LIB_IDs to point to the just imported Eagle library
+            for( MODULE* module : GetBoard()->Modules() )
+            {
+                LIB_ID libId = module->GetFPID();
+
+                if( libId.GetLibItemName().empty() )
+                    continue;
+
+                libId.SetLibNickname( newfilename.GetName() );
+                module->SetFPID( libId );
+            }
+
+
+            // Store net names for all pads, to create net remap information
+            std::unordered_map<D_PAD*, wxString> netMap;
+
+            for( const auto& pad : GetBoard()->GetPads() )
+            {
+                NETINFO_ITEM* netinfo = pad->GetNet();
+
+                if( netinfo->GetNet() > 0 && !netinfo->GetNetname().IsEmpty() )
+                    netMap[pad] = netinfo->GetNetname();
+            }
+
+            // Two stage netlist update:
+            // - first, assign valid timestamps to footprints (no reannotation)
+            // - second, perform schematic annotation and update footprint references
+            //   based on timestamps
+            Kiway().ExpressMail( FRAME_SCH, MAIL_SCH_PCB_UPDATE_REQUEST,
+                    "no-annotate;by-reference", this );
+            Kiway().ExpressMail( FRAME_SCH, MAIL_SCH_PCB_UPDATE_REQUEST,
+                    "quiet-annotate;by-timestamp", this );
+
+            std::unordered_map<wxString, wxString> netRemap;
+
+            // Compare the old net names with the new net names and create a net map
+            for( const auto& pad : GetBoard()->GetPads() )
+            {
+                auto it = netMap.find( pad );
+
+                if( it == netMap.end() )
+                    continue;
+
+                NETINFO_ITEM* netinfo = pad->GetNet();
+
+                // Net name has changed, create a remap entry
+                if( netinfo->GetNet() > 0 && netMap[pad] != netinfo->GetNetname() )
+                    netRemap[netMap[pad]] = netinfo->GetNetname();
+            }
+
+            if( !netRemap.empty() )
+                fixEagleNets( netRemap );
 
             return true;
         }
@@ -933,4 +960,54 @@ bool PCB_EDIT_FRAME::ImportFile( const wxString& aFileName, int aFileType )
     }
 
     return false;
+}
+
+
+bool PCB_EDIT_FRAME::fixEagleNets( const std::unordered_map<wxString, wxString>& aRemap )
+{
+    bool result = true;
+    BOARD* board = GetBoard();
+
+    // perform netlist matching to prevent orphaned zones.
+    for( auto zone : board->Zones() )
+    {
+        auto it = aRemap.find( zone->GetNet()->GetNetname() );
+
+        if( it != aRemap.end() )
+        {
+            NETINFO_ITEM* net = board->FindNet( it->second );
+
+            if( !net )
+            {
+                wxFAIL;
+                result = false;
+                continue;
+            }
+
+            zone->SetNet( net );
+        }
+    }
+
+
+    // perform netlist matching to prevent orphaned tracks/vias.
+    for( auto track : board->Tracks() )
+    {
+        auto it = aRemap.find( track->GetNet()->GetNetname() );
+
+        if( it != aRemap.end() )
+        {
+            NETINFO_ITEM* net = board->FindNet( it->second );
+
+            if( !net )
+            {
+                wxFAIL;
+                result = false;
+                continue;
+            }
+
+            track->SetNet( net );
+        }
+    }
+
+    return result;
 }

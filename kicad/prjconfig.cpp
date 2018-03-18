@@ -184,11 +184,46 @@ void KICAD_MANAGER_FRAME::OnLoadProject( wxCommandEvent& event )
 }
 
 
+///> Helper widget to select whether a new directory should be created for a project
+class DIR_CHECKBOX : public wxPanel
+{
+public:
+    DIR_CHECKBOX( wxWindow* aParent )
+        : wxPanel( aParent )
+    {
+        m_cbCreateDir = new wxCheckBox( aParent, wxID_ANY,
+                _( "Create a new directory for the project" ) );
+        m_cbCreateDir->SetValue( true );
+
+        wxBoxSizer* sizer = new wxBoxSizer( wxHORIZONTAL );
+        sizer->Add( m_cbCreateDir, 0, wxALL, 8 );
+
+        SetSizerAndFit( sizer );
+    }
+
+    bool CreateNewDir() const
+    {
+        return m_cbCreateDir->GetValue();
+    }
+
+    static wxWindow* Create( wxWindow* aParent )
+    {
+        return new DIR_CHECKBOX( aParent );
+    }
+
+protected:
+    wxCheckBox* m_cbCreateDir;
+};
+
+
 void KICAD_MANAGER_FRAME::OnNewProject( wxCommandEvent& aEvent )
 {
     wxString        default_dir = GetMruPath();
     wxFileDialog    dlg( this, _( "Create New Project" ), default_dir, wxEmptyString,
                          ProjectFileWildcard(), wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
+
+    // Add a "Create a new directory" checkbox
+    dlg.SetExtraControlCreator( &DIR_CHECKBOX::Create );
 
     if( dlg.ShowModal() == wxID_CANCEL )
         return;
@@ -200,7 +235,8 @@ void KICAD_MANAGER_FRAME::OnNewProject( wxCommandEvent& aEvent )
         pro.MakeAbsolute();
 
     // Append a new directory with the same name of the project file.
-    pro.AppendDir( pro.GetName() );
+    if( static_cast<DIR_CHECKBOX*>( dlg.GetExtraControl() )->CreateNewDir() )
+        pro.AppendDir( pro.GetName() );
 
     // Check if the project directory is empty if it already exists.
     wxDir directory( pro.GetPath() );
@@ -338,7 +374,7 @@ void KICAD_MANAGER_FRAME::OnCreateProjectFromTemplate( wxCommandEvent& event )
 
         msg.Printf( _( "Cannot write to folder \"%s\"." ), prjPath.GetPath() );
         wxMessageDialog msgDlg( this, msg, _( "Error!" ), wxICON_ERROR | wxOK | wxCENTER );
-        msgDlg.SetExtendedMessage( _( "Plese check your access permissions to this folder "
+        msgDlg.SetExtendedMessage( _( "Please check your access permissions to this folder "
                                       "and try again." ) );
         msgDlg.ShowModal();
         return;

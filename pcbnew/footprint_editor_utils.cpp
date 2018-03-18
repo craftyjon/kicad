@@ -379,9 +379,9 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_MODEDIT_SAVE_LIBMODULE:
-        if( GetBoard()->m_Modules && GetCurrentLib().size() )
+        if( GetBoard()->m_Modules )
         {
-            SaveFootprintInLibrary( GetCurrentLib(), GetBoard()->m_Modules, true, true );
+            SaveFootprintInLibrary( GetCurrentLib(), GetBoard()->m_Modules );
             GetScreen()->ClrModify();
         }
         break;
@@ -395,7 +395,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
             if( pcbframe == NULL )      // happens when the board editor is not active (or closed)
             {
-                wxMessageBox( _("No board currently edited" ) );
+                DisplayErrorMessage( this, _("No board currently open." ) );
                 break;
             }
 
@@ -977,7 +977,7 @@ void FOOTPRINT_EDIT_FRAME::OnVerticalToolbar( wxCommandEvent& aEvent )
         break;
 
     case ID_MODEDIT_MEASUREMENT_TOOL:
-        DisplayError( this, wxT( "Unsupported tool in legacy canvas" ) );
+        DisplayError( this, wxT( "Measurement Tool not available in Legacy Toolset" ) );
         SetNoToolSelected();
         break;
 

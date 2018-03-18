@@ -85,6 +85,8 @@ BEGIN_EVENT_TABLE( FOOTPRINT_WIZARD_FRAME, EDA_DRAW_FRAME )
     EVT_LISTBOX( ID_FOOTPRINT_WIZARD_PAGE_LIST, FOOTPRINT_WIZARD_FRAME::ClickOnPageList )
     EVT_GRID_CMD_CELL_CHANGED( ID_FOOTPRINT_WIZARD_PARAMETER_LIST,
                                FOOTPRINT_WIZARD_FRAME::ParametersUpdated )
+    EVT_GRID_CMD_CELL_LEFT_CLICK( ID_FOOTPRINT_WIZARD_PARAMETER_LIST,
+                                  FOOTPRINT_WIZARD_FRAME::OnParameterCellClick )
 
     EVT_MENU( ID_SET_RELATIVE_OFFSET, FOOTPRINT_WIZARD_FRAME::OnSetRelativeOffset )
 END_EVENT_TABLE()
@@ -306,7 +308,12 @@ void  FOOTPRINT_WIZARD_FRAME::initParameterGrid()
     m_parameterGrid->DisableDragGridSize();
     m_parameterGrid->DisableDragColSize();
 
-    m_parameterGrid->Connect( wxEVT_SIZE, wxSizeEventHandler(FOOTPRINT_WIZARD_FRAME::OnGridSize), NULL, this );
+    m_parameterGrid->Connect( wxEVT_SIZE,
+                              wxSizeEventHandler( FOOTPRINT_WIZARD_FRAME::OnGridSize ),
+                              NULL, this );
+    m_parameterGrid->Connect( wxEVT_KEY_UP,
+                              wxKeyEventHandler( FOOTPRINT_WIZARD_FRAME::OnParameterGridKeyPress ),
+                              NULL, this );
 }
 
 
@@ -348,8 +355,8 @@ void FOOTPRINT_WIZARD_FRAME::ReCreateParameterList()
     if( footprintWizard == NULL )
         return;
 
-    m_parameterGridPage = m_pageList->GetSelection();
     m_parameterGrid->ClearGrid();
+    m_parameterGridPage = m_pageList->GetSelection();
 
     if( m_parameterGridPage < 0 )   // Should not happen
         return;
@@ -389,9 +396,10 @@ void FOOTPRINT_WIZARD_FRAME::ReCreateParameterList()
         // Boolean parameters are displayed using a checkbox
         if( units == WIZARD_PARAM_UNITS_BOOL )
         {
-            wxGridCellBoolEditor *boolEditor = new wxGridCellBoolEditor;
-            boolEditor->UseStringValues( "1", "0" );
-            m_parameterGrid->SetCellEditor( i, WIZ_COL_VALUE, boolEditor );
+            // NOTE: Not using wxGridCellBoolEditor because it doesn't work well
+            // Setting read-only to disable the grid editor; value will be
+            // updated by the OnParameterCellClick event handler.
+            m_parameterGrid->SetReadOnly( i, WIZ_COL_VALUE );
             m_parameterGrid->SetCellRenderer( i, WIZ_COL_VALUE, new wxGridCellBoolRenderer );
         }
         // Parameters that can be selected from a list of multiple options
@@ -601,25 +609,21 @@ void FOOTPRINT_WIZARD_FRAME::Show3D_Frame( wxCommandEvent& event )
 {
     EDA_3D_VIEWER* draw3DFrame = Get3DViewerFrame();
 
+    // We can probably remove this for 6.0, but just to be safe we'll stick to
+    // one 3DFrame at a time for 5.0
     if( draw3DFrame )
-    {
-        // Raising the window does not show the window on Windows if iconized.
-        // This should work on any platform.
-        if( draw3DFrame->IsIconized() )
-            draw3DFrame->Iconize( false );
+        draw3DFrame->Close( true );
 
-        draw3DFrame->Raise();
-
-        // Raising the window does not set the focus on Linux.  This should work on any platform.
-        if( wxWindow::FindFocus() != draw3DFrame )
-            draw3DFrame->SetFocus();
-
-        return;
-    }
-
-    draw3DFrame = new EDA_3D_VIEWER( &Kiway(), this, wxEmptyString );
+    draw3DFrame = new EDA_3D_VIEWER( &Kiway(), this, _( "3D Viewer" ) );
     Update3D_Frame( false );
+
+#ifdef  __WXMAC__
+    // A stronger version of Raise() which promotes the window to its parent's level.
+    draw3DFrame->ReparentQuasiModal();
+#else
     draw3DFrame->Raise();     // Needed with some Window Managers
+#endif
+
     draw3DFrame->Show( true );
 }
 

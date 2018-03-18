@@ -58,6 +58,9 @@ public:
     ///> clears the report panel
     void Clear();
 
+    ///> return the number of messages matching the given severity mask.
+    int Count( int severityMask );
+
     ///> sets the frame label
     void SetLabel( const wxString& aLabel ) override;
 
@@ -89,6 +92,7 @@ private:
     wxString addHeader( const wxString& aBody );
     wxString generateHtml( const REPORT_LINE& aLine );
     wxString generatePlainText( const REPORT_LINE& aLine );
+    void updateBadges();
 
     void refreshView();
     void scrollToBottom();

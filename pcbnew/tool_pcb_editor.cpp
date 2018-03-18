@@ -381,7 +381,7 @@ void PCB_EDIT_FRAME::ReCreateOptToolbar()
 #else
     m_optionsToolBar->AddTool( ID_TB_OPTIONS_SELECT_CURSOR, wxEmptyString,
                                KiScaledBitmap( cursor_shape_xpm, this ),
-                               _( "Change cursor shape (not supported in Legacy graphics)" ),
+                               _( "Change cursor shape (not supported in Legacy Toolset)" ),
                                wxITEM_CHECK  );
 #endif
 
@@ -389,12 +389,6 @@ void PCB_EDIT_FRAME::ReCreateOptToolbar()
     m_optionsToolBar->AddTool( ID_TB_OPTIONS_SHOW_RATSNEST, wxEmptyString,
                                KiScaledBitmap( general_ratsnest_xpm, this ),
                                _( "Show board ratsnest" ), wxITEM_CHECK );
-
-    KiScaledSeparator( m_optionsToolBar, this );
-    m_optionsToolBar->AddTool( ID_TB_OPTIONS_AUTO_DEL_TRACK, wxEmptyString,
-                               KiScaledBitmap( auto_delete_track_xpm, this ),
-                               _( "Enable automatic track deletion" ),
-                               wxITEM_CHECK );
 
     KiScaledSeparator( m_optionsToolBar, this );
     m_optionsToolBar->AddTool( ID_TB_OPTIONS_SHOW_ZONES, wxEmptyString, KiScaledBitmap( show_zone_xpm, this ),
@@ -791,10 +785,6 @@ void PCB_EDIT_FRAME::OnSelectOptionToolbar( wxCommandEvent& event )
         m_canvas->Refresh();
         break;
 
-    case ID_TB_OPTIONS_AUTO_DEL_TRACK:
-        Settings().m_legacyAutoDeleteOldTrack = state;
-        break;
-
     case ID_TB_OPTIONS_SHOW_ZONES:
         displ_opts->m_DisplayZonesMode = 0;
         m_canvas->Refresh();
@@ -831,10 +821,6 @@ void PCB_EDIT_FRAME::OnSelectOptionToolbar( wxCommandEvent& event )
         m_show_microwave_tools = state;
         m_auimgr.GetPane( wxT( "m_microWaveToolBar" ) ).Show( m_show_microwave_tools );
         m_auimgr.Update();
-
-        GetMenuBar()->SetLabel( ID_MENU_PCB_SHOW_HIDE_MUWAVE_TOOLBAR,
-                                m_show_microwave_tools ?
-                                _( "Hide Microwa&ve Toolbar" ): _( "Show Microwa&ve Toolbar" ));
         break;
 
     case ID_TB_OPTIONS_SHOW_MANAGE_LAYERS_VERTICAL_TOOLBAR:
@@ -842,10 +828,6 @@ void PCB_EDIT_FRAME::OnSelectOptionToolbar( wxCommandEvent& event )
         m_show_layer_manager_tools = state;
         m_auimgr.GetPane( wxT( "m_LayersManagerToolBar" ) ).Show( m_show_layer_manager_tools );
         m_auimgr.Update();
-
-        GetMenuBar()->SetLabel( ID_MENU_PCB_SHOW_HIDE_LAYERS_MANAGER,
-                                m_show_layer_manager_tools ?
-                                _( "Hide &Layers Manager" ) : _( "Show &Layers Manager" ) );
         break;
 
     default:

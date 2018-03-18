@@ -26,40 +26,71 @@
  * Transient mouse following popup window implementation.
  */
 
-#include <wx_status_popup.h>
-#include <pcb_edit_frame.h>
+#include <status_popup.h>
+#include <draw_frame.h>
 
-WX_STATUS_POPUP::WX_STATUS_POPUP( PCB_EDIT_FRAME* aParent ) :
-    wxPopupWindow( aParent )
+STATUS_POPUP::STATUS_POPUP( EDA_DRAW_FRAME* aParent ) :
+    wxPopupWindow( aParent ), m_expireTimer( this )
 {
     m_panel = new wxPanel( this, wxID_ANY );
     m_panel->SetBackgroundColour( *wxLIGHT_GREY );
 
     m_topSizer = new wxBoxSizer( wxVERTICAL );
     m_panel->SetSizer( m_topSizer );
+    m_panel->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
+
+    Connect( wxEVT_TIMER, wxTimerEventHandler( STATUS_POPUP::onExpire ), NULL, this );
 }
 
 
-void WX_STATUS_POPUP::updateSize()
-{
-    m_topSizer->Fit( m_panel );
-    SetClientSize( m_panel->GetSize() );
-}
-
-
-WX_STATUS_POPUP::~WX_STATUS_POPUP()
-{
-}
-
-
-void WX_STATUS_POPUP::Popup( wxWindow* )
+void STATUS_POPUP::Popup( wxWindow* )
 {
     Show( true );
     Raise();
 }
 
 
-void WX_STATUS_POPUP::Move( const wxPoint& aWhere )
+void STATUS_POPUP::Move( const wxPoint& aWhere )
 {
-    SetPosition ( aWhere );
+    SetPosition( aWhere );
+}
+
+
+void STATUS_POPUP::Expire( int aMsecs )
+{
+    m_expireTimer.StartOnce( aMsecs );
+}
+
+
+void STATUS_POPUP::updateSize()
+{
+    m_topSizer->Fit( m_panel );
+    SetClientSize( m_panel->GetSize() );
+}
+
+
+void STATUS_POPUP::onExpire( wxTimerEvent& aEvent )
+{
+    Hide();
+}
+
+
+STATUS_TEXT_POPUP::STATUS_TEXT_POPUP( EDA_DRAW_FRAME* aParent ) :
+    STATUS_POPUP( aParent )
+{
+    m_statusLine = new wxStaticText( m_panel, wxID_ANY, wxEmptyString ) ;
+    m_topSizer->Add( m_statusLine, 1, wxALL | wxEXPAND, 5 );
+}
+
+
+void STATUS_TEXT_POPUP::SetText( const wxString& aText )
+{
+    m_statusLine->SetLabel( aText );
+    updateSize();
+}
+
+
+void STATUS_TEXT_POPUP::SetTextColor( const wxColour& aColor )
+{
+    m_statusLine->SetForegroundColour( aColor );
 }

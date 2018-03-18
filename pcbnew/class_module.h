@@ -37,6 +37,7 @@
 #include <layers_id_colors_and_visibility.h>       // ALL_LAYERS definition.
 #include <class_board_item.h>
 #include <board_item_container.h>
+#include <collectors.h>
 #include <lib_id.h>
 
 #include <class_text_mod.h>
@@ -147,6 +148,12 @@ public:
      * @return EDA_RECT - The rectangle containing the footprint.
      */
     EDA_RECT GetFootprintRect() const;
+
+    /**
+     * Returns a bounding polygon for the shapes and pads in the module
+     * This operation is slower but more accurate than calculating a bounding box
+     */
+    SHAPE_POLY_SET GetBoundingPoly() const;
 
     // Virtual function
     const EDA_RECT GetBoundingBox() const override;
@@ -336,7 +343,7 @@ public:
      * and adds these polygons to aCornerBuffer
      * Useful to generate a polygonal representation of a footprint
      * in 3D view and plot functions, when a full polygonal approach is needed
-     * @param aLayer = the current layer: pads on this layer are considered
+     * @param aLayer = the layer to consider, or UNDEFINED_LAYER to consider all
      * @param aCornerBuffer = the buffer to store polygons
      * @param aInflateValue = an additionnal size to add to pad shapes
      *          aInflateValue = 0 to have the exact pad size
@@ -366,7 +373,7 @@ public:
      * and adds these polygons to aCornerBuffer
      * Useful to generate a polygonal representation of a footprint
      * in 3D view and plot functions, when a full polygonal approach is needed
-     * @param aLayer = the current layer: items on this layer are considered
+     * @param aLayer = the layer to consider, or UNDEFINED_LAYER to consider all
      * @param aCornerBuffer = the buffer to store polygons
      * @param aInflateValue = a value to inflate shapes
      *          aInflateValue = 0 to have the exact shape size
@@ -385,7 +392,8 @@ public:
             int aInflateValue,
             int aCircleToSegmentsCount,
             double aCorrectionFactor,
-            int aCircleToSegmentsCountForTexts = 0 ) const;
+            int aCircleToSegmentsCountForTexts = 0,
+            bool aIncludeText = true ) const;
 
     /**
      * @brief TransformGraphicTextWithClearanceToPolygonSet
@@ -429,6 +437,17 @@ public:
     void GetMsgPanelInfo( std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     bool HitTest( const wxPoint& aPosition ) const override;
+
+    /**
+     * Tests if a point is inside the bounding polygon of the module
+     *
+     * The other hit test methods are just checking the bounding box, which
+     * can be quite inaccurate for rotated or oddly-shaped footprints.
+     *
+     * @param aPosition is the point to test
+     * @return true if aPosition is inside the bounding polygon
+     */
+    bool HitTestAccurate( const wxPoint& aPosition ) const;
 
     bool HitTest( const EDA_RECT& aRect, bool aContained = true, int aAccuracy = 0 ) const override;
 
@@ -591,6 +610,15 @@ public:
      */
     void RunOnChildren( const std::function<void (BOARD_ITEM*)>& aFunction );
 
+    /**
+     * Returns a set of all layers that this module has drawings on
+     * similar to ViewGetLayers()
+     *
+     * @param aLayers is an array to store layer ids
+     * @param aCount is the number of layers stored in the array
+     * @param aIncludePads controls whether to also include pad layers
+     */
+    void GetAllDrawingLayers( int aLayers[], int& aCount, bool aIncludePads = true ) const;
 
     virtual void ViewGetLayers( int aLayers[], int& aCount ) const override;
 
@@ -662,7 +690,7 @@ public:
      * to the area of the footprint. Used by selection tool heuristics.
      * @return the ratio
      */
-    double CoverageRatio() const;
+    double CoverageRatio( const GENERAL_COLLECTOR& aCollector ) const;
 
     /// Return the initial comments block or NULL if none, without transfer of ownership.
     const wxArrayString* GetInitialComments() const { return m_initial_comments; }

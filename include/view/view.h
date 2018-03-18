@@ -455,6 +455,15 @@ public:
     void SortLayers( int aLayers[], int& aCount ) const;
 
     /**
+     * Remaps the data between layer ids without invalidating that data
+     *
+     * Used by GerbView for the "Sort by X2" functionality
+     *
+     * @param aReorderMap is a mapping of old to new layer ids
+     */
+    void ReorderLayerData( std::unordered_map<int, int> aReorderMap );
+
+    /**
      * Function UpdateLayerColor()
      * Applies the new coloring scheme held by RENDER_SETTINGS in case that it has changed.
      * @param aLayer is a number of the layer to be updated.
@@ -609,6 +618,20 @@ public:
      * Iterates through the list of items that asked for updating and updates them.
      */
     void UpdateItems();
+
+    /**
+     * Updates all items in the view according to the given flags
+     * @param aUpdateFlags is is according to KIGFX::VIEW_UPDATE_FLAGS
+     */
+    void UpdateAllItems( int aUpdateFlags );
+
+    /**
+     * Updates items in the view according to the given flags and condition
+     * @param aUpdateFlags is is according to KIGFX::VIEW_UPDATE_FLAGS
+     * @param aCondition is a function returning true if the item should be updated
+     */
+    void UpdateAllItemsConditionally( int aUpdateFlags,
+                                      std::function<bool( VIEW_ITEM* )> aCondition );
 
     const BOX2I CalculateExtents() ;
 

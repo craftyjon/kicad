@@ -364,13 +364,13 @@ public:
  */
 NODE_MAP MapChildren( wxXmlNode* aCurrentNode );
 
-/// Make a unique time stamp
-unsigned long EagleTimeStamp( wxXmlNode* aTree );
+///> Make a unique time stamp
+timestamp_t EagleTimeStamp( wxXmlNode* aTree );
 
-/// Computes module timestamp basing on its name, value and unit
-time_t EagleModuleTstamp( const wxString& aName, const wxString& aValue, int aUnit );
+///> Computes module timestamp basing on its name, value and unit
+timestamp_t EagleModuleTstamp( const wxString& aName, const wxString& aValue, int aUnit );
 
-/// Convert an Eagle curve end to a KiCad center for S_ARC
+///> Convert an Eagle curve end to a KiCad center for S_ARC
 wxPoint ConvertArcCenter( const wxPoint& aStart, const wxPoint& aEnd, double aAngle );
 
 // Pre-declare for typedefs
@@ -395,17 +395,17 @@ struct ECOORD
 {
     enum EAGLE_UNIT
     {
-        EAGLE_NM,     ///< nanometers
-        EAGLE_MM,     ///< millimeters
-        EAGLE_INCH,   ///< inches
-        EAGLE_MIL,    ///< mils/thous
+        EU_NM,     ///< nanometers
+        EU_MM,     ///< millimeters
+        EU_INCH,   ///< inches
+        EU_MIL,    ///< mils/thous
     };
 
     ///> Value expressed in nanometers
     long long int value;
 
     ///> Unit used for the value field
-    static constexpr EAGLE_UNIT ECOORD_UNIT = EAGLE_NM;
+    static constexpr EAGLE_UNIT ECOORD_UNIT = EU_NM;
 
     ECOORD()
         : value( 0 )
@@ -413,21 +413,19 @@ struct ECOORD
     }
 
     ECOORD( int aValue, enum EAGLE_UNIT aUnit )
-        : value( ToNanoMeters( aValue, aUnit ) )
+        : value( ConvertToNm( aValue, aUnit ) )
     {
     }
 
     ECOORD( const wxString& aValue, enum EAGLE_UNIT aUnit );
 
-    int ToSchUnits() const
+    int ToMils() const
     {
-        // mils
         return value / 25400;
     }
 
-    int ToPcbUnits() const
+    int ToNanoMeters() const
     {
-        // nanometers
         return value;
     }
 
@@ -435,6 +433,9 @@ struct ECOORD
     {
         return value / 1000000.0;
     }
+
+    int ToSchUnits() const { return ToMils(); }
+    int ToPcbUnits() const { return ToNanoMeters(); }
 
     ECOORD operator+( const ECOORD& aOther ) const
     {
@@ -451,7 +452,8 @@ struct ECOORD
         return value == aOther.value;
     }
 
-    static long long int ToNanoMeters( int aValue, enum EAGLE_UNIT aUnit );
+    ///> Converts a size expressed in a certain unit to nanometers.
+    static long long int ConvertToNm( int aValue, enum EAGLE_UNIT aUnit );
 };
 
 
@@ -674,12 +676,22 @@ struct ETEXT
 };
 
 
-/// Eagle thru hol pad
-struct EPAD
+/// Structure holding common properties for through-hole and SMD pads
+struct EPAD_COMMON
 {
     wxString   name;
-    ECOORD     x;
-    ECOORD     y;
+    ECOORD     x, y;
+    opt_erot   rot;
+    opt_bool   stop;
+    opt_bool   thermals;
+
+    EPAD_COMMON( wxXmlNode* aPad );
+};
+
+
+/// Eagle thru hole pad
+struct EPAD : public EPAD_COMMON
+{
     ECOORD     drill;
     opt_ecoord diameter;
 
@@ -692,9 +704,6 @@ struct EPAD
         OFFSET,
     };
     opt_int  shape;
-    opt_erot rot;
-    opt_bool stop;
-    opt_bool thermals;
     opt_bool first;
 
     EPAD( wxXmlNode* aPad );
@@ -702,18 +711,12 @@ struct EPAD
 
 
 /// Eagle SMD pad
-struct ESMD
+struct ESMD : public EPAD_COMMON
 {
-    wxString name;
-    ECOORD   x;
-    ECOORD   y;
     ECOORD   dx;
     ECOORD   dy;
     int      layer;
     opt_int  roundness;
-    opt_erot rot;
-    opt_bool stop;
-    opt_bool thermals;
     opt_bool cream;
 
     ESMD( wxXmlNode* aSMD );

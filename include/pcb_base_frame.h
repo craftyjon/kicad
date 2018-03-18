@@ -68,8 +68,7 @@ class PCB_BASE_FRAME : public EDA_DRAW_FRAME
 {
 public:
     PCB_DISPLAY_OPTIONS m_DisplayOptions;
-    EDA_UNITS_T m_UserGridUnit;
-    wxRealPoint m_UserGridSize;
+    wxPoint m_UserGridSize;
 
     int m_FastGrid1;                // 1st fast grid setting (index in EDA_DRAW_FRAME::m_gridSelectBox)
     int m_FastGrid2;                // 2nd fast grid setting (index in EDA_DRAW_FRAME::m_gridSelectBox)
@@ -188,11 +187,11 @@ public:
     // General
     virtual void OnCloseWindow( wxCloseEvent& Event ) = 0;
     virtual void RedrawActiveWindow( wxDC* DC, bool EraseBg ) override { }
-    virtual void ReCreateHToolbar() override = 0;
-    virtual void ReCreateVToolbar() override = 0;
+    virtual void ReCreateOptToolbar() { }
     virtual void OnLeftClick( wxDC* DC, const wxPoint& MousePos ) override = 0;
     virtual void OnLeftDClick( wxDC* DC, const wxPoint& MousePos ) override = 0;
     virtual bool OnRightClick( const wxPoint& MousePos, wxMenu* PopMenu ) override = 0;
+    virtual void ShowChangedLanguage() override;
     virtual void ReCreateMenuBar() override;
     virtual void SetToolID( int aId, int aCursor, const wxString& aToolMsg ) override;
     virtual void UpdateStatusBar() override;
@@ -334,9 +333,9 @@ public:
      * @param aModule A MODULE object point of the module to be placed.
      * @param aDC A wxDC object point of the device context to draw \a aModule on
      *            or  NULL if no display screen need updated.
-     * @param aDoNotRecreateRatsnest A bool true redraws the module rats nest.
+     * @param aRecreateRatsnest A bool true redraws the module rats nest.
      */
-    void PlaceModule( MODULE* aModule, wxDC* aDC, bool aDoNotRecreateRatsnest = false );
+    void PlaceModule( MODULE* aModule, wxDC* aDC, bool aRecreateRatsnest = true );
 
     // module texts
     void RotateTextModule( TEXTE_MODULE* Text, wxDC* DC );
@@ -646,14 +645,22 @@ public:
 
     void OnTogglePolarCoords( wxCommandEvent& aEvent );
     void OnTogglePadDrawMode( wxCommandEvent& aEvent );
+    void OnToggleGraphicDrawMode( wxCommandEvent& aEvent );
+    void OnToggleEdgeDrawMode( wxCommandEvent& aEvent );
+    void OnToggleTextDrawMode( wxCommandEvent& aEvent );
 
     virtual void OnSwitchCanvas( wxCommandEvent& aEvent );
 
     // User interface update event handlers.
     void OnUpdateCoordType( wxUpdateUIEvent& aEvent );
     void OnUpdatePadDrawMode( wxUpdateUIEvent& aEvent );
+    void OnUpdateGraphicDrawMode( wxUpdateUIEvent& aEvent );
+    void OnUpdateEdgeDrawMode( wxUpdateUIEvent& aEvent );
+    void OnUpdateTextDrawMode( wxUpdateUIEvent& aEvent );
     void OnUpdateSelectGrid( wxUpdateUIEvent& aEvent );
     void OnUpdateSelectZoom( wxUpdateUIEvent& aEvent );
+
+    virtual void OnUpdateLayerAlpha( wxUpdateUIEvent& aEvent ) {}
 
     /**
      * Function SetFastGrid1()

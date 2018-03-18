@@ -133,6 +133,9 @@ OPT<TOOL_EVENT> PCB_ACTIONS::TranslateLegacyId( int aId )
     case ID_TB_OPTIONS_SHOW_ZONES_OUTLINES_ONLY:
         return PCB_ACTIONS::zoneDisplayOutlines.MakeEvent();
 
+    case ID_TB_OPTIONS_SHOW_GRAPHIC_SKETCH:;
+        return PCB_ACTIONS::graphicDisplayMode.MakeEvent();
+
     case ID_TB_OPTIONS_SHOW_MODULE_EDGE_SKETCH:
         return PCB_ACTIONS::moduleEdgeOutlines.MakeEvent();
 
@@ -141,6 +144,12 @@ OPT<TOOL_EVENT> PCB_ACTIONS::TranslateLegacyId( int aId )
 
     case ID_TB_OPTIONS_SHOW_HIGH_CONTRAST_MODE:
         return PCB_ACTIONS::highContrastMode.MakeEvent();
+
+    case ID_DEC_LAYER_ALPHA:
+        return PCB_ACTIONS::layerAlphaDec.MakeEvent();
+
+    case ID_INC_LAYER_ALPHA:
+        return PCB_ACTIONS::layerAlphaInc.MakeEvent();
 
     case ID_FIND_ITEMS:
         return PCB_ACTIONS::find.MakeEvent();

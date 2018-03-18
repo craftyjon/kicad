@@ -136,8 +136,10 @@ GERBVIEW_FRAME::GERBVIEW_FRAME( KIWAY* aKiway, wxWindow* aParent ):
 
     if( m_LastGridSizeId < 0 )
         m_LastGridSizeId = 0;
+
     if( m_LastGridSizeId > ID_POPUP_GRID_LEVEL_0_0_1MM-ID_POPUP_GRID_LEVEL_1000 )
         m_LastGridSizeId = ID_POPUP_GRID_LEVEL_0_0_1MM-ID_POPUP_GRID_LEVEL_1000;
+
     GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId  );
 
     m_auimgr.SetManagedWindow( this );
@@ -206,7 +208,6 @@ GERBVIEW_FRAME::GERBVIEW_FRAME( KIWAY* aKiway, wxWindow* aParent ):
 
     SetActiveLayer( 0, true );
     Zoom_Automatique( false );           // Gives a default zoom value
-    UpdateTitleAndInfo();
 
     EDA_DRAW_PANEL_GAL::GAL_TYPE canvasType = loadCanvasTypeSetting();
 
@@ -219,8 +220,8 @@ GERBVIEW_FRAME::GERBVIEW_FRAME( KIWAY* aKiway, wxWindow* aParent ):
                               "and faster experience. This option is turned off by "
                               "default since it is not compatible with all computers.\n\n"
                               "Would you like to try enabling graphics acceleration?\n\n"
-                              "If you'd like to choose later, select the Modern "
-                              "(Accelerated) graphics mode in the View menu." );
+                              "If you'd like to choose later, select Modern Toolset "
+                              "(Accelerated) in the Preferences menu." );
 
             wxMessageDialog dlg( this, msg, _( "Enable Graphics Acceleration" ),
                                  wxYES_NO );
@@ -333,7 +334,7 @@ bool GERBVIEW_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
 
         int layer = 0;
 
-        for( unsigned i=0;  i<limit;  ++i, ++layer )
+        for( unsigned i = 0; i < limit; ++i, ++layer )
         {
             SetActiveLayer( layer );
 
@@ -352,8 +353,6 @@ bool GERBVIEW_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
     }
 
     Zoom_Automatique( true );        // Zoom fit in frame
-
-    UpdateTitleAndInfo();
 
     return true;
 }
@@ -488,15 +487,30 @@ void GERBVIEW_FRAME::ReFillLayerWidget()
 void GERBVIEW_FRAME::SetElementVisibility( GERBVIEW_LAYER_ID aItemIdVisible,
                                            bool aNewState )
 {
+    bool dcodes_changed = false;
+
     switch( aItemIdVisible )
     {
     case LAYER_DCODES:
+        dcodes_changed = m_DisplayOptions.m_DisplayDCodes != aNewState;
         m_DisplayOptions.m_DisplayDCodes = aNewState;
         break;
 
     case LAYER_NEGATIVE_OBJECTS:
+    {
         m_DisplayOptions.m_DisplayNegativeObjects = aNewState;
+
+        auto view = GetGalCanvas()->GetView();
+
+        view->UpdateAllItemsConditionally( KIGFX::REPAINT,
+                                           []( KIGFX::VIEW_ITEM* aItem ) {
+            auto item = static_cast<GERBER_DRAW_ITEM*>( aItem );
+
+            // GetLayerPolarity() returns true for negative items
+            return item->GetLayerPolarity();
+        } );
         break;
+    }
 
     case LAYER_GERBVIEW_GRID:
         SetGridVisibility( aNewState );
@@ -504,6 +518,19 @@ void GERBVIEW_FRAME::SetElementVisibility( GERBVIEW_LAYER_ID aItemIdVisible,
 
     default:
         wxLogDebug( wxT( "GERBVIEW_FRAME::SetElementVisibility(): bad arg %d" ), aItemIdVisible );
+    }
+
+    if( dcodes_changed )
+    {
+        auto view = GetGalCanvas()->GetView();
+
+        for( int i = 0; i < GERBER_DRAWLAYERS_COUNT; i++ )
+        {
+            int layer = GERBER_DRAW_LAYER( i );
+            int dcode_layer = GERBER_DCODE_LAYER( layer );
+            view->SetLayerVisible( dcode_layer,
+                                   aNewState && view->IsLayerVisible( layer ) );
+        }
     }
 
     applyDisplaySettingsToGAL();
@@ -520,7 +547,6 @@ void GERBVIEW_FRAME::applyDisplaySettingsToGAL()
 
     settings->ImportLegacyColors( m_colorsSettings );
 
-    view->RecacheAllItems();
     view->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
 }
 
@@ -549,7 +575,6 @@ int GERBVIEW_FRAME::getNextAvailableLayer( int aLayer ) const
 void GERBVIEW_FRAME::syncLayerWidget()
 {
     m_LayersManager->SelectLayer( GetActiveLayer() );
-    UpdateTitleAndInfo();
 }
 
 
@@ -572,8 +597,6 @@ void GERBVIEW_FRAME::syncLayerBox( bool aRebuildLayerBox )
         m_DCodeSelector->SetDCodeSelection( dcodeSelected );
         m_DCodeSelector->Enable( gerber != NULL );
     }
-
-    UpdateTitleAndInfo();
 }
 
 
@@ -641,6 +664,96 @@ void GERBVIEW_FRAME::Liste_D_Codes()
 }
 
 
+void GERBVIEW_FRAME::SortLayersByX2Attributes()
+{
+    auto remapping = GetImagesList()->SortImagesByZOrder();
+
+    ReFillLayerWidget();
+    syncLayerBox( true );
+
+    std::unordered_map<int, int> view_remapping;
+
+    for( auto it : remapping )
+    {
+        view_remapping[ GERBER_DRAW_LAYER( it.first) ] = GERBER_DRAW_LAYER( it.second );
+        view_remapping[ GERBER_DCODE_LAYER( GERBER_DRAW_LAYER( it.first) ) ] =
+            GERBER_DCODE_LAYER( GERBER_DRAW_LAYER( it.second ) );
+    }
+
+    GetGalCanvas()->GetView()->ReorderLayerData( view_remapping );
+    GetCanvas()->Refresh();
+}
+
+
+void GERBVIEW_FRAME::UpdateDisplayOptions( const GBR_DISPLAY_OPTIONS& aOptions )
+{
+    bool update_flashed =   ( m_DisplayOptions.m_DisplayFlashedItemsFill !=
+                              aOptions.m_DisplayFlashedItemsFill );
+    bool update_lines =     ( m_DisplayOptions.m_DisplayLinesFill !=
+                              aOptions.m_DisplayLinesFill );
+    bool update_polygons =  ( m_DisplayOptions.m_DisplayPolygonsFill !=
+                              aOptions.m_DisplayPolygonsFill );
+
+    m_DisplayOptions = aOptions;
+
+    applyDisplaySettingsToGAL();
+
+    auto view = GetGalCanvas()->GetView();
+
+    if( update_flashed )
+    {
+        view->UpdateAllItemsConditionally( KIGFX::REPAINT,
+                                           []( KIGFX::VIEW_ITEM* aItem ) {
+            auto item = static_cast<GERBER_DRAW_ITEM*>( aItem );
+
+            switch( item->m_Shape )
+            {
+            case GBR_SPOT_CIRCLE:
+            case GBR_SPOT_RECT:
+            case GBR_SPOT_OVAL:
+            case GBR_SPOT_POLY:
+            case GBR_SPOT_MACRO:
+                return true;
+
+            default:
+                return false;
+            }
+        } );
+    }
+    else if( update_lines )
+    {
+        view->UpdateAllItemsConditionally( KIGFX::REPAINT,
+                                           []( KIGFX::VIEW_ITEM* aItem ) {
+            auto item = static_cast<GERBER_DRAW_ITEM*>( aItem );
+
+            switch( item->m_Shape )
+            {
+            case GBR_CIRCLE:
+            case GBR_ARC:
+            case GBR_SEGMENT:
+                return true;
+
+            default:
+                return false;
+            }
+        } );
+    }
+    else if( update_polygons )
+    {
+        view->UpdateAllItemsConditionally( KIGFX::REPAINT,
+                                           []( KIGFX::VIEW_ITEM* aItem ) {
+            auto item = static_cast<GERBER_DRAW_ITEM*>( aItem );
+
+            return ( item->m_Shape == GBR_POLYGON );
+        } );
+    }
+
+    view->UpdateAllItems( KIGFX::COLOR );
+
+    m_canvas->Refresh( true );
+}
+
+
 void GERBVIEW_FRAME::UpdateTitleAndInfo()
 {
     GERBER_FILE_IMAGE* gerber = GetGbrImage( GetActiveLayer() );
@@ -665,11 +778,10 @@ void GERBVIEW_FRAME::UpdateTitleAndInfo()
     else
     {
         wxString title;
-        title.Printf( L"GerbView \u2014 %s%s",
-                gerber->m_FileName,
-                gerber->m_IsX2_file
-                    ? " " + _( "(with X2 attributes)" )
-                    : wxString( wxEmptyString ) );
+        title.Printf( _( "GerbView" ) + wxT( " \u2014 %s%s" ),
+                      gerber->m_FileName,
+                      gerber->m_IsX2_file ? _( " (with X2 attributes)" )
+                                          : wxString( wxEmptyString ) );
         SetTitle( title );
 
         gerber->DisplayImageInfo( this );
@@ -756,7 +868,8 @@ void GERBVIEW_FRAME::SetVisibleLayers( long aLayerMask )
             bool v = ( aLayerMask & ( 1 << i ) );
             int layer = GERBER_DRAW_LAYER( i );
             canvas->GetView()->SetLayerVisible( layer, v );
-            canvas->GetView()->SetLayerVisible( GERBER_DCODE_LAYER( layer ), v );
+            canvas->GetView()->SetLayerVisible( GERBER_DCODE_LAYER( layer ),
+                                                m_DisplayOptions.m_DisplayDCodes && v );
         }
     }
 }
@@ -765,12 +878,7 @@ void GERBVIEW_FRAME::SetVisibleLayers( long aLayerMask )
 bool GERBVIEW_FRAME::IsLayerVisible( int aLayer ) const
 {
     if( ! m_DisplayOptions.m_IsPrinting )
-    {
-        if( IsGalCanvasActive() )
-            aLayer = GERBER_DRAW_LAYER( aLayer );
-
         return m_LayersManager->IsLayerVisible( aLayer );
-    }
     else
         return GetGerberLayout()->IsLayerPrintable( aLayer );
 }
@@ -865,13 +973,13 @@ void GERBVIEW_FRAME::SetActiveLayer( int aLayer, bool doLayerWidgetUpdate )
     if( doLayerWidgetUpdate )
         m_LayersManager->SelectLayer( GetActiveLayer() );
 
+    UpdateTitleAndInfo();
+
     if( IsGalCanvasActive() )
     {
         m_toolManager->RunAction( GERBVIEW_ACTIONS::layerChanged );       // notify other tools
         GetGalCanvas()->SetFocus();                 // otherwise hotkeys are stuck somewhere
 
-        // NOTE(JE) The next two calls are slow (scales with number of items)
-        GetGalCanvas()->SetTopLayer( GERBER_DRAW_LAYER( aLayer ) );
         GetGalCanvas()->SetHighContrastLayer( GERBER_DRAW_LAYER( aLayer ) );
 
         GetGalCanvas()->Refresh();
@@ -967,6 +1075,7 @@ EDA_RECT GERBVIEW_FRAME::GetGerberLayoutBoundingBox()
     GetGerberLayout()->ComputeBoundingBox();
     return GetGerberLayout()->GetBoundingBox();
 }
+
 
 void GERBVIEW_FRAME::UpdateStatusBar()
 {
@@ -1071,10 +1180,12 @@ const wxString GERBVIEW_FRAME::GetZoomLevelIndicator() const
     return EDA_DRAW_FRAME::GetZoomLevelIndicator();
 }
 
+
 GERBER_FILE_IMAGE* GERBVIEW_FRAME::GetGbrImage( int aIdx ) const
 {
     return m_gerberLayout->GetImagesList()->GetGbrImage( aIdx );
 }
+
 
 unsigned GERBVIEW_FRAME::ImagesMaxCount() const
 {
@@ -1130,6 +1241,7 @@ void GERBVIEW_FRAME::UseGalCanvas( bool aEnable )
     m_LayersManager->ReFillRender();
 
     ReCreateOptToolbar();
+    ReCreateMenuBar();
 }
 
 

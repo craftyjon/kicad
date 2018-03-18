@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2017 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2015 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
- * Copyright (C) 2015 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2015 Wayne Stambaugh <stambaughw@gmail.com>
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -42,6 +42,7 @@
 #include <macros.h>
 #include <msgpanel.h>
 #include <bitmaps.h>
+#include <unordered_set>
 
 #include <pcb_edit_frame.h>
 #include <class_board.h>
@@ -512,6 +513,55 @@ const EDA_RECT MODULE::GetBoundingBox() const
 }
 
 
+/**
+ * This is a bit hacky right now for performance reasons.
+ *
+ * We assume that most footprints will have features aligned to the axes in
+ * the zero-rotation state.  Therefore, if the footprint is rotated, we
+ * temporarily rotate back to zero, get the bounding box (excluding reference
+ * and value text) and then rotate the resulting poly back to the correct
+ * orientation.
+ *
+ * This is more accurate than using the AABB when most footprints are rotated
+ * off of the axes, but less accurate than computing some kind of bounding hull.
+ * We should consider doing that instead at some point in the future if we can
+ * use a performant algorithm and cache the result to avoid extra computing.
+ */
+SHAPE_POLY_SET MODULE::GetBoundingPoly() const
+{
+    SHAPE_POLY_SET poly;
+
+    double orientation = GetOrientationRadians();
+
+    MODULE temp = *this;
+    temp.SetOrientation( 0.0 );
+    BOX2I area = temp.GetFootprintRect();
+
+    poly.NewOutline();
+
+    VECTOR2I p = area.GetPosition();
+    poly.Append( p );
+    p.x = area.GetRight();
+    poly.Append( p );
+    p.y = area.GetBottom();
+    poly.Append( p );
+    p.x = area.GetX();
+    poly.Append( p );
+
+    BOARD* board = GetBoard();
+    if( board )
+    {
+        int biggest_clearance = board->GetDesignSettings().GetBiggestClearanceValue();
+        poly.Inflate( biggest_clearance, 4 );
+    }
+
+    poly.Inflate( Millimeter2iu( 0.01 ), 4 );
+    poly.Rotate( -orientation, m_Pos );
+
+    return poly;
+}
+
+
 void MODULE::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
 {
     int      nbpad;
@@ -604,6 +654,13 @@ void MODULE::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
 bool MODULE::HitTest( const wxPoint& aPosition ) const
 {
     return m_BoundaryBox.Contains( aPosition );
+}
+
+
+bool MODULE::HitTestAccurate( const wxPoint& aPosition ) const
+{
+    auto shape = GetBoundingPoly();
+    return shape.Contains( aPosition, -1, true );
 }
 
 
@@ -868,6 +925,36 @@ void MODULE::RunOnChildren( const std::function<void (BOARD_ITEM*)>& aFunction )
     }
 }
 
+
+void MODULE::GetAllDrawingLayers( int aLayers[], int& aCount, bool aIncludePads ) const
+{
+    std::unordered_set<int> layers;
+
+    for( BOARD_ITEM* item = m_Drawings; item; item = item->Next() )
+    {
+        layers.insert( static_cast<int>( item->GetLayer() ) );
+    }
+
+    if( aIncludePads )
+    {
+        for( D_PAD* pad = m_Pads; pad; pad = pad->Next() )
+        {
+            int pad_layers[KIGFX::VIEW::VIEW_MAX_LAYERS], pad_layers_count;
+            pad->ViewGetLayers( pad_layers, pad_layers_count );
+
+            for( int i = 0; i < pad_layers_count; i++ )
+                layers.insert( pad_layers[i] );
+        }
+    }
+
+    aCount = layers.size();
+    int i = 0;
+
+    for( auto layer : layers )
+        aLayers[i++] = layer;
+}
+
+
 void MODULE::ViewGetLayers( int aLayers[], int& aCount ) const
 {
     aCount = 2;
@@ -948,8 +1035,8 @@ bool MODULE::IsLibNameValid( const wxString & aName )
 
 const wxChar* MODULE::StringLibNameInvalidChars( bool aUserReadable )
 {
-    static const wxChar invalidChars[] = wxT("%$\t \"\\/");
-    static const wxChar invalidCharsReadable[] = wxT("% $ 'tab' 'space' \\ \" /");
+    static const wxChar invalidChars[] = wxT("%$\t\n\r \"\\/:");
+    static const wxChar invalidCharsReadable[] = wxT("% $ 'tab' 'return' 'line feed' 'space' \\ \" / :");
 
     if( aUserReadable )
         return invalidCharsReadable;
@@ -1097,9 +1184,22 @@ void MODULE::MoveAnchorPosition( const wxPoint& aMoveVector )
         case PCB_MODULE_EDGE_T:
         {
             EDGE_MODULE* edge = static_cast<EDGE_MODULE*>( item );
-            edge->m_Start0 += moveVector;
-            edge->m_End0   += moveVector;
-            edge->SetDrawCoord();
+
+            // Polygonal shape coordinates are specific:
+            // m_Start0 and m_End0 have no meaning. So we have to move corner positions
+            if( edge->GetShape() == S_POLYGON )
+            {
+                for( auto iter = edge->GetPolyShape().Iterate(); iter; iter++ )
+                {
+                    (*iter) += VECTOR2I( moveVector );
+                }
+            }
+            else
+            {
+                edge->m_Start0 += moveVector;
+                edge->m_End0   += moveVector;
+                edge->SetDrawCoord();
+            }
             break;
         }
 
@@ -1291,19 +1391,37 @@ static void addRect( SHAPE_POLY_SET& aPolySet, wxRect aRect )
     aPolySet.Append( aRect.GetX(), aRect.GetY()+aRect.height );
 }
 
-double MODULE::CoverageRatio() const
+double MODULE::CoverageRatio( const GENERAL_COLLECTOR& aCollector ) const
 {
     double moduleArea = GetFootprintRect().GetArea();
     SHAPE_POLY_SET coveredRegion;
-    addRect(coveredRegion, GetFootprintRect() );
+    addRect( coveredRegion, GetFootprintRect() );
 
-    // build hole list if full area
+    // build list of holes (covered areas not available for selection)
     SHAPE_POLY_SET holes;
+
     for( D_PAD* pad = m_Pads; pad; pad = pad->Next() )
         addRect( holes, pad->GetBoundingBox() );
 
     addRect( holes, m_Reference->GetBoundingBox() );
     addRect( holes, m_Value->GetBoundingBox() );
+
+    for( int i = 0; i < aCollector.GetCount(); ++i )
+    {
+        BOARD_ITEM* item = aCollector[i];
+
+        switch( item->Type() )
+        {
+        case PCB_TEXT_T:
+        case PCB_MODULE_TEXT_T:
+        case PCB_TRACE_T:
+        case PCB_VIA_T:
+            addRect( holes, item->GetBoundingBox() );
+            break;
+        default:
+            break;
+        }
+    }
 
     SHAPE_POLY_SET uncoveredRegion;
     uncoveredRegion.BooleanSubtract( coveredRegion, holes, SHAPE_POLY_SET::PM_STRICTLY_SIMPLE );
@@ -1320,8 +1438,7 @@ double MODULE::CoverageRatio() const
 
 // see convert_drawsegment_list_to_polygon.cpp:
 extern bool ConvertOutlineToPolygon( std::vector< DRAWSEGMENT* >& aSegList,
-                                     SHAPE_POLY_SET& aPolygons, int aSegmentsByCircle,
-                                     wxString* aErrorText);
+                                     SHAPE_POLY_SET& aPolygons, wxString* aErrorText);
 
 bool MODULE::BuildPolyCourtyard()
 {
@@ -1350,13 +1467,10 @@ bool MODULE::BuildPolyCourtyard()
 
     wxString error_msg;
 
-    const int STEPS = 36;     // for a segmentation of an arc of 360 degrees
-    bool success = ConvertOutlineToPolygon( list_front, m_poly_courtyard_front,
-                                            STEPS, &error_msg );
+    bool success = ConvertOutlineToPolygon( list_front, m_poly_courtyard_front, &error_msg );
 
     if( success )
-        success = ConvertOutlineToPolygon( list_back, m_poly_courtyard_back,
-                                           STEPS, &error_msg );
+        success = ConvertOutlineToPolygon( list_back, m_poly_courtyard_back, &error_msg );
 
     if( !error_msg.IsEmpty() )
     {

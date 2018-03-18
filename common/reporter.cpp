@@ -45,6 +45,11 @@ REPORTER& WX_TEXT_CTRL_REPORTER::Report( const wxString& aText, REPORTER::SEVERI
     return *this;
 }
 
+bool WX_TEXT_CTRL_REPORTER::HasMessage() const
+{
+    return !m_textCtrl->IsEmpty();
+}
+
 REPORTER& WX_STRING_REPORTER::Report( const wxString& aText, REPORTER::SEVERITY aSeverity )
 {
     wxCHECK_MSG( m_string != NULL, *this,
@@ -54,6 +59,11 @@ REPORTER& WX_STRING_REPORTER::Report( const wxString& aText, REPORTER::SEVERITY 
     return *this;
 }
 
+bool WX_STRING_REPORTER::HasMessage() const
+{
+    return !m_string->IsEmpty();
+}
+
 REPORTER& WX_HTML_PANEL_REPORTER::Report( const wxString& aText, SEVERITY aSeverity )
 {
     wxCHECK_MSG( m_panel != NULL, *this,
@@ -61,6 +71,11 @@ REPORTER& WX_HTML_PANEL_REPORTER::Report( const wxString& aText, SEVERITY aSever
 
     m_panel->Report( aText, aSeverity );
     return *this;
+}
+
+bool WX_HTML_PANEL_REPORTER::HasMessage() const
+{
+    return m_panel->Count( REPORTER::RPT_ERROR | REPORTER::RPT_WARNING ) > 0;
 }
 
 REPORTER& NULL_REPORTER::Report( const wxString& aText, SEVERITY aSeverity )
@@ -78,4 +93,34 @@ REPORTER& NULL_REPORTER::GetInstance()
     }
 
     return *s_nullReporter;
+}
+
+
+REPORTER& STDOUT_REPORTER::Report( const wxString& aText, SEVERITY aSeverity )
+{
+    switch( aSeverity )
+    {
+        case RPT_UNDEFINED: std::cout << "RPT_UNDEFINED: "; break;
+        case RPT_INFO:      std::cout << "RPT_INFO: "; break;
+        case RPT_WARNING:   std::cout << "RPT_WARNING: "; break;
+        case RPT_ERROR:     std::cout << "RPT_ERROR: "; break;
+        case RPT_ACTION:    std::cout << "RPT_ACTION: "; break;
+    }
+
+    std::cout << aText << std::endl;
+
+    return *this;
+}
+
+
+REPORTER& STDOUT_REPORTER::GetInstance()
+{
+    static REPORTER* s_stdoutReporter = nullptr;
+
+    if( !s_stdoutReporter )
+    {
+        s_stdoutReporter = new STDOUT_REPORTER();
+    }
+
+    return *s_stdoutReporter;
 }

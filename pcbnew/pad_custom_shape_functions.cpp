@@ -159,6 +159,15 @@ bool D_PAD::SetPrimitives( const std::vector<PAD_CS_PRIMITIVE>& aPrimitivesList 
     return MergePrimitivesAsPolygon();
 }
 
+bool D_PAD::AddPrimitives( const std::vector<PAD_CS_PRIMITIVE>& aPrimitivesList )
+{
+    for( const auto& prim : aPrimitivesList )
+        m_basicShapes.push_back( prim );
+
+    return MergePrimitivesAsPolygon();
+}
+
+
 // clear the basic shapes list and associated data
 void D_PAD::DeletePrimitivesList()
 {
@@ -238,35 +247,9 @@ bool D_PAD::buildCustomPadPolygon( SHAPE_POLY_SET* aMergedPolygon,
 
     aux_polyset.Simplify( SHAPE_POLY_SET::PM_FAST );
 
-    // Merge all polygons, if more than one, pick the largest (area-wise)
+    // Merge all polygons with the initial pad anchot shape
     if( aux_polyset.OutlineCount() )
     {
-
-        if( aux_polyset.OutlineCount() >= 2)
-        {
-            int bestOutline = 0;
-            double maxArea = 0.0;
-
-            for( int i = 0; i < aux_polyset.OutlineCount(); i++ )
-            {
-                double area = aux_polyset.COutline(i).Area();
-
-                if ( area > maxArea )
-                {
-                    maxArea = area;
-                    bestOutline = i;
-                }
-            }
-
-            if( bestOutline != 0 )
-                aux_polyset.Polygon( 0 ) = aux_polyset.Polygon( bestOutline );
-
-            for (int i = 1; i < aux_polyset.OutlineCount(); i++ )
-            {
-                aux_polyset.DeletePolygon( i );
-            }
-        }
-
         aMergedPolygon->BooleanAdd( aux_polyset, SHAPE_POLY_SET::PM_FAST );
         aMergedPolygon->Fracture( SHAPE_POLY_SET::PM_FAST );
     }

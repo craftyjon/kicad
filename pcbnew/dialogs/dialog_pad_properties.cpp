@@ -620,18 +620,22 @@ void DIALOG_PAD_PROPERTIES::initValues()
     default:
     case PAD_ZONE_CONN_INHERITED:
         m_ZoneConnectionChoice->SetSelection( 0 );
+        m_ZoneConnectionCustom->SetSelection( 0 );
         break;
 
     case PAD_ZONE_CONN_FULL:
         m_ZoneConnectionChoice->SetSelection( 1 );
+        m_ZoneConnectionCustom->SetSelection( 1 );
         break;
 
     case PAD_ZONE_CONN_THERMAL:
         m_ZoneConnectionChoice->SetSelection( 2 );
+        m_ZoneConnectionCustom->SetSelection( 0 );
         break;
 
     case PAD_ZONE_CONN_NONE:
         m_ZoneConnectionChoice->SetSelection( 3 );
+        m_ZoneConnectionCustom->SetSelection( 0 );
         break;
     }
 
@@ -815,7 +819,7 @@ void DIALOG_PAD_PROPERTIES::displayPrimitivesList()
 
         case S_POLYGON:         // polygon
             bs_info[0] = "Polygon";
-            bs_info[1] = wxString::Format( _( "corners count %d" ), primitive.m_Poly.size() );
+            bs_info[1] = wxString::Format( _( "corners count %d" ), (int) primitive.m_Poly.size() );
             break;
 
         default:
@@ -933,9 +937,10 @@ void DIALOG_PAD_PROPERTIES::OnPadShapeSelection( wxCommandEvent& event )
     m_tcCornerSizeRatio->Enable( m_PadShape->GetSelection() == CHOICE_SHAPE_ROUNDRECT );
 
     // PAD_SHAPE_CUSTOM type has constraints for zone connection and thermal shape:
-    // only not connected is allowed to avoid destroying the shape.
+    // only not connected or solid connection is allowed to avoid destroying the shape.
     // Enable/disable options only available for custom shaped pads
     m_ZoneConnectionChoice->Enable( !is_custom );
+    m_ZoneConnectionCustom->Enable( is_custom );
     m_ThermalWidthCtrl->Enable( !is_custom );
     m_ThermalGapCtrl->Enable( !is_custom );
 
@@ -1486,7 +1491,12 @@ bool DIALOG_PAD_PROPERTIES::TransferDataFromWindow()
     m_currentPad->SetRoundRectRadiusRatio( m_padMaster->GetRoundRectRadiusRatio() );
 
     if( m_currentPad->GetShape() == PAD_SHAPE_CUSTOM )
-        m_currentPad->SetZoneConnection( PAD_ZONE_CONN_NONE );
+    {
+        if( m_padMaster->GetZoneConnection() == PAD_ZONE_CONN_FULL )
+            m_currentPad->SetZoneConnection( PAD_ZONE_CONN_FULL );
+        else
+            m_currentPad->SetZoneConnection( PAD_ZONE_CONN_NONE );
+    }
     else
         m_currentPad->SetZoneConnection( m_padMaster->GetZoneConnection() );
 
@@ -1579,6 +1589,15 @@ bool DIALOG_PAD_PROPERTIES::transferDataToPad( D_PAD* aPad )
     case 3:
         aPad->SetZoneConnection( PAD_ZONE_CONN_NONE );
         break;
+    }
+
+    // Custom shape has only 2 options:
+    if( aPad->GetShape() == PAD_SHAPE_CUSTOM )
+    {
+        if( m_ZoneConnectionCustom->GetSelection() == 0 )
+            aPad->SetZoneConnection( PAD_ZONE_CONN_NONE );
+        else
+            aPad->SetZoneConnection( PAD_ZONE_CONN_FULL );
     }
 
     // Read pad position:
@@ -1990,17 +2009,11 @@ void DIALOG_PAD_PROPERTIES::onGeometryTransform( wxCommandEvent& event )
     }
 
     // Multiple selections are allowed. Build selected shapes list
-    std::vector<long> indexes;
-    indexes.push_back( select );
-
     std::vector<PAD_CS_PRIMITIVE*> shapeList;
     shapeList.push_back( &m_primitives[select] );
 
     while( ( select = m_listCtrlPrimitives->GetNextSelected( select ) ) >= 0 )
-    {
-        indexes.push_back( select );
         shapeList.push_back( &m_primitives[select] );
-    }
 
     DIALOG_PAD_PRIMITIVES_TRANSFORM dlg( this, shapeList, false );
 
@@ -2031,25 +2044,23 @@ void DIALOG_PAD_PROPERTIES::onDuplicatePrimitive( wxCommandEvent& event )
     }
 
     // Multiple selections are allowed. Build selected shapes list
-    std::vector<long> indexes;
-    indexes.push_back( select );
-
     std::vector<PAD_CS_PRIMITIVE*> shapeList;
     shapeList.push_back( &m_primitives[select] );
 
     while( ( select = m_listCtrlPrimitives->GetNextSelected( select ) ) >= 0 )
-    {
-        indexes.push_back( select );
         shapeList.push_back( &m_primitives[select] );
-    }
 
     DIALOG_PAD_PRIMITIVES_TRANSFORM dlg( this, shapeList, true );
 
     if( dlg.ShowModal() != wxID_OK )
         return;
 
-    // Transfert new settings:
-    dlg.Transform( &m_primitives, dlg.GetDuplicateCount() );
+    // Transfer new settings
+    // save duplicates to a separate vector to avoid m_primitives reallocation,
+    // as shapeList contains pointers to its elements
+    std::vector<PAD_CS_PRIMITIVE> duplicates;
+    dlg.Transform( &duplicates, dlg.GetDuplicateCount() );
+    std::move( duplicates.begin(), duplicates.end(), std::back_inserter( m_primitives ) );
 
     displayPrimitivesList();
 

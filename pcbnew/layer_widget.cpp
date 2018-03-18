@@ -47,11 +47,6 @@
 
 const wxEventType LAYER_WIDGET::EVT_LAYER_COLOR_CHANGE = wxNewEventType();
 
-/*
- * Icon providers for the row icons
- */
-static ROW_ICON_PROVIDER defaultRowIcons( false );
-static ROW_ICON_PROVIDER alternativeRowIcons( true );
 
 /**
  * Function shrinkFont
@@ -322,13 +317,10 @@ void LAYER_WIDGET::insertLayerRow( int aRow, const ROW& aSpec )
     int         index = aRow * LYR_COLUMN_COUNT;
     const int   flags = wxALIGN_CENTER_VERTICAL | wxALIGN_LEFT;
 
-    auto& iconProvider = useAlternateBitmap(aRow) ? alternativeRowIcons : defaultRowIcons;
-
     // column 0
     col = COLUMN_ICON_ACTIVE;
-    auto sbm = new INDICATOR_ICON( m_LayerScrolledWindow, iconProvider,
-                                   ROW_ICON_PROVIDER::STATE::OFF,
-                                   encodeId( col, aSpec.id ) );
+    auto sbm = new INDICATOR_ICON( m_LayerScrolledWindow, *m_IconProvider,
+                                   ROW_ICON_PROVIDER::STATE::OFF, encodeId( col, aSpec.id ) );
     sbm->Bind( wxEVT_LEFT_DOWN, &LAYER_WIDGET::OnLeftDownLayers, this );
     m_LayersFlexGridSizer->wxSizer::Insert( index+col, sbm, 0, flags );
 
@@ -358,6 +350,12 @@ void LAYER_WIDGET::insertLayerRow( int aRow, const ROW& aSpec )
     st->SetToolTip( aSpec.tooltip );
     m_LayersFlexGridSizer->wxSizer::Insert( index+col, st, 0, flags );
 
+    // column 4 (COLUMN_ALPHA_INDICATOR)
+    col = COLUMN_ALPHA_INDICATOR;
+    sbm = new INDICATOR_ICON( m_LayerScrolledWindow, *m_IconProvider,
+                              ROW_ICON_PROVIDER::STATE::OFF, wxID_ANY );
+    m_LayersFlexGridSizer->wxSizer::Insert( index+col, sbm, 0, flags );
+
     // Bind right click eventhandler to all columns
     wxString layerName( aSpec.rowName );
 
@@ -385,16 +383,20 @@ void LAYER_WIDGET::insertRenderRow( int aRow, const ROW& aSpec )
     const int   flags = wxALIGN_CENTER_VERTICAL | wxALIGN_LEFT;
 
     wxString renderName( aSpec.rowName );
+    wxCheckBox* cb = nullptr;
 
     // column 1
-    col = 1;
-    wxCheckBox* cb = new wxCheckBox( m_RenderScrolledWindow, encodeId( col, aSpec.id ),
-                        aSpec.rowName, wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT );
-    shrinkFont( cb, m_PointSize );
-    cb->SetValue( aSpec.state );
-    cb->Enable( aSpec.changeable );
-    cb->Bind( wxEVT_COMMAND_CHECKBOX_CLICKED, &LAYER_WIDGET::OnRenderCheckBox, this );
-    cb->SetToolTip( aSpec.tooltip );
+    if( !aSpec.spacer )
+    {
+        col = 1;
+        cb = new wxCheckBox( m_RenderScrolledWindow, encodeId( col, aSpec.id ),
+                            aSpec.rowName, wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT );
+        shrinkFont( cb, m_PointSize );
+        cb->SetValue( aSpec.state );
+        cb->Enable( aSpec.changeable );
+        cb->Bind( wxEVT_COMMAND_CHECKBOX_CLICKED, &LAYER_WIDGET::OnRenderCheckBox, this );
+        cb->SetToolTip( aSpec.tooltip );
+    }
 
     // column 0
     col = 0;
@@ -424,7 +426,16 @@ void LAYER_WIDGET::insertRenderRow( int aRow, const ROW& aSpec )
 
     // Items have to be inserted in order
     col = 1;
-    m_RenderFlexGridSizer->wxSizer::Insert( index+col, cb, 0, flags );
+
+    if( aSpec.spacer )
+    {
+        wxPanel* invisible = new wxPanel( m_RenderScrolledWindow, wxID_ANY );
+        m_RenderFlexGridSizer->wxSizer::Insert( index+col, invisible, 0, flags );
+    }
+    else
+    {
+        m_RenderFlexGridSizer->wxSizer::Insert( index+col, cb, 0, flags );
+    }
 }
 
 
@@ -462,6 +473,9 @@ LAYER_WIDGET::LAYER_WIDGET( wxWindow* aParent, wxWindow* aFocusOwner, int aPoint
         m_notebook->SetMeasuringFont( font );
     }
 
+    int indicatorSize = ConvertDialogToPixels( wxSize( 6, 6 ) ).x;
+    m_IconProvider = new ROW_ICON_PROVIDER( indicatorSize );
+
     m_LayerPanel = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 
     wxBoxSizer* bSizer3;
@@ -469,7 +483,7 @@ LAYER_WIDGET::LAYER_WIDGET( wxWindow* aParent, wxWindow* aFocusOwner, int aPoint
 
     m_LayerScrolledWindow = new wxScrolledWindow( m_LayerPanel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxNO_BORDER );
     m_LayerScrolledWindow->SetScrollRate( 5, 5 );
-    m_LayersFlexGridSizer = new wxFlexGridSizer( 0, 4, 0, 1 );
+    m_LayersFlexGridSizer = new wxFlexGridSizer( 0, LYR_COLUMN_COUNT, 0, 1 );
     m_LayersFlexGridSizer->SetFlexibleDirection( wxHORIZONTAL );
     m_LayersFlexGridSizer->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_NONE );
 
@@ -481,7 +495,7 @@ LAYER_WIDGET::LAYER_WIDGET( wxWindow* aParent, wxWindow* aFocusOwner, int aPoint
     m_LayerPanel->SetSizer( bSizer3 );
     m_LayerPanel->Layout();
     bSizer3->Fit( m_LayerPanel );
-    m_notebook->AddPage( m_LayerPanel, _( "Layer" ), true );
+    m_notebook->AddPage( m_LayerPanel, _( "Layers" ), true );
     m_RenderingPanel = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 
     wxBoxSizer* bSizer4;
@@ -489,7 +503,7 @@ LAYER_WIDGET::LAYER_WIDGET( wxWindow* aParent, wxWindow* aFocusOwner, int aPoint
 
     m_RenderScrolledWindow = new wxScrolledWindow( m_RenderingPanel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxNO_BORDER );
     m_RenderScrolledWindow->SetScrollRate( 5, 5 );
-    m_RenderFlexGridSizer = new wxFlexGridSizer( 0, 2, 0, 1 );
+    m_RenderFlexGridSizer = new wxFlexGridSizer( 0, RND_COLUMN_COUNT, 0, 1 );
     m_RenderFlexGridSizer->SetFlexibleDirection( wxHORIZONTAL );
     m_RenderFlexGridSizer->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_NONE );
 
@@ -501,7 +515,7 @@ LAYER_WIDGET::LAYER_WIDGET( wxWindow* aParent, wxWindow* aFocusOwner, int aPoint
     m_RenderingPanel->SetSizer( bSizer4 );
     m_RenderingPanel->Layout();
     bSizer4->Fit( m_RenderingPanel );
-    m_notebook->AddPage( m_RenderingPanel, _( "Render" ), false );
+    m_notebook->AddPage( m_RenderingPanel, _( "Items" ), false );
 
     boxSizer->Add( m_notebook, 1, wxEXPAND | wxALL, 5 );
 
@@ -520,6 +534,7 @@ LAYER_WIDGET::LAYER_WIDGET( wxWindow* aParent, wxWindow* aFocusOwner, int aPoint
 
 LAYER_WIDGET::~LAYER_WIDGET()
 {
+    delete m_IconProvider;
 }
 
 
@@ -539,7 +554,7 @@ wxSize LAYER_WIDGET::GetBestSize() const
     }
 
     // Account for the parent's frame:
-    totWidth += 10;
+    totWidth += 32;
 
 
     /* The minimum height is a small size to properly force computation
@@ -565,7 +580,7 @@ wxSize LAYER_WIDGET::GetBestSize() const
         }
     }
     // account for the parent's frame, this one has void space of 10 PLUS a border:
-    totWidth += 20;
+    totWidth += 32;
 
     // For totHeight re-use the previous small one
     wxSize renderz( totWidth, totHeight );
@@ -627,7 +642,12 @@ void LAYER_WIDGET::SelectLayerRow( int aRow )
 
     INDICATOR_ICON* oldIndicator = (INDICATOR_ICON*) getLayerComp( m_CurrentRow, 0 );
     if( oldIndicator )
-        oldIndicator->SetIndicatorState( ROW_ICON_PROVIDER::STATE::OFF );
+    {
+        if( useAlternateBitmap( m_CurrentRow ) )
+            oldIndicator->SetIndicatorState( ROW_ICON_PROVIDER::STATE::DIMMED );
+        else
+            oldIndicator->SetIndicatorState( ROW_ICON_PROVIDER::STATE::OFF );
+    }
 
     INDICATOR_ICON* newIndicator = (INDICATOR_ICON*) getLayerComp( aRow, 0 );
     if( newIndicator )
@@ -667,6 +687,13 @@ LAYER_NUM LAYER_WIDGET::GetSelectedLayer()
 
 
 void LAYER_WIDGET::SetLayerVisible( LAYER_NUM aLayer, bool isVisible )
+{
+    setLayerCheckbox( aLayer, isVisible );
+    OnLayerVisible( aLayer, isVisible );
+}
+
+
+void LAYER_WIDGET::setLayerCheckbox( LAYER_NUM aLayer, bool isVisible )
 {
     int row = findLayerRow( aLayer );
     if( row >= 0 )
@@ -771,8 +798,15 @@ void LAYER_WIDGET::UpdateLayerIcons()
 
         if( indicator )
         {
-            auto state = ( row == m_CurrentRow ) ? ROW_ICON_PROVIDER::STATE::ON
-                                                 : ROW_ICON_PROVIDER::STATE::OFF;
+            ROW_ICON_PROVIDER::STATE state;
+
+            if( row == m_CurrentRow )
+                state = ROW_ICON_PROVIDER::STATE::ON;
+            else if( useAlternateBitmap( row ) )
+                state = ROW_ICON_PROVIDER::STATE::DIMMED;
+            else
+                state = ROW_ICON_PROVIDER::STATE::OFF;
+
             indicator->SetIndicatorState( state );
         }
     }

@@ -287,6 +287,7 @@ public:
      * @param aUseSheetNum Set to true to start annotation for each sheet at the sheet number
      *                     times \a aSheetIntervalId.  Otherwise annotate incrementally.
      * @param aSheetIntervalId The per sheet reference designator multiplier.
+     * @param aStartNumber The number to start with if NOT numbering based on sheet number.
      * @param aLockedUnitMap A SCH_MULTI_UNIT_REFERENCE_MAP of reference designator wxStrings
      *      to SCH_REFERENCE_LISTs. May be an empty map. If not empty, any multi-unit parts
      *      found in this map will be annotated as a group rather than individually.
@@ -297,7 +298,8 @@ public:
      * referenced U201 to U351, and items in sheet 3 start from U352
      * </p>
      */
-    void Annotate( bool aUseSheetNum, int aSheetIntervalId, SCH_MULTI_UNIT_REFERENCE_MAP aLockedUnitMap );
+    void Annotate( bool aUseSheetNum, int aSheetIntervalId, int aStartNumber,
+                   SCH_MULTI_UNIT_REFERENCE_MAP aLockedUnitMap );
 
     /**
      * Function CheckAnnotation
@@ -311,10 +313,10 @@ public:
      * <li>Components with multiple parts per package with invalid part count.</li>
      * </ul>
      * </p>
-     * @param aMessageList A wxArrayString to store error messages.
+     * @param aReporter A sink for error messages.  Use NULL_REPORTER if you don't need errors.
      * @return The number of errors found.
      */
-    int CheckAnnotation( wxArrayString* aMessageList );
+    int CheckAnnotation( REPORTER& aReporter );
 
     /**
      * Function sortByXCoordinate

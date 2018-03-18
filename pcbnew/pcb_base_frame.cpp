@@ -81,9 +81,15 @@ BEGIN_EVENT_TABLE( PCB_BASE_FRAME, EDA_DRAW_FRAME )
 
     EVT_TOOL( ID_TB_OPTIONS_SHOW_POLAR_COORD, PCB_BASE_FRAME::OnTogglePolarCoords )
     EVT_TOOL( ID_TB_OPTIONS_SHOW_PADS_SKETCH, PCB_BASE_FRAME::OnTogglePadDrawMode )
+    EVT_TOOL( ID_TB_OPTIONS_SHOW_GRAPHIC_SKETCH, PCB_BASE_FRAME::OnToggleGraphicDrawMode )
+    EVT_TOOL( ID_TB_OPTIONS_SHOW_MODULE_EDGE_SKETCH, PCB_BASE_FRAME::OnToggleEdgeDrawMode )
+    EVT_TOOL( ID_TB_OPTIONS_SHOW_MODULE_TEXT_SKETCH, PCB_BASE_FRAME::OnToggleTextDrawMode )
 
     EVT_UPDATE_UI( ID_TB_OPTIONS_SHOW_POLAR_COORD, PCB_BASE_FRAME::OnUpdateCoordType )
     EVT_UPDATE_UI( ID_TB_OPTIONS_SHOW_PADS_SKETCH, PCB_BASE_FRAME::OnUpdatePadDrawMode )
+    EVT_UPDATE_UI( ID_TB_OPTIONS_SHOW_GRAPHIC_SKETCH, PCB_BASE_FRAME::OnUpdateGraphicDrawMode )
+    EVT_UPDATE_UI( ID_TB_OPTIONS_SHOW_MODULE_EDGE_SKETCH, PCB_BASE_FRAME::OnUpdateEdgeDrawMode )
+    EVT_UPDATE_UI( ID_TB_OPTIONS_SHOW_MODULE_TEXT_SKETCH, PCB_BASE_FRAME::OnUpdateTextDrawMode )
     EVT_UPDATE_UI( ID_ON_GRID_SELECT, PCB_BASE_FRAME::OnUpdateSelectGrid )
     EVT_UPDATE_UI( ID_ON_ZOOM_SELECT, PCB_BASE_FRAME::OnUpdateSelectZoom )
     // Switching canvases
@@ -103,8 +109,7 @@ PCB_BASE_FRAME::PCB_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
 {
     m_Pcb                 = NULL;
 
-    m_UserGridSize        = wxRealPoint( 100.0, 100.0 );
-    m_UserGridUnit        = INCHES;
+    m_UserGridSize        = wxPoint( 10 * IU_PER_MILS, 10 * IU_PER_MILS );
     m_Collector           = new GENERAL_COLLECTOR();
 
     m_FastGrid1           = 0;
@@ -381,6 +386,22 @@ void PCB_BASE_FRAME::ReCreateMenuBar( void )
 }
 
 
+void PCB_BASE_FRAME::ShowChangedLanguage()
+{
+    // call my base class
+    EDA_DRAW_FRAME::ShowChangedLanguage();
+
+    // tooltips in toolbars
+    ReCreateHToolbar();
+    ReCreateAuxiliaryToolbar();
+    ReCreateVToolbar();
+    ReCreateOptToolbar();
+
+    // status bar
+    UpdateMsgPanel();
+}
+
+
 // Virtual functions: Do nothing for PCB_BASE_FRAME window
 void PCB_BASE_FRAME::Show3D_Frame( wxCommandEvent& event )
 {
@@ -475,6 +496,30 @@ void PCB_BASE_FRAME::OnTogglePadDrawMode( wxCommandEvent& aEvent )
 }
 
 
+void PCB_BASE_FRAME::OnToggleGraphicDrawMode( wxCommandEvent& aEvent )
+{
+    auto displ_opts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
+    displ_opts->m_DisplayDrawItemsFill = !displ_opts->m_DisplayDrawItemsFill;
+    m_canvas->Refresh();
+}
+
+
+void PCB_BASE_FRAME::OnToggleEdgeDrawMode( wxCommandEvent& aEvent )
+{
+    auto displ_opts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
+    displ_opts->m_DisplayModEdgeFill = !displ_opts->m_DisplayModEdgeFill;
+    m_canvas->Refresh();
+}
+
+
+void PCB_BASE_FRAME::OnToggleTextDrawMode( wxCommandEvent& aEvent )
+{
+    auto displ_opts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
+    displ_opts->m_DisplayModTextFill = !displ_opts->m_DisplayModTextFill;
+    m_canvas->Refresh();
+}
+
+
 void PCB_BASE_FRAME::OnSwitchCanvas( wxCommandEvent& aEvent )
 {
     switch( aEvent.GetId() )
@@ -515,6 +560,27 @@ void PCB_BASE_FRAME::OnUpdatePadDrawMode( wxUpdateUIEvent& aEvent )
                                         displ_opts->m_DisplayPadFill ?
                                         _( "Show pads in outline mode" ) :
                                         _( "Show pads in fill mode" ) );
+}
+
+
+void PCB_BASE_FRAME::OnUpdateGraphicDrawMode( wxUpdateUIEvent& aEvent )
+{
+    auto displ_opts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
+    aEvent.Check( !displ_opts->m_DisplayDrawItemsFill);
+}
+
+
+void PCB_BASE_FRAME::OnUpdateEdgeDrawMode( wxUpdateUIEvent& aEvent )
+{
+    auto displ_opts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
+    aEvent.Check( !displ_opts->m_DisplayModEdgeFill );
+}
+
+
+void PCB_BASE_FRAME::OnUpdateTextDrawMode( wxUpdateUIEvent& aEvent )
+{
+    auto displ_opts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
+    aEvent.Check( !displ_opts->m_DisplayModTextFill );
 }
 
 
@@ -638,6 +704,7 @@ GENERAL_COLLECTORS_GUIDE PCB_BASE_FRAME::GetCollectorsGuide()
     guide.SetIgnoreThroughVias( ! m_Pcb->IsElementVisible( LAYER_VIA_THROUGH ) );
     guide.SetIgnoreBlindBuriedVias( ! m_Pcb->IsElementVisible( LAYER_VIA_BBLIND ) );
     guide.SetIgnoreMicroVias( ! m_Pcb->IsElementVisible( LAYER_VIA_MICROVIA ) );
+    guide.SetIgnoreTracks( ! m_Pcb->IsElementVisible( LAYER_TRACKS ) );
 
     return guide;
 }
@@ -789,17 +856,22 @@ void PCB_BASE_FRAME::LoadSettings( wxConfigBase* aCfg )
 
     wxString baseCfgName = GetName();
 
-    aCfg->Read( baseCfgName + UserGridSizeXEntry, &m_UserGridSize.x, 0.01 );
-    aCfg->Read( baseCfgName + UserGridSizeYEntry, &m_UserGridSize.y, 0.01 );
+    EDA_UNITS_T userGridUnits;
+    aCfg->Read( baseCfgName + UserGridUnitsEntry, ( int* )&userGridUnits, ( int )INCHES );
 
-    long itmp;
-    aCfg->Read( baseCfgName + UserGridUnitsEntry, &itmp, ( long )INCHES );
-    m_UserGridUnit = (EDA_UNITS_T) itmp;
+    double tmp;
+    aCfg->Read( baseCfgName + UserGridSizeXEntry, &tmp, 0.01 );
+    m_UserGridSize.x = From_User_Unit( userGridUnits, tmp );
+
+    aCfg->Read( baseCfgName + UserGridSizeYEntry, &tmp, 0.01 );
+    m_UserGridSize.y = From_User_Unit( userGridUnits, tmp );
+
     aCfg->Read( baseCfgName + DisplayPadFillEntry, &m_DisplayOptions.m_DisplayPadFill, true );
     aCfg->Read( baseCfgName + DisplayViaFillEntry, &m_DisplayOptions.m_DisplayViaFill, true );
     aCfg->Read( baseCfgName + DisplayPadNumberEntry, &m_DisplayOptions.m_DisplayPadNum, true );
     aCfg->Read( baseCfgName + DisplayModuleEdgeEntry, &m_DisplayOptions.m_DisplayModEdgeFill, true );
 
+    long itmp;
     aCfg->Read( baseCfgName + FastGrid1Entry, &itmp, ( long )0);
     m_FastGrid1 = itmp;
     aCfg->Read( baseCfgName + FastGrid2Entry, &itmp, ( long )0);
@@ -815,9 +887,9 @@ void PCB_BASE_FRAME::SaveSettings( wxConfigBase* aCfg )
 
     wxString baseCfgName = GetName();
 
-    aCfg->Write( baseCfgName + UserGridSizeXEntry, m_UserGridSize.x );
-    aCfg->Write( baseCfgName + UserGridSizeYEntry, m_UserGridSize.y );
-    aCfg->Write( baseCfgName + UserGridUnitsEntry, ( long )m_UserGridUnit );
+    aCfg->Write( baseCfgName + UserGridSizeXEntry, To_User_Unit( g_UserUnit, m_UserGridSize.x ) );
+    aCfg->Write( baseCfgName + UserGridSizeYEntry, To_User_Unit( g_UserUnit, m_UserGridSize.y ) );
+    aCfg->Write( baseCfgName + UserGridUnitsEntry, ( long )g_UserUnit );
     aCfg->Write( baseCfgName + DisplayPadFillEntry, m_DisplayOptions.m_DisplayPadFill );
     aCfg->Write( baseCfgName + DisplayViaFillEntry, m_DisplayOptions.m_DisplayViaFill );
     aCfg->Write( baseCfgName + DisplayPadNumberEntry, m_DisplayOptions.m_DisplayPadNum );

@@ -74,6 +74,9 @@ Load() TODO's
 
 #include <eagle_plugin.h>
 
+// KiCad doesn't currently have curved tracks, so we use high-def for zone
+#define EAGLE_CURVE_DELTA ( 360.0 / ARC_APPROX_SEGMENTS_COUNT_HIGHT_DEF )
+
 using namespace std;
 
 
@@ -86,7 +89,7 @@ typedef MODULE_MAP::const_iterator    MODULE_CITER;
 static int parseEagle( const wxString& aDistance )
 {
     ECOORD::EAGLE_UNIT unit = ( aDistance.npos != aDistance.find( "mil" ) )
-        ? ECOORD::EAGLE_UNIT::EAGLE_MIL : ECOORD::EAGLE_UNIT::EAGLE_MM;
+        ? ECOORD::EAGLE_UNIT::EU_MIL : ECOORD::EAGLE_UNIT::EU_MM;
 
     ECOORD coord( aDistance, unit );
 
@@ -118,12 +121,34 @@ void ERULES::parse( wxXmlNode* aRules )
                 psElongationLong = wxAtoi( value );
             else if( name == "psElongationOffset" )
                 psElongationOffset = wxAtoi( value );
+
+            else if( name == "mvStopFrame" )
+                value.ToDouble( &mvStopFrame );
+            else if( name == "mvCreamFrame" )
+                value.ToDouble( &mvCreamFrame );
+            else if( name == "mlMinStopFrame" )
+                mlMinStopFrame = parseEagle( value );
+            else if( name == "mlMaxStopFrame" )
+                mlMaxStopFrame = parseEagle( value );
+            else if( name == "mlMinCreamFrame" )
+                mlMinCreamFrame = parseEagle( value );
+            else if( name == "mlMaxCreamFrame" )
+                mlMaxCreamFrame = parseEagle( value );
+
+            else if( name == "srRoundness" )
+                value.ToDouble( &srRoundness );
+            else if( name == "srMinRoundness" )
+                srMinRoundness = parseEagle( value );
+            else if( name == "srMaxRoundness" )
+                srMaxRoundness = parseEagle( value );
+
             else if( name == "rvPadTop" )
                 value.ToDouble( &rvPadTop );
             else if( name == "rlMinPadTop" )
                 rlMinPadTop = parseEagle( value );
             else if( name == "rlMaxPadTop" )
                 rlMaxPadTop = parseEagle( value );
+
             else if( name == "rvViaOuter" )
                 value.ToDouble( &rvViaOuter );
             else if( name == "rlMinViaOuter" )
@@ -642,8 +667,8 @@ void EAGLE_PLUGIN::loadPlain( wxXmlNode* aGraphics )
             MODULE* module = new MODULE( m_board );
             m_board->Add( module, ADD_APPEND );
 
-            char    temp[40];
-            sprintf( temp, "@HOLE%d", m_hole_count++ );
+            char temp[40];
+            snprintf( temp, sizeof( temp ), "@HOLE%d", m_hole_count++ );
             module->SetReference( FROM_UTF8( temp ) );
             module->Reference().SetVisible( false );
 
@@ -699,14 +724,14 @@ void EAGLE_PLUGIN::loadPlain( wxXmlNode* aGraphics )
                     if( *d.dimensionType == "horizontal" )
                     {
                         int newY = ( d.y1.ToPcbUnits() + d.y2.ToPcbUnits() ) / 2;
-                        d.y1 = ECOORD( newY, ECOORD::EAGLE_UNIT::EAGLE_NM );
-                        d.y2 = ECOORD( newY, ECOORD::EAGLE_UNIT::EAGLE_NM );
+                        d.y1 = ECOORD( newY, ECOORD::EAGLE_UNIT::EU_NM );
+                        d.y2 = ECOORD( newY, ECOORD::EAGLE_UNIT::EU_NM );
                     }
                     else if( *d.dimensionType == "vertical" )
                     {
                         int newX = ( d.x1.ToPcbUnits() + d.x2.ToPcbUnits() ) / 2;
-                        d.x1 = ECOORD( newX, ECOORD::EAGLE_UNIT::EAGLE_NM );
-                        d.x2 = ECOORD( newX, ECOORD::EAGLE_UNIT::EAGLE_NM );
+                        d.x1 = ECOORD( newX, ECOORD::EAGLE_UNIT::EU_NM );
+                        d.x2 = ECOORD( newX, ECOORD::EAGLE_UNIT::EU_NM );
                     }
                 }
 
@@ -1277,21 +1302,10 @@ void EAGLE_PLUGIN::packagePad( MODULE* aModule, wxXmlNode* aTree ) const
     // this is thru hole technology here, no SMDs
     EPAD e( aTree );
 
-    D_PAD*  pad = new D_PAD( aModule );
+    D_PAD* pad = new D_PAD( aModule );
     aModule->PadsList().PushBack( pad );
+    transferPad( e, pad );
 
-    pad->SetName( FROM_UTF8( e.name.c_str() ) );
-
-    // pad's "Position" is not relative to the module's,
-    // whereas Pos0 is relative to the module's but is the unrotated coordinate.
-
-    wxPoint padpos( kicad_x( e.x ), kicad_y( e.y ) );
-
-    pad->SetPos0( padpos );
-
-    RotatePoint( &padpos, aModule->GetOrientation() );
-
-    pad->SetPosition( padpos + aModule->GetPosition() );
     pad->SetDrillSize( wxSize( e.drill.ToPcbUnits(), e.drill.ToPcbUnits() ) );
     pad->SetLayerSet( LSET::AllCuMask().set( B_Mask ).set( F_Mask ) );
 
@@ -1300,13 +1314,13 @@ void EAGLE_PLUGIN::packagePad( MODULE* aModule, wxXmlNode* aTree ) const
         switch( *e.shape )
         {
         case EPAD::ROUND:
-            wxASSERT( pad->GetShape()==PAD_SHAPE_CIRCLE );    // verify set in D_PAD constructor
+            wxASSERT( pad->GetShape() == PAD_SHAPE_CIRCLE );    // verify set in D_PAD constructor
             break;
 
         case EPAD::OCTAGON:
             // no KiCad octagonal pad shape, use PAD_CIRCLE for now.
             // pad->SetShape( PAD_OCTAGON );
-            wxASSERT( pad->GetShape()==PAD_SHAPE_CIRCLE );    // verify set in D_PAD constructor
+            wxASSERT( pad->GetShape() == PAD_SHAPE_CIRCLE );    // verify set in D_PAD constructor
             break;
 
         case EPAD::LONG:
@@ -1353,8 +1367,6 @@ void EAGLE_PLUGIN::packagePad( MODULE* aModule, wxXmlNode* aTree ) const
     {
         pad->SetOrientation( e.rot->degrees * 10 );
     }
-
-    // @todo: handle stop and thermal
 }
 
 
@@ -1628,54 +1640,47 @@ void EAGLE_PLUGIN::packageHole( MODULE* aModule, wxXmlNode* aTree ) const
 
 void EAGLE_PLUGIN::packageSMD( MODULE* aModule, wxXmlNode* aTree ) const
 {
-    ESMD         e( aTree );
+    ESMD e( aTree );
     PCB_LAYER_ID layer = kicad_layer( e.layer );
 
     if( !IsCopperLayer( layer ) )
-    {
         return;
-    }
 
-    D_PAD*  pad = new D_PAD( aModule );
+    D_PAD* pad = new D_PAD( aModule );
     aModule->PadsList().PushBack( pad );
+    transferPad( e, pad );
 
-    pad->SetName( FROM_UTF8( e.name.c_str() ) );
     pad->SetShape( PAD_SHAPE_RECT );
     pad->SetAttribute( PAD_ATTRIB_SMD );
 
-    // pad's "Position" is not relative to the module's,
-    // whereas Pos0 is relative to the module's but is the unrotated coordinate.
-
-    wxPoint padpos( kicad_x( e.x ), kicad_y( e.y ) );
-
-    pad->SetPos0( padpos );
-
-    RotatePoint( &padpos, aModule->GetOrientation() );
-
-    pad->SetPosition( padpos + aModule->GetPosition() );
-
-    pad->SetSize( wxSize( e.dx.ToPcbUnits(), e.dy.ToPcbUnits() ) );
-
+    wxSize padSize( e.dx.ToPcbUnits(), e.dy.ToPcbUnits() );
+    pad->SetSize( padSize );
     pad->SetLayer( layer );
 
-    static const LSET front( 3, F_Cu, F_Paste, F_Mask );
-    static const LSET back(  3, B_Cu, B_Paste, B_Mask );
+    const LSET front( 3, F_Cu, F_Paste, F_Mask );
+    const LSET back(  3, B_Cu, B_Paste, B_Mask );
 
     if( layer == F_Cu )
         pad->SetLayerSet( front );
     else if( layer == B_Cu )
         pad->SetLayerSet( back );
 
-    // Optional according to DTD
-    if( e.roundness )    // set set shape to PAD_SHAPE_RECT above, in case roundness is not present
+    int minPadSize = std::min( padSize.x, padSize.y );
+
+    // Rounded rectangle pads
+    int roundRadius = Clamp( m_rules->srMinRoundness * 2,
+            (int)( minPadSize * m_rules->srRoundness ), m_rules->srMaxRoundness * 2 );
+
+    if( e.roundness || roundRadius > 0 )
     {
-        if( *e.roundness >= 75 )       // roundness goes from 0-100% as integer
-        {
-            if( e.dy == e.dx )
-                pad->SetShape( PAD_SHAPE_CIRCLE );
-            else
-                pad->SetShape( PAD_SHAPE_OVAL );
-        }
+        double roundRatio = (double) roundRadius / minPadSize / 2.0;
+
+        // Eagle uses a different definition of roundness, hence division by 200
+        if( e.roundness )
+            roundRatio = std::fmax( *e.roundness / 200.0, roundRatio );
+
+        pad->SetShape( PAD_SHAPE_ROUNDRECT );
+        pad->SetRoundRectRadiusRatio( roundRatio );
     }
 
     if( e.rot )
@@ -1683,7 +1688,43 @@ void EAGLE_PLUGIN::packageSMD( MODULE* aModule, wxXmlNode* aTree ) const
         pad->SetOrientation( e.rot->degrees * 10 );
     }
 
-    // don't know what stop, thermals, and cream should look like now.
+    // Solder paste (only for SMD pads)
+    if( !e.cream || !*e.cream )     // enabled by default
+    {
+        pad->SetLocalSolderPasteMargin( Clamp( m_rules->mlMinCreamFrame,
+                (int)( m_rules->mvCreamFrame * minPadSize ),
+                m_rules->mlMaxCreamFrame ) );
+    }
+}
+
+
+void EAGLE_PLUGIN::transferPad( const EPAD_COMMON& aEaglePad, D_PAD* aPad ) const
+{
+    aPad->SetName( FROM_UTF8( aEaglePad.name.c_str() ) );
+
+    // pad's "Position" is not relative to the module's,
+    // whereas Pos0 is relative to the module's but is the unrotated coordinate.
+    wxPoint padPos( kicad_x( aEaglePad.x ), kicad_y( aEaglePad.y ) );
+    aPad->SetPos0( padPos );
+
+    // Solder mask
+    const wxSize& padSize( aPad->GetSize() );
+
+    if( !aEaglePad.stop || !*aEaglePad.stop )     // enabled by default
+    {
+        aPad->SetLocalSolderMaskMargin( Clamp( m_rules->mlMinStopFrame,
+                    (int)( m_rules->mvStopFrame * std::min( padSize.x, padSize.y ) ),
+                    m_rules->mlMaxStopFrame ) );
+    }
+
+    // Solid connection to copper zones
+    if( aEaglePad.thermals && !*aEaglePad.thermals )
+        aPad->SetZoneConnection( PAD_ZONE_CONN_FULL );
+
+    MODULE* module = aPad->GetParent();
+    wxCHECK( module, /* void */ );
+    RotatePoint( &padPos, module->GetOrientation() );
+    aPad->SetPosition( padPos + module->GetPosition() );
 }
 
 
@@ -1739,17 +1780,62 @@ void EAGLE_PLUGIN::loadSignals( wxXmlNode* aSignals )
 
                 if( IsCopperLayer( layer ) )
                 {
-                    TRACK*  t = new TRACK( m_board );
-
-                    t->SetTimeStamp( EagleTimeStamp( netItem ) );
-
-                    t->SetPosition( wxPoint( kicad_x( w.x1 ), kicad_y( w.y1 ) ) );
-                    t->SetEnd( wxPoint( kicad_x( w.x2 ), kicad_y( w.y2 ) ) );
+                    wxPoint start( kicad_x( w.x1 ), kicad_y( w.y1 ) );
+                    double angle = 0.0;
+                    double end_angle = 0.0;
+                    double radius = 0.0;
+                    wxPoint center;
 
                     int width = w.width.ToPcbUnits();
                     if( width < m_min_trace )
                         m_min_trace = width;
 
+                    if( w.curve )
+                    {
+                        center = ConvertArcCenter(
+                                wxPoint( kicad_x( w.x1 ), kicad_y( w.y1 ) ),
+                                wxPoint( kicad_x( w.x2 ), kicad_y( w.y2 ) ),
+                                *w.curve );
+
+                        angle = DEG2RAD( *w.curve );
+
+                        end_angle = atan2( kicad_y( w.y2 ) - center.y,
+                                           kicad_x( w.x2 ) - center.x );
+
+                        radius = sqrt( pow( center.x - kicad_x( w.x1 ), 2 ) +
+                                       pow( center.y - kicad_y( w.y1 ), 2 ) );
+                    }
+
+                    while( fabs( angle ) > DEG2RAD( EAGLE_CURVE_DELTA ) )
+                    {
+                        wxASSERT( radius > 0.0 );
+                        wxPoint end( int( radius * cos( end_angle + angle ) + center.x ),
+                                     int( radius * sin( end_angle + angle ) + center.y ) );
+
+                        TRACK*  t = new TRACK( m_board );
+
+                        t->SetTimeStamp( EagleTimeStamp( netItem ) + int( RAD2DEG( angle ) ) );
+                        t->SetPosition( start );
+                        t->SetEnd( end );
+                        t->SetWidth( width );
+                        t->SetLayer( layer );
+                        t->SetNetCode( netCode );
+
+                        m_board->m_Track.Insert( t, NULL );
+
+                        start = end;
+
+                        if( angle < 0 )
+                            angle += DEG2RAD( EAGLE_CURVE_DELTA );
+                        else
+                            angle -= DEG2RAD( EAGLE_CURVE_DELTA );
+                    }
+
+                    TRACK*  t = new TRACK( m_board );
+
+                    t->SetTimeStamp( EagleTimeStamp( netItem ) );
+                    t->SetPosition( start );
+                    t->SetEnd( wxPoint( kicad_x( w.x2 ), kicad_y( w.y2 ) ) );
                     t->SetWidth( width );
                     t->SetLayer( layer );
                     t->SetNetCode( netCode );
@@ -1916,6 +2002,7 @@ void EAGLE_PLUGIN::loadSignals( wxXmlNode* aSignals )
                     // missing == yes per DTD.
                     bool thermals = !p.thermals || *p.thermals;
                     zone->SetPadConnection( thermals ? PAD_ZONE_CONN_THERMAL : PAD_ZONE_CONN_FULL );
+
                     if( thermals )
                     {
                         // FIXME: eagle calculates dimensions for thermal spokes
@@ -2061,32 +2148,16 @@ void EAGLE_PLUGIN::centerBoard()
 
 wxDateTime EAGLE_PLUGIN::getModificationTime( const wxString& aPath )
 {
+    // File hasn't been loaded yet.
+    if( aPath.IsEmpty() )
+        return wxDateTime::Now();
+
     wxFileName  fn( aPath );
 
-    // Do not call wxFileName::GetModificationTime() on a non-existent file, because
-    // if it fails, wx's implementation calls the crap wxLogSysError() which
-    // eventually infects our UI with an unwanted popup window, so don't let it fail.
-    if( !fn.IsFileReadable() )
-    {
-        wxString msg = wxString::Format(
-            _( "File \"%s\" is not readable." ),
-            GetChars( aPath ) );
-
-        THROW_IO_ERROR( msg );
-    }
-
-    /*
-    // update the writable flag while we have a wxFileName, in a network this
-    // is possibly quite dynamic anyway.
-    m_writable = fn.IsFileWritable();
-    */
-
-    wxDateTime modTime = fn.GetModificationTime();
-
-    if( !modTime.IsValid() )
-        modTime.Now();
-
-    return modTime;
+    if( fn.IsFileReadable() )
+        return fn.GetModificationTime();
+    else
+        return wxDateTime( 0.0 );
 }
 
 
@@ -2099,8 +2170,7 @@ void EAGLE_PLUGIN::cacheLib( const wxString& aLibPath )
         // Fixes assertions in wxWidgets debug builds for the wxDateTime object.  Refresh the
         // cache if either of the wxDateTime objects are invalid or the last file modification
         // time differs from the current file modification time.
-        bool load = !m_mod_time.IsValid() || !modtime.IsValid() ||
-                    m_mod_time != modtime;
+        bool load = !m_mod_time.IsValid() || !modtime.IsValid() || m_mod_time != modtime;
 
         if( aLibPath != m_lib_path || load )
         {

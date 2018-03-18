@@ -73,7 +73,7 @@ ECOORD::ECOORD( const wxString& aValue, enum ECOORD::EAGLE_UNIT aUnit )
         throw XML_PARSER_ERROR( "Invalid coordinate" );
 
     // process the integer part
-    value = ToNanoMeters( integer, aUnit );
+    value = ConvertToNm( integer, aUnit );
 
     // process the fraction part
     if( ret == 2 )
@@ -88,7 +88,7 @@ ECOORD::ECOORD( const wxString& aValue, enum ECOORD::EAGLE_UNIT aUnit )
             fraction /= DIVIDERS[diff];
         }
 
-        int frac_value = ToNanoMeters( fraction, aUnit ) / DIVIDERS[digits];
+        int frac_value = ConvertToNm( fraction, aUnit ) / DIVIDERS[digits];
 
         // keep the sign in mind
         value = negative ? value - frac_value : value + frac_value;
@@ -96,17 +96,17 @@ ECOORD::ECOORD( const wxString& aValue, enum ECOORD::EAGLE_UNIT aUnit )
 }
 
 
-long long int ECOORD::ToNanoMeters( int aValue, enum EAGLE_UNIT aUnit )
+long long int ECOORD::ConvertToNm( int aValue, enum EAGLE_UNIT aUnit )
 {
     long long int ret;
 
     switch( aUnit )
     {
         default:
-        case EAGLE_NM:    ret = aValue; break;
-        case EAGLE_MM:    ret = (long long) aValue * 1000000; break;
-        case EAGLE_INCH:  ret = (long long) aValue * 25400000; break;
-        case EAGLE_MIL:   ret = (long long) aValue * 25400; break;
+        case EU_NM:    ret = aValue; break;
+        case EU_MM:    ret = (long long) aValue * 1000000; break;
+        case EU_INCH:  ret = (long long) aValue * 25400000; break;
+        case EU_MIL:   ret = (long long) aValue * 25400; break;
     }
 
     wxASSERT( ( ret > 0 ) == ( aValue > 0 ) );  // check for overflow
@@ -195,7 +195,7 @@ template<>
 ECOORD Convert<ECOORD>( const wxString& aCoord )
 {
     // Eagle uses millimeters as the default unit
-    return ECOORD( aCoord, ECOORD::EAGLE_UNIT::EAGLE_MM );
+    return ECOORD( aCoord, ECOORD::EAGLE_UNIT::EU_MM );
 }
 
 
@@ -258,20 +258,20 @@ NODE_MAP MapChildren( wxXmlNode* aCurrentNode )
 }
 
 
-unsigned long EagleTimeStamp( wxXmlNode* aTree )
+timestamp_t EagleTimeStamp( wxXmlNode* aTree )
 {
     // in this case from a unique tree memory location
-    return (unsigned long)(void*) aTree;
+    return (timestamp_t) reinterpret_cast<uintptr_t>( aTree );
 }
 
 
-time_t EagleModuleTstamp( const wxString& aName, const wxString& aValue, int aUnit )
+timestamp_t EagleModuleTstamp( const wxString& aName, const wxString& aValue, int aUnit )
 {
     std::size_t h1 = std::hash<wxString>{}( aName );
     std::size_t h2 = std::hash<wxString>{}( aValue );
     std::size_t h3 = std::hash<int>{}( aUnit );
 
-    return h1 ^ (h2 << 1) ^ (h3 << 2);
+    return (timestamp_t)( h1 ^ (h2 << 1) ^ (h3 << 2) );
 }
 
 
@@ -621,7 +621,20 @@ wxSize ETEXT::ConvertSize() const
 }
 
 
+EPAD_COMMON::EPAD_COMMON( wxXmlNode* aPad )
+{
+    // #REQUIRED says DTD, throw exception if not found
+    name      = parseRequiredAttribute<wxString>( aPad, "name" );
+    x         = parseRequiredAttribute<ECOORD>( aPad, "x" );
+    y         = parseRequiredAttribute<ECOORD>( aPad, "y" );
+    rot      = parseOptionalAttribute<EROT>( aPad, "rot" );
+    stop     = parseOptionalAttribute<bool>( aPad, "stop" );
+    thermals = parseOptionalAttribute<bool>( aPad, "thermals" );
+}
+
+
 EPAD::EPAD( wxXmlNode* aPad )
+    : EPAD_COMMON( aPad )
 {
     /*
     <!ELEMENT pad EMPTY>
@@ -640,9 +653,6 @@ EPAD::EPAD( wxXmlNode* aPad )
     */
 
     // #REQUIRED says DTD, throw exception if not found
-    name         = parseRequiredAttribute<wxString>( aPad, "name" );
-    x            = parseRequiredAttribute<ECOORD>( aPad, "x" );
-    y            = parseRequiredAttribute<ECOORD>( aPad, "y" );
     drill        = parseRequiredAttribute<ECOORD>( aPad, "drill" );
 
     // Optional attributes
@@ -662,14 +672,12 @@ EPAD::EPAD( wxXmlNode* aPad )
     else if( s == "offset" )
         shape = EPAD::OFFSET;
 
-    rot      = parseOptionalAttribute<EROT>( aPad, "rot" );
-    stop     = parseOptionalAttribute<bool>( aPad, "stop" );
-    thermals = parseOptionalAttribute<bool>( aPad, "thermals" );
     first    = parseOptionalAttribute<bool>( aPad, "first" );
 }
 
 
 ESMD::ESMD( wxXmlNode* aSMD )
+    : EPAD_COMMON( aSMD )
 {
     /*
     <!ATTLIST smd
@@ -688,18 +696,11 @@ ESMD::ESMD( wxXmlNode* aSMD )
     */
 
     // DTD #REQUIRED, throw exception if not found
-    name      = parseRequiredAttribute<wxString>( aSMD, "name" );
-    x         = parseRequiredAttribute<ECOORD>( aSMD, "x" );
-    y         = parseRequiredAttribute<ECOORD>( aSMD, "y" );
     dx        = parseRequiredAttribute<ECOORD>( aSMD, "dx" );
     dy        = parseRequiredAttribute<ECOORD>( aSMD, "dy" );
     layer     = parseRequiredAttribute<int>( aSMD, "layer" );
 
     roundness = parseOptionalAttribute<int>( aSMD, "roundness" );
-    rot       = parseOptionalAttribute<EROT>( aSMD, "rot" );
-    thermals  = parseOptionalAttribute<bool>( aSMD, "thermals" );
-    stop      = parseOptionalAttribute<bool>( aSMD, "stop" );
-    thermals  = parseOptionalAttribute<bool>( aSMD, "thermals" );
     cream     = parseOptionalAttribute<bool>( aSMD, "cream" );
 }
 

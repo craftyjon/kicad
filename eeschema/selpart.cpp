@@ -48,7 +48,7 @@ static void DisplayCmpDocAndKeywords( wxString& aSelection, void* aData )
 
     if( id.Parse( aSelection ) != -1 )
     {
-        aSelection = _( "Invalid symbol library indentifier!" );
+        aSelection = _( "Invalid symbol library identifier!" );
         return;
     }
 
@@ -68,8 +68,8 @@ static void DisplayCmpDocAndKeywords( wxString& aSelection, void* aData )
     if( !part )
         return;
 
-    aSelection  = _( "Description: " ) + part->GetDescription() + "\n";
-    aSelection += _( "Key Words: " ) + part->GetKeyWords();
+    aSelection  = _( "Description:" ) + " " + part->GetDescription() + "\n";
+    aSelection += _( "Key words:" ) + " " + part->GetKeyWords();
 }
 
 

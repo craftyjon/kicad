@@ -418,7 +418,6 @@ public:
      */
     void TestforSimilarLabels();
 
-
     #if defined(DEBUG)
     void DumpNetTable()
     {

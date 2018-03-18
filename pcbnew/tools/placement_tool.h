@@ -118,6 +118,57 @@ private:
     SELECTION_TOOL* m_selectionTool;
 
     CONTEXT_MENU* m_placementMenu;
+
+    /**
+     * Remove pads from a multi-unit select that also includes the pads' parents
+     */
+    void filterPadsWithModules( SELECTION &selection );
+
+    /**
+     * Check a selection to ensure locks are valid for alignment.
+     *
+     * This is slightly different from the standard lock checking in that we ignore the lock
+     * of the first element in the selection as this is meant to be our anchor.
+     * We also check the lock of a pad's parent as we will not move pads independently of
+     * the parent module
+     */
+    int checkLockedStatus( const SELECTION &selection ) const;
+
+    /**
+     * Distributes selected items using an even spacing between the centers of their bounding boxes
+     *
+     * NOTE: Using the centers of bounding box of items can give unsatisfactory visual results since
+     * items of differing widths will be placed with different gaps. Is only used if items overlap
+     */
+    void doDistributeCentersHorizontally( ALIGNMENT_RECTS &itemsToDistribute ) const;
+
+    /**
+     * Distributes selected items using an even spacing between the centers of their bounding boxes
+     *
+     * NOTE: Using the centers of bounding box of items can give unsatisfactory visual results since
+     * items of differing widths will be placed with different gaps. Is only used if items overlap
+     */
+    void doDistributeCentersVertically( ALIGNMENT_RECTS &itemsToDistribute ) const;
+
+    /**
+     * Distributes selected items using an even spacing between their bounding boxes
+     *
+     * NOTE: Using the edges of bounding box of items is only possible if there is enough space
+     * between them. If this is not the case, use the center spacing method
+     */
+    void doDistributeGapsHorizontally( ALIGNMENT_RECTS &itemsToDistribute,
+                                       const BOARD_ITEM *lastItem,
+                                       int totalGap ) const;
+
+    /**
+     * Distributes selected items using an even spacing between their bounding boxes
+     *
+     * NOTE: Using the edges of bounding box of items is only possible if there is enough space
+     * between them. If this is not the case, use the center spacing method
+     */
+    void doDistributeGapsVertically( ALIGNMENT_RECTS &itemsToDistribute,
+                                     const BOARD_ITEM *lastItem,
+                                     int totalGap ) const;
 };
 
 #endif /* ALIGN_DISTRIBUTE_TOOL_H_ */

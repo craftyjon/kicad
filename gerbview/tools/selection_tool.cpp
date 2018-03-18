@@ -70,7 +70,7 @@ TOOL_ACTION GERBVIEW_ACTIONS::selectionClear( "gerbview.InteractiveSelection.Cle
         "", "" );    // No description, it is not supposed to be shown anywhere
 
 TOOL_ACTION GERBVIEW_ACTIONS::measureTool( "gerbview.InteractiveSelection.measureTool",
-        AS_GLOBAL, MD_CTRL + MD_SHIFT + 'M',
+        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_MEASURE_TOOL ),
         _( "Measure Tool" ), _( "Interactively measure distance between points" ),
         nullptr, AF_ACTIVATE );
 
@@ -823,10 +823,11 @@ int GERBVIEW_SELECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 {
     auto& view = *getView();
     auto& controls = *getViewControls();
+    auto previous_settings = controls.GetSettings();
 
     Activate();
-    getEditFrame<GERBVIEW_FRAME>()->SetToolID( ID_TB_MEASUREMENT_TOOL,
-                        wxCURSOR_PENCIL, _( "Measure distance between two points" ) );
+    m_frame->SetToolID( ID_TB_MEASUREMENT_TOOL, wxCURSOR_PENCIL,
+                        _( "Measure distance" ) );
 
     KIGFX::PREVIEW::TWO_POINT_GEOMETRY_MANAGER twoPtMgr;
     KIGFX::PREVIEW::RULER_ITEM ruler( twoPtMgr );
@@ -838,7 +839,7 @@ int GERBVIEW_SELECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 
     controls.ShowCursor( true );
     controls.SetSnapping( true );
-    getViewControls()->SetAdditionalPanButtons( false, true );
+    controls.SetAdditionalPanButtons( false, true );
 
     while( auto evt = Wait() )
     {
@@ -904,9 +905,10 @@ int GERBVIEW_SELECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 
     view.SetVisible( &ruler, false );
     view.Remove( &ruler );
-    getViewControls()->SetAdditionalPanButtons( false, false );
 
-    getEditFrame<GERBVIEW_FRAME>()->SetToolID( ID_NO_TOOL_SELECTED, wxCURSOR_DEFAULT, wxEmptyString );
+    controls.ApplySettings( previous_settings );
+
+    m_frame->SetNoToolSelected();
 
     return 0;
 }

@@ -25,7 +25,6 @@
 
 #include <wx/filename.h>
 #include <memory>
-#include <unordered_map>
 
 #include <sch_junction.h>
 #include <sch_sheet.h>
@@ -425,24 +424,6 @@ SCH_SHEET* SCH_EAGLE_PLUGIN::Load( const wxString& aFileName, KIWAY* aKiway,
 
     m_pi->SaveLibrary( getLibFileName().GetFullPath() );
 
-    // Eagle sheets do not use a worksheet frame by default
-    WORKSHEET_LAYOUT& pglayout = WORKSHEET_LAYOUT::GetTheInstance();
-    pglayout.SetEmptyLayout();
-
-    wxFileName layoutfn( m_kiway->Prj().GetProjectPath(), "empty.kicad_wks" );
-    wxFile layoutfile;
-
-    if( layoutfile.Create( layoutfn.GetFullPath() ) )
-    {
-        layoutfile.Write( WORKSHEET_LAYOUT::EmptyLayout() );
-        layoutfile.Close();
-    }
-
-    BASE_SCREEN::m_PageLayoutDescrFileName = "empty.kicad_wks";
-
-    SCH_EDIT_FRAME* editor = (SCH_EDIT_FRAME*) m_kiway->Player( FRAME_SCH, true );
-    editor->SaveProjectSettings( false );
-
     return m_rootSheet;
 }
 
@@ -468,6 +449,38 @@ void SCH_EAGLE_PLUGIN::loadDrawing( wxXmlNode* aDrawingNode )
 
     // Load schematic
     loadSchematic( drawingChildren["schematic"] );
+}
+
+
+void SCH_EAGLE_PLUGIN::countNets( wxXmlNode* aSchematicNode )
+{
+    // Map all children into a readable dictionary
+    NODE_MAP schematicChildren = MapChildren( aSchematicNode );
+    // Loop through all the sheets
+    wxXmlNode* sheetNode = schematicChildren["sheets"]->GetChildren();
+
+    while( sheetNode )
+    {
+        NODE_MAP sheetChildren = MapChildren( sheetNode );
+        // Loop through all nets
+        // From the DTD: "Net is an electrical connection in a schematic."
+        wxXmlNode* netNode = getChildrenNodes( sheetChildren, "nets" );
+
+        while( netNode )
+        {
+            wxString netName = netNode->GetAttribute( "name" );
+
+            if( m_netCounts.count( netName ) )
+                m_netCounts[netName] = m_netCounts[netName] + 1;
+            else
+                m_netCounts[netName] = 1;
+
+            // Get next net
+            netNode = netNode->GetNext();
+        }
+
+        sheetNode = sheetNode->GetNext();
+    }
 }
 
 
@@ -501,6 +514,10 @@ void SCH_EAGLE_PLUGIN::loadSchematic( wxXmlNode* aSchematicNode )
 
         libraryNode = libraryNode->GetNext();
     }
+
+    // find all nets and count how many sheets they appear on.
+    // local labels will be used for nets found only on that sheet.
+    countNets( aSchematicNode );
 
     // Loop through all the sheets
     wxXmlNode* sheetNode = schematicChildren["sheets"]->GetChildren();
@@ -721,6 +738,8 @@ void SCH_EAGLE_PLUGIN::loadSegments( wxXmlNode* aSegmentsNode, const wxString& n
     wxXmlNode* currentSegment = aSegmentsNode->GetChildren();
     SCH_SCREEN* screen = m_currentSheet->GetScreen();
 
+    int segmentCount = countChildren( aSegmentsNode, "segment" );
+
     // wxCHECK( screen, [>void<] );
     while( currentSegment )
     {
@@ -788,12 +807,25 @@ void SCH_EAGLE_PLUGIN::loadSegments( wxXmlNode* aSegmentsNode, const wxString& n
         {
             wxString netname = escapeName( netName );
 
-            std::unique_ptr<SCH_GLOBALLABEL> glabel( new SCH_GLOBALLABEL );
-            glabel->SetPosition( wire->GetStartPoint() );
-            glabel->SetText( netname );
-            glabel->SetTextSize( wxSize( 20, 20 ) );
-            glabel->SetLabelSpinStyle( 0 );
-            screen->Append( glabel.release() );
+            // Add a global label if the net appears on more than one Eagle sheet
+            if( m_netCounts[netName.ToStdString()] > 1 )
+            {
+                std::unique_ptr<SCH_GLOBALLABEL> glabel( new SCH_GLOBALLABEL );
+                glabel->SetPosition( wire->GetStartPoint() );
+                glabel->SetText( netname );
+                glabel->SetTextSize( wxSize( 10, 10 ) );
+                glabel->SetLabelSpinStyle( 0 );
+                screen->Append( glabel.release() );
+            }
+            else if( segmentCount > 1 )
+            {
+                std::unique_ptr<SCH_LABEL> label( new SCH_LABEL );
+                label->SetPosition( wire->GetStartPoint() );
+                label->SetText( netname );
+                label->SetTextSize( wxSize( 10, 10 ) );
+                label->SetLabelSpinStyle( 0 );
+                screen->Append( label.release() );
+            }
         }
 
 
@@ -851,56 +883,112 @@ SCH_TEXT* SCH_EAGLE_PLUGIN::loadLabel( wxXmlNode* aLabelNode,
         const DLIST<SCH_LINE>& segmentWires )
 {
     auto elabel = ELABEL( aLabelNode, aNetName );
+
     wxPoint elabelpos( elabel.x.ToSchUnits(), -elabel.y.ToSchUnits() );
+
     wxString netname = escapeName( elabel.netname );
 
-    std::unique_ptr<SCH_GLOBALLABEL> glabel( new SCH_GLOBALLABEL );
-    glabel->SetPosition( elabelpos );
-    glabel->SetText( netname );
-    glabel->SetTextSize( wxSize( elabel.size.ToSchUnits(), elabel.size.ToSchUnits() ) );
-    glabel->SetLabelSpinStyle( 2 );
 
-    if( elabel.rot )
+    // Determine if the Label is a local and global label based on the number of sheets the net appears on.
+    if( m_netCounts[aNetName] > 1 )
     {
-        glabel->SetLabelSpinStyle( ( int( elabel.rot->degrees ) / 90 + 2 ) % 4 );
+        std::unique_ptr<SCH_GLOBALLABEL> glabel( new SCH_GLOBALLABEL );
+        glabel->SetPosition( elabelpos );
+        glabel->SetText( netname );
+        glabel->SetTextSize( wxSize( elabel.size.ToSchUnits(), elabel.size.ToSchUnits() ) );
+        glabel->SetLabelSpinStyle( 2 );
 
-        if( elabel.rot->mirror
-            && ( glabel->GetLabelSpinStyle() == 0 || glabel->GetLabelSpinStyle() == 2 ) )
-            glabel->SetLabelSpinStyle( glabel->GetLabelSpinStyle() % 4 );
-    }
-
-    SCH_LINE*   wire;
-    SCH_LINE*   next_wire;
-
-    bool    labelOnWire = false;
-    auto    glabelPosition = glabel->GetPosition();
-
-    // determine if the segment has been labelled.
-    for( wire = segmentWires.begin(); wire; wire = next_wire )
-    {
-        next_wire = wire->Next();
-
-        if( wire->HitTest( glabelPosition, 0 ) )
+        if( elabel.rot )
         {
-            labelOnWire = true;
-            break;
+            glabel->SetLabelSpinStyle( ( int( elabel.rot->degrees ) / 90 + 2 ) % 4 );
+
+            if( elabel.rot->mirror
+                && ( glabel->GetLabelSpinStyle() == 0 || glabel->GetLabelSpinStyle() == 2 ) )
+                glabel->SetLabelSpinStyle( glabel->GetLabelSpinStyle() % 4 );
         }
-    }
 
-    wire = segmentWires.begin();
+        SCH_LINE*   wire;
+        SCH_LINE*   next_wire;
 
-    // Reposition label if necessary
-    if( labelOnWire == false )
-    {
-        wxPoint newLabelPos = findNearestLinePoint( elabelpos, segmentWires );
+        bool    labelOnWire = false;
+        auto    glabelPosition = glabel->GetPosition();
 
-        if( wire )
+        // determine if the segment has been labelled.
+        for( wire = segmentWires.begin(); wire; wire = next_wire )
         {
-            glabel->SetPosition( newLabelPos );
-        }
-    }
+            next_wire = wire->Next();
 
-    return glabel.release();
+            if( wire->HitTest( glabelPosition, 0 ) )
+            {
+                labelOnWire = true;
+                break;
+            }
+        }
+
+        wire = segmentWires.begin();
+
+        // Reposition label if necessary
+        if( labelOnWire == false )
+        {
+            wxPoint newLabelPos = findNearestLinePoint( elabelpos, segmentWires );
+
+            if( wire )
+            {
+                glabel->SetPosition( newLabelPos );
+            }
+        }
+
+        return glabel.release();
+    }
+    else
+    {
+        std::unique_ptr<SCH_LABEL> label( new SCH_LABEL );
+        label->SetPosition( elabelpos );
+        label->SetText( netname );
+        label->SetTextSize( wxSize( elabel.size.ToSchUnits(), elabel.size.ToSchUnits() ) );
+
+        label->SetLabelSpinStyle( 0 );
+
+        if( elabel.rot )
+        {
+            label->SetLabelSpinStyle( int(elabel.rot->degrees / 90) % 4 );
+
+            if( elabel.rot->mirror
+                && ( label->GetLabelSpinStyle() == 0 || label->GetLabelSpinStyle() == 2 ) )
+                label->SetLabelSpinStyle( (label->GetLabelSpinStyle() + 2) % 4 );
+        }
+
+        SCH_LINE*   wire;
+        SCH_LINE*   next_wire;
+
+        bool    labelOnWire = false;
+        auto    labelPosition = label->GetPosition();
+
+        for( wire = segmentWires.begin(); wire; wire = next_wire )
+        {
+            next_wire = wire->Next();
+
+            if( wire->HitTest( labelPosition, 0 ) )
+            {
+                labelOnWire = true;
+                break;
+            }
+        }
+
+        wire = segmentWires.begin();
+
+        // Reposition label if necessary
+        if( labelOnWire == false )
+        {
+            if( wire )
+            {
+                wxPoint newLabelPos = findNearestLinePoint( elabelpos, segmentWires );
+                label->SetPosition( newLabelPos );
+            }
+        }
+
+        return label.release();
+    }
 }
 
 
@@ -1808,7 +1896,7 @@ void SCH_EAGLE_PLUGIN::addBusEntries()
                                 else
                                 {
                                     SCH_MARKER* marker = new SCH_MARKER( linestart,
-                                            "Bus Entry neeeded" );
+                                            "Bus Entry needed" );
 
                                     m_currentSheet->GetScreen()->Append( marker );
                                 }
@@ -1851,7 +1939,7 @@ void SCH_EAGLE_PLUGIN::addBusEntries()
                                 else
                                 {
                                     SCH_MARKER* marker = new SCH_MARKER( linestart,
-                                            "Bus Entry neeeded" );
+                                            "Bus Entry needed" );
 
                                     m_currentSheet->GetScreen()->Append( marker );
                                 }
@@ -1899,7 +1987,7 @@ void SCH_EAGLE_PLUGIN::addBusEntries()
                                 else
                                 {
                                     SCH_MARKER* marker = new SCH_MARKER( lineend,
-                                            "Bus Entry neeeded" );
+                                            "Bus Entry needed" );
 
                                     m_currentSheet->GetScreen()->Append( marker );
                                 }
@@ -1941,7 +2029,7 @@ void SCH_EAGLE_PLUGIN::addBusEntries()
                                 else
                                 {
                                     SCH_MARKER* marker = new SCH_MARKER( lineend,
-                                            "Bus Entry neeeded" );
+                                            "Bus Entry needed" );
 
                                     m_currentSheet->GetScreen()->Append( marker );
                                 }
@@ -1988,7 +2076,7 @@ void SCH_EAGLE_PLUGIN::addBusEntries()
                                 else
                                 {
                                     SCH_MARKER* marker = new SCH_MARKER( linestart,
-                                            "Bus Entry neeeded" );
+                                            "Bus Entry needed" );
 
                                     m_currentSheet->GetScreen()->Append( marker );
                                 }
@@ -2025,7 +2113,7 @@ void SCH_EAGLE_PLUGIN::addBusEntries()
                                 else
                                 {
                                     SCH_MARKER* marker = new SCH_MARKER( linestart,
-                                            "Bus Entry neeeded" );
+                                            "Bus Entry needed" );
 
                                     m_currentSheet->GetScreen()->Append( marker );
                                 }
@@ -2069,7 +2157,7 @@ void SCH_EAGLE_PLUGIN::addBusEntries()
                                 else
                                 {
                                     SCH_MARKER* marker = new SCH_MARKER( lineend,
-                                            "Bus Entry neeeded" );
+                                            "Bus Entry needed" );
 
                                     m_currentSheet->GetScreen()->Append( marker );
                                 }
@@ -2106,7 +2194,7 @@ void SCH_EAGLE_PLUGIN::addBusEntries()
                                 else
                                 {
                                     SCH_MARKER* marker = new SCH_MARKER( lineend,
-                                            "Bus Entry neeeded" );
+                                            "Bus Entry needed" );
 
                                     m_currentSheet->GetScreen()->Append( marker );
                                 }

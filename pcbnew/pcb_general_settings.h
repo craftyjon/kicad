@@ -41,30 +41,33 @@ class PCB_GENERAL_SETTINGS : public SETTINGS
 public:
     PCB_GENERAL_SETTINGS( FRAME_T aFrameType );
 
-    void Load ( wxConfigBase* aCfg ) override;
+    void Load( wxConfigBase* aCfg ) override;
     void Save( wxConfigBase* aCfg ) override;
-
-    COLORS_DESIGN_SETTINGS m_colorsSettings;
 
     COLORS_DESIGN_SETTINGS& Colors()
     {
         return m_colorsSettings;
     }
 
-    FRAME_T m_frameType;
-
     bool    m_legacyDrcOn = true;                   // Not stored, always true when starting pcbnew,
                                                     // false only on request during routing, and
                                                     // always for temporary use
     bool    m_legacyAutoDeleteOldTrack = true;
     bool    m_legacyUse45DegreeTracks = true;       // True to allow horiz, vert. and 45deg only tracks
-    bool    m_use45DegreeGraphicSegments = false;   // True to allow horiz, vert. and 45deg only graphic segments
+    static bool m_use45DegreeGraphicSegments;       // True to allow horizontal, vertical and
+                                                    // 45deg only graphic segments
     bool    m_legacyUseTwoSegmentTracks = true;
 
     bool    m_editActionChangesTrackWidth = false;
+    static bool m_dragSelects;                  // True: Drag gesture always draws a selection box,
+                                                // False: Drag will preselect an item and move it
 
     MAGNETIC_PAD_OPTION_VALUES  m_magneticPads  = CAPTURE_CURSOR_IN_TRACK_TOOL;
     MAGNETIC_PAD_OPTION_VALUES  m_magneticTracks = CAPTURE_CURSOR_IN_TRACK_TOOL;
+
+protected:
+    const FRAME_T m_frameType;
+    COLORS_DESIGN_SETTINGS m_colorsSettings;
 };
 
 #endif

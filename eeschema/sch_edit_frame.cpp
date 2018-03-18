@@ -48,6 +48,7 @@
 #include <symbol_lib_table.h>
 
 #include <dialog_helpers.h>
+#include <reporter.h>
 #include <lib_edit_frame.h>
 #include <viewlib_frame.h>
 #include <hotkeys.h>
@@ -371,6 +372,7 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ):
     m_printMonochrome = true;
     m_printSheetReference = true;
     SetShowPageLimits( true );
+    m_annotateDialog = nullptr;
     m_hotkeysDescrList = g_Schematic_Hokeys_Descr;
     m_dlgFindReplace = NULL;
     m_findReplaceData = new wxFindReplaceData( wxFR_DOWN );
@@ -529,6 +531,8 @@ void SCH_EDIT_FRAME::SetSheetNumberAndCount()
                                                  * number before this current
                                                  * path */
     }
+
+    g_CurrentSheet->SetPageNumber( SheetNumber );
 
     for( screen = s_list.GetFirst(); screen != NULL; screen = s_list.GetNext() )
     {
@@ -842,12 +846,6 @@ void SCH_EDIT_FRAME::OnUpdateHierarchySheet( wxUpdateUIEvent& aEvent )
 }
 
 
-void SCH_EDIT_FRAME::OnAnnotate( wxCommandEvent& event )
-{
-    InvokeDialogAnnotate( this );
-}
-
-
 void SCH_EDIT_FRAME::OnErc( wxCommandEvent& event )
 {
     // See if it's already open...
@@ -907,7 +905,8 @@ void SCH_EDIT_FRAME::doUpdatePcb( const wxString& aUpdateOptions )
         schematic.UpdateSymbolLinks();
         SCH_SHEET_LIST sheets( g_RootSheet );
         sheets.AnnotatePowerSymbols();
-        AnnotateComponents( true, UNSORTED, INCREMENTAL_BY_REF, false, false, true );
+        AnnotateComponents( true, UNSORTED, INCREMENTAL_BY_REF, 0, false, false, true,
+                            NULL_REPORTER::GetInstance() );
     }
 
     if( !aUpdateOptions.Contains( "no-annotate" ) )
@@ -924,9 +923,12 @@ void SCH_EDIT_FRAME::doUpdatePcb( const wxString& aUpdateOptions )
 
     exporter.Format( &formatter, GNL_ALL );
 
+    auto updateOptions = aUpdateOptions.ToStdString();
+    auto netlistString = formatter.GetString();
+    auto finalNetlist = updateOptions + "\n" + netlistString;
+
     // Now, send the "kicad" (s-expr) netlist to Pcbnew
-    Kiway().ExpressMail( FRAME_PCB, MAIL_SCH_PCB_UPDATE,
-        wxString::Format("%s\n%s", aUpdateOptions, formatter.GetString() ).ToStdString(), this );
+    Kiway().ExpressMail( FRAME_PCB, MAIL_SCH_PCB_UPDATE, finalNetlist, this );
 }
 
 
@@ -1496,14 +1498,14 @@ void SCH_EDIT_FRAME::UpdateTitle()
 
     if( GetScreen()->GetFileName() == m_DefaultSchematicFileName )
     {
-        title.Printf( L"Eeschema \u2014 %s", GetChars( GetScreen()->GetFileName() ) );
+        title.Printf( _( "Eeschema" ) + wxT( " \u2014 %s" ), GetChars( GetScreen()->GetFileName() ) );
     }
     else
     {
         wxString    fileName = Prj().AbsolutePath( GetScreen()->GetFileName() );
         wxFileName  fn = fileName;
 
-        title.Printf( L"Eeschema \u2014 %s [%s] \u2014 %s",
+        title.Printf( _( "Eeschema" ) + wxT( " \u2014 %s [%s] \u2014 %s" ),
                       GetChars( fn.GetName() ),
                       GetChars( g_CurrentSheet->PathHumanReadable() ),
                       GetChars( fn.GetPath() ) );

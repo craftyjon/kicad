@@ -387,11 +387,8 @@ bool SHAPE_POLY_SET::GetNeighbourIndexes( int aGlobalIndex, int* aPrevious, int*
 
 bool SHAPE_POLY_SET::IsPolygonSelfIntersecting( int aPolygonIndex )
 {
-    // Get polygon
-    const POLYGON poly = CPolygon( aPolygonIndex );
-
-    SEGMENT_ITERATOR    iterator = IterateSegmentsWithHoles( aPolygonIndex );
-    SEGMENT_ITERATOR    innerIterator;
+    SEGMENT_ITERATOR iterator = IterateSegmentsWithHoles( aPolygonIndex );
+    SEGMENT_ITERATOR innerIterator;
 
     for( iterator = IterateSegmentsWithHoles( aPolygonIndex ); iterator; iterator++ )
     {
@@ -1402,19 +1399,19 @@ bool SHAPE_POLY_SET::CollideEdge( const VECTOR2I& aPoint,
 }
 
 
-bool SHAPE_POLY_SET::Contains( const VECTOR2I& aP, int aSubpolyIndex ) const
+bool SHAPE_POLY_SET::Contains( const VECTOR2I& aP, int aSubpolyIndex, bool aIgnoreHoles ) const
 {
     if( m_polys.size() == 0 ) // empty set?
         return false;
 
     // If there is a polygon specified, check the condition against that polygon
     if( aSubpolyIndex >= 0 )
-        return containsSingle( aP, aSubpolyIndex );
+        return containsSingle( aP, aSubpolyIndex, aIgnoreHoles );
 
     // In any other case, check it against all polygons in the set
     for( int polygonIdx = 0; polygonIdx < OutlineCount(); polygonIdx++ )
     {
-        if( containsSingle( aP, polygonIdx ) )
+        if( containsSingle( aP, polygonIdx, aIgnoreHoles ) )
             return true;
     }
 
@@ -1440,20 +1437,23 @@ void SHAPE_POLY_SET::RemoveVertex( VERTEX_INDEX aIndex )
 }
 
 
-bool SHAPE_POLY_SET::containsSingle( const VECTOR2I& aP, int aSubpolyIndex ) const
+bool SHAPE_POLY_SET::containsSingle( const VECTOR2I& aP, int aSubpolyIndex, bool aIgnoreHoles ) const
 {
     // Check that the point is inside the outline
     if( pointInPolygon( aP, m_polys[aSubpolyIndex][0] ) )
     {
-        // Check that the point is not in any of the holes
-        for( int holeIdx = 0; holeIdx < HoleCount( aSubpolyIndex ); holeIdx++ )
+        if( !aIgnoreHoles )
         {
-            const SHAPE_LINE_CHAIN hole = CHole( aSubpolyIndex, holeIdx );
+            // Check that the point is not in any of the holes
+            for( int holeIdx = 0; holeIdx < HoleCount( aSubpolyIndex ); holeIdx++ )
+            {
+                const SHAPE_LINE_CHAIN hole = CHole( aSubpolyIndex, holeIdx );
 
-            // If the point is inside a hole (and not on its edge),
-            // it is outside of the polygon
-            if( pointInPolygon( aP, hole ) && !hole.PointOnEdge( aP ) )
-                return false;
+                // If the point is inside a hole (and not on its edge),
+                // it is outside of the polygon
+                if( pointInPolygon( aP, hole ) && !hole.PointOnEdge( aP ) )
+                    return false;
+            }
         }
 
         return true;
@@ -1855,8 +1855,8 @@ SHAPE_POLY_SET::POLYGON SHAPE_POLY_SET::chamferFilletPolygon( CORNER_MODE aMode,
 
                 for( unsigned int j = 0; j < segments; j++ )
                 {
-                    nx  = xc + cos( startAngle + (j + 1) * deltaAngle ) * radius;
-                    ny  = yc - sin( startAngle + (j + 1) * deltaAngle ) * radius;
+                    nx = xc + cos( startAngle + ( j + 1 ) * deltaAngle ) * radius;
+                    ny = yc - sin( startAngle + ( j + 1 ) * deltaAngle ) * radius;
 
                     // Sanity check: the rounding can produce repeated corners; do not add them.
                     if( KiROUND( nx ) != prevX || KiROUND( ny ) != prevY )
@@ -1878,7 +1878,7 @@ SHAPE_POLY_SET::POLYGON SHAPE_POLY_SET::chamferFilletPolygon( CORNER_MODE aMode,
 }
 
 
-SHAPE_POLY_SET &SHAPE_POLY_SET::operator=(const SHAPE_POLY_SET & aOther)
+SHAPE_POLY_SET &SHAPE_POLY_SET::operator=( const SHAPE_POLY_SET& aOther )
 {
     static_cast<SHAPE&>(*this) = aOther;
     m_polys = aOther.m_polys;
@@ -1889,7 +1889,6 @@ SHAPE_POLY_SET &SHAPE_POLY_SET::operator=(const SHAPE_POLY_SET & aOther)
     m_triangulatedPolys.clear();
     return *this;
 }
-
 
 
 
@@ -1947,20 +1946,20 @@ public:
 
 private:
 
-	class comparePoints
-	{
-	public:
-	    bool operator()( p2t::Point* a, p2t::Point* b ) const
-	    {
-		if (a->x < b->x)
-		    return true;
+    class comparePoints
+    {
+    public:
+        bool operator()( p2t::Point* a, p2t::Point* b ) const
+        {
+        if (a->x < b->x)
+            return true;
 
-		if( a->x == b->x )
-		    return ( a->y > b->y );
+        if( a->x == b->x )
+            return ( a->y > b->y );
 
-		return false;
-	    }
-	};
+        return false;
+        }
+    };
 
 
     p2t::Point* addPoint( const VECTOR2I& aP )
@@ -2051,6 +2050,7 @@ void SHAPE_POLY_SET::triangulateSingle( const POLYGON& aPoly,
     ctx.Triangulate();
 }
 
+
 bool SHAPE_POLY_SET::IsTriangulationUpToDate() const
 {
     if( !m_triangulationValid )
@@ -2090,11 +2090,11 @@ void SHAPE_POLY_SET::CacheTriangulation()
     SHAPE_POLY_SET tmpSet = *this;
 
     if( !tmpSet.HasHoles() )
-	tmpSet.Unfracture( PM_FAST );
+        tmpSet.Unfracture( PM_FAST );
 
     m_triangulatedPolys.clear();
 
-    if ( tmpSet.HasTouchingHoles() )
+    if( tmpSet.HasTouchingHoles() )
     {
         // temporary workaround for overlapping hole vertices that poly2tri doesn't handle
         m_triangulationValid = false;
@@ -2139,6 +2139,7 @@ MD5_HASH SHAPE_POLY_SET::checksum() const
     return hash;
 }
 
+
 bool SHAPE_POLY_SET::HasTouchingHoles() const
 {
     for( int i = 0; i < OutlineCount(); i++ )
@@ -2152,17 +2153,18 @@ bool SHAPE_POLY_SET::HasTouchingHoles() const
     return false;
 }
 
+
 bool SHAPE_POLY_SET::hasTouchingHoles( const POLYGON& aPoly ) const
 {
     std::vector< VECTOR2I > pts;
 
-    for ( const auto& lc : aPoly )
+    for( const auto& lc : aPoly )
     {
         for( int i = 0; i < lc.PointCount(); i++ )
         {
             const auto p = lc.CPoint( i );
 
-            if ( std::find( pts.begin(), pts.end(), p) != pts.end() )
+            if( std::find( pts.begin(), pts.end(), p ) != pts.end() )
             {
                 return true;
             }

@@ -34,6 +34,7 @@ using namespace std::placeholders;
 #include <pcbnew_id.h>
 #include <view/view.h>
 #include <view/view_controls.h>
+#include <pcb_layer_widget.h>
 #include <pcb_painter.h>
 #include <dialogs/dialog_pns_settings.h>
 #include <dialogs/dialog_pns_diff_pair_dimensions.h>
@@ -84,7 +85,7 @@ TOOL_ACTION PCB_ACTIONS::routerActivateSingle( "pcbnew.InteractiveRouter.SingleT
         _( "Run push & shove router (single tracks)" ), ps_router_xpm, AF_ACTIVATE );
 
 TOOL_ACTION PCB_ACTIONS::routerActivateDiffPair( "pcbnew.InteractiveRouter.DiffPair",
-        AS_GLOBAL, '6',
+        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_ROUTE_DIFF_PAIR ),
         _( "Interactive Router (Differential Pairs)" ),
         _( "Run push & shove router (differential pairs)" ), ps_diff_pair_xpm, AF_ACTIVATE );
 
@@ -99,15 +100,15 @@ TOOL_ACTION PCB_ACTIONS::routerActivateDpDimensionsDialog( "pcbnew.InteractiveRo
         _( "Open Differential Pair Dimension settings" ), ps_diff_pair_gap_xpm, AF_ACTIVATE );
 
 TOOL_ACTION PCB_ACTIONS::routerActivateTuneSingleTrace( "pcbnew.LengthTuner.TuneSingleTrack",
-        AS_GLOBAL, '7',
+        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_ROUTE_TUNE_SINGLE ),
         _( "Tune length of a single track" ), "", ps_tune_length_xpm, AF_ACTIVATE );
 
 TOOL_ACTION PCB_ACTIONS::routerActivateTuneDiffPair( "pcbnew.LengthTuner.TuneDiffPair",
-        AS_GLOBAL, '8',
+        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_ROUTE_TUNE_DIFF_PAIR ),
         _( "Tune length of a differential pair" ), "", NULL, AF_ACTIVATE );
 
 TOOL_ACTION PCB_ACTIONS::routerActivateTuneDiffPairSkew( "pcbnew.LengthTuner.TuneDiffPairSkew",
-        AS_GLOBAL, '9',
+        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_ROUTE_TUNE_SKEW ),
         _( "Tune skew of a differential pair" ), "", NULL, AF_ACTIVATE );
 
 TOOL_ACTION PCB_ACTIONS::routerInlineDrag( "pcbnew.InteractiveRouter.InlineDrag",
@@ -657,7 +658,8 @@ bool ROUTER_TOOL::prepareInteractive()
 
     frame()->SetActiveLayer( ToLAYER_ID( routingLayer ) );
 
-    // fixme: switch on invisible layer
+    // Force layer visible
+    frame()->GetLayerManager()->SetLayerVisible( routingLayer, true );
 
     // for some reason I don't understand, GetNetclass() may return null sometimes...
     if( m_startItem && m_startItem->Net() >= 0 &&
@@ -840,13 +842,15 @@ int ROUTER_TOOL::RouteDiffPair( const TOOL_EVENT& aEvent )
     return mainLoop( PNS::PNS_MODE_ROUTE_DIFF_PAIR );
 }
 
+
 void ROUTER_TOOL::breakTrack()
 {
-    if ( m_startItem->OfKind( PNS::ITEM::SEGMENT_T ) )
+    if( m_startItem && m_startItem->OfKind( PNS::ITEM::SEGMENT_T ) )
     {
         m_router->BreakSegment( m_startItem, m_startSnapPoint );
     }
 }
+
 
 int ROUTER_TOOL::mainLoop( PNS::ROUTER_MODE aMode )
 {
@@ -889,17 +893,17 @@ int ROUTER_TOOL::mainLoop( PNS::ROUTER_MODE aMode )
         }
         else if( evt->IsAction( &PCB_ACTIONS::dragFreeAngle ) )
         {
-            updateStartItem( *evt );
+            updateStartItem( *evt, true );
             performDragging( PNS::DM_ANY | PNS::DM_FREE_ANGLE );
         }
         else if( evt->IsAction( &PCB_ACTIONS::drag45Degree ) )
         {
-            updateStartItem( *evt );
+            updateStartItem( *evt, true );
             performDragging( PNS::DM_ANY );
         }
         else if( evt->IsAction( &PCB_ACTIONS::breakTrack ) )
         {
-            updateStartItem( *evt );
+            updateStartItem( *evt, true );
             breakTrack( );
         }
         else if( evt->IsClick( BUT_LEFT ) || evt->IsAction( &ACT_NewTrack ) )

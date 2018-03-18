@@ -51,6 +51,7 @@ bool LIB_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
 {
     LIB_ITEM*   item = GetDrawItem();
     bool        blockActive = GetScreen()->IsBlockActive();
+    wxString    msg;
 
     if( blockActive )
     {
@@ -59,7 +60,7 @@ bool LIB_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
         return true;
     }
 
-    LIB_PART*      part = GetCurPart();
+    LIB_PART* part = GetCurPart();
 
     if( !part )
         return true;
@@ -99,12 +100,19 @@ bool LIB_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
     }
     else
     {
+        if( GetToolId() == ID_NO_TOOL_SELECTED )
+        {
+            msg = AddHotkeyName( _( "&Paste" ), g_Libedit_Hokeys_Descr, HK_EDIT_PASTE );
+            AddMenuItem( PopMenu, wxID_PASTE, msg,
+                        _( "Pastes item(s) from the Clipboard" ),
+                        KiBitmap( paste_xpm ) );
+        }
+
         return true;
     }
 
     SetDrawItem( item );
     bool not_edited = !item->InEditMode();
-    wxString msg;
 
     switch( item->Type() )
     {
@@ -338,21 +346,21 @@ void AddMenusForBlock( wxMenu* PopMenu, LIB_EDIT_FRAME* frame )
         AddMenuItem( PopMenu, ID_POPUP_SELECT_ITEMS_BLOCK, _( "Select Items" ),
                      KiBitmap( green_xpm ) );
         msg = AddHotkeyName( _( "Cut Block" ), g_Schematic_Hokeys_Descr,
-                             HK_CUT_BLOCK );
+                             HK_EDIT_CUT );
         AddMenuItem( PopMenu, wxID_CUT, msg, KiBitmap( cut_xpm ) );
         msg = AddHotkeyName( _( "Copy Block" ), g_Schematic_Hokeys_Descr,
-                             HK_COPY_BLOCK );
+                             HK_EDIT_COPY );
         AddMenuItem( PopMenu, wxID_COPY, msg, KiBitmap( copy_xpm ) );
         AddMenuItem( PopMenu, ID_POPUP_DUPLICATE_BLOCK, _( "Duplicate Block" ),
                      KiBitmap( duplicate_xpm ) );
         msg = AddHotkeyName( _( "Mirror Block Around Horizontal(X) Axis" ), g_Libedit_Hokeys_Descr,
-                             HK_MIRROR_Y );
-        AddMenuItem( PopMenu, ID_POPUP_MIRROR_Y_BLOCK, msg,
-                     KiBitmap( mirror_h_xpm ) );
-        msg = AddHotkeyName( _( "Mirror Block Around Vertical(Y) Axis" ), g_Libedit_Hokeys_Descr,
                              HK_MIRROR_X );
         AddMenuItem( PopMenu, ID_POPUP_MIRROR_X_BLOCK, msg,
                      KiBitmap( mirror_v_xpm ) );
+        msg = AddHotkeyName( _( "Mirror Block Around Vertical(Y) Axis" ), g_Libedit_Hokeys_Descr,
+                             HK_MIRROR_Y );
+        AddMenuItem( PopMenu, ID_POPUP_MIRROR_Y_BLOCK, msg,
+                     KiBitmap( mirror_h_xpm ) );
         msg = AddHotkeyName( _( "Rotate Counterclockwise" ), g_Libedit_Hokeys_Descr, HK_ROTATE );
         AddMenuItem( PopMenu, ID_POPUP_ROTATE_BLOCK, msg,
                      KiBitmap( rotate_ccw_xpm ) );

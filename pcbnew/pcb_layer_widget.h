@@ -66,19 +66,19 @@ public:
     void ReFillRender();
 
     /**
-     * Function SyncRenderStates
-     * updates the checkboxes (checked or not) to be consistent with the current state
-     * of the visibility of the visible rendering elements.
-     */
-    void SyncRenderStates();
-
-    /**
      * Function SyncLayerVisibilities
      * updates each "Layer" checkbox in this layer widget according
      * to each layer's current visibility determined by IsLayerVisible(), and is
      * helpful immediately after loading a BOARD which may have state information in it.
      */
     void SyncLayerVisibilities();
+
+    /**
+     * Function SyncLayerAlphaIndicators
+     * updates each "Layer"s alpha indicator to show if the board is currently being
+     * rendered with more transparency or less.
+     */
+    void SyncLayerAlphaIndicators();
 
     /**
      * Function SetLayersManagerTabsText

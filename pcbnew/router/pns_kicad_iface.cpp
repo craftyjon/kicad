@@ -29,10 +29,7 @@
 #include <board_commit.h>
 #include <layers_id_colors_and_visibility.h>
 #include <geometry/convex_hull.h>
-#include <pcb_edit_frame.h>
-
-#include <unordered_set>
-#include <unordered_map>
+#include <confirm.h>
 
 #include <view/view.h>
 #include <view/view_item.h>
@@ -149,10 +146,19 @@ PNS_PCBNEW_RULE_RESOLVER::PNS_PCBNEW_RULE_RESOLVER( BOARD* aBoard, PNS::ROUTER* 
         }
     }
 
-    //printf("DefaultCL : %d\n",  m_board->GetDesignSettings().m_NetClasses.Find ("Default clearance")->GetClearance());
-
     m_overrideEnabled = false;
-    m_defaultClearance = Millimeter2iu( 0.254 );    // m_board->m_NetClasses.Find ("Default clearance")->GetClearance();
+
+    auto defaultRule = m_board->GetDesignSettings().m_NetClasses.Find ("Default");
+
+    if( defaultRule )
+    {
+        m_defaultClearance = defaultRule->GetClearance();
+    }
+    else 
+    {
+        m_defaultClearance = Millimeter2iu(0.254);
+    }
+
     m_overrideNetA = 0;
     m_overrideNetB = 0;
     m_overrideClearance = 0;
@@ -791,15 +797,30 @@ std::unique_ptr<PNS::VIA> PNS_KICAD_IFACE::syncVia( VIA* aVia )
     return via;
 }
 
+
 bool PNS_KICAD_IFACE::syncZone( PNS::NODE* aWorld, ZONE_CONTAINER* aZone )
 {
     SHAPE_POLY_SET poly;
 
-    if( !aZone->GetIsKeepout() )
+    // TODO handle no-via restriction
+    if( !aZone->GetIsKeepout() || !aZone->GetDoNotAllowTracks() )
         return false;
 
     aZone->BuildSmoothedPoly( poly );
     poly.CacheTriangulation();
+
+    if( !poly.IsTriangulationUpToDate() )
+    {
+        KIDIALOG dlg( nullptr, wxString::Format( _( "Malformed keep-out zone at (%d, %d)" ),
+                aZone->GetPosition().x, aZone->GetPosition().y ), KIDIALOG::KD_WARNING );
+        dlg.ShowDetailedText(
+            wxString::Format( _( "%s\nThis zone cannot be handled by the track layout tool.\n"
+                "Please verify it is not a self-intersecting polygon." ), aZone->GetSelectMenuText() ) );
+        dlg.DoNotShowCheckbox();
+        dlg.ShowModal();
+
+        return false;
+    }
 
     LSET layers = aZone->GetLayerSet();
 
@@ -842,7 +863,6 @@ bool PNS_KICAD_IFACE::syncGraphicalItem( PNS::NODE* aWorld, DRAWSEGMENT* aItem )
 {
     std::vector<SHAPE_SEGMENT*> segs;
 
-
     if( aItem->GetLayer() != Edge_Cuts )
         return false;
 
@@ -850,7 +870,8 @@ bool PNS_KICAD_IFACE::syncGraphicalItem( PNS::NODE* aWorld, DRAWSEGMENT* aItem )
     {
         case S_ARC:
         {
-            SHAPE_ARC arc( aItem->GetArcStart(), aItem->GetArcEnd(), aItem->GetCenter() );
+            SHAPE_ARC arc( aItem->GetCenter(), aItem->GetArcStart(), (double) aItem->GetAngle() / 10.0 );
+
             auto l = arc.ConvertToPolyline();
 
             for( int i = 0; i < l.SegmentCount(); i++ )
@@ -861,6 +882,7 @@ bool PNS_KICAD_IFACE::syncGraphicalItem( PNS::NODE* aWorld, DRAWSEGMENT* aItem )
 
             break;
         }
+
         case S_SEGMENT:
         {
             SHAPE_SEGMENT *seg = new SHAPE_SEGMENT( aItem->GetStart(), aItem->GetEnd(), aItem->GetWidth() );
@@ -868,6 +890,23 @@ bool PNS_KICAD_IFACE::syncGraphicalItem( PNS::NODE* aWorld, DRAWSEGMENT* aItem )
 
             break;
         }
+
+        case S_CIRCLE:
+        {
+            // SHAPE_CIRCLE has no ConvertToPolyline() method, so use a 360.0 SHAPE_ARC
+            SHAPE_ARC circle( aItem->GetCenter(), aItem->GetEnd(), 360.0 );
+
+            auto l = circle.ConvertToPolyline();
+
+            for( int i = 0; i < l.SegmentCount(); i++ )
+            {
+                SHAPE_SEGMENT *seg = new SHAPE_SEGMENT( l.CSegment(i), aItem->GetWidth() );
+                segs.push_back( seg );
+            }
+
+            break;
+        }
+
         default:
             break;
     }

@@ -180,6 +180,12 @@ void DIALOG_LABEL_EDITOR::InitDialog()
     {
         m_textLabel = m_textLabelSingleLine;
         m_textLabelMultiLine->Show( false );
+
+        wxTextValidator* validator = (wxTextValidator*) m_textLabel->GetValidator();
+
+        // Add invalid label characters to this list.
+        // for any label type but SCH_TEXT_T (that has the multiline allowed)
+        validator->SetCharExcludes( wxT( "/" ) );
     }
 
     m_textLabel->SetValue( m_CurrentText->GetText() );

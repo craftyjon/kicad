@@ -80,6 +80,18 @@ TOOL_ACTION PCB_ACTIONS::viaDisplayMode( "pcbnew.Control.viaDisplayMode",
         AS_GLOBAL, 0,
         "", "" );
 
+TOOL_ACTION PCB_ACTIONS::graphicDisplayMode( "pcbnew.Control.graphicDisplayMode",
+      AS_GLOBAL, 0,
+      "", "" );
+
+TOOL_ACTION PCB_ACTIONS::moduleEdgeOutlines( "pcbnew.Control.graphicOutlines",
+        AS_GLOBAL, 0,
+        "", "" );
+
+TOOL_ACTION PCB_ACTIONS::moduleTextOutlines( "pcbnew.Control.textOutlines",
+       AS_GLOBAL, 0,
+       "", "" );
+
 TOOL_ACTION PCB_ACTIONS::zoneDisplayEnable( "pcbnew.Control.zoneDisplayEnable",
         AS_GLOBAL, 0,
         "", "" );
@@ -97,11 +109,11 @@ TOOL_ACTION PCB_ACTIONS::highContrastMode( "pcbnew.Control.highContrastMode",
         "", "" );
 
 TOOL_ACTION PCB_ACTIONS::highContrastInc( "pcbnew.Control.highContrastInc",
-        AS_GLOBAL, '>',
+        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_HIGHCONTRAST_INC ),
         "", "" );
 
 TOOL_ACTION PCB_ACTIONS::highContrastDec( "pcbnew.Control.highContrastDec",
-        AS_GLOBAL, '<',
+        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_HIGHCONTRAST_DEC ),
         "", "" );
 
 
@@ -151,11 +163,11 @@ TOOL_ACTION PCB_ACTIONS::layerToggle( "pcbnew.Control.layerToggle",
         "", "" );
 
 TOOL_ACTION PCB_ACTIONS::layerAlphaInc( "pcbnew.Control.layerAlphaInc",
-        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_INC_LAYER_ALHPA ),
+        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_INC_LAYER_ALPHA ),
         "", "" );
 
 TOOL_ACTION PCB_ACTIONS::layerAlphaDec( "pcbnew.Control.layerAlphaDec",
-        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_DEC_LAYER_ALHPA ),
+        AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_DEC_LAYER_ALPHA ),
         "", "" );
 
 TOOL_ACTION PCB_ACTIONS::layerChanged( "pcbnew.Control.layerChanged",
@@ -227,7 +239,7 @@ TOOL_ACTION PCB_ACTIONS::toBeDone( "pcbnew.Control.toBeDone",
         "", "" );               // so users are aware of that
 
 TOOL_ACTION PCB_ACTIONS::pasteFromClipboard( "pcbnew.InteractiveEdit.pasteFromClipboard",
-        AS_GLOBAL, MD_CTRL + int( 'V' ),
+        AS_GLOBAL, 0,   // do not define a hotkey and let TranslateLegacyId() handle the event
         _( "Paste" ), _( "Paste content from clipboard" ),
         paste_xpm );
 
@@ -310,6 +322,71 @@ int PCBNEW_CONTROL::ViaDisplayMode( const TOOL_EVENT& aEvent )
     {
         if( track->Type() == PCB_TRACE_T || track->Type() == PCB_VIA_T )
             view()->Update( track, KIGFX::GEOMETRY );
+    }
+
+    canvas()->Refresh();
+
+    return 0;
+}
+
+
+int PCBNEW_CONTROL::GraphicDisplayMode( const TOOL_EVENT& aEvent )
+{
+    auto opts = displayOptions();
+
+    Flip( opts->m_DisplayDrawItemsFill );
+    view()->UpdateDisplayOptions( opts );
+
+    for( auto item : board()->Drawings() )
+    {
+        view()->Update( item, KIGFX::GEOMETRY );
+    }
+
+    canvas()->Refresh();
+
+    return 0;
+}
+
+
+int PCBNEW_CONTROL::ModuleEdgeOutlines( const TOOL_EVENT& aEvent )
+{
+    auto opts = displayOptions();
+
+    Flip( opts->m_DisplayModEdgeFill );
+    view()->UpdateDisplayOptions( opts );
+
+    for( auto module : board()->Modules() )
+    {
+        for( auto item : module->GraphicalItems() )
+        {
+            if( item->Type() == PCB_MODULE_EDGE_T )
+                view()->Update( item, KIGFX::GEOMETRY );
+        }
+    }
+
+    canvas()->Refresh();
+
+    return 0;
+}
+
+
+int PCBNEW_CONTROL::ModuleTextOutlines( const TOOL_EVENT& aEvent )
+{
+    auto opts = displayOptions();
+
+    Flip( opts->m_DisplayModTextFill );
+    view()->UpdateDisplayOptions( opts );
+
+    for( auto module : board()->Modules() )
+    {
+        for( auto item : module->GraphicalItems() )
+        {
+            if( item->Type() == PCB_MODULE_TEXT_T )
+                view()->Update( item, KIGFX::GEOMETRY );
+        }
+
+        view()->Update( &module->Reference(), KIGFX::GEOMETRY );
+        view()->Update( &module->Value(), KIGFX::GEOMETRY );
     }
 
     canvas()->Refresh();
@@ -438,6 +515,12 @@ int PCBNEW_CONTROL::LayerToggle( const TOOL_EVENT& aEvent )
 }
 
 
+// It'd be nice to share the min/max with the COLOR4D_PICKER_DLG, but those are
+// set in wxFormBuilder.
+#define ALPHA_MIN 0.20
+#define ALPHA_MAX 1.00
+#define ALPHA_STEP 0.05
+
 int PCBNEW_CONTROL::LayerAlphaInc( const TOOL_EVENT& aEvent )
 {
     auto painter = static_cast<KIGFX::PCB_PAINTER*>( getView()->GetPainter() );
@@ -446,12 +529,17 @@ int PCBNEW_CONTROL::LayerAlphaInc( const TOOL_EVENT& aEvent )
     LAYER_NUM currentLayer = m_frame->GetActiveLayer();
     KIGFX::COLOR4D currentColor = settings->GetLayerColor( currentLayer );
 
-    if( currentColor.a <= 0.95 )
+    if( currentColor.a <= ALPHA_MAX - ALPHA_STEP )
     {
-        currentColor.a += 0.05;
+        currentColor.a += ALPHA_STEP;
         settings->SetLayerColor( currentLayer, currentColor );
         m_frame->GetGalCanvas()->GetView()->UpdateLayerColor( currentLayer );
+
+        wxUpdateUIEvent dummy;
+        static_cast<PCB_EDIT_FRAME*>( m_frame )->OnUpdateLayerAlpha( dummy );
     }
+    else
+        wxBell();
 
     return 0;
 }
@@ -465,12 +553,17 @@ int PCBNEW_CONTROL::LayerAlphaDec( const TOOL_EVENT& aEvent )
     LAYER_NUM currentLayer = m_frame->GetActiveLayer();
     KIGFX::COLOR4D currentColor = settings->GetLayerColor( currentLayer );
 
-    if( currentColor.a >= 0.05 )
+    if( currentColor.a >= ALPHA_MIN + ALPHA_STEP )
     {
-        currentColor.a -= 0.05;
+        currentColor.a -= ALPHA_STEP;
         settings->SetLayerColor( currentLayer, currentColor );
         m_frame->GetGalCanvas()->GetView()->UpdateLayerColor( currentLayer );
+
+        wxUpdateUIEvent dummy;
+        static_cast<PCB_BASE_FRAME*>( m_frame )->OnUpdateLayerAlpha( dummy );
     }
+    else
+        wxBell();
 
     return 0;
 }
@@ -1013,6 +1106,9 @@ void PCBNEW_CONTROL::setTransitions()
     Go( &PCBNEW_CONTROL::TrackDisplayMode,   PCB_ACTIONS::trackDisplayMode.MakeEvent() );
     Go( &PCBNEW_CONTROL::PadDisplayMode,     PCB_ACTIONS::padDisplayMode.MakeEvent() );
     Go( &PCBNEW_CONTROL::ViaDisplayMode,     PCB_ACTIONS::viaDisplayMode.MakeEvent() );
+    Go( &PCBNEW_CONTROL::GraphicDisplayMode, PCB_ACTIONS::graphicDisplayMode.MakeEvent() );
+    Go( &PCBNEW_CONTROL::ModuleEdgeOutlines, PCB_ACTIONS::moduleEdgeOutlines.MakeEvent() );
+    Go( &PCBNEW_CONTROL::ModuleTextOutlines, PCB_ACTIONS::moduleTextOutlines.MakeEvent() );
     Go( &PCBNEW_CONTROL::ZoneDisplayMode,    PCB_ACTIONS::zoneDisplayEnable.MakeEvent() );
     Go( &PCBNEW_CONTROL::ZoneDisplayMode,    PCB_ACTIONS::zoneDisplayDisable.MakeEvent() );
     Go( &PCBNEW_CONTROL::ZoneDisplayMode,    PCB_ACTIONS::zoneDisplayOutlines.MakeEvent() );

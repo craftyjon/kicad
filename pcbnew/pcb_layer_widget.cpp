@@ -39,9 +39,14 @@
 #include <confirm.h>
 #include <pcb_edit_frame.h>
 #include <pcb_display_options.h>
+#include <tool/tool_manager.h>
 #include <layer_widget.h>
+#include <class_text_mod.h>
+#include <widgets/indicator_icon.h>
 #include <macros.h>
 #include <menus_helpers.h>
+#include <gal/graphics_abstraction_layer.h>
+#include <pcb_painter.h>
 
 #include <class_board.h>
 #include <pcb_layer_widget.h>
@@ -59,31 +64,31 @@ const LAYER_WIDGET::ROW PCB_LAYER_WIDGET::s_render_rows[] = {
 #define RR  LAYER_WIDGET::ROW   // Render Row abbreviation to reduce source width
 #define NOCOLOR COLOR4D::UNSPECIFIED    // specify rows that do not have a color selector icon
 
-         // text                id                      color       tooltip
+         // text                     id                      color       tooltip
+    RR( _( "Footprints Front" ),     LAYER_MOD_FR,         NOCOLOR,  _( "Show footprints that are on board's front") ),
+    RR( _( "Footprints Back" ),      LAYER_MOD_BK,         NOCOLOR,  _( "Show footprints that are on board's back") ),
+    RR( _( "Values" ),               LAYER_MOD_VALUES,     NOCOLOR,  _( "Show footprint values") ),
+    RR( _( "References" ),           LAYER_MOD_REFERENCES, NOCOLOR,  _( "Show footprint references") ),
+    RR( _( "Footprint Text Front" ), LAYER_MOD_TEXT_FR,    NOCOLOR,  _( "Show footprint text on board's front" ) ),
+    RR( _( "Footprint Text Back" ),  LAYER_MOD_TEXT_BK,    NOCOLOR,  _( "Show footprint text on board's back" ) ),
+    RR( _( "Hidden Text" ),          LAYER_MOD_TEXT_INVISIBLE, WHITE, _( "Show footprint text marked as invisible" ) ),
+    RR( _( "Pads Front" ),           LAYER_PAD_FR,         WHITE,    _( "Show footprint pads on board's front" ) ),
+    RR( _( "Pads Back" ),            LAYER_PAD_BK,         WHITE,    _( "Show footprint pads on board's back" ) ),
+    RR( _( "Through Hole Pads" ),    LAYER_PADS_TH,        YELLOW,   _( "Show through hole pads in specific color") ),
+    RR(),
+    RR( _( "Tracks" ),          LAYER_TRACKS,         NOCOLOR,  _( "Show tracks" ) ),
     RR( _( "Through Via" ),     LAYER_VIA_THROUGH,    WHITE,    _( "Show through vias" ) ),
     RR( _( "Bl/Buried Via" ),   LAYER_VIA_BBLIND,     WHITE,    _( "Show blind or buried vias" )  ),
     RR( _( "Micro Via" ),       LAYER_VIA_MICROVIA,   WHITE,    _( "Show micro vias") ),
     RR( _( "Non Plated Holes" ),LAYER_NON_PLATEDHOLES,WHITE,    _( "Show non plated holes in specific color") ),
+    RR(),
     RR( _( "Ratsnest" ),        LAYER_RATSNEST,       WHITE,    _( "Show unconnected nets as a ratsnest") ),
-
     RR( _( "No-Connects" ),     LAYER_NO_CONNECTS,    BLUE,     _( "Show a marker on pads which have no net connected" ) ),
-    RR( _( "Pads Front" ),      LAYER_PAD_FR,         WHITE,    _( "Show footprint pads on board's front" ) ),
-    RR( _( "Through Hole Pads" ),LAYER_PADS_TH,       YELLOW,   _( "Show through hole pads in specific color") ),
-    RR( _( "Pads Back" ),       LAYER_PAD_BK,         WHITE,    _( "Show footprint pads on board's back" ) ),
-
-    RR( _( "Text Front" ),      LAYER_MOD_TEXT_FR,    NOCOLOR,  _( "Show footprint text on board's front" ) ),
-    RR( _( "Text Back" ),       LAYER_MOD_TEXT_BK,    NOCOLOR,  _( "Show footprint text on board's back" ) ),
-    RR( _( "Hidden Text" ),     LAYER_MOD_TEXT_INVISIBLE, WHITE, _( "Show footprint text marked as invisible" ) ),
-
     RR( _( "Anchors" ),         LAYER_ANCHOR,         WHITE,    _( "Show footprint and text origins as a cross" ) ),
-    RR( _( "Grid" ),            LAYER_GRID,           WHITE,    _( "Show the (x,y) grid dots" ) ),
-    RR( _( "Footprints Front" ),LAYER_MOD_FR,         NOCOLOR,  _( "Show footprints that are on board's front") ),
-    RR( _( "Footprints Back" ), LAYER_MOD_BK,         NOCOLOR,  _( "Show footprints that are on board's back") ),
-    RR( _( "Values" ),          LAYER_MOD_VALUES,     NOCOLOR,  _( "Show footprint's values") ),
-    RR( _( "References" ),      LAYER_MOD_REFERENCES, NOCOLOR,  _( "Show footprint's references") ),
     RR( _( "Worksheet" ),       LAYER_WORKSHEET,      DARKRED,  _( "Show worksheet") ),
     RR( _( "Cursor" ),          LAYER_CURSOR,         WHITE,    _( "PCB Cursor" ), true, false ),
-    RR( _( "Aux items" ),       LAYER_AUX_ITEMS,      WHITE,    _( "Auxillary items (rulers, assistants, axes, etc.)" ), true, false ),
+    RR( _( "Aux items" ),       LAYER_AUX_ITEMS,      WHITE,    _( "Auxiliary items (rulers, assistants, axes, etc.)" ), true, false ),
+    RR( _( "Grid" ),            LAYER_GRID,           WHITE,    _( "Show the (x,y) grid dots" ) ),
     RR( _( "Background" ),      LAYER_PCB_BACKGROUND, BLACK,    _( "PCB Background" ), true, false )
 };
 
@@ -376,17 +381,19 @@ void PCB_LAYER_WIDGET::onPopupSelection( wxCommandEvent& event )
 
 void PCB_LAYER_WIDGET::SetLayersManagerTabsText()
 {
-    m_notebook->SetPageText( 0, _( "Layer" ) );
-    m_notebook->SetPageText( 1, _( "Render" ) );
+    m_notebook->SetPageText( 0, _( "Layers" ) );
+    m_notebook->SetPageText( 1, _( "Items" ) );
 }
 
 
 void PCB_LAYER_WIDGET::ReFillRender()
 {
     BOARD* board = myframe->GetBoard();
+    auto settings = board->GetDesignSettings();
+
     ClearRenderRows();
 
-    // Add "Render" tab rows to LAYER_WIDGET, after setting color and checkbox state.
+    // Add "Items" tab rows to LAYER_WIDGET, after setting color and checkbox state.
     // Because s_render_rows is created static, we must explicitly call
     // wxGetTranslation for texts which are internationalized (tool tips
     // and item names)
@@ -397,35 +404,27 @@ void PCB_LAYER_WIDGET::ReFillRender()
         if( m_fp_editor_mode && !isAllowedInFpMode( renderRow.id ) )
             continue;
 
-        renderRow.tooltip = wxGetTranslation( s_render_rows[row].tooltip );
-        renderRow.rowName = wxGetTranslation( s_render_rows[row].rowName );
-
-        if( renderRow.color != COLOR4D::UNSPECIFIED )       // does this row show a color?
-        {
-            // this window frame must have an established BOARD, i.e. after SetBoard()
-            renderRow.color = myframe->Settings().Colors().GetItemColor( static_cast<GAL_LAYER_ID>( renderRow.id ) );
-        }
-
-        renderRow.state = board->IsElementVisible( static_cast<GAL_LAYER_ID>( renderRow.id ) );
-
-        AppendRenderRow( renderRow );
-    }
-}
-
-
-void PCB_LAYER_WIDGET::SyncRenderStates()
-{
-    BOARD*  board = myframe->GetBoard();
-
-    for( unsigned row=0;  row<DIM(s_render_rows);  ++row )
-    {
-        int rowId = s_render_rows[row].id;
-
-        if( m_fp_editor_mode && !isAllowedInFpMode( rowId ) )
+        if( renderRow.id == LAYER_VIA_MICROVIA && !settings.m_MicroViasAllowed )
             continue;
 
-        // this does not fire a UI event
-        SetRenderState( rowId, board->IsElementVisible( static_cast<GAL_LAYER_ID>( rowId ) ) );
+        if( renderRow.id == LAYER_VIA_BBLIND && !settings.m_BlindBuriedViaAllowed )
+            continue;
+
+        if( !renderRow.spacer )
+        {
+            renderRow.tooltip = wxGetTranslation( s_render_rows[row].tooltip );
+            renderRow.rowName = wxGetTranslation( s_render_rows[row].rowName );
+
+            if( renderRow.color != COLOR4D::UNSPECIFIED )       // does this row show a color?
+            {
+                // this window frame must have an established BOARD, i.e. after SetBoard()
+                renderRow.color = myframe->Settings().Colors().GetItemColor( static_cast<GAL_LAYER_ID>( renderRow.id ) );
+            }
+
+            renderRow.state = board->IsElementVisible( static_cast<GAL_LAYER_ID>( renderRow.id ) );
+        }
+
+        AppendRenderRow( renderRow );
     }
 }
 
@@ -445,7 +444,43 @@ void PCB_LAYER_WIDGET::SyncLayerVisibilities()
         PCB_LAYER_ID layerId = ToLAYER_ID( getDecodedId( w->GetId() ) );
 
         // this does not fire a UI event
-        SetLayerVisible( layerId, board->IsLayerVisible( layerId ) );
+        setLayerCheckbox( layerId, board->IsLayerVisible( layerId ) );
+    }
+}
+
+
+#define ALPHA_EPSILON 0.04
+
+void PCB_LAYER_WIDGET::SyncLayerAlphaIndicators()
+{
+    int count = GetLayerRowCount();
+    TOOL_MANAGER* mgr = myframe->GetToolManager();
+    KIGFX::PCB_PAINTER* painter = static_cast<KIGFX::PCB_PAINTER*>( mgr->GetView()->GetPainter() );
+    KIGFX::PCB_RENDER_SETTINGS* settings = painter->GetSettings();
+
+    for( int row = 0; row < count; ++row )
+    {
+        // this utilizes more implementation knowledge than ideal, eventually
+        // add member ROW getRow() or similar to base LAYER_WIDGET.
+
+        wxWindow* w = getLayerComp( row, COLUMN_ICON_ACTIVE );
+        PCB_LAYER_ID layerId = ToLAYER_ID( getDecodedId( w->GetId() ) );
+        KIGFX::COLOR4D screenColor = settings->GetLayerColor( layerId );
+
+        COLOR_SWATCH* swatch = static_cast<COLOR_SWATCH*>( getLayerComp( row, COLUMN_COLORBM ) );
+        KIGFX::COLOR4D layerColor = swatch->GetSwatchColor();
+
+        INDICATOR_ICON* indicator = static_cast<INDICATOR_ICON*>( getLayerComp( row, COLUMN_ALPHA_INDICATOR ) );
+
+        if( std::abs( screenColor.a - layerColor.a ) > ALPHA_EPSILON )
+        {
+            if( screenColor.a < layerColor.a )
+                indicator->SetIndicatorState( ROW_ICON_PROVIDER::STATE::DOWN );
+            else
+                indicator->SetIndicatorState( ROW_ICON_PROVIDER::STATE::UP );
+        }
+        else
+            indicator->SetIndicatorState( ROW_ICON_PROVIDER::STATE::OFF );
     }
 }
 
@@ -611,16 +646,19 @@ void PCB_LAYER_WIDGET::OnLayerVisible( int aLayer, bool isVisible, bool isFinal 
 
     LSET visibleLayers = brd->GetVisibleLayers();
 
-    visibleLayers.set( aLayer, isVisible );
+    if( visibleLayers.test( aLayer ) != isVisible )
+    {
+        visibleLayers.set( aLayer, isVisible );
 
-    brd->SetVisibleLayers( visibleLayers );
+        brd->SetVisibleLayers( visibleLayers );
 
-    myframe->OnModify();
+        myframe->OnModify();
 
-    EDA_DRAW_PANEL_GAL* galCanvas = myframe->GetGalCanvas();
+        EDA_DRAW_PANEL_GAL* galCanvas = myframe->GetGalCanvas();
 
-    if( galCanvas )
-        galCanvas->GetView()->SetLayerVisible( aLayer, isVisible );
+        if( galCanvas )
+            galCanvas->GetView()->SetLayerVisible( aLayer, isVisible );
+    }
 
     if( isFinal )
         myframe->GetCanvas()->Refresh();

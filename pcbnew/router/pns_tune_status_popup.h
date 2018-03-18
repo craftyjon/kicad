@@ -26,7 +26,7 @@
 #ifndef __PNS_TUNE_STATUS_POPUP_H_
 #define __PNS_TUNE_STATUS_POPUP_H_
 
-#include <wx_status_popup.h>
+#include <status_popup.h>
 
 namespace PNS {
 
@@ -34,16 +34,12 @@ class ROUTER;
 
 }
 
-class PNS_TUNE_STATUS_POPUP : public WX_STATUS_POPUP
+class PNS_TUNE_STATUS_POPUP : public STATUS_TEXT_POPUP
 {
 public:
-     PNS_TUNE_STATUS_POPUP( PCB_EDIT_FRAME* aParent );
-     ~PNS_TUNE_STATUS_POPUP();
+    PNS_TUNE_STATUS_POPUP( EDA_DRAW_FRAME* aParent );
 
     void UpdateStatus( PNS::ROUTER* aRouter );
-
-private:
-    wxStaticText* m_statusLine;
 };
 
 #endif /* __PNS_TUNE_STATUS_POPUP_H_*/

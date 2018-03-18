@@ -44,7 +44,7 @@
 
 #include <bitmaps.h>
 
-#include <dialog_edit_component_in_schematic_fbp.h>
+#include <dialog_edit_component_in_schematic_base.h>
 #include <invoke_sch_dialog.h>
 
 #ifdef KICAD_SPICE
@@ -60,10 +60,10 @@
 /**
  * Dialog used to edit #SCH_COMPONENT objects in a schematic.
  *
- * This is derived from DIALOG_EDIT_COMPONENT_IN_SCHEMATIC_FBP which is maintained by
+ * This is derived from DIALOG_EDIT_COMPONENT_IN_SCHEMATIC_BASE which is maintained by
  * wxFormBuilder.  Do not auto-generate this class or file, it is hand coded.
  */
-class DIALOG_EDIT_COMPONENT_IN_SCHEMATIC : public DIALOG_EDIT_COMPONENT_IN_SCHEMATIC_FBP
+class DIALOG_EDIT_COMPONENT_IN_SCHEMATIC : public DIALOG_EDIT_COMPONENT_IN_SCHEMATIC_BASE
 {
 public:
     DIALOG_EDIT_COMPONENT_IN_SCHEMATIC( SCH_EDIT_FRAME* aParent );
@@ -142,6 +142,7 @@ private:
     void showButtonHandler( wxCommandEvent& event ) override;
     void OnTestChipName( wxCommandEvent& event ) override;
     void OnSelectChipName( wxCommandEvent& event ) override;
+    void OnSizeFieldsList( wxSizeEvent& event ) override;
     void OnInitDlg( wxInitDialogEvent& event ) override
     {
         TransferDataToWindow();
@@ -205,7 +206,7 @@ void SCH_EDIT_FRAME::EditComponent( SCH_COMPONENT* aComponent )
 
 
 DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::DIALOG_EDIT_COMPONENT_IN_SCHEMATIC( SCH_EDIT_FRAME* aParent ) :
-    DIALOG_EDIT_COMPONENT_IN_SCHEMATIC_FBP( aParent )
+    DIALOG_EDIT_COMPONENT_IN_SCHEMATIC_BASE( aParent )
 {
 #ifndef KICAD_SPICE
     spiceFieldsButton->Hide();
@@ -259,7 +260,7 @@ void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::OnTestChipName( wxCommandEvent& event )
 
     if( id.Parse( partname ) != -1 || !id.IsValid() )
     {
-        msg.Printf( _( "\"%s\" is not a valid library symbol indentifier." ), partname );
+        msg.Printf( _( "\"%s\" is not a valid library symbol identifier." ), partname );
         DisplayError( this, msg );
         return;
     }
@@ -448,7 +449,7 @@ void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::OnOKButtonClick( wxCommandEvent& event 
 
     if( ! SCH_COMPONENT::IsReferenceStringValid( m_FieldsBuf[REFERENCE].GetText() ) )
     {
-        DisplayError( NULL, _( "Illegal reference. A reference must start with a letter" ) );
+        DisplayError( NULL, _( "Illegal reference. References must start with a letter" ) );
         return;
     }
 
@@ -598,18 +599,6 @@ void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::deleteFieldButtonHandler( wxCommandEven
     m_skipCopyFromPanel = false;
 }
 
-static wxString resolveUriByEnvVars( const wxString& aUri )
-{
-    // URL-like URI: return as is.
-    wxURL url( aUri );
-    if( url.GetError() == wxURL_NOERR )
-    {
-        return aUri;
-    }
-    // Otherwise, the path points to a local file. Resolve environment
-    // variables if any.
-    return ExpandEnvVarSubstitutions( aUri );
-}
 
 void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::showButtonHandler( wxCommandEvent& event )
 {
@@ -618,7 +607,7 @@ void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::showButtonHandler( wxCommandEvent& even
     if( fieldNdx == DATASHEET )
     {
         wxString datasheet_uri = fieldValueTextCtrl->GetValue();
-        datasheet_uri = resolveUriByEnvVars( datasheet_uri );
+        datasheet_uri = ResolveUriByEnvVars( datasheet_uri );
         GetAssociatedDocument( this, datasheet_uri );
     }
     else if( fieldNdx == FOOTPRINT )
@@ -919,8 +908,9 @@ void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::setRowItem( int aFieldNdx, const wxStri
     fieldListCtrl->SetItem( aFieldNdx, 1, aValue );
 
     // recompute the column widths here, after setting texts
+    int totalWidth = fieldListCtrl->GetSize().GetWidth();
     fieldListCtrl->SetColumnWidth( 0, wxLIST_AUTOSIZE );
-    fieldListCtrl->SetColumnWidth( 1, wxLIST_AUTOSIZE );
+    fieldListCtrl->SetColumnWidth( 1, totalWidth - fieldListCtrl->GetColumnWidth( 0 ) );
 }
 
 
@@ -1263,4 +1253,11 @@ void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::UpdateFields( wxCommandEvent& event )
     // Update the selected field as well
     copySelectedFieldToPanel();
     updateDisplay();
+}
+
+void DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::OnSizeFieldsList( wxSizeEvent& event )
+{
+    int newWidth = event.GetSize().GetX();
+    fieldListCtrl->SetColumnWidth( 1, newWidth - fieldListCtrl->GetColumnWidth( 0 ) );
+    event.Skip();
 }

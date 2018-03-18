@@ -163,12 +163,19 @@ bool GERBVIEW_FRAME::Read_EXCELLON_File( const wxString& aFullFileName )
     wxString msg;
     int layerId = GetActiveLayer();      // current layer used in GerbView
     GERBER_FILE_IMAGE_LIST* images = GetGerberLayout()->GetImagesList();
-    EXCELLON_IMAGE* drill_Layer = (EXCELLON_IMAGE*) images->GetGbrImage( layerId );
+    auto gerber_layer = images->GetGbrImage( layerId );
+    auto drill_layer = dynamic_cast<EXCELLON_IMAGE*>( gerber_layer );
 
-    if( drill_Layer == NULL )
+    if( gerber_layer && !drill_layer )
     {
-        drill_Layer = new EXCELLON_IMAGE( layerId );
-        layerId = images->AddGbrImage( drill_Layer, layerId );
+        // The active layer contains old gerber data we have to clear
+        Erase_Current_DrawLayer( false );
+    }
+
+    if( drill_layer == nullptr )
+    {
+        drill_layer = new EXCELLON_IMAGE( layerId );
+        layerId = images->AddGbrImage( drill_layer, layerId );
     }
 
     if( layerId < 0 )
@@ -178,7 +185,7 @@ bool GERBVIEW_FRAME::Read_EXCELLON_File( const wxString& aFullFileName )
     }
 
     // Read the Excellon drill file:
-    bool success = drill_Layer->LoadFile( aFullFileName );
+    bool success = drill_layer->LoadFile( aFullFileName );
 
     if( !success )
     {
@@ -188,14 +195,13 @@ bool GERBVIEW_FRAME::Read_EXCELLON_File( const wxString& aFullFileName )
     }
 
     // Display errors list
-    if( drill_Layer->GetMessages().size() > 0 )
+    if( drill_layer->GetMessages().size() > 0 )
     {
         HTML_MESSAGE_BOX dlg( this, _( "Error reading EXCELLON drill file" ) );
-        dlg.ListSet( drill_Layer->GetMessages() );
+        dlg.ListSet( drill_layer->GetMessages() );
         dlg.ShowModal();
     }
 
-    // TODO(JE) Is this the best place to add items to the view?
     if( success )
     {
         EDA_DRAW_PANEL_GAL* canvas = GetGalCanvas();
@@ -204,7 +210,7 @@ bool GERBVIEW_FRAME::Read_EXCELLON_File( const wxString& aFullFileName )
         {
             KIGFX::VIEW* view = canvas->GetView();
 
-            for( GERBER_DRAW_ITEM* item = drill_Layer->GetItemsList(); item; item = item->Next() )
+            for( GERBER_DRAW_ITEM* item = drill_layer->GetItemsList(); item; item = item->Next() )
             {
                 view->Add( (KIGFX::VIEW_ITEM*) item );
             }
@@ -531,6 +537,7 @@ bool EXCELLON_IMAGE::readToolInformation( char*& aText )
     return true;
 }
 
+
 bool EXCELLON_IMAGE::Execute_Drill_Command( char*& text )
 {
     D_CODE*  tool;
@@ -541,15 +548,39 @@ bool EXCELLON_IMAGE::Execute_Drill_Command( char*& text )
         switch( *text )
         {
             case 'X':
-                ReadXYCoord( text );
-                break;
             case 'Y':
+                // Decode the coordinate format
+                if( !m_format_known )
+                {
+                    int nbdigits = 0;
+                    int integer = m_GerbMetric ? fmtIntegerMM : fmtIntegerInch;
+                    int mantissa;
+                    char* read = text + 1;
+
+                    while( IsNumber( *read ) )
+                    {
+                        if( ( *read >= '0' ) && ( *read <='9' ) )
+                            nbdigits++;
+
+                        read++;
+                    }
+
+                    mantissa = nbdigits - integer;
+
+                    m_FmtScale.x = m_FmtScale.y = mantissa;
+                    m_FmtLen.x = m_FmtLen.y = integer + mantissa;
+
+                    m_format_known = true;
+                }
+
                 ReadXYCoord( text );
                 break;
+
             case 'G':  // G85 is found here for oval holes
                 m_PreviousPos = m_CurrentPos;
                 Execute_EXCELLON_G_Command( text );
                 break;
+
             case 0:     // E.O.L: execute command
                 tool = GetDCODE( m_Current_Tool );
 

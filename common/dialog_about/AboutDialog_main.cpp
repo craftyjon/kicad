@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2010 Rafael Sokolowski <Rafael.Sokolowski@web.de>
- * Copyright (C) 2010-2017 KiCad Developers, see CHANGELOG.TXT for contributors.
+ * Copyright (C) 2010-2018 KiCad Developers, see CHANGELOG.TXT for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -129,17 +129,17 @@ static void buildKicadAboutBanner( EDA_BASE_FRAME* aParent, ABOUT_APP_INFO& aInf
     // bullet-ed list with some http links
     description << "<ul>";
     description << "<li>"
-                << "The official KiCad website - "
+                << _( "The official KiCad website - " )
                 << HtmlHyperlink( "http://www.kicad-pcb.org" )
                 << "</li>";
     description << "<li>"
-                << "Developer website on Launchpad - "
+                << _( "Developer website on Launchpad - " )
                 << HtmlHyperlink( "https://launchpad.net/kicad" )
                 << "</li>";
 
     description << "<li>"
-                << "Official KiCad library repositories - "
-                << HtmlHyperlink( "https://github.com/KiCad/" )
+                << _(" Official KiCad library repositories - " )
+                << HtmlHyperlink( "https://kicad.github.io" )
                 << "</li>";
 
     description << "</ul></p>";
@@ -151,7 +151,7 @@ static void buildKicadAboutBanner( EDA_BASE_FRAME* aParent, ABOUT_APP_INFO& aInf
     // bullet-ed list with some http links
     description << "<ul>";
     description << "<li>"
-                << "Report or examine bugs - "
+                << _( "Report or examine bugs - " )
                 << HtmlHyperlink( "https://bugs.launchpad.net/kicad/+bugs?orderby=-id&start=0",
                                   "https://bugs.launchpad.net/kicad" )
                 << "</li>";
@@ -163,12 +163,12 @@ static void buildKicadAboutBanner( EDA_BASE_FRAME* aParent, ABOUT_APP_INFO& aInf
 
     description << "<ul>";
     description << "<li>"
-                << "KiCad forum - "
+                << _( "KiCad forum - " )
                 << HtmlHyperlink( "https://forum.kicad.info" )
                 << "</li>";
 
     description << "<li>"
-                << "KiCad user's group - "
+                <<_(  "KiCad user's group - " )
                 << HtmlHyperlink( "https://groups.yahoo.com/neo/groups/kicad-users/info" )
                 << "</li>";
 
@@ -210,6 +210,7 @@ static void buildKicadAboutBanner( EDA_BASE_FRAME* aParent, ABOUT_APP_INFO& aInf
     // alphabetically by last name after main 3 above:
     aInfo.AddDeveloper( new CONTRIBUTOR( "Frank Bennett" ) );
     aInfo.AddDeveloper( new CONTRIBUTOR( "Cirilo Bernardo" ) );
+    aInfo.AddDeveloper( new CONTRIBUTOR( "Kevin Cozens" ) );
     aInfo.AddDeveloper( new CONTRIBUTOR( "Jonas Diemer" ) );
     aInfo.AddDeveloper( new CONTRIBUTOR( "Jon Evans" ) );
     aInfo.AddDeveloper( new CONTRIBUTOR( "Seth Hillbrand" ) );
@@ -235,6 +236,7 @@ static void buildKicadAboutBanner( EDA_BASE_FRAME* aParent, ABOUT_APP_INFO& aInf
     aInfo.AddDeveloper( new CONTRIBUTOR( "Oliver Walters" ) );
     aInfo.AddDeveloper( new CONTRIBUTOR( "Tomasz Wlostowski" ) );
     aInfo.AddDeveloper( new CONTRIBUTOR( "Adam Wolf" ) );
+    aInfo.AddDeveloper( new CONTRIBUTOR( "Jeff Young" ) );
     aInfo.AddDeveloper( new CONTRIBUTOR( "Alexander Zakamaldin" ) );
     aInfo.AddDeveloper( new CONTRIBUTOR( "Henner Zeller" ) );
     aInfo.AddDeveloper( new CONTRIBUTOR( "Andrew Zonenberg" ) );

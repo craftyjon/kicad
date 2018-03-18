@@ -21,6 +21,17 @@
 #  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 #
 
+cmake_minimum_required( VERSION 2.8.12 FATAL_ERROR )
+# because of http://public.kitware.com/Bug/view.php?id=10395
+
+# See https://gitlab.kitware.com/cmake/cmake/issues/15943
+# Remove as soon as 3.1 is minimum required version
+if(POLICY CMP0025)
+  cmake_policy(SET CMP0025 NEW) # CMake 3.0
+endif()
+
+project( kicad )
+
 # Default to CMAKE_BUILD_TYPE = Release unless overridden on command line
 # http://www.cmake.org/pipermail/cmake/2008-September/023808.html
 if( DEFINED CMAKE_BUILD_TYPE )
@@ -29,12 +40,7 @@ else()
     set( CMAKE_BUILD_TYPE Release CACHE STRING "Set to either \"Release\" or \"Debug\"" )
 endif()
 
-project( kicad )
-
 include( GNUInstallDirs )
-
-cmake_minimum_required( VERSION 2.8.12 FATAL_ERROR )
-# because of http://public.kitware.com/Bug/view.php?id=10395
 
 # Path to local CMake modules.
 set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules )
@@ -508,8 +514,14 @@ find_package( wxWidgets 3.0.0 COMPONENTS gl aui adv html core net base xml stc R
 # Include wxWidgets macros.
 include( ${wxWidgets_USE_FILE} )
 
-string( FIND "${wxWidgets_LIBRARIES}" "gtk3" GTK3_DETECTED )
-if( NOT ${GTK3_DETECTED} EQUAL -1 )
+# Check the toolkit used to build wxWidgets
+execute_process( COMMAND sh -c "${wxWidgets_CONFIG_EXECUTABLE} --query-toolkit"
+    RESULT_VARIABLE wxWidgets_TOOLKIT_RESULT
+    OUTPUT_VARIABLE wxWidgets_TOOLKIT_FOUND
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+if( wxWidgets_TOOLKIT_FOUND STREQUAL "gtk3" )
     message( WARNING "\nwxWidgets library has been built against GTK3, it causes a lot of problems in KiCad" )
     add_definitions( -DUSE_WX_GRAPHICS_CONTEXT )
     add_definitions( -DWXGTK3 )
@@ -673,6 +685,31 @@ if( KICAD_SCRIPTING OR KICAD_SCRIPTING_MODULES )
 
         set( WXPYTHON_VERSION ${_wxpy_version} CACHE STRING "wxPython version found." )
         message( STATUS "wxPython version ${_wxpy_version} found." )
+
+
+        # Compare wxPython and wxWidgets toolkits
+        set( _py_cmd "import wx; print(wx.version().split(' ')[1])" )
+
+        # Add user specified Python site package path.
+        if( PYTHON_SITE_PACKAGE_PATH )
+            set( _py_cmd
+                "import sys;sys.path.insert(0, \"${PYTHON_SITE_PACKAGE_PATH}\");${_py_cmd}" )
+        endif()
+
+        execute_process( COMMAND ${PYTHON_EXECUTABLE} -c "${_py_cmd}"
+            RESULT_VARIABLE WXPYTHON_TOOLKIT_RESULT
+            OUTPUT_VARIABLE WXPYTHON_TOOLKIT_FOUND
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+
+        # Check if wxWidgets toolkits match, it is a Linux-only issue
+        if( UNIX AND NOT APPLE AND NOT wxWidgets_TOOLKIT_FOUND STREQUAL WXPYTHON_TOOLKIT_FOUND )
+            message( FATAL_ERROR "\nwxWidgets and wxPython use different toolkits "
+                "(${wxWidgets_TOOLKIT_FOUND} vs ${WXPYTHON_TOOLKIT_FOUND}). "
+                "It will result in a broken build. Please either install wxPython built using "
+                "${wxWidgets_TOOLKIT_FOUND} or add '-DKICAD_SCRIPTING_WXPYTHON=OFF' to cmake "
+                "parameters to disable wxPython support." )
+        endif()
     endif()
 
     #message( STATUS "PYTHON_INCLUDE_DIRS:${PYTHON_INCLUDE_DIRS}" )
@@ -683,7 +720,6 @@ if( KICAD_SCRIPTING OR KICAD_SCRIPTING_MODULES )
     set( INC_AFTER ${INC_AFTER} ${PYTHON_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/scripting )
 
     #message( STATUS "/ INC_AFTER:${INC_AFTER}" )
-
 endif()
 
 if( APPLE )

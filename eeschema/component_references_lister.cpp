@@ -38,6 +38,7 @@
 #include <sch_edit_frame.h>
 #include <sch_reference_list.h>
 #include <sch_component.h>
+#include <reporter.h>
 
 
 //#define USE_OLD_ALGO
@@ -270,7 +271,7 @@ int SCH_REFERENCE_LIST::CreateFirstFreeRefId( std::vector<int>& aIdList, int aFi
 }
 
 
-void SCH_REFERENCE_LIST::Annotate( bool aUseSheetNum, int aSheetIntervalId,
+void SCH_REFERENCE_LIST::Annotate( bool aUseSheetNum, int aSheetIntervalId, int aStartNumber,
       SCH_MULTI_UNIT_REFERENCE_MAP aLockedUnitMap )
 {
     if ( componentFlatList.size() == 0 )
@@ -296,11 +297,13 @@ void SCH_REFERENCE_LIST::Annotate( bool aUseSheetNum, int aSheetIntervalId,
 
     LastReferenceNumber = GetLastReference( first, minRefId );
 #else
-    int minRefId = 1;
+    int minRefId;
 
     // when using sheet number, ensure ref number >= sheet number* aSheetIntervalId
     if( aUseSheetNum )
         minRefId = componentFlatList[first].m_SheetNum * aSheetIntervalId + 1;
+    else
+        minRefId = aStartNumber + 1;
 
     // This is the list of all Id already in use for a given reference prefix.
     // Will be refilled for each new reference prefix.
@@ -344,11 +347,11 @@ void SCH_REFERENCE_LIST::Annotate( bool aUseSheetNum, int aSheetIntervalId,
 
             LastReferenceNumber = componentFlatList.GetLastReference( ii, minRefId );
 #else
-            minRefId = 1;
-
             // when using sheet number, ensure ref number >= sheet number* aSheetIntervalId
             if( aUseSheetNum )
                 minRefId = componentFlatList[ii].m_SheetNum * aSheetIntervalId + 1;
+            else
+                minRefId = aStartNumber + 1;
 
             GetRefsInUse( first, idList, minRefId );
 #endif
@@ -472,7 +475,7 @@ void SCH_REFERENCE_LIST::Annotate( bool aUseSheetNum, int aSheetIntervalId,
 }
 
 
-int SCH_REFERENCE_LIST::CheckAnnotation( wxArrayString* aMessageList )
+int SCH_REFERENCE_LIST::CheckAnnotation( REPORTER& aReporter )
 {
     int            error = 0;
     wxString       tmp;
@@ -512,9 +515,7 @@ int SCH_REFERENCE_LIST::CheckAnnotation( wxArrayString* aMessageList )
                             GetChars( tmp ) );
             }
 
-            if( aMessageList )
-                aMessageList->Add( msg + wxT( "\n" ) );
-
+            aReporter.Report( msg, REPORTER::RPT_WARNING );
             error++;
             break;
         }
@@ -536,9 +537,7 @@ int SCH_REFERENCE_LIST::CheckAnnotation( wxArrayString* aMessageList )
                         componentFlatList[ii].m_Unit,
                         componentFlatList[ii].GetLibPart()->GetUnitCount() );
 
-            if( aMessageList )
-                aMessageList->Add( msg );
-
+            aReporter.Report( msg, REPORTER::RPT_ERROR );
             error++;
             break;
         }
@@ -582,9 +581,7 @@ int SCH_REFERENCE_LIST::CheckAnnotation( wxArrayString* aMessageList )
                             GetChars( tmp ) );
             }
 
-            if( aMessageList )
-                aMessageList->Add( msg );
-
+            aReporter.Report( msg, REPORTER::RPT_ERROR );
             error++;
             continue;
         }
@@ -614,9 +611,7 @@ int SCH_REFERENCE_LIST::CheckAnnotation( wxArrayString* aMessageList )
                             GetChars( tmp ) );
             }
 
-            if( aMessageList )
-                aMessageList->Add( msg );
-
+            aReporter.Report( msg, REPORTER::RPT_ERROR );
             error++;
         }
 
@@ -637,9 +632,7 @@ int SCH_REFERENCE_LIST::CheckAnnotation( wxArrayString* aMessageList )
                                   componentFlatList[next].m_Unit ) ),
                         GetChars( componentFlatList[next].m_Value->GetText() ) );
 
-            if( aMessageList )
-                aMessageList->Add( msg + wxT( "\n" ));
-
+            aReporter.Report( msg, REPORTER::RPT_ERROR );
             error++;
         }
     }
@@ -666,9 +659,7 @@ int SCH_REFERENCE_LIST::CheckAnnotation( wxArrayString* aMessageList )
                     GetChars( componentFlatList[ii + 1].GetRef() ),
                     componentFlatList[ii + 1].m_NumRef );
 
-        if( aMessageList )
-            aMessageList->Add( msg + wxT( "\n" ));
-
+        aReporter.Report( msg, REPORTER::RPT_WARNING );
         error++;
     }
 

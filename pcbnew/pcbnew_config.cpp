@@ -68,27 +68,6 @@ void PCB_EDIT_FRAME::Process_Config( wxCommandEvent& event )
 
     switch( id )
     {
-    case ID_MENU_PCB_SHOW_HIDE_LAYERS_MANAGER:
-        m_show_layer_manager_tools = ! m_show_layer_manager_tools;
-        m_auimgr.GetPane( wxT( "m_LayersManagerToolBar" ) ).Show( m_show_layer_manager_tools );
-        m_auimgr.Update();
-
-        GetMenuBar()->SetLabel( ID_MENU_PCB_SHOW_HIDE_LAYERS_MANAGER,
-                                m_show_layer_manager_tools ?
-                                _( "Hide &Layers Manager" ) : _( "Show &Layers Manager" ));
-        break;
-
-    case ID_MENU_PCB_SHOW_HIDE_MUWAVE_TOOLBAR:
-        m_show_microwave_tools  = ! m_show_microwave_tools;
-        m_auimgr.GetPane( wxT( "m_microWaveToolBar" ) ).Show( m_show_microwave_tools );
-        m_auimgr.Update();
-
-        GetMenuBar()->SetLabel( ID_MENU_PCB_SHOW_HIDE_MUWAVE_TOOLBAR,
-                                m_show_microwave_tools ?
-                                _( "Hide Microwa&ve Toolbar" ): _( "Show Microwa&ve Toolbar" ));
-        break;
-
-
     case ID_PCB_LAYERS_SETUP:
         if( InvokeLayerSetup( this, GetBoard() ) )
         {
@@ -255,7 +234,7 @@ void PCB_EDIT_FRAME::Process_Config( wxCommandEvent& event )
         break;
 
     default:
-        DisplayErrorMessage( this, "Unkown ID in Process Config",
+        DisplayErrorMessage( this, "Unknown ID in Process Config",
                 wxString::Format(  "PCB_EDIT_FRAME::Process_Config received ID %d", id ) );
         break;
     }

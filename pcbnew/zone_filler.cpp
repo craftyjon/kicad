@@ -44,6 +44,7 @@
 #include <geometry/shape_poly_set.h>
 #include <geometry/shape_file_io.h>
 #include <geometry/convex_hull.h>
+#include <geometry/geometry_utils.h>
 
 #include "zone_filler.h"
 
@@ -81,10 +82,13 @@ void ZONE_FILLER::SetProgressReporter( PROGRESS_REPORTER* aReporter )
 
 void ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones )
 {
+    int parallelThreadCount = std::max( ( int )std::thread::hardware_concurrency(), 2 );
+
     std::vector<CN_ZONE_ISOLATED_ISLAND_LIST> toFill;
     auto connectivity = m_board->GetConnectivity();
 
-    connectivity->Lock();
+    if( !connectivity->TryLock() )
+        return;
 
     // Remove segment zones
     m_board->m_Zone.DeleteAll();
@@ -114,25 +118,33 @@ void ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones )
         m_progressReporter->SetMaxProgress( toFill.size() );
     }
 
+    m_next = 0;
     m_count_done = 0;
-    std::thread fillWorker( [ this, toFill ]()
+    std::vector<std::thread> fillWorkers;
+
+    for( ssize_t ii = 0; ii < parallelThreadCount; ++ii )
     {
-        for( unsigned i = 0; i < toFill.size(); i++ )
+        fillWorkers.push_back( std::thread( [ this, toFill ]()
         {
-            SHAPE_POLY_SET rawPolys, finalPolys;
-            ZONE_SEGMENT_FILL segFill;
-            fillSingleZone( toFill[i].m_zone, rawPolys, finalPolys );
+            size_t i = m_next.fetch_add( 1 );
+            while( i < toFill.size() )
+            {
+                SHAPE_POLY_SET rawPolys, finalPolys;
+                ZONE_SEGMENT_FILL segFill;
+                fillSingleZone( toFill[i].m_zone, rawPolys, finalPolys );
 
-            toFill[i].m_zone->SetRawPolysList( rawPolys );
-            toFill[i].m_zone->SetFilledPolysList( finalPolys );
-            toFill[i].m_zone->SetIsFilled( true );
+                toFill[i].m_zone->SetRawPolysList( rawPolys );
+                toFill[i].m_zone->SetFilledPolysList( finalPolys );
+                toFill[i].m_zone->SetIsFilled( true );
 
-            if( m_progressReporter )
-                m_progressReporter->AdvanceProgress();
+                if( m_progressReporter )
+                    m_progressReporter->AdvanceProgress();
 
-            m_count_done.fetch_add( 1 );
-        }
-    } );
+                m_count_done.fetch_add( 1 );
+                i = m_next.fetch_add( 1 );
+            }
+        } ) );
+    }
 
     while( m_count_done.load() < toFill.size() )
     {
@@ -142,7 +154,8 @@ void ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones )
             wxMilliSleep( 20 );
     }
 
-    fillWorker.join();
+    for( size_t ii = 0; ii < fillWorkers.size(); ++ii )
+        fillWorkers[ ii ].join();
 
     // Now remove insulated copper islands
     if( m_progressReporter )
@@ -175,19 +188,27 @@ void ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones )
         m_progressReporter->SetMaxProgress( toFill.size() );
     }
 
+    m_next = 0;
     m_count_done = 0;
-    std::thread triangulationWorker( [ this, toFill ]()
+    std::vector<std::thread> triangulationWorkers;
+
+    for( ssize_t ii = 0; ii < parallelThreadCount; ++ii )
     {
-        for( unsigned i = 0; i < toFill.size(); i++ )
+        triangulationWorkers.push_back( std::thread( [ this, toFill ]()
         {
-            if( m_progressReporter )
-                m_progressReporter->AdvanceProgress();
+            size_t i = m_next.fetch_add( 1 );
+            while( i < toFill.size() )
+            {
+                if( m_progressReporter )
+                    m_progressReporter->AdvanceProgress();
 
-            toFill[i].m_zone->CacheTriangulation();
+                toFill[i].m_zone->CacheTriangulation();
 
-            m_count_done.fetch_add( 1 );
-        }
-    } );
+                m_count_done.fetch_add( 1 );
+                i = m_next.fetch_add( 1 );
+            }
+        } ) );
+    }
 
     while( m_count_done.load() < toFill.size() )
     {
@@ -197,7 +218,8 @@ void ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones )
             wxMilliSleep( 10 );
     }
 
-    triangulationWorker.join();
+    for( size_t ii = 0; ii < triangulationWorkers.size(); ++ii )
+        triangulationWorkers[ ii ].join();
 
     // If some zones must be filled by segments, create the filling segments
     // (note, this is a outdated option, but it exists)
@@ -218,7 +240,7 @@ void ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones )
             m_progressReporter->SetMaxProgress( zones_to_fill_count );
         }
 
-        // TODO: use OPENMP to speedup calculations:
+        // TODO: use thread pool to speedup calculations:
         for( unsigned i = 0; i < toFill.size(); i++ )
         {
             ZONE_CONTAINER* zone = toFill[i].m_zone;
@@ -278,10 +300,10 @@ void ZONE_FILLER::buildZoneFeatureHoleList( const ZONE_CONTAINER* aZone,
 
     /* calculates the coeff to compensate radius reduction of holes clearance
      * due to the segment approx.
-     * For a circle the min radius is radius * cos( 2PI / s_CircleToSegmentsCount / 2)
-     * correctionFactor is 1 /cos( PI/s_CircleToSegmentsCount  )
+     * For a circle the min radius is radius * cos( 2PI / segsPerCircle / 2)
+     * correctionFactor is 1 /cos( PI/segsPerCircle  )
      */
-    correctionFactor = 1.0 / cos( M_PI / (double) segsPerCircle );
+    correctionFactor = GetCircletoPolyCorrectionFactor( segsPerCircle );
 
     aFeatures.RemoveAllContours();
 
@@ -399,10 +421,11 @@ void ZONE_FILLER::buildZoneFeatureHoleList( const ZONE_CONTAINER* aZone,
             }
 
             // Pads are removed from zone if the setup is PAD_ZONE_CONN_NONE
-            // or if they have a custom shape, because a thermal relief will break
+            // or if they have a custom shape and not PAD_ZONE_CONN_FULL,
+            // because a thermal relief will break
             // the shape
             if( aZone->GetPadConnection( pad ) == PAD_ZONE_CONN_NONE
-                || pad->GetShape() == PAD_SHAPE_CUSTOM )
+                || ( pad->GetShape() == PAD_SHAPE_CUSTOM && aZone->GetPadConnection( pad ) != PAD_ZONE_CONN_FULL ) )
             {
                 int gap = zone_clearance;
                 int thermalGap = aZone->GetThermalReliefGap( pad );
@@ -662,11 +685,8 @@ void ZONE_FILLER::computeRawFilledAreas( const ZONE_CONTAINER* aZone,
         segsPerCircle = ARC_APPROX_SEGMENTS_COUNT_LOW_DEF;
 
     /* calculates the coeff to compensate radius reduction of holes clearance
-     * due to the segment approx.
-     * For a circle the min radius is radius * cos( 2PI / s_CircleToSegmentsCount / 2)
-     * s_Correction is 1 /cos( PI/s_CircleToSegmentsCount  )
      */
-    correctionFactor = 1.0 / cos( M_PI / (double) segsPerCircle );
+    correctionFactor = GetCircletoPolyCorrectionFactor( segsPerCircle );
 
     if( s_DumpZonesWhenFilling )
         dumper->BeginGroup( "clipper-zone" );

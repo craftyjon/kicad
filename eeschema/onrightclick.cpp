@@ -194,6 +194,14 @@ bool SCH_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
 
     if( item == NULL )
     {
+        if( GetToolId() == ID_NO_TOOL_SELECTED )
+        {
+            msg = AddHotkeyName( _( "&Paste" ), g_Schematic_Hokeys_Descr, HK_EDIT_PASTE );
+            AddMenuItem( PopMenu, wxID_PASTE, msg,
+                        _( "Pastes item(s) from the Clipboard" ),
+                        KiBitmap( paste_xpm ) );
+        }
+
         if( g_CurrentSheet->Last() != g_RootSheet )
         {
             msg = AddHotkeyName( _( "Leave Sheet" ), g_Schematic_Hokeys_Descr, HK_LEAVE_SHEET );
@@ -201,6 +209,7 @@ bool SCH_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
                          KiBitmap( leave_sheet_xpm ) );
             PopMenu->AppendSeparator();
         }
+
         return true;
     }
 
@@ -916,10 +925,10 @@ void AddMenusForBlock( wxMenu* PopMenu, SCH_EDIT_FRAME* frame )
     if( frame->GetScreen()->m_BlockLocate.GetCommand() == BLOCK_MOVE )
     {
         msg = AddHotkeyName( _( "Cut Block" ), g_Schematic_Hokeys_Descr,
-                             HK_CUT_BLOCK );
+                             HK_EDIT_CUT );
         AddMenuItem( PopMenu, ID_POPUP_CUT_BLOCK, msg, KiBitmap( cut_xpm ) );
         msg = AddHotkeyName( _( "Copy Block" ), g_Schematic_Hokeys_Descr,
-                             HK_COPY_BLOCK );
+                             HK_EDIT_COPY );
         AddMenuItem( PopMenu, ID_POPUP_COPY_BLOCK, msg, KiBitmap( copy_xpm ) );
         AddMenuItem( PopMenu, ID_POPUP_DUPLICATE_BLOCK, _( "Duplicate Block" ),
                      KiBitmap( duplicate_xpm ) );

@@ -32,6 +32,7 @@
 #include <map>
 #include <wx/xml/xml.h>
 
+class D_PAD;
 
 typedef std::map<wxString, MODULE*>  MODULE_MAP;
 typedef std::map<wxString, ENET>     NET_MAP;
@@ -41,26 +42,49 @@ typedef NET_MAP::const_iterator      NET_MAP_CITER;
 /// subset of eagle.drawing.board.designrules in the XML document
 struct ERULES
 {
-    int         psElongationLong;   ///< percent over 100%.  0-> not elongated, 100->twice as wide as is tall
-                                    ///< Goes into making a scaling factor for "long" pads.
+    int    psElongationLong;    ///< percent over 100%.  0-> not elongated, 100->twice as wide as is tall
+                                ///< Goes into making a scaling factor for "long" pads.
 
-    int         psElongationOffset; ///< the offset of the hole within the "long" pad.
+    int    psElongationOffset;  ///< the offset of the hole within the "long" pad.
 
-    double      rvPadTop;           ///< top pad size as percent of drill size
-    // double   rvPadBottom;        ///< bottom pad size as percent of drill size
+    double mvStopFrame;         ///< solder mask, expressed as percentage of the smaller pad/via dimension
+    double mvCreamFrame;        ///< solderpaste mask, expressed as percentage of the smaller pad/via dimension
+    int    mlMinStopFrame;      ///< solder mask, minimum size (Eagle mils, here nanometers)
+    int    mlMaxStopFrame;      ///< solder mask, maximum size (Eagle mils, here nanometers)
+    int    mlMinCreamFrame;     ///< solder paste mask, minimum size (Eagle mils, here nanometers)
+    int    mlMaxCreamFrame;     ///< solder paste mask, maximum size (Eagle mils, here nanometers)
 
-    double      rlMinPadTop;        ///< minimum copper annulus on through hole pads
-    double      rlMaxPadTop;        ///< maximum copper annulus on through hole pads
+    double srRoundness;         ///< corner rounding ratio for SMD pads (percentage)
+    int    srMinRoundness;      ///< corner rounding radius, minimum size (Eagle mils, here nanometers)
+    int    srMaxRoundness;      ///< corner rounding radius, maximum size (Eagle mils, here nanometers)
 
-    double      rvViaOuter;         ///< copper annulus is this percent of via hole
-    double      rlMinViaOuter;      ///< minimum copper annulus on via
-    double      rlMaxViaOuter;      ///< maximum copper annulus on via
-    double      mdWireWire;         ///< wire to wire spacing I presume.
+    double rvPadTop;            ///< top pad size as percent of drill size
+    // double   rvPadBottom;    ///< bottom pad size as percent of drill size
+
+    double rlMinPadTop;         ///< minimum copper annulus on through hole pads
+    double rlMaxPadTop;         ///< maximum copper annulus on through hole pads
+
+    double rvViaOuter;          ///< copper annulus is this percent of via hole
+    double rlMinViaOuter;       ///< minimum copper annulus on via
+    double rlMaxViaOuter;       ///< maximum copper annulus on via
+    double mdWireWire;          ///< wire to wire spacing I presume.
 
 
     ERULES() :
         psElongationLong    ( 100 ),
         psElongationOffset  ( 0 ),
+
+        mvStopFrame         ( 1.0 ),
+        mvCreamFrame        ( 0.0 ),
+        mlMinStopFrame      ( Mils2iu( 4.0 ) ),
+        mlMaxStopFrame      ( Mils2iu( 4.0 ) ),
+        mlMinCreamFrame     ( Mils2iu( 0.0 ) ),
+        mlMaxCreamFrame     ( Mils2iu( 0.0 ) ),
+
+        srRoundness         ( 0.0 ),
+        srMinRoundness      ( Mils2iu( 0.0 ) ),
+        srMaxRoundness      ( Mils2iu( 0.0 ) ),
+
         rvPadTop            ( 0.25 ),
         // rvPadBottom      ( 0.25 ),
         rlMinPadTop         ( Mils2iu( 10 ) ),
@@ -97,6 +121,11 @@ public:
 
     MODULE* FootprintLoad( const wxString& aLibraryPath, const wxString& aFootprintName,
             const PROPERTIES* aProperties = NULL ) override;
+
+    long long GetLibraryTimestamp( const wxString& aLibraryPath ) const override
+    {
+        return getModificationTime( aLibraryPath ).GetValue().GetValue();
+    }
 
     bool IsFootprintLibWritable( const wxString& aLibraryPath ) override
     {
@@ -160,8 +189,8 @@ private:
     void    clear_cu_map();
 
     /// Convert an Eagle distance to a KiCad distance.
-    int     kicad_y( const ECOORD& y ) const       { return -y.ToPcbUnits(); }
-    int     kicad_x( const ECOORD& x ) const       { return x.ToPcbUnits(); }
+    int kicad_y( const ECOORD& y ) const { return -y.ToPcbUnits(); }
+    int kicad_x( const ECOORD& x ) const { return x.ToPcbUnits(); }
 
     /// create a font size (fontz) from an eagle font size scalar
     wxSize  kicad_fontz( const ECOORD& d ) const;
@@ -231,6 +260,9 @@ private:
     void packageCircle( MODULE* aModule, wxXmlNode* aTree ) const;
     void packageHole( MODULE* aModule, wxXmlNode* aTree ) const;
     void packageSMD( MODULE* aModule, wxXmlNode* aTree ) const;
+
+    ///> Handles common pad properties
+    void transferPad( const EPAD_COMMON& aEaglePad, D_PAD* aPad ) const;
 
     ///> Deletes the footprint templates list
     void deleteTemplates();

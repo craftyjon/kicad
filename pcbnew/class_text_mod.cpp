@@ -145,6 +145,13 @@ void TEXTE_MODULE::Flip( const wxPoint& aCentre )
     SetLocalCoord();
 }
 
+bool TEXTE_MODULE::IsParentFlipped() const
+{
+    if( GetParent() &&  GetParent()->GetLayer() == B_Cu )
+        return true;
+    return false;
+}
+
 
 void TEXTE_MODULE::Mirror( const wxPoint& aCentre, bool aMirrorAroundXAxis )
 {
@@ -387,9 +394,9 @@ void TEXTE_MODULE::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
     aList.push_back( MSG_PANEL_ITEM( _( "Layer" ), GetLayerName(), DARKGREEN ) );
 
     if( IsMirrored() )
-        msg = _( " Yes" );
+        msg = _( "Yes" );
     else
-        msg = _( " No" );
+        msg = _( "No" );
 
     aList.push_back( MSG_PANEL_ITEM( _( "Mirror" ), msg, DARKGREEN ) );
 
@@ -458,14 +465,10 @@ const BOX2I TEXTE_MODULE::ViewBBox() const
 
 void TEXTE_MODULE::ViewGetLayers( int aLayers[], int& aCount ) const
 {
-    if( !IsVisible() )      // Hidden text
-        aLayers[0] = LAYER_MOD_TEXT_INVISIBLE;
-    //else if( IsFrontLayer( m_Layer ) )
-        //aLayers[0] = LAYER_MOD_TEXT_FR;
-    //else if( IsBackLayer( m_Layer ) )
-        //aLayers[0] = LAYER_MOD_TEXT_BK;
-    else
+    if( IsVisible() )
         aLayers[0] = GetLayer();
+    else
+        aLayers[0] = LAYER_MOD_TEXT_INVISIBLE;
 
     aCount = 1;
 }
@@ -473,27 +476,38 @@ void TEXTE_MODULE::ViewGetLayers( int aLayers[], int& aCount ) const
 
 unsigned int TEXTE_MODULE::ViewGetLOD( int aLayer, KIGFX::VIEW* aView ) const
 {
-    const int MAX = std::numeric_limits<unsigned int>::max();
+    const int HIDE = std::numeric_limits<unsigned int>::max();
 
     if( !aView )
         return 0;
 
+    // Hidden text gets put on the LAYER_MOD_TEXT_INVISIBLE for rendering, but
+    // should only render if its native layer is visible.
+    if( !aView->IsLayerVisible( GetLayer() ) )
+        return HIDE;
+
+    // Handle Render tab switches
     if( ( m_Type == TEXT_is_VALUE || m_Text == wxT( "%V" ) )
             && !aView->IsLayerVisible( LAYER_MOD_VALUES ) )
-        return MAX;
+        return HIDE;
 
     if( ( m_Type == TEXT_is_REFERENCE || m_Text == wxT( "%R" ) )
             && !aView->IsLayerVisible( LAYER_MOD_REFERENCES ) )
-        return MAX;
+        return HIDE;
 
-    if( IsFrontLayer( m_Layer ) && ( !aView->IsLayerVisible( LAYER_MOD_TEXT_FR ) ||
-                                     !aView->IsLayerVisible( LAYER_MOD_FR ) ) )
-        return MAX;
+    if( !IsParentFlipped() && !aView->IsLayerVisible( LAYER_MOD_FR ) )
+        return HIDE;
 
-    if( IsBackLayer( m_Layer ) && ( !aView->IsLayerVisible( LAYER_MOD_TEXT_BK ) ||
-                                    !aView->IsLayerVisible( LAYER_MOD_BK ) ) )
-        return MAX;
+    if( IsParentFlipped() && !aView->IsLayerVisible( LAYER_MOD_BK ) )
+        return HIDE;
 
+    if( IsFrontLayer( m_Layer ) && !aView->IsLayerVisible( LAYER_MOD_TEXT_FR ) )
+        return HIDE;
+
+    if( IsBackLayer( m_Layer ) && !aView->IsLayerVisible( LAYER_MOD_TEXT_BK ) )
+        return HIDE;
+
+    // Other layers are shown without any conditions
     return 0;
 }
 

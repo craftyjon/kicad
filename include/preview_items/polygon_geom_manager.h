@@ -24,8 +24,7 @@
 #ifndef PREVIEW_POLYGON_GEOM_MANAGER__H_
 #define PREVIEW_POLYGON_GEOM_MANAGER__H_
 
-#include <vector>
-#include <math/vector2d.h>
+#include <geometry/shape_line_chain.h>
 
 /**
  * Class that handles the drawing of a polygon, including
@@ -48,11 +47,11 @@ public:
         /**
          * Called before the first point is added - clients can do
          * initialisation here, and can veto the start of the process
-         * (eg if user cancels a dialog)
+         * (e.g. if user cancels a dialog)
          *
          * @return false to veto start of new polygon
          */
-        virtual bool OnFirstPoint() = 0;
+        virtual bool OnFirstPoint( POLYGON_GEOM_MANAGER& aMgr ) = 0;
 
         ///> Sent when the polygon geometry changes
         virtual void OnGeometryChange( const POLYGON_GEOM_MANAGER& aMgr ) = 0;
@@ -97,9 +96,34 @@ public:
     void SetLeaderMode( LEADER_MODE aMode );
 
     /**
+     * Enables/disables self-intersecting polygons.
+     * @param aEnabled true if self-intersecting polygons are enabled.
+     */
+    void AllowIntersections( bool aEnabled )
+    {
+        m_intersectionsAllowed = true;
+    }
+
+    /**
+     * Checks whether self-intersecting polygons are enabled.
+     * @return true if self-intersecting polygons are enabled.
+     */
+    bool IntersectionsAllowed() const
+    {
+        return m_intersectionsAllowed;
+    }
+
+    /**
+     * Checks whether the locked points constitute a self-intersecting outline.
+     * @param aIncludeLeaderPts when true, also the leading points (not placed ones) will be tested.
+     * @return True when the outline is self-intersecting.
+     */
+    bool IsSelfIntersecting( bool aIncludeLeaderPts ) const;
+
+    /**
      * Set the current cursor position
      */
-    void SetCursorPosition( const VECTOR2I& aPos );
+    void SetCursorPosition( const VECTOR2I& aPos, LEADER_MODE aModifier );
 
     /**
      * @return true if the polygon in "in progress", i.e. it has at least
@@ -125,7 +149,10 @@ public:
     /**
      * Get the "locked-in" points that describe the polygon itself
      */
-    const std::vector<VECTOR2I>& GetLockedInPoints() const;
+    const SHAPE_LINE_CHAIN& GetLockedInPoints() const
+    {
+        return m_lockedPoints;
+    }
 
     /**
      * Get the points comprising the leader line (the line from the
@@ -133,7 +160,10 @@ public:
      *
      * How this is drawn will depend on the LEADER_MODE
      */
-    const std::vector<VECTOR2I>& GetLeaderLinePoints() const;
+    const SHAPE_LINE_CHAIN& GetLeaderLinePoints() const
+    {
+        return m_leaderPts;
+    }
 
 private:
 
@@ -141,7 +171,8 @@ private:
      * Update the leader line points based on a new endpoint (probably
      * a cursor position)
      */
-    void updateLeaderPoints( const VECTOR2I& aEndPoint );
+    void updateLeaderPoints( const VECTOR2I& aEndPoint,
+                             LEADER_MODE aModifier = LEADER_MODE::DIRECT );
 
     ///> The "user" of the polygon data that is informed when the geometry changes
     CLIENT& m_client;
@@ -149,11 +180,14 @@ private:
     ///> The current mode of the leader line
     LEADER_MODE m_leaderMode;
 
+    ///> Flag enabling self-intersecting polygons
+    bool m_intersectionsAllowed;
+
     ///> Point that have been "locked in"
-    std::vector<VECTOR2I> m_lockedPoints;
+    SHAPE_LINE_CHAIN m_lockedPoints;
 
     ///> Points in the temporary "leader" line(s)
-    std::vector<VECTOR2I> m_leaderPts;
+    SHAPE_LINE_CHAIN m_leaderPts;
 };
 
 #endif // PREVIEW_POLYGON_GEOM_MANAGER__H_

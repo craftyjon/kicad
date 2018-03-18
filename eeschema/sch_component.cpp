@@ -1337,7 +1337,7 @@ int SCH_COMPONENT::GetOrientation()
         CMP_ORIENT_0,                  CMP_ORIENT_90,                  CMP_ORIENT_180,
         CMP_ORIENT_270,
         CMP_MIRROR_X + CMP_ORIENT_0,   CMP_MIRROR_X + CMP_ORIENT_90,
-        CMP_MIRROR_X + CMP_ORIENT_180, CMP_MIRROR_X + CMP_ORIENT_270,
+        CMP_MIRROR_Y, CMP_MIRROR_X + CMP_ORIENT_270,
         CMP_MIRROR_Y + CMP_ORIENT_0,   CMP_MIRROR_Y + CMP_ORIENT_90,
         CMP_MIRROR_Y + CMP_ORIENT_180, CMP_MIRROR_Y + CMP_ORIENT_270
     };
@@ -1512,8 +1512,7 @@ void SCH_COMPONENT::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
             // Display description of the component, and keywords found in lib
             aList.push_back( MSG_PANEL_ITEM( _( "Description" ), alias->GetDescription(),
                                              DARKCYAN ) );
-            aList.push_back( MSG_PANEL_ITEM( _( "Key Words" ), alias->GetKeyWords(), DARKCYAN ) );
-
+            aList.push_back( MSG_PANEL_ITEM( _( "Key words" ), alias->GetKeyWords(), DARKCYAN ) );
         }
     }
     else

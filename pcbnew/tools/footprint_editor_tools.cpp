@@ -78,14 +78,6 @@ TOOL_ACTION PCB_ACTIONS::enumeratePads( "pcbnew.ModuleEditor.enumeratePads",
         AS_GLOBAL, 0,
         _( "Renumber Pads..." ), _( "Renumber pads by clicking on them in the desired order" ), pad_enumerate_xpm, AF_ACTIVATE );
 
-TOOL_ACTION PCB_ACTIONS::moduleEdgeOutlines( "pcbnew.ModuleEditor.graphicOutlines",
-        AS_GLOBAL, 0,
-        "", "" );
-
-TOOL_ACTION PCB_ACTIONS::moduleTextOutlines( "pcbnew.ModuleEditor.textOutlines",
-       AS_GLOBAL, 0,
-       "", "" );
-
 
 MODULE_EDITOR_TOOLS::MODULE_EDITOR_TOOLS() :
     PCB_TOOL( "pcbnew.ModuleEditor" )
@@ -277,61 +269,6 @@ int MODULE_EDITOR_TOOLS::EnumeratePads( const TOOL_EVENT& aEvent )
 }
 
 
-int MODULE_EDITOR_TOOLS::ModuleTextOutlines( const TOOL_EVENT& aEvent )
-{
-    KIGFX::PCB_VIEW* pcbview = view();
-
-    auto displ_opts = (PCB_DISPLAY_OPTIONS*)frame()->GetDisplayOptions();
-
-    // Switch the render mode:
-    bool enable = !displ_opts->m_DisplayModTextFill == SKETCH;
-    displ_opts->m_DisplayModTextFill = enable ? SKETCH : FILLED;
-
-    pcbview->UpdateDisplayOptions( displ_opts );
-
-    for( auto module : board()->Modules() )
-    {
-        for( auto item : module->GraphicalItems() )
-        {
-            if( item->Type() == PCB_MODULE_TEXT_T )
-                pcbview->Update( item, KIGFX::GEOMETRY );
-        }
-
-        pcbview->Update( &module->Reference(), KIGFX::GEOMETRY );
-        pcbview->Update( &module->Value(), KIGFX::GEOMETRY );
-    }
-
-    frame()->GetGalCanvas()->Refresh();
-
-    return 0;
-}
-
-
-int MODULE_EDITOR_TOOLS::ModuleEdgeOutlines( const TOOL_EVENT& aEvent )
-{
-    KIGFX::PCB_VIEW* pcbview = view();
-
-    auto displ_opts = (PCB_DISPLAY_OPTIONS*)frame()->GetDisplayOptions();
-    // switch the render mode:
-    bool enable_outline_mode = !displ_opts->m_DisplayModEdgeFill == SKETCH;
-    displ_opts->m_DisplayModEdgeFill = enable_outline_mode ? SKETCH : FILLED;
-
-    pcbview->UpdateDisplayOptions( displ_opts );
-
-    for( auto module : board()->Modules() )
-    {
-        for( auto item : module->GraphicalItems() )
-        {
-            if( item->Type() == PCB_MODULE_EDGE_T )
-                pcbview->Update( item, KIGFX::GEOMETRY );
-        }
-    }
-
-    frame()->GetGalCanvas()->Refresh();
-
-    return 0;
-}
-
 int MODULE_EDITOR_TOOLS::ExplodePadToShapes( const TOOL_EVENT& aEvent )
 {
     SELECTION& selection = m_toolMgr->GetTool<SELECTION_TOOL>()->GetSelection();
@@ -450,6 +387,13 @@ int MODULE_EDITOR_TOOLS::CreatePadFromShapes( const TOOL_EVENT& aEvent )
     if( refPad )
     {
         pad.reset( static_cast<D_PAD*>( refPad->Clone() ) );
+
+        if( refPad->GetShape() == PAD_SHAPE_RECT )
+            pad->SetAnchorPadShape( PAD_SHAPE_RECT );
+
+        // ignore the pad orientation and offset for the moment. Makes more trouble than it's worth.
+        pad->SetOrientation( 0 );
+        pad->SetOffset( wxPoint( 0, 0 ) );
     }
     else
     {
@@ -460,10 +404,9 @@ int MODULE_EDITOR_TOOLS::CreatePadFromShapes( const TOOL_EVENT& aEvent )
         int radius = Millimeter2iu( 0.2 );
         pad->SetSize ( wxSize( radius, radius ) );
         pad->IncrementPadName( true, true );
+        pad->SetOrientation( 0 );
     }
 
-
-    pad->SetPrimitives( shapes );
     pad->SetShape ( PAD_SHAPE_CUSTOM );
 
     OPT<VECTOR2I> anchor;
@@ -496,8 +439,9 @@ int MODULE_EDITOR_TOOLS::CreatePadFromShapes( const TOOL_EVENT& aEvent )
 
 
     pad->SetPosition( wxPoint( anchor->x, anchor->y ) );
-    pad->SetPrimitives( shapes );
-
+    pad->AddPrimitives( shapes );
+    pad->ClearFlags();
+    
     bool result = pad->MergePrimitivesAsPolygon();
 
     if( !result )
@@ -517,9 +461,8 @@ int MODULE_EDITOR_TOOLS::CreatePadFromShapes( const TOOL_EVENT& aEvent )
     }
 
     m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
-    m_toolMgr->RunAction( PCB_ACTIONS::selectItem, true, padPtr );
-
     commit.Push(_("Create Pad from Selected Shapes") );
+    m_toolMgr->RunAction( PCB_ACTIONS::selectItem, true, padPtr );
 
     return 0;
 }
@@ -530,6 +473,4 @@ void MODULE_EDITOR_TOOLS::setTransitions()
     Go( &MODULE_EDITOR_TOOLS::CreatePadFromShapes, PCB_ACTIONS::createPadFromShapes.MakeEvent() );
     Go( &MODULE_EDITOR_TOOLS::ExplodePadToShapes,  PCB_ACTIONS::explodePadToShapes.MakeEvent() );
     Go( &MODULE_EDITOR_TOOLS::EnumeratePads,       PCB_ACTIONS::enumeratePads.MakeEvent() );
-    Go( &MODULE_EDITOR_TOOLS::ModuleTextOutlines,  PCB_ACTIONS::moduleTextOutlines.MakeEvent() );
-    Go( &MODULE_EDITOR_TOOLS::ModuleEdgeOutlines,  PCB_ACTIONS::moduleEdgeOutlines.MakeEvent() );
 }

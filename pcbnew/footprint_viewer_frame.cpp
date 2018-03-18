@@ -39,6 +39,7 @@
 #include <lib_id.h>
 #include <confirm.h>
 #include <bitmaps.h>
+#include <gal/graphics_abstraction_layer.h>
 
 #include <class_board.h>
 #include <class_module.h>
@@ -177,6 +178,7 @@ FOOTPRINT_VIEWER_FRAME::FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent
 
     GetScreen()->m_Center = true;      // Center coordinate origins on screen.
     LoadSettings( config() );
+    GetGalDisplayOptions().m_axesEnabled = true;
 
     SetSize( m_FramePos.x, m_FramePos.y, m_FrameSize.x, m_FrameSize.y );
 
@@ -299,6 +301,7 @@ FOOTPRINT_VIEWER_FRAME::FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent
     Zoom_Automatique( false );
 #endif
 
+    GetGalCanvas()->GetGAL()->SetAxesEnabled( true );
     UseGalCanvas( switchToGalCanvas );
 
     if( !IsModal() )        // For modal mode, calling ShowModal() will show this frame
@@ -655,25 +658,21 @@ void FOOTPRINT_VIEWER_FRAME::Show3D_Frame( wxCommandEvent& event )
 {
     EDA_3D_VIEWER* draw3DFrame = Get3DViewerFrame();
 
+    // We can probably remove this for 6.0, but just to be safe we'll stick to
+    // one 3DFrame at a time for 5.0
     if( draw3DFrame )
-    {
-        // Raising the window does not show the window on Windows if iconized.
-        // This should work on any platform.
-        if( draw3DFrame->IsIconized() )
-            draw3DFrame->Iconize( false );
+        draw3DFrame->Close( true );
 
-        draw3DFrame->Raise();
-
-        // Raising the window does not set the focus on Linux.  This should work on any platform.
-        if( wxWindow::FindFocus() != draw3DFrame )
-            draw3DFrame->SetFocus();
-
-        return;
-    }
-
-    draw3DFrame = new EDA_3D_VIEWER( &Kiway(), this, wxEmptyString );
+    draw3DFrame = new EDA_3D_VIEWER( &Kiway(), this, _( "3D Viewer" ) );
     Update3D_Frame( false );
+
+#ifdef  __WXMAC__
+    // A stronger version of Raise() which promotes the window to its parent's level.
+    draw3DFrame->ReparentQuasiModal();
+#else
     draw3DFrame->Raise();     // Needed with some Window Managers
+#endif
+
     draw3DFrame->Show( true );
 }
 
@@ -685,9 +684,8 @@ void FOOTPRINT_VIEWER_FRAME::Update3D_Frame( bool aForceReloadFootprint )
     if( draw3DFrame == NULL )
         return;
 
-    wxString title = wxString::Format(
-                _( "3D Viewer" ) + L" \u2014 %s",
-                getCurFootprintName() );
+    wxString title = wxString::Format( _( "3D Viewer" ) + wxT( " \u2014 %s" ),
+                                       getCurFootprintName() );
 
     draw3DFrame->SetTitle( title );
 
