@@ -55,6 +55,9 @@ ZONE_CONTAINER::ZONE_CONTAINER( BOARD* aBoard ) :
     m_CornerSelection = nullptr;                // no corner is selected
     m_IsFilled = false;                         // fill status : true when the zone is filled
     m_FillMode = ZFM_POLYGONS;
+    m_hatchStyle = DIAGONAL_EDGE;
+    m_hatchPitch = GetDefaultHatchPitch();
+    m_hv45 = false;
     m_priority = 0;
     m_cornerSmoothingType = ZONE_SETTINGS::SMOOTHING_NONE;
     SetIsKeepout( false );
@@ -81,6 +84,7 @@ ZONE_CONTAINER::ZONE_CONTAINER( const ZONE_CONTAINER& aZone ) :
     m_ZoneClearance = aZone.m_ZoneClearance;     // clearance value
     m_ZoneMinThickness = aZone.m_ZoneMinThickness;
     m_FillMode = aZone.m_FillMode;               // Filling mode (segments/polygons)
+    m_hv45 = aZone.m_hv45;
     m_priority = aZone.m_priority;
     m_ArcToSegmentsCount = aZone.m_ArcToSegmentsCount;
     m_PadConnection = aZone.m_PadConnection;
@@ -1324,7 +1328,12 @@ bool ZONE_CONTAINER::BuildSmoothedPoly( SHAPE_POLY_SET& aSmoothedPoly ) const
         break;
 
     case ZONE_SETTINGS::SMOOTHING_FILLET:
-        aSmoothedPoly = m_Poly->Fillet( m_cornerRadius, m_ArcToSegmentsCount );
+        // Note: we're now using m_ArcToSegmentsCount only as a hint to determine accuracy
+        // vs. speed.
+        if( m_ArcToSegmentsCount > SEGMENT_COUNT_CROSSOVER )
+            aSmoothedPoly = m_Poly->Fillet( m_cornerRadius, ARC_HIGH_DEF );
+        else
+            aSmoothedPoly = m_Poly->Fillet( m_cornerRadius, ARC_LOW_DEF );
         break;
 
     default:

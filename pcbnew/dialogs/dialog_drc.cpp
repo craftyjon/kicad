@@ -220,6 +220,7 @@ void DIALOG_DRC_CONTROL::OnStartdrcClick( wxCommandEvent& event )
                            m_cbRefillZones->GetValue(),
                            m_cbCourtyardOverlap->GetValue(),
                            m_cbCourtyardMissing->GetValue(),
+                           m_cbReportAllTrackErrors->GetValue(),
                            reportName, make_report );
 
     DelDRCMarkers();
@@ -294,6 +295,7 @@ void DIALOG_DRC_CONTROL::OnListUnconnectedClick( wxCommandEvent& event )
                            m_cbRefillZones->GetValue(),
                            m_cbCourtyardOverlap->GetValue(),
                            m_cbCourtyardMissing->GetValue(),
+                           m_cbReportAllTrackErrors->GetValue(),
                            reportName, make_report );
 
     DelDRCMarkers();
@@ -392,10 +394,15 @@ void DIALOG_DRC_CONTROL::OnLeftDClickClearance( wxMouseEvent& event )
 
         if( item )
         {
+            auto pos = item->GetPointA();
+
+            if( auto marker = item->GetParent() )
+                pos = marker->GetPos();
+
             // When selecting a item, center it on GAL and just move the graphic
             // cursor in legacy mode gives the best result
             bool center = m_brdEditor->IsGalCanvasActive() ? true : false;
-            m_brdEditor->FocusOnLocation( item->GetPointA(), true, center );
+            m_brdEditor->FocusOnLocation( pos, true, center );
 
             if( !IsModal() )
             {
@@ -575,10 +582,15 @@ void DIALOG_DRC_CONTROL::OnMarkerSelectionEvent( wxCommandEvent& event )
         const DRC_ITEM* item = m_ClearanceListBox->GetItem( selection );
         if( item )
         {
+            auto pos = item->GetPointA();
+
+            if( auto marker = item->GetParent() )
+                pos = marker->GetPos();
+
             // When selecting a item, center it on GAL and just move the graphic
             // cursor in legacy mode gives the best result
             bool center = m_brdEditor->IsGalCanvasActive() ? true : false;
-            m_brdEditor->FocusOnLocation( item->GetPointA(), false, center );
+            m_brdEditor->FocusOnLocation( pos, false, center );
             RedrawDrawPanel();
         }
     }

@@ -124,7 +124,8 @@ TOOL_ACTION PCB_ACTIONS::find( "pcbnew.InteractiveSelection.Find",
 TOOL_ACTION PCB_ACTIONS::findMove( "pcbnew.InteractiveSelection.FindMove",
         AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_GET_AND_MOVE_FOOTPRINT ),
         _( "Get and Move Footprint" ),
-        _( "Selects a footprint by reference and places it under the cursor for moving"));
+        _( "Selects a footprint by reference and places it under the cursor for moving"),
+        move_xpm );
 
 TOOL_ACTION PCB_ACTIONS::filterSelection( "pcbnew.InteractiveSelection.FilterSelection",
         AS_GLOBAL, 0,
@@ -1234,20 +1235,20 @@ int SELECTION_TOOL::findMove( const TOOL_EVENT& aEvent )
  */
 static bool itemIsIncludedByFilter( const BOARD_ITEM& aItem,
                                     const BOARD& aBoard,
-                                    const LSET& aTechnlLayerMask,
                                     const DIALOG_BLOCK_OPTIONS::OPTIONS& aBlockOpts )
 {
     bool include = true;
     const PCB_LAYER_ID layer = aItem.GetLayer();
 
     // can skip without even checking item type
+    // fixme: selecting items on invisible layers does not work in GAL
     if( !aBlockOpts.includeItemsOnInvisibleLayers
         && !aBoard.IsLayerVisible( layer ) )
     {
         include = false;
     }
 
-    // if the item needsto be checked agains the options
+    // if the item needs to be checked against the options
     if( include )
     {
         switch( aItem.Type() )
@@ -1270,6 +1271,11 @@ static bool itemIsIncludedByFilter( const BOARD_ITEM& aItem,
             include = aBlockOpts.includeTracks;
             break;
         }
+        case PCB_VIA_T:
+        {
+            include = aBlockOpts.includeVias;
+            break;
+        }
         case PCB_ZONE_AREA_T:
         {
             include = aBlockOpts.includeZones;
@@ -1279,42 +1285,26 @@ static bool itemIsIncludedByFilter( const BOARD_ITEM& aItem,
         case PCB_TARGET_T:
         case PCB_DIMENSION_T:
         {
-            include = aTechnlLayerMask[layer];
+            if( layer == Edge_Cuts )
+                include = aBlockOpts.includeBoardOutlineLayer;
+            else
+                include = aBlockOpts.includeItemsOnTechLayers;
             break;
         }
         case PCB_TEXT_T:
         {
-            include = aBlockOpts.includePcbTexts
-                        && aTechnlLayerMask[layer];
+            include = aBlockOpts.includePcbTexts;
             break;
         }
         default:
         {
-            // no filterering, just select it
+            // no filtering, just select it
             break;
         }
         }
     }
 
     return include;
-}
-
-
-/**
- * Gets the technical layers that are part of the given selection opts
- */
-static LSET getFilteredLayerSet(
-        const DIALOG_BLOCK_OPTIONS::OPTIONS& blockOpts )
-{
-    LSET layerMask( Edge_Cuts );
-
-    if( blockOpts.includeItemsOnTechLayers )
-        layerMask.set();
-
-    if( !blockOpts.includeBoardOutlineLayer )
-        layerMask.set( Edge_Cuts, false );
-
-    return layerMask;
 }
 
 
@@ -1329,7 +1319,6 @@ int SELECTION_TOOL::filterSelection( const TOOL_EVENT& aEvent )
         return 0;
 
     const auto& board = *getModel<BOARD>();
-    const auto layerMask = getFilteredLayerSet( opts );
 
     // copy current selection
     auto selection = m_selection.GetItems();
@@ -1342,7 +1331,7 @@ int SELECTION_TOOL::filterSelection( const TOOL_EVENT& aEvent )
     for( auto i : selection )
     {
         auto item = static_cast<BOARD_ITEM*>( i );
-        bool include = itemIsIncludedByFilter( *item, board, layerMask, opts );
+        bool include = itemIsIncludedByFilter( *item, board, opts );
 
         if( include )
         {
@@ -1588,10 +1577,7 @@ bool SELECTION_TOOL::selectable( const BOARD_ITEM* aItem ) const
             }
 
             // For vias it is enough if only one of its layers is visible
-            PCB_LAYER_ID top, bottom;
-            via->LayerPair( &top, &bottom );
-
-            return board()->IsLayerVisible( top ) || board()->IsLayerVisible( bottom );
+            return ( board()->GetVisibleLayers() & via->GetLayerSet() ).any();
         }
         break;
 
@@ -1665,11 +1651,43 @@ bool SELECTION_TOOL::selectable( const BOARD_ITEM* aItem ) const
         // When editing modules, it's allowed to select them, even when
         // locked, since you already have to explicitly activate the
         // module editor to get to this stage
-        if ( !m_editModules )
+        if( !m_editModules )
         {
             MODULE* mod = static_cast<const D_PAD*>( aItem )->GetParent();
             if( mod && mod->IsLocked() )
                 return false;
+        }
+        else if( aItem->Type() == PCB_PAD_T )
+        {
+            // In editor, pads are selectable if any draw layer is visible
+
+            auto pad = static_cast<const D_PAD*>( aItem );
+
+            // Shortcut: check copper layer visibility
+            if( board()->IsLayerVisible( F_Cu ) && pad->IsOnLayer( F_Cu ) )
+                return true;
+
+            if( board()->IsLayerVisible( B_Cu ) && pad->IsOnLayer( B_Cu ) )
+                return true;
+
+            // Now check the non-copper layers
+
+            bool draw_layer_visible = false;
+
+            int pad_layers[KIGFX::VIEW::VIEW_MAX_LAYERS], pad_layers_count;
+            pad->ViewGetLayers( pad_layers, pad_layers_count );
+
+            for( int i = 0; i < pad_layers_count; ++i )
+            {
+                // NOTE: Only checking the regular layers (not GAL meta-layers)
+                if( ( ( pad_layers[i] < PCB_LAYER_ID_COUNT ) &&
+                      board()->IsLayerVisible( static_cast<PCB_LAYER_ID>( pad_layers[i] ) ) ) )
+                {
+                    draw_layer_visible = true;
+                }
+            }
+
+            return draw_layer_visible;
         }
 
         break;

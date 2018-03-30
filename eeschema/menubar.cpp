@@ -189,6 +189,10 @@ void prepareViewMenu( wxMenu* aParentMenu )
     AddMenuItem( aParentMenu, ID_ZOOM_PAGE, text,
                  HELP_ZOOM_FIT, KiBitmap( zoom_fit_in_page_xpm ) );
 
+    text = AddHotkeyName( _( "Zoom to Selection" ), g_Eeschema_Hokeys_Descr, HK_ZOOM_SELECTION );
+
+    AddMenuItem( aParentMenu, ID_ZOOM_SELECTION, text, KiBitmap( zoom_area_xpm ) );
+
     text = AddHotkeyName( _( "&Redraw" ), g_Schematic_Hokeys_Descr, HK_ZOOM_REDRAW );
 
     AddMenuItem( aParentMenu, ID_ZOOM_REDRAW, text,
@@ -740,13 +744,13 @@ static void preparePreferencesMenu( SCH_EDIT_FRAME* aFrame, wxMenu* aParentMenu 
     // Import/export
     AddMenuItem( aParentMenu,
                  ID_CONFIG_SAVE,
-                 _( "&Save Preferences..." ),
-                 _( "Save application preferences" ),
+                 _( "&Save Project File..." ),
+                 _( "Save project preferences into a project file" ),
                  KiBitmap( save_setup_xpm ) );
 
     AddMenuItem( aParentMenu,
                  ID_CONFIG_READ,
-                 _( "Load Prefe&rences..." ),
-                 _( "Load application preferences" ),
+                 _( "Load P&roject File..." ),
+                 _( "Load project preferences from a project file" ),
                  KiBitmap( import_setup_xpm ) );
 }

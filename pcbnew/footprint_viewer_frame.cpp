@@ -405,7 +405,7 @@ void FOOTPRINT_VIEWER_FRAME::ReCreateFootprintList()
         return;
     }
 
-    auto fp_info_list( FOOTPRINT_LIST::GetInstance( Kiway() ) );
+    auto fp_info_list = FOOTPRINT_LIST::GetInstance( Kiway() );
 
     wxString nickname = getCurNickname();
 
@@ -619,6 +619,33 @@ void FOOTPRINT_VIEWER_FRAME::OnActivate( wxActivateEvent& event )
     // If we are here, the library list has changed, rebuild it
     ReCreateLibraryList();
     UpdateTitle();
+}
+
+
+bool FOOTPRINT_VIEWER_FRAME::ShowModal( wxString* aFootprint, wxWindow* aResultantFocusWindow )
+{
+    if( aFootprint && !aFootprint->IsEmpty() )
+    {
+        try
+        {
+            LIB_ID fpid( *aFootprint );
+
+            if( fpid.IsValid() )
+            {
+                setCurNickname( fpid.GetLibNickname() );
+                setCurFootprintName( fpid.GetLibItemName() );
+                ReCreateFootprintList();
+                SelectAndViewFootprint( NEW_PART );
+            }
+        }
+        catch( ... )
+        {
+            // LIB_ID's constructor throws on some invalid footprint IDs.  It'd be nicer
+            // if it just set it to !IsValid(), but it is what it is.
+        }
+    }
+
+    return KIWAY_PLAYER::ShowModal( aFootprint, aResultantFocusWindow );
 }
 
 

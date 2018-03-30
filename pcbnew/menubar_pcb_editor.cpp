@@ -254,13 +254,13 @@ void preparePreferencesMenu( PCB_EDIT_FRAME* aFrame, wxMenu* aParentMenu )
     aParentMenu->AppendSeparator();
 
     AddMenuItem( aParentMenu, ID_CONFIG_SAVE,
-                 _( "&Save Preferences..." ),
-                 _( "Save application preferences" ),
+                 _( "&Save Project File..." ),
+                 _( "Save project preferences into a project file" ),
                  KiBitmap( save_setup_xpm ) );
 
     AddMenuItem( aParentMenu, ID_CONFIG_READ,
-                 _( "Load Prefe&rences..." ),
-                 _( "Load application preferences" ),
+                 _( "Load P&roject File..." ),
+                 _( "Load project preferences from a project file" ),
                  KiBitmap( read_setup_xpm ) );
 }
 
@@ -573,14 +573,14 @@ void prepareEditMenu( wxMenu* aParentMenu, bool aUseGal )
                  KiBitmap( exchange_xpm ) );
 
     AddMenuItem( aParentMenu, ID_MENU_PCB_SWAP_LAYERS,
-                 _( "&Swap Layers..." ),
-                 _( "Swap tracks on copper layers or drawings on other layers" ),
+                 _( "&Move and Swap Layers..." ),
+                 _( "Move tracks or drawings from a layer to an other layer" ),
                  KiBitmap( swap_layer_xpm ) );
 
     aParentMenu->AppendSeparator();
     AddMenuItem( aParentMenu, ID_PCB_GLOBAL_DELETE,
                  _( "&Global Deletions..." ),
-                 _( "Delete tracks, footprints and texts on board" ),
+                 _( "Delete tracks, footprints and graphic items from board" ),
                  KiBitmap( general_deletions_xpm ) );
 
     AddMenuItem( aParentMenu, ID_MENU_PCB_CLEAN,
@@ -636,10 +636,14 @@ void prepareViewMenu( wxMenu* aParentMenu, bool aUseGal )
                           HK_ZOOM_OUT, IS_ACCELERATOR );
     AddMenuItem( aParentMenu, ID_ZOOM_OUT, text, HELP_ZOOM_OUT, KiBitmap( zoom_out_xpm ) );
 
-    text = AddHotkeyName( _( "&Fit on Screen" ), g_Pcbnew_Editor_Hotkeys_Descr,
+    text = AddHotkeyName( _( "Zoom to &Fit" ), g_Pcbnew_Editor_Hotkeys_Descr,
                           HK_ZOOM_AUTO  );
     AddMenuItem( aParentMenu, ID_ZOOM_PAGE, text, HELP_ZOOM_FIT,
                  KiBitmap( zoom_fit_in_page_xpm ) );
+
+    text = AddHotkeyName( _( "Zoom to Selection" ), g_Pcbnew_Editor_Hotkeys_Descr,
+                          HK_ZOOM_SELECTION );
+    AddMenuItem( aParentMenu, ID_ZOOM_SELECTION, text, KiBitmap( zoom_area_xpm ), wxITEM_CHECK );
 
     text = AddHotkeyName( _( "&Redraw" ), g_Pcbnew_Editor_Hotkeys_Descr, HK_ZOOM_REDRAW );
     AddMenuItem( aParentMenu, ID_ZOOM_REDRAW, text,

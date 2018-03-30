@@ -208,8 +208,8 @@ public:
             g->SetColAttr( COL_TYPE, attr );
 
             attr = new wxGridCellAttr;
-            attr->SetEditor( new wxGridCellBoolEditor() );
             attr->SetRenderer( new wxGridCellBoolRenderer() );
+            attr->SetReadOnly();    // not really; we delegate interactivity to GRID_TRICKS
             g->SetColAttr( COL_ENABLED, attr );
 
             // all but COL_OPTIONS, which is edited with Option Editor anyways.
@@ -582,7 +582,7 @@ private:
         int dialogRet = 0;
 
         // stuff any pending cell editor text into the table.
-        m_cur_grid->SaveEditControlValue();
+        m_cur_grid->DisableCellEditControl();
 
         if( verifyTables() )
         {

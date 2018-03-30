@@ -194,7 +194,7 @@ static EDA_HOTKEY HkZoomOut( _HKI( "Zoom Out" ), HK_ZOOM_OUT, GR_KB_CTRL + '-' )
 #endif
 
 static EDA_HOTKEY HkZoomSelection( _HKI( "Zoom to Selection" ), HK_ZOOM_SELECTION,
-                                   '@', ID_ZOOM_SELECTION );
+                                   GR_KB_CTRL + WXK_F5, ID_ZOOM_SELECTION );
 
 static EDA_HOTKEY Hk3DViewer( _HKI( "3D Viewer" ), HK_3D_VIEWER, GR_KB_ALT + '3' );
 
@@ -251,6 +251,9 @@ static EDA_HOTKEY HkDpDimension( _HKI( "Differential Pair Dimensions" ), HK_DP_D
 static EDA_HOTKEY HkViaSizeInc( _HKI( "Increase Via Size" ), HK_VIA_SIZE_INC, '\'' );
 
 static EDA_HOTKEY HkViaSizeDec( _HKI( "Decrease Via Size" ), HK_VIA_SIZE_DEC, '\\' );
+
+static EDA_HOTKEY HkHighlightNetSelection( _HKI( "Toggle Highlight of Selected Net (Modern Toolset only)" ),
+                                           HK_HIGHLIGHT_NET_SELECTION, '`' );
 
 // Common: hotkeys_basic.h
 static EDA_HOTKEY HkNew( _HKI( "New" ), HK_NEW, GR_KB_CTRL + 'N', (int) wxID_NEW );
@@ -343,6 +346,7 @@ EDA_HOTKEY* board_edit_Hotkey_List[] =
     &HkSelectConnection,       &HkSelectCopper,
     &HkRoutingOptions,         &HkCustomTrackWidth,          &HkDpDimension,
     &HkViaSizeInc,             &HkViaSizeDec,
+    &HkHighlightNetSelection,
     NULL
 };
 

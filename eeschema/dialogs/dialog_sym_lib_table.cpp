@@ -182,8 +182,8 @@ DIALOG_SYMBOL_LIB_TABLE::DIALOG_SYMBOL_LIB_TABLE( wxTopLevelWindow* aParent,
         g->SetColAttr( COL_TYPE, attr );
 
         attr = new wxGridCellAttr;
-        attr->SetEditor( new wxGridCellBoolEditor() );
         attr->SetRenderer( new wxGridCellBoolRenderer() );
+        attr->SetReadOnly();    // not really; we delegate interactivity to GRID_TRICKS
         g->SetColAttr( COL_ENABLED, attr );
 
         // all but COL_OPTIONS, which is edited with Option Editor anyways.
@@ -550,8 +550,8 @@ void DIALOG_SYMBOL_LIB_TABLE::moveDownHandler( wxCommandEvent& event )
 
 bool DIALOG_SYMBOL_LIB_TABLE::TransferDataFromWindow()
 {
-    // stuff any pending cell editor text into the table.
-    m_cur_grid->SaveEditControlValue();
+    // Commit any pending in-place edits and close the editor
+    m_cur_grid->DisableCellEditControl();
 
     if( !wxDialog::TransferDataFromWindow() || !verifyTables() )
         return false;

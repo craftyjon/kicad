@@ -58,9 +58,7 @@ class CVPCB_MAINFRAME : public KIWAY_PLAYER
 {
     friend struct CV::IFACE;
 
-    wxArrayString             m_footprintListEntries;
     wxString                  m_currentSearchPattern;
-    bool                      m_keepCvpcbOpen;
     NETLIST                   m_netlist;
     int                       m_filteringOptions;
     wxAuiToolBar*             m_mainToolBar;
@@ -68,18 +66,23 @@ class CVPCB_MAINFRAME : public KIWAY_PLAYER
     LIBRARY_LISTBOX*          m_libListBox;
     COMPONENTS_LISTBOX*       m_compListBox;
     wxTextCtrl*               m_tcFilterString;
+    wxStaticText*             m_statusLine1;
+    wxStaticText*             m_statusLine2;
+    wxButton*                 m_saveAndContinue;
 
 public:
     wxArrayString             m_ModuleLibNames;
     wxArrayString             m_EquFilesNames;
-    std::unique_ptr<FOOTPRINT_LIST> m_FootprintsList;
+
+    FOOTPRINT_LIST*           m_FootprintsList;
 
 protected:
-    int             m_undefinedComponentCnt;
     bool            m_modified;
     bool            m_skipComponentSelect;      // true to skip OnSelectComponent event
                                                 // (in automatic selection/deletion of associations)
     PARAM_CFG_ARRAY m_projectFileParams;
+
+    bool            m_initialized;
 
     CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent );
 
@@ -111,9 +114,13 @@ public:
      */
     void             OnEditFootprintLibraryTable( wxCommandEvent& event );
 
+    void             OnCancel( wxCommandEvent& aEvent );
+    void             OnOK( wxCommandEvent& aEvent );
+    void             OnSaveAndContinue( wxCommandEvent& aEvent );
     void             OnQuit( wxCommandEvent& event );
     void             OnCloseWindow( wxCloseEvent& Event );
     void             OnSize( wxSizeEvent& SizeEvent );
+    void             OnKeyDown( wxKeyEvent& aEvent );
     void             ReCreateHToolbar();
     virtual void     ReCreateMenuBar() override;
     void             ShowChangedLanguage() override;
@@ -129,8 +136,6 @@ public:
      */
     void             DelAssociations( wxCommandEvent& event );
 
-    void             SaveQuitCvpcb( wxCommandEvent& event );
-
     void             OnConfigurePaths( wxCommandEvent& aEvent );
 
     /**
@@ -139,7 +144,6 @@ public:
      */
     void             OnEditEquFilesList( wxCommandEvent& aEvent );
 
-    void             OnKeepOpenOnSave( wxCommandEvent& event );
     void             DisplayModule( wxCommandEvent& event );
 
     /**
@@ -151,8 +155,6 @@ public:
      * 'cmp_ref' 'footprint_name'
      */
     void             AutomaticFootprintMatching( wxCommandEvent& event );
-
-    void             DisplayDocFile( wxCommandEvent& event );
 
     /**
      * Function OnSelectFilteringFootprint
@@ -197,8 +199,9 @@ public:
      * Function SaveFootprintAssociation
      * saves the edits that the user has done by sending them back to eeschema
      * via the kiway.
+     * Optionally saves the schematic to disk as well.
      */
-    void SaveFootprintAssociation();
+    void SaveFootprintAssociation( bool doSaveSchematic );
 
     /**
      * Function ReadNetListAndFpFiles
@@ -305,7 +308,6 @@ public:
 private:
     // UI event handlers.
     // Keep consistent the display state of toggle menus or tools in toolbar
-    void OnUpdateKeepOpenOnSave( wxUpdateUIEvent& event );
     void OnFilterFPbyKeywords( wxUpdateUIEvent& event );
     void OnFilterFPbyPinCount( wxUpdateUIEvent& event );
     void OnFilterFPbyLibrary( wxUpdateUIEvent& event );
