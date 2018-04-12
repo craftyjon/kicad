@@ -67,6 +67,8 @@ SCH_BUS_BUS_ENTRY::SCH_BUS_BUS_ENTRY( const wxPoint& pos, char shape ) :
     SCH_BUS_ENTRY_BASE( SCH_BUS_BUS_ENTRY_T, pos, shape )
 {
     m_Layer = LAYER_BUS;
+    m_connected_bus_items[0] = nullptr;
+    m_connected_bus_items[1] = nullptr;
 }
 
 EDA_ITEM* SCH_BUS_WIRE_ENTRY::Clone() const

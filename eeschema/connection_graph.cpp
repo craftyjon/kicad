@@ -61,9 +61,9 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
 
         switch( item->Type() )
         {
-        case SCH_LABEL_T:               item_priority = 2; break;
-        case SCH_HIERARCHICAL_LABEL_T:  item_priority = 3; break;
-        case SCH_SHEET_PIN_T:           item_priority = 4; break;
+        case SCH_SHEET_PIN_T:           item_priority = 2; break;
+        case SCH_LABEL_T:               item_priority = 3; break;
+        case SCH_HIERARCHICAL_LABEL_T:  item_priority = 4; break;
         case SCH_PIN_CONNECTION_T:
         {
             auto pin_connection = static_cast<SCH_PIN_CONNECTION*>( item );
@@ -323,6 +323,29 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH aSheet,
                     {
                         auto bus_entry = static_cast<SCH_BUS_WIRE_ENTRY*>( connected_item );
                         bus_entry->m_connected_bus_item = bus;
+                    }
+                }
+            }
+
+            // Bus-to-bus entries are treated just like bus wires
+            if( connected_item->Type() == SCH_BUS_BUS_ENTRY_T )
+            {
+                if( connection_vec.size() < 2 )
+                {
+                    auto screen = aSheet.LastScreen();
+                    auto bus = screen->GetBus( it.first );
+
+                    if( bus )
+                    {
+                        auto bus_entry = static_cast<SCH_BUS_BUS_ENTRY*>( connected_item );
+
+                        if( it.first == bus_entry->GetPosition() )
+                            bus_entry->m_connected_bus_items[0] = bus;
+                        else
+                            bus_entry->m_connected_bus_items[1] = bus;
+
+                        bus_entry->ConnectedItems().insert( bus );
+                        bus->ConnectedItems().insert( bus_entry );
                     }
                 }
             }
