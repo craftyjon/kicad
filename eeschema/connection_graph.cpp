@@ -25,6 +25,7 @@
 #include <erc.h>
 #include <sch_bus_entry.h>
 #include <sch_component.h>
+#include <sch_line.h>
 #include <sch_pin_connection.h>
 #include <sch_screen.h>
 #include <sch_sheet.h>
@@ -299,6 +300,31 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH aSheet,
             if( connected_item->Type() == SCH_JUNCTION_T )
             {
                 junction = connected_item;
+            }
+
+            // Bus entries are special: they can have connection points in the
+            // middle of a wire segment, because the junction algo doesn't split
+            // the segment in two where you place a bus entry.  This means that
+            // bus entries that don't land on the end of a line segment need to
+            // have "virtual" connection points to the segments they graphically
+            // touch.
+            if( connected_item->Type() == SCH_BUS_WIRE_ENTRY_T )
+            {
+                // If this location only has the connection point of the bus
+                // entry itself, this means that either the bus entry is not
+                // connected to anything graphically, or that it is connected to
+                // a segment at some point other than at one of the endpoints.
+                if( connection_vec.size() == 1 )
+                {
+                    auto screen = aSheet.LastScreen();
+                    auto bus = screen->GetBus( it.first );
+
+                    if( bus )
+                    {
+                        auto bus_entry = static_cast<SCH_BUS_WIRE_ENTRY*>( connected_item );
+                        bus_entry->m_connected_bus_item = bus;
+                    }
+                }
             }
 
             for( auto test_item : connection_vec )
@@ -958,6 +984,13 @@ bool CONNECTION_GRAPH::ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSub
                 conflict = false;
         }
     }
+#if defined(DEBUG)
+    else if( bus_entry )
+    {
+        std::cout << "Warning: bus entry at " << bus_entry->GetPosition()
+                  << " has no connected_bus_item" << std::endl;
+    }
+#endif
 
     if( conflict )
     {

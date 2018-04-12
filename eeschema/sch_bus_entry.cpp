@@ -414,21 +414,14 @@ char SCH_BUS_ENTRY_BASE::GetBusEntryShape() const
 
 void SCH_BUS_ENTRY_BASE::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
 {
-    wxString msg;
-
-    // TODO(JE) this is broken because only components know about the current sheet
-//     if( m_connection )
-//     {
-//         msg = m_connection->Name();
-//         aList.push_back( MSG_PANEL_ITEM( _( "Net Name" ), msg, BROWN ) );
-
-// #if defined(DEBUG)
-//         m_connection->AppendDebugInfoToMsgPanel( aList );
-
-//         msg.Printf( "%zu", m_connected_items.size() );
-//         aList.push_back( MSG_PANEL_ITEM( _( "Connections" ), msg, BROWN ) );
-// #endif
-//     }
+    if( auto conn = Connection( *g_CurrentSheet ) )
+    {
+#if defined(DEBUG)
+        conn->AppendDebugInfoToMsgPanel( aList );
+#else
+        conn->AppendInfoToMsgPanel( aList );
+#endif
+    }
 }
 
 
