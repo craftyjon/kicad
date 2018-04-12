@@ -544,28 +544,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 break;
             }
 
-            // std::cout << "Propagating SG " << subgraph.m_code << " driven by "
-            //           << subgraph.m_driver->GetSelectMenuText() << " net "
-            //           << subgraph.m_driver->Connection()->Name() << std::endl;
-
-            for( auto item : subgraph->m_items )
-            {
-                auto item_conn = item->Connection( sheet );
-
-                if( ( connection->IsBus() && item_conn->IsNet() ) ||
-                    ( connection->IsNet() && item_conn->IsBus() ) )
-                {
-                    continue;
-                }
-
-                if( item != driver )
-                {
-                    // std::cout << "   +" << item->GetSelectMenuText() << std::endl;
-                    item_conn->Clone( *connection );
-                    item_conn->ClearDirty();
-                }
-            }
-
             subgraph->m_dirty = false;
         }
     }
@@ -594,6 +572,12 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 m_bus_name_to_code_map[ name ] = code;
             }
 
+            if( debug )
+            {
+                std::cout << "SG " << subgraph->m_code << " got buscode " << code
+                          << " with name " << name << std::endl;
+            }
+
             connection->SetBusCode( code );
         }
         else
@@ -611,12 +595,30 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             connection->SetNetCode( code );
 
             m_net_code_to_subgraphs_map[ connection->NetCode() ].push_back( subgraph );
+
+            if( debug )
+            {
+                std::cout << "SG " << subgraph->m_code << " got netcode " << code
+                          << " with name " << name << std::endl;
+            }
         }
 
-        if( debug )
+        for( auto item : subgraph->m_items )
         {
-            std::cout << "SG " << subgraph->m_code << " got code " << code
-                      << " with name " << name << std::endl;
+            auto item_conn = item->Connection( subgraph->m_sheet );
+
+            if( ( connection->IsBus() && item_conn->IsNet() ) ||
+                ( connection->IsNet() && item_conn->IsBus() ) )
+            {
+                continue;
+            }
+
+            if( item != subgraph->m_driver )
+            {
+                // std::cout << "   +" << item->GetSelectMenuText() << std::endl;
+                item_conn->Clone( *connection );
+                item_conn->ClearDirty();
+            }
         }
 
         // Reset the flag for the next loop below
@@ -1132,4 +1134,6 @@ bool CONNECTION_GRAPH::ercCheckLabels( CONNECTION_SUBGRAPH* aSubgraph,
 
         return false;
     }
+
+    return true;
 }
