@@ -980,8 +980,16 @@ bool CONNECTION_GRAPH::ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSub
 
         for( auto member : bus_wire->Connection( sheet )->Members() )
         {
-            if( member->Name() == test_name )
+            if( member->Type() == CONNECTION_BUS )
+            {
+                for( const auto& sub_member : member->Members() )
+                    if( sub_member->Name() == test_name )
+                        conflict = false;
+            }
+            else if( member->Name() == test_name )
+            {
                 conflict = false;
+            }
         }
     }
 #if defined(DEBUG)
