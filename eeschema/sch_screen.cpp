@@ -221,9 +221,6 @@ SCH_ITEM* SCH_SCREEN::GetItem( const wxPoint& aPosition, int aAccuracy, KICAD_T 
 {
     for( SCH_ITEM* item = m_drawList.begin(); item; item = item->Next() )
     {
-        if( item->HitTest( aPosition, aAccuracy ) && (aType == NOT_USED) )
-            return item;
-
         if( (aType == SCH_FIELD_T) && (item->Type() == SCH_COMPONENT_T) )
         {
             SCH_COMPONENT* component = (SCH_COMPONENT*) item;
@@ -245,7 +242,8 @@ SCH_ITEM* SCH_SCREEN::GetItem( const wxPoint& aPosition, int aAccuracy, KICAD_T 
             if( label )
                 return (SCH_ITEM*) label;
         }
-        else if( (item->Type() == aType) && item->HitTest( aPosition, aAccuracy ) )
+        else if( ( ( item->Type() == aType ) || ( aType == NOT_USED ) )
+                && item->HitTest( aPosition, aAccuracy ) )
         {
             return item;
         }
@@ -801,7 +799,7 @@ void SCH_SCREEN::SelectBlockItems()
                 // this selected wire has no ends in block.
                 // But it was selected (because it intersects the selecting area),
                 // so we must keep it selected and select items connected to it
-                // Note: an other option could be: remove it from drag list
+                // Note: another option could be: remove it from drag list
                 item->SetFlags( SELECTED | SKIP_STRUCT );
                 addConnections( item );
             }
@@ -1169,7 +1167,7 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
 
             // when tmp != NULL, segment is a new candidate:
             // put it in deleted list if
-            // the start point is not connected to an other item (like pin)
+            // the start point is not connected to another item (like pin)
             if( tmp && !CountConnectedItems( segment->GetStartPoint(), true ) )
                 noconnect = true;
 
@@ -1193,7 +1191,7 @@ int SCH_SCREEN::GetConnection( const wxPoint& aPosition, PICKED_ITEMS_LIST& aLis
 
             // when tmp != NULL, segment is a new candidate:
             // put it in deleted list if
-            // the end point is not connected to an other item (like pin)
+            // the end point is not connected to another item (like pin)
             if( tmp && !CountConnectedItems( segment->GetEndPoint(), true ) )
                 noconnect = true;
 

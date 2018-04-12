@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2004-2017 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 2004-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2004-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -132,8 +132,10 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
     KIWAY_PLAYER( aKiway, aParent, aFrameType, aTitle, aPos, aSize, aStyle, aFrameName ),
     m_galDisplayOptions( std::make_unique<KIGFX::GAL_DISPLAY_OPTIONS>() )
 {
+    m_socketServer        = nullptr;
     m_drawToolBar         = NULL;
     m_optionsToolBar      = NULL;
+    m_auxiliaryToolBar    = NULL;
     m_gridSelectBox       = NULL;
     m_zoomSelectBox       = NULL;
     m_hotkeysDescrList    = NULL;
@@ -215,6 +217,13 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
 
 EDA_DRAW_FRAME::~EDA_DRAW_FRAME()
 {
+    delete m_socketServer;
+    for( auto socket : m_sockets )
+    {
+        socket->Shutdown();
+        socket->Destroy();
+    }
+
     if( m_canvasTypeDirty )
         saveCanvasTypeSetting( m_canvasType );
 
@@ -234,6 +243,7 @@ EDA_DRAW_FRAME::~EDA_DRAW_FRAME()
 
 void EDA_DRAW_FRAME::OnCharHook( wxKeyEvent& event )
 {
+    wxLogTrace( kicadTraceKeyEvent, "EDA_DRAW_FRAME::OnCharHook %s", dumpKeyEvent( event ) );
     // Key events can be filtered here.
     // Currently no filtering is made.
     event.Skip();
@@ -303,6 +313,37 @@ void EDA_DRAW_FRAME::OnToggleGridState( wxCommandEvent& aEvent )
     }
 
     m_canvas->Refresh();
+}
+
+bool EDA_DRAW_FRAME::GetToolToggled( int aToolId )
+{
+    // Checks all the toolbars and returns true if the given tool id is toggled.
+    return ( ( m_mainToolBar && m_mainToolBar->GetToolToggled( aToolId ) ) ||
+             ( m_optionsToolBar && m_optionsToolBar->GetToolToggled( aToolId ) ) ||
+             ( m_drawToolBar && m_drawToolBar->GetToolToggled( aToolId ) ) ||
+             ( m_auxiliaryToolBar && m_auxiliaryToolBar->GetToolToggled( aToolId ) )
+           );
+}
+
+
+wxAuiToolBarItem* EDA_DRAW_FRAME::GetToolbarTool( int aToolId )
+{
+    // Checks all the toolbars and returns a reference to the given tool id
+    // (or the first tool found, but only one or 0 tool is expected, because on
+    // Windows, when different tools have the same ID, it creates issues)
+    if( m_mainToolBar && m_mainToolBar->FindTool( aToolId ) )
+        return m_mainToolBar->FindTool( aToolId );
+
+    if( m_optionsToolBar && m_optionsToolBar->FindTool( aToolId ) )
+        return m_optionsToolBar->FindTool( aToolId );
+
+    if( m_drawToolBar && m_drawToolBar->FindTool( aToolId ) )
+        return m_drawToolBar->FindTool( aToolId );
+
+    if( m_auxiliaryToolBar && m_auxiliaryToolBar->FindTool( aToolId ) )
+        return m_auxiliaryToolBar->FindTool( aToolId );
+
+    return nullptr;
 }
 
 

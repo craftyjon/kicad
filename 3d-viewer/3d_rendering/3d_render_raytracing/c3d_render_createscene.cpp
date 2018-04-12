@@ -46,7 +46,7 @@
 #include <class_module.h>
 
 #include <base_units.h>
-#include <profile.h>        // To use GetRunningMicroSecs or an other profiling utility
+#include <profile.h>        // To use GetRunningMicroSecs or another profiling utility
 
 /**
   * Scale convertion from 3d model units to pcb units
@@ -1211,7 +1211,7 @@ void C3D_RENDER_RAYTRACING::load_3D_models()
 
             wxPoint pos = module->GetPosition();
 
-            glm::mat4 moduleMatrix = glm::mat4();
+            glm::mat4 moduleMatrix = glm::mat4( 1.0f );
 
             moduleMatrix = glm::translate( moduleMatrix,
                                            SFVEC3F( pos.x * m_settings.BiuTo3Dunits(),

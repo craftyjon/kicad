@@ -2,8 +2,8 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2004 Jean-Pierre Charras, jaen-pierre.charras@gipsa-lab.inpg.com
- * Copyright (C) 2011 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 1992-2016 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2011 Wayne Stambaugh <stambaughw@gmail.com>
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -50,6 +50,17 @@ typedef void ( *MOUSE_CAPTURE_CALLBACK )( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
  * End mouse capture callback function prototype.
  */
 typedef void ( *END_MOUSE_CAPTURE_CALLBACK )( EDA_DRAW_PANEL* aPanel, wxDC* aDC );
+
+
+/**
+ * Debug helper for printing wxKeyEvent information.
+ *
+ * @param aEvent is the wxKeyEvent to generate the print string from.
+ * @return the wxKeyEvent information.
+ */
+extern wxString dumpKeyEvent( const wxKeyEvent& aEvent );
+
+extern const wxString kicadTraceKeyEvent;
 
 
 class EDA_DRAW_PANEL : public wxScrolledWindow
@@ -112,7 +123,7 @@ private:
     END_MOUSE_CAPTURE_CALLBACK m_endMouseCaptureCallback;
 
     /// useful to avoid false start block in certain cases
-    /// (like switch from a sheet to an other sheet
+    /// (like switch from a sheet to another sheet
     /// >= 0 (or >= n) if a block can start
     int     m_canStartBlock;
 

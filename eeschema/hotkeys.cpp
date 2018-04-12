@@ -797,18 +797,26 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
         break;
 
     case HK_DELETE:
-        if ( !itemInEdit )
-            SetDrawItem( LocateItemUsingCursor( aPosition ) );
-
-        if( GetDrawItem() )
+        if( blocInProgress )
         {
-            cmd.SetId( ID_POPUP_LIBEDIT_DELETE_ITEM );
+            cmd.SetId( ID_POPUP_DELETE_BLOCK );
             Process_Special_Functions( cmd );
+        }
+        else
+        {
+            if( !itemInEdit )
+                SetDrawItem( LocateItemUsingCursor( aPosition ) );
+
+            if( GetDrawItem() )
+            {
+                cmd.SetId( ID_POPUP_LIBEDIT_DELETE_ITEM );
+                Process_Special_Functions( cmd );
+            }
         }
         break;
 
     case HK_LIBEDIT_MOVE_GRAPHIC_ITEM:
-        if( !itemInEdit )
+        if( !itemInEdit && !blocInProgress )
         {
             SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
@@ -821,7 +829,7 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
         break;
 
     case HK_DRAG:
-        if( !itemInEdit )
+        if( !itemInEdit && !blocInProgress  )
         {
             SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
@@ -834,19 +842,25 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
         break;
 
     case HK_MIRROR_Y:                       // Mirror Y
-        if( !itemInEdit )
+        if( !itemInEdit && !blocInProgress )
             SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
-        cmd.SetId( ID_LIBEDIT_MIRROR_Y );
-        GetEventHandler()->ProcessEvent( cmd );
+        if( blocInProgress || GetDrawItem() )
+        {
+            cmd.SetId( ID_LIBEDIT_MIRROR_Y );
+            GetEventHandler()->ProcessEvent( cmd );
+        }
         break;
 
     case HK_MIRROR_X:                       // Mirror X
-        if( !itemInEdit )
+        if( !itemInEdit && !blocInProgress )
             SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
-        cmd.SetId( ID_LIBEDIT_MIRROR_X );
-        GetEventHandler()->ProcessEvent( cmd );
+        if( blocInProgress || GetDrawItem() )
+        {
+            cmd.SetId( ID_LIBEDIT_MIRROR_X );
+            GetEventHandler()->ProcessEvent( cmd );
+        }
         break;
     }
 

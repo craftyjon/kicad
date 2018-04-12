@@ -40,19 +40,11 @@
 
 void GERBVIEW_FRAME::ReCreateMenuBar()
 {
-    // Create and try to get the current menubar
-    wxMenuBar* menuBar = GetMenuBar();
+    // wxWidgets handles the Mac Application menu behind the scenes, but that means
+    // we always have to start from scratch with a new wxMenuBar.
+    wxMenuBar* oldMenuBar = GetMenuBar();
+    wxMenuBar* menuBar = new wxMenuBar();
     wxString   text;
-
-    if( !menuBar )
-        menuBar = new wxMenuBar();
-
-    // Delete all existing menus so they can be rebuilt.
-    // This allows language changes of the menu text on the fly.
-    menuBar->Freeze();
-
-    while( menuBar->GetMenuCount() )
-        delete menuBar->Remove( 0 );
 
     // Recreate all menus:
 
@@ -212,7 +204,8 @@ void GERBVIEW_FRAME::ReCreateMenuBar()
     AddMenuItem( viewMenu, ID_ZOOM_PAGE, text, _( "Zoom to fit" ),
                  KiBitmap( zoom_fit_in_page_xpm ) );
 
-    AddMenuItem( viewMenu, ID_ZOOM_SELECTION, _( "Zoom to Selection" ),
+    text = AddHotkeyName( _( "Zoom to Selection" ), GerbviewHokeysDescr, HK_ZOOM_SELECTION );
+    AddMenuItem( viewMenu, ID_MENU_ZOOM_SELECTION, text,
                  KiBitmap( zoom_area_xpm ) );
 
     text = AddHotkeyName( _( "&Redraw" ), GerbviewHokeysDescr, HK_ZOOM_REDRAW );
@@ -401,11 +394,7 @@ void GERBVIEW_FRAME::ReCreateMenuBar()
     menuBar->Append( miscellaneousMenu, _( "&Miscellaneous" ) );
     menuBar->Append( helpMenu, _( "&Help" ) );
 
-    menuBar->Thaw();
-
     // Associate the menu bar with the frame, if no previous menubar
-    if( GetMenuBar() == NULL )
-        SetMenuBar( menuBar );
-    else
-        menuBar->Refresh();
+    SetMenuBar( menuBar );
+    delete oldMenuBar;
 }

@@ -36,7 +36,7 @@
 #include "3d_fastmath.h"
 #include "3d_math.h"
 #include "../common_ogl/ogl_utils.h"
-#include <profile.h>        // To use GetRunningMicroSecs or an other profiling utility
+#include <profile.h>        // To use GetRunningMicroSecs or another profiling utility
 
 // This should be used in future for the function
 // convertLinearToSRGB
@@ -497,7 +497,7 @@ static void HITINFO_PACKET_init( HITINFO_PACKET *aHitPacket )
         aHitPacket[i].m_HitInfo.m_tHit = std::numeric_limits<float>::infinity();
         aHitPacket[i].m_HitInfo.m_acc_node_info = 0;
         aHitPacket[i].m_hitresult = false;
-        aHitPacket[i].m_HitInfo.m_HitNormal = SFVEC3F();
+        aHitPacket[i].m_HitInfo.m_HitNormal = SFVEC3F( 0.0f );
         aHitPacket[i].m_HitInfo.m_ShadowFactor = 1.0f;
     }
 }
@@ -706,9 +706,9 @@ void C3D_RENDER_RAYTRACING::rt_render_trace_block( GLubyte *ptrPBO ,
                 {
                         m_postshader_ssao.SetPixelData( blockPos.x + x,
                                                         yBlockPos,
-                                                        SFVEC3F(),
+                                                        SFVEC3F( 0.0f ),
                                                         outColor,
-                                                        SFVEC3F(),
+                                                        SFVEC3F( 0.0f ),
                                                         0,
                                                         1.0f );
                 }
@@ -883,9 +883,9 @@ void C3D_RENDER_RAYTRACING::rt_render_trace_block( GLubyte *ptrPBO ,
                                                     hitPacket_X0Y0[i].m_HitInfo.m_ShadowFactor );
                 else
                     m_postshader_ssao.SetPixelData( bPos.x, bPos.y,
-                                                    SFVEC3F(),
+                                                    SFVEC3F( 0.0f ),
                                                     hColor,
-                                                    SFVEC3F(),
+                                                    SFVEC3F( 0.0f ),
                                                     0,
                                                     1.0f );
 
@@ -2036,7 +2036,7 @@ bool C3D_RENDER_RAYTRACING::initializeOpenGL()
 void C3D_RENDER_RAYTRACING::initialize_block_positions()
 {
 
-    m_realBufferSize = SFVEC2UI();
+    m_realBufferSize = SFVEC2UI( 0 );
 
     // Calc block positions for fast preview mode
     // /////////////////////////////////////////////////////////////////////

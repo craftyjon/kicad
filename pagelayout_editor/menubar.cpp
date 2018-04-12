@@ -40,28 +40,19 @@
 
 void PL_EDITOR_FRAME::ReCreateMenuBar()
 {
+    // wxWidgets handles the Mac Application menu behind the scenes, but that means
+    // we always have to start from scratch with a new wxMenuBar.
+    wxMenuBar*  oldMenuBar = GetMenuBar();
+    wxMenuBar*  menuBar = new wxMenuBar();
+
     wxString msg;
     static wxMenu* openRecentMenu;  // Open Recent submenu,
                                     // static to remember this menu
-
-    // Create and try to get the current menubar
-    wxMenuBar* menuBar = GetMenuBar();
-
-    if( !menuBar )
-        menuBar = new wxMenuBar();
-
-    // Delete all existing menus so they can be rebuilt.
-    // This allows language changes of the menu text on the fly.
-    menuBar->Freeze();
 
     // Before deleting, remove the menus managed by m_fileHistory
     // (the file history will be updated when adding/removing files in history
     if( openRecentMenu )
         Kiface().GetFileHistory().RemoveMenu( openRecentMenu );
-
-    // Delete all existing menus
-    while( menuBar->GetMenuCount() )
-        delete menuBar->Remove( 0 );
 
     // Recreate all menus:
 
@@ -141,7 +132,7 @@ void PL_EDITOR_FRAME::ReCreateMenuBar()
     AddMenuItem( viewMenu, ID_ZOOM_PAGE, msg, wxEmptyString, KiBitmap( zoom_fit_in_page_xpm ) );
 
     msg = AddHotkeyName( _( "Zoom to Selection" ), PlEditorHokeysDescr, HK_ZOOM_SELECTION );
-    AddMenuItem( viewMenu, ID_ZOOM_SELECTION, msg, wxEmptyString, KiBitmap( zoom_area_xpm ) );
+    AddMenuItem( viewMenu, ID_MENU_ZOOM_SELECTION, msg, wxEmptyString, KiBitmap( zoom_area_xpm ) );
 
     viewMenu->AppendSeparator();
 
@@ -246,11 +237,6 @@ void PL_EDITOR_FRAME::ReCreateMenuBar()
     menuBar->Append( preferencesMenu, _( "P&references" ) );
     menuBar->Append( helpMenu, _( "&Help" ) );
 
-    menuBar->Thaw();
-
-    // Associate the menu bar with the frame, if no previous menubar
-    if( GetMenuBar() == NULL )
-        SetMenuBar( menuBar );
-    else
-        menuBar->Refresh();
+    SetMenuBar( menuBar );
+    delete oldMenuBar;
 }

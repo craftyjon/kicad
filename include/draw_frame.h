@@ -32,6 +32,7 @@
 #include <gal/gal_display_options.h>
 #include <gal/color4d.h>
 #include <class_draw_panel_gal.h>
+#include "hotkeys_basic.h"
 
 class wxSingleInstanceChecker;
 class EDA_HOTKEY;
@@ -72,9 +73,13 @@ class EDA_DRAW_FRAME : public KIWAY_PLAYER
 
 protected:
 
+    wxSocketServer*                          m_socketServer;
+    std::vector<wxSocketBase*>               m_sockets;         ///< interprocess communication
+
     std::unique_ptr<wxSingleInstanceChecker> m_file_checker;    ///< prevents opening same file multiple times.
 
-    EDA_HOTKEY_CONFIG* m_hotkeysDescrList;
+    EDA_HOTKEY_CONFIG*                       m_hotkeysDescrList;
+
     int         m_LastGridSizeId;           // the command id offset (>= 0) of the last selected grid
                                             // 0 is for the grid corresponding to
                                             // a wxCommand ID = ID_POPUP_GRID_LEVEL_1000.
@@ -120,6 +125,10 @@ protected:
 
     /// Choice box to choose the zoom value.
     wxChoice*       m_zoomSelectBox;
+
+    /// Auxiliary tool bar typically shown below the main tool bar at the top of the
+    /// main window.
+    wxAuiToolBar*       m_auxiliaryToolBar;
 
     /// The tool bar that contains the buttons for quick access to the application draw
     /// tools.  It typically is located on the right side of the main window.
@@ -434,20 +443,23 @@ public:
 
     // Toolbar accessors
     wxAuiToolBar* GetMainToolBar() const { return m_mainToolBar; }
+    wxAuiToolBar* GetOptionsToolBar() const { return m_optionsToolBar; }
+    wxAuiToolBar* GetDrawToolBar() const { return m_drawToolBar; }
+    wxAuiToolBar* GetAuxiliaryToolBar() const { return m_auxiliaryToolBar; }
 
     /**
      * Checks all the toolbars and returns true if the given tool id is toggled.
      *
-     * This is needed because GerbView and Pcbnew put some of the same tools in
-     * different toolbars (for example, zoom selection is in the main bar in
-     * Pcbnew and in the options bar in GerbView).
+     * This is needed because GerbView and Pcbnew can put some of the same tools in
+     * different toolbars.
      */
-    bool GetToolToggled( int aToolId )
-    {
-        return ( ( m_mainToolBar && m_mainToolBar->GetToolToggled( aToolId ) ) ||
-                 ( m_optionsToolBar && m_optionsToolBar->GetToolToggled( aToolId ) ) ||
-                 ( m_drawToolBar && m_drawToolBar->GetToolToggled( aToolId ) ) );
-    }
+    bool GetToolToggled( int aToolId );
+
+    /**
+     * Checks all the toolbars and returns a reference to the given tool id
+     * or nullptr if not found
+     */
+    wxAuiToolBarItem* GetToolbarTool( int aToolId );
 
     /**
      * Function SetToolID
@@ -765,6 +777,7 @@ public:
     void CopyToClipboard( wxCommandEvent& event );
 
     /* interprocess communication */
+    void CreateServer( int service, bool local = true );
     void OnSockRequest( wxSocketEvent& evt );
     void OnSockRequestServer( wxSocketEvent& evt );
 
@@ -905,7 +918,7 @@ public:
     /**
      * Function SyncMenusAndToolbars
      * Updates the toolbars and menus (mostly settings/check buttons/checkboxes)
-     * with the current controller state 
+     * with the current controller state
      */
     virtual void SyncMenusAndToolbars( wxEvent& aEvent ) {};
 

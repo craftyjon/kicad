@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2009 Jean-Pierre Charras, jean-pierre.charras@gipsa-lab.inpg.fr
  * Copyright (C) 2007 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 1992-2016 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -73,6 +73,14 @@ static const int CURSOR_SIZE = 12; ///< Cursor size in pixels
 static const wxString kicadTraceCoords = wxT( "KICAD_TRACE_COORDS" );
 
 
+/**
+ * @ingroup trace_env_vars
+ *
+ * Flag to enable wxKeyEvent debug tracing.
+ */
+const wxString kicadTraceKeyEvent = "KICAD_KEY_EVENTS";
+
+
 // Events used by EDA_DRAW_PANEL
 BEGIN_EVENT_TABLE( EDA_DRAW_PANEL, wxScrolledWindow )
     EVT_LEAVE_WINDOW( EDA_DRAW_PANEL::OnMouseLeaving )
@@ -83,7 +91,7 @@ BEGIN_EVENT_TABLE( EDA_DRAW_PANEL, wxScrolledWindow )
 #endif
     EVT_MOUSE_EVENTS( EDA_DRAW_PANEL::OnMouseEvent )
     EVT_CHAR( EDA_DRAW_PANEL::OnKeyEvent )
-    EVT_CHAR_HOOK( EDA_DRAW_PANEL::OnCharHook )
+    EVT_CHAR_HOOK( EDA_DRAW_PANEL::OnKeyEvent )
     EVT_PAINT( EDA_DRAW_PANEL::OnPaint )
     EVT_ERASE_BACKGROUND( EDA_DRAW_PANEL::OnEraseBackground )
     EVT_SCROLLWIN( EDA_DRAW_PANEL::OnScroll )
@@ -134,7 +142,7 @@ EDA_DRAW_PANEL::EDA_DRAW_PANEL( EDA_DRAW_FRAME* parent, int id,
     m_ignoreMouseEvents = false;
     // Be sure a mouse release button event will be ignored when creating the canvas
     // if the mouse click was not made inside the canvas (can happen sometimes, when
-    // launching an editor from a double click made in an other frame)
+    // launching a editor from a double click made in another frame)
     m_ignoreNextLeftButtonRelease = true;
 
     m_mouseCaptureCallback = NULL;
@@ -770,7 +778,7 @@ void EDA_DRAW_PANEL::DrawGrid( wxDC* aDC )
         org.y += KiROUND( gridSize.y );
 
     // Use a pixel based draw to display grid.  There are a lot of calls, so the cost is
-    // high and grid is slowly drawn on some platforms. An other way using blit transfert was used,
+    // high and grid is slowly drawn on some platforms. Another way using blit transfert was used,
     // a long time ago, but it did not give very good results.
     // The better way is highly dependent on the platform and the graphic card.
     int xpos;
@@ -1387,8 +1395,29 @@ void EDA_DRAW_PANEL::OnMouseEvent( wxMouseEvent& event )
 }
 
 
+// @todo Move this to a debug helper file in common folder.
+wxString dumpKeyEvent( const wxKeyEvent& aEvent )
+{
+    wxString dump = wxString::Format( "key code %d", aEvent.GetKeyCode() );
+
+    if( aEvent.GetUnicodeKey() )
+        dump += wxString::Format(", unicode key %d", aEvent.GetUnicodeKey() );
+    if( aEvent.HasModifiers() )
+        dump += wxString::Format( ", mod %d", aEvent.GetModifiers() );
+    if( aEvent.ShiftDown() )
+        dump += ", shift";
+    if( aEvent.ControlDown() )
+        dump += ", ctrl";
+    if( aEvent.AltDown() )
+        dump += ", alt";
+
+    return dump;
+}
+
+
 void EDA_DRAW_PANEL::OnCharHook( wxKeyEvent& event )
 {
+    wxLogTrace( kicadTraceKeyEvent, "EDA_DRAW_PANEL::OnCharHook %s", dumpKeyEvent( event ) );
     event.Skip();
 }
 
@@ -1397,6 +1426,8 @@ void EDA_DRAW_PANEL::OnKeyEvent( wxKeyEvent& event )
 {
     int localkey;
     wxPoint pos;
+
+    wxLogTrace( kicadTraceKeyEvent, "EDA_DRAW_PANEL::OnKeyEvent %s", dumpKeyEvent( event ) );
 
     localkey = event.GetKeyCode();
 
@@ -1433,6 +1464,13 @@ void EDA_DRAW_PANEL::OnKeyEvent( wxKeyEvent& event )
 
     if( event.ShiftDown() && ( keyIsLetter || localkey > 256 ) )
         localkey |= GR_KB_SHIFT;
+
+    // For some reason on windows with US keyboards, the /? key always returns the '/' key code
+    // where as the <,, .>, ;:, '", [{, ]}, and \| keys return the shifted character key code.
+#if defined( __WXMSW__ )
+    if( event.ShiftDown() && localkey == '/' )
+        localkey = '?';
+#endif
 
     if( event.ControlDown() )
         localkey |= GR_KB_CTRL;

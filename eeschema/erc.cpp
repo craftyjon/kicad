@@ -86,17 +86,17 @@
 // Messages for matrix rows:
 const wxString CommentERC_H[] =
 {
-    _( "Input Pin.........." ),
-    _( "Output Pin........." ),
-    _( "Bidirectional Pin.." ),
-    _( "Tri-State Pin......" ),
-    _( "Passive Pin........" ),
-    _( "Unspecified Pin...." ),
-    _( "Power Input Pin...." ),
-    _( "Power Output Pin..." ),
-    _( "Open Collector....." ),
-    _( "Open Emitter......." ),
-    _( "No Connection......" )
+    _( "Input Pin" ),
+    _( "Output Pin" ),
+    _( "Bidirectional Pin" ),
+    _( "Tri-State Pin" ),
+    _( "Passive Pin" ),
+    _( "Unspecified Pin" ),
+    _( "Power Input Pin" ),
+    _( "Power Output Pin" ),
+    _( "Open Collector" ),
+    _( "Open Emitter" ),
+    _( "No Connection" )
 };
 
 // Messages for matrix columns
@@ -531,7 +531,7 @@ void TestOthersItems( NETLIST_OBJECT_LIST* aList,
                 {
                     /* This pin is not connected: for multiple part per
                      * package, and duplicated pin,
-                     * search for an other instance of this pin
+                     * search for another instance of this pin
                      * this will be flagged only if all instances of this pin
                      * are not connected
                      * TODO test also if instances connected are connected to
@@ -556,7 +556,7 @@ void TestOthersItems( NETLIST_OBJECT_LIST* aList,
                             continue;
 
                         // Same component and same pin. Do dot create error for this pin
-                        // if the other pin is connected (i.e. if duplicate net has an other
+                        // if the other pin is connected (i.e. if duplicate net has another
                         // item)
                         if( (duplicate > 0)
                           && ( aList->GetItemNet( duplicate ) ==

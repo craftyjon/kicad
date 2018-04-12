@@ -253,7 +253,7 @@ void LIB_EDIT_FRAME::PlacePin()
 
     LIB_PART*      part = GetCurPart();
 
-    // Test for an other pin in same new position in other units:
+    // Test for another pin in same new position in other units:
     bool     ask_for_pin = true;
 
     for( LIB_PIN* pin = part->GetNextPin(); pin; pin = part->GetNextPin( pin ) )
@@ -324,16 +324,10 @@ void LIB_EDIT_FRAME::PlacePin()
 }
 
 
-/**
- * Prepare the displacement of a pin
- *
- * Locate the pin pointed to by the cursor, and set the cursor management
- * function move the pin.
- */
-void LIB_EDIT_FRAME::StartMovePin( wxDC* DC )
+void LIB_EDIT_FRAME::StartMovePin( LIB_ITEM* aItem )
 {
-    LIB_PIN* cur_pin = (LIB_PIN*) GetDrawItem();
-    wxPoint  startPos;
+    LIB_PIN* cur_pin = (LIB_PIN*) aItem;
+    wxPoint startPos;
 
     TempCopyComponent();
 
@@ -472,7 +466,7 @@ void LIB_EDIT_FRAME::CreatePin( wxDC* DC )
 
     if( pin->GetFlags() & IS_CANCELLED )
     {
-        deleteItem( DC );
+        deleteItem( DC, pin );
     }
     else
     {
