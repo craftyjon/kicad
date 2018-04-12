@@ -735,56 +735,14 @@ int CONNECTION_GRAPH::RunERC( const ERC_SETTINGS& aSettings, bool aCreateMarkers
             !ercCheckBusToBusConflicts( subgraph, aCreateMarkers ) )
             error_count++;
 
-        /**
-         * Check that no-connect subgraphs don't have anything other than pins
-         *
-         * NOTE: this is already implemented in the "classic" ERC code, but I
-         * have re-implemented it here to demonstrate how we could move all the
-         * ERC code to the CONNECTION_GRAPH if desired.
-         */
-#if 0
-        if( subgraph->m_no_connect != nullptr )
-        {
-            bool has_invalid_items = false;
-            SCH_PIN_CONNECTION* pin = nullptr;
-            std::vector<SCH_ITEM*> invalid_items;
+        // The following checks are always performed since they don't currently
+        // have an option exposed to the user
 
-            for( auto item : subgraph->m_items )
-            {
-                switch( item->Type() )
-                {
-                case SCH_PIN_CONNECTION_T:
-                    pin = static_cast<SCH_PIN_CONNECTION*>( item );
-                    break;
+        if( !ercCheckNoConnects( subgraph, aCreateMarkers ) )
+            error_count++;
 
-                case SCH_NO_CONNECT_T:
-                    break;
-
-                default:
-                    has_invalid_items = true;
-                    invalid_items.push_back( item );
-                }
-            }
-
-            // TODO: Should it be an error to have a NC item but no pin?
-            if( pin && has_invalid_items )
-            {
-                error_count++;
-
-                auto pos = pin->GetPosition();
-                msg.Printf( _( "Pin on %s has a no-connect marker but is connected" ),
-                            GetChars( pin->m_comp->GetRef( &subgraph->m_sheet ) ) );
-
-                auto marker = new SCH_MARKER();
-                marker->SetTimeStamp( GetNewTimeStamp() );
-                marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
-                marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_WARNING );
-                marker->SetData( ERCE_NOCONNECT_CONNECTED, pos, msg, pos );
-
-                screen->Append( marker );
-            }
-        }
-#endif
+        if( !ercCheckLabels( subgraph, aCreateMarkers ) )
+            error_count++;
     }
 
     return error_count;
@@ -1023,4 +981,155 @@ bool CONNECTION_GRAPH::ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSub
     }
 
     return true;
+}
+
+
+// TODO(JE) Check sheet pins here too?
+bool CONNECTION_GRAPH::ercCheckNoConnects( CONNECTION_SUBGRAPH* aSubgraph,
+                                           bool aCreateMarkers )
+{
+    wxString msg;
+    auto sheet = aSubgraph->m_sheet;
+    auto screen = sheet.LastScreen();
+
+    if( aSubgraph->m_no_connect != nullptr )
+    {
+        bool has_invalid_items = false;
+        SCH_PIN_CONNECTION* pin = nullptr;
+        std::vector<SCH_ITEM*> invalid_items;
+
+        // Any subgraph that contains both a pin and a no-connect should not
+        // contain any other connectable items.
+
+        for( auto item : aSubgraph->m_items )
+        {
+            switch( item->Type() )
+            {
+            case SCH_PIN_CONNECTION_T:
+                pin = static_cast<SCH_PIN_CONNECTION*>( item );
+                break;
+
+            case SCH_NO_CONNECT_T:
+                break;
+
+            default:
+                has_invalid_items = true;
+                invalid_items.push_back( item );
+            }
+        }
+
+        // TODO: Should it be an error to have a NC item but no pin?
+        if( pin && has_invalid_items )
+        {
+            auto pos = pin->GetPosition();
+            msg.Printf( _( "Pin %s of component %s has a no-connect marker but is connected" ),
+                        GetChars( pin->m_pin->GetName() ),
+                        GetChars( pin->m_comp->GetRef( &aSubgraph->m_sheet ) ) );
+
+            auto marker = new SCH_MARKER();
+            marker->SetTimeStamp( GetNewTimeStamp() );
+            marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+            marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_WARNING );
+            marker->SetData( ERCE_NOCONNECT_CONNECTED, pos, msg, pos );
+
+            screen->Append( marker );
+
+            return false;
+        }
+    }
+    else
+    {
+        bool has_other_connections = false;
+        SCH_PIN_CONNECTION* pin = nullptr;
+
+        // Any subgraph that lacks a no-connect and contains a pin should also
+        // contain at least one other connectable item.
+
+        for( auto item : aSubgraph->m_items )
+        {
+            switch( item->Type() )
+            {
+            case SCH_PIN_CONNECTION_T:
+                if( !pin )
+                    pin = static_cast<SCH_PIN_CONNECTION*>( item );
+                else
+                    has_other_connections = true;
+                break;
+
+            default:
+                if( item->IsConnectable() )
+                    has_other_connections = true;
+                break;
+            }
+        }
+
+        if( pin && !has_other_connections )
+        {
+            auto pos = pin->GetPosition();
+            msg.Printf( _( "Pin %s of component %s is unconnected." ),
+                        GetChars( pin->m_pin->GetName() ),
+                        GetChars( pin->m_comp->GetRef( &aSubgraph->m_sheet ) ) );
+
+            auto marker = new SCH_MARKER();
+            marker->SetTimeStamp( GetNewTimeStamp() );
+            marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+            marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_WARNING );
+            marker->SetData( ERCE_PIN_NOT_CONNECTED, pos, msg, pos );
+
+            screen->Append( marker );
+
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+bool CONNECTION_GRAPH::ercCheckLabels( CONNECTION_SUBGRAPH* aSubgraph,
+                                       bool aCreateMarkers )
+{
+    wxString msg;
+    auto sheet = aSubgraph->m_sheet;
+    auto screen = sheet.LastScreen();
+
+    SCH_TEXT* text = nullptr;
+    bool has_other_connections = false;
+
+    // Any subgraph that contains a label should also contain at least one other
+    // connectable item.
+
+    for( auto item : aSubgraph->m_items )
+    {
+        switch( item->Type() )
+        {
+        case SCH_LABEL_T:
+        case SCH_GLOBAL_LABEL_T:
+        case SCH_HIERARCHICAL_LABEL_T:
+            text = static_cast<SCH_TEXT*>( item );
+            break;
+
+        default:
+            if( item->IsConnectable() )
+                has_other_connections = true;
+            break;
+        }
+    }
+
+    if( text && !has_other_connections )
+    {
+        auto pos = text->GetPosition();
+        msg.Printf( _( "Label %s is unconnected." ),
+                    GetChars( text->ShortenedShownText() ) );
+
+        auto marker = new SCH_MARKER();
+        marker->SetTimeStamp( GetNewTimeStamp() );
+        marker->SetMarkerType( MARKER_BASE::MARKER_ERC );
+        marker->SetErrorLevel( MARKER_BASE::MARKER_SEVERITY_WARNING );
+        marker->SetData( ERCE_LABEL_NOT_CONNECTED, pos, msg, pos );
+
+        screen->Append( marker );
+
+        return false;
+    }
 }

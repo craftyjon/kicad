@@ -575,6 +575,8 @@ void DIALOG_ERC::TestErc( REPORTER& aReporter )
         case NET_GLOBBUSLABELMEMBER:
             break;
 
+// TODO(JE) Remove once working in the new system
+#if 0
         case NET_HIERLABEL:
         case NET_HIERBUSLABELMEMBER:
         case NET_SHEETLABEL:
@@ -598,7 +600,9 @@ void DIALOG_ERC::TestErc( REPORTER& aReporter )
                 Diagnose( item, NULL, MinConn, UNC );
 
             break;
+#endif
 
+        // TODO(JE) Port this to the new system
         case NET_PIN:
         {
             // Check if this pin has appeared before on a different net
@@ -627,10 +631,13 @@ void DIALOG_ERC::TestErc( REPORTER& aReporter )
                 }
             }
 
+            // TODO(JE) Remove this if new system is finished
             // Look for ERC problems between pins:
-            TestOthersItems( objectsConnectedList.get(), itemIdx, nextItemIdx, &MinConn );
+            //TestOthersItems( objectsConnectedList.get(), itemIdx, nextItemIdx, &MinConn );
             break;
         }
+        default:
+        break;
         }
 
         lastItemIdx = itemIdx;

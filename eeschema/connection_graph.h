@@ -219,6 +219,30 @@ private:
      */
     bool ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSubgraph,
                                          bool aCreateMarkers );
+
+    /**
+     * Checks one subgraph for proper presence or absence of no-connect symbols
+     *
+     * A pin with a no-connect symbol should not have any connections
+     * A pin without a no-connect symbol should have at least one connection
+     *
+     * @param  aSubgraph      is the subgraph to examine
+     * @param  aCreateMarkers controls whether error markers are created
+     * @return                true for no errors, false for errors
+     */
+    bool ercCheckNoConnects( CONNECTION_SUBGRAPH* aSubgraph,
+                             bool aCreateMarkers );
+
+    /**
+     * Checks one subgraph for proper connection of labels
+     *
+     * Labels should be connected to something
+     *
+     * @param  aSubgraph      is the subgraph to examine
+     * @param  aCreateMarkers controls whether error markers are created
+     * @return                true for no errors, false for errors
+     */
+    bool ercCheckLabels( CONNECTION_SUBGRAPH* aSubgraph, bool aCreateMarkers );
 };
 
 #endif

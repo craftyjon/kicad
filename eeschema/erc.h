@@ -59,7 +59,7 @@ enum ERCE_T
     ERCE_PIN_TO_PIN_ERROR,      // pin connected to an other pin: error level
     ERCE_HIERACHICAL_LABEL,     // mismatch between hierarchical labels and pins sheets
     ERCE_NOCONNECT_CONNECTED,   // a no connect symbol is connected to more than 1 pin
-    ERCE_GLOBLABEL,             // global label not connected to any other global label
+    ERCE_LABEL_NOT_CONNECTED,   // label not connected to anything
     ERCE_SIMILAR_LABELS,        // 2 labels are equal fir case insensitive comparisons
     ERCE_SIMILAR_GLBL_LABELS,   // 2 labels are equal fir case insensitive comparisons
     ERCE_DIFFERENT_UNIT_FP,     // different units of the same component have different footprints assigned

@@ -381,6 +381,7 @@ void Diagnose( NETLIST_OBJECT* aNetItemRef, NETLIST_OBJECT* aNetItemTst,
 
     if( aMinConn < 0 )
     {
+#if 0
         if( aNetItemRef->m_Type == NET_HIERLABEL || aNetItemRef->m_Type == NET_HIERBUSLABELMEMBER )
         {
             msg.Printf( _( "Hierarchical label %s is not connected to a sheet label." ),
@@ -408,7 +409,7 @@ void Diagnose( NETLIST_OBJECT* aNetItemRef, NETLIST_OBJECT* aNetItemTst,
                              msg,
                              aNetItemRef->m_Start );
         }
-
+#endif
         return;
     }
 
