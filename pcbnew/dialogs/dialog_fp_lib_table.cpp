@@ -38,6 +38,7 @@
 #include <project.h>
 #include <3d_viewer.h>      // for KISYS3DMOD
 #include <dialog_fp_lib_table_base.h>
+#include <lib_id.h>
 #include <fp_lib_table.h>
 #include <lib_table_lexer.h>
 #include <invoke_pcb_dialog.h>
@@ -290,6 +291,7 @@ private:
             {
                 wxString nick = model.GetValue( r, COL_NICKNAME ).Trim( false ).Trim();
                 wxString uri  = model.GetValue( r, COL_URI ).Trim( false ).Trim();
+                unsigned illegalCh = 0;
 
                 if( !nick || !uri )
                 {
@@ -299,11 +301,11 @@ private:
                     // button.
                     model.DeleteRows( r, 1 );
                 }
-                else if( nick.find( ':' ) != size_t( -1 ) )
+            else if( ( illegalCh = LIB_ID::FindIllegalChar( nick, LIB_ID::ID_PCB ) ) )
                 {
                     wxString msg = wxString::Format(
-                        _( "Illegal character \"%s\" found in Nickname: \"%s\" in row %d" ),
-                        ":", GetChars( nick ), r );
+                        _( "Illegal character \"%c\" found in Nickname: \"%s\" in row %d" ),
+                        illegalCh, GetChars( nick ), r );
 
                     // show the tabbed panel holding the grid we have flunked:
                     if( &model != cur_model() )
@@ -740,7 +742,8 @@ void DIALOG_FP_LIB_TABLE::OnClickLibraryWizard( wxCommandEvent& event )
             int last_row = libgrid->GetNumberRows() - 1;
 
             // Add the nickname: currently make it from filename
-            tbl->SetValue( last_row, COL_NICKNAME, it->GetDescription() );
+            tbl->SetValue( last_row, COL_NICKNAME,
+                    LIB_ID::FixIllegalChars( it->GetDescription(), LIB_ID::ID_PCB ) );
 
             // Add the path:
             tbl->SetValue( last_row, COL_URI, it->GetAutoPath( dlg.GetLibScope() ) );

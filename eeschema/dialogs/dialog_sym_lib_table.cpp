@@ -257,6 +257,7 @@ bool DIALOG_SYMBOL_LIB_TABLE::verifyTables()
         {
             wxString nick = model.GetValue( r, COL_NICKNAME ).Trim( false ).Trim();
             wxString uri  = model.GetValue( r, COL_URI ).Trim( false ).Trim();
+            unsigned illegalCh = 0;
 
             if( !nick || !uri )
             {
@@ -266,11 +267,11 @@ bool DIALOG_SYMBOL_LIB_TABLE::verifyTables()
                 // button.
                 model.DeleteRows( r, 1 );
             }
-            else if( nick.find( ':' ) != size_t( -1 ) || nick.find( ' ' ) != size_t( -1 ) )
+            else if( ( illegalCh = LIB_ID::FindIllegalChar( nick, LIB_ID::ID_SCH ) ) )
             {
                 wxString msg = wxString::Format(
-                    _( "Illegal character \"%s\" found in Nickname: \"%s\" in row %d" ),
-                    ( nick.find( ':' ) != size_t( -1 ) ) ? ":" : " ", GetChars( nick ), r + 1 );
+                    _( "Illegal character \"%c\" found in Nickname: \"%s\" in row %d" ),
+                    illegalCh, GetChars( nick ), r + 1 );
 
                 // show the tabbed panel holding the grid we have flunked:
                 if( &model != cur_model() )
@@ -374,7 +375,8 @@ void DIALOG_SYMBOL_LIB_TABLE::browseLibrariesHandler( wxCommandEvent& event )
             int last_row = m_cur_grid->GetNumberRows() - 1;
             wxFileName fn( filePath );
 
-            m_cur_grid->SetCellValue( last_row, COL_NICKNAME, fn.GetName() );
+            m_cur_grid->SetCellValue( last_row, COL_NICKNAME,
+                    LIB_ID::FixIllegalChars( fn.GetName(), LIB_ID::ID_SCH ) );
 
             // TODO the following code can detect only schematic types, not libs
             // SCH_IO_MGR needs to provide file extension information for libraries too

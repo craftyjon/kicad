@@ -36,6 +36,7 @@
 #include <pgm_base.h>
 #include <kiface_i.h>
 #include <richio.h>
+#include <trace_helpers.h>
 
 #include <eeschema_id.h>
 #include <class_library.h>
@@ -829,7 +830,6 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
 
 
                 SCH_TYPE_COLLECTOR components;
-                auto& schLibTable = *Kiway().Prj().SchSymbolLibTable();
                 SCH_SCREENS allScreens;
                 for( SCH_SCREEN* screen = allScreens.GetFirst(); screen; screen = allScreens.GetNext() )
                 {
@@ -851,8 +851,6 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
                         }
 
                         // Add junction dots where necessary
-                        cmp->Resolve( schLibTable );
-                        cmp->UpdatePinCache();
                         cmp->GetConnectionPoints( pts );
 
                         for( auto i = pts.begin(); i != pts.end(); ++i )

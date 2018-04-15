@@ -363,4 +363,15 @@ namespace std
 }
 #endif
 
+/// Required to use wxPoint as key type in maps
+#define USE_KICAD_WXPOINT_LESS     // for common.cpp
+namespace std
+{
+    template<> struct less<wxPoint>
+    {
+        bool operator()( const wxPoint& aA, const wxPoint& aB ) const;
+    };
+}
+
+
 #endif  // INCLUDE__COMMON_H_

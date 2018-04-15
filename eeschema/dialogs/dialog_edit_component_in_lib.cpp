@@ -332,10 +332,9 @@ void DIALOG_EDIT_COMPONENT_IN_LIBRARY::EditAliasOfPart( wxCommandEvent& aEvent )
     if( dlg.ShowModal() != wxID_OK )
         return; // cancelled by user
 
-    aliasname = dlg.GetValue( );
-    aliasname.Replace( wxT( " " ), wxT( "_" ) );
+    aliasname = LIB_ID::FixIllegalChars( dlg.GetValue(), LIB_ID::ID_SCH );
 
-    if( checkNewAlias( aliasname) )
+    if( checkNewAlias( aliasname ) )
         m_PartAliasListCtrl->SetString( sel, aliasname );
 }
 
@@ -349,8 +348,7 @@ void DIALOG_EDIT_COMPONENT_IN_LIBRARY::AddAliasOfPart( wxCommandEvent& event )
     if( dlg.ShowModal() != wxID_OK )
         return; // cancelled by user
 
-    aliasname = dlg.GetValue( );
-    aliasname.Replace( wxT( " " ), wxT( "_" ) );
+    aliasname = LIB_ID::FixIllegalChars( dlg.GetValue(), LIB_ID::ID_SCH );
 
     if( checkNewAlias( aliasname ) )
         m_PartAliasListCtrl->Append( aliasname );
@@ -540,7 +538,7 @@ void DIALOG_EDIT_COMPONENT_IN_LIBRARY::AddFootprintFilter( wxCommandEvent& event
     {
         wxString msg;
 
-        msg.Printf( _( "Foot print filter \"%s\" is already defined." ), GetChars( Line ) );
+        msg.Printf( _( "Footprint filter \"%s\" is already defined." ), GetChars( Line ) );
         DisplayError( this, msg );
         return;
     }

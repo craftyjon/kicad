@@ -131,7 +131,8 @@ wxString SCH_EAGLE_PLUGIN::getLibName()
             m_libName = "noname";
 
         m_libName += "-eagle-import";
-        m_libName = LIB_ID::FixIllegalChars( m_libName );
+        // use ID_SCH as it is more restrictive
+        m_libName = LIB_ID::FixIllegalChars( m_libName, LIB_ID::ID_SCH );
     }
 
     return m_libName;
@@ -787,13 +788,6 @@ void SCH_EAGLE_PLUGIN::loadSheet( wxXmlNode* aSheetNode, int aSheetIndex )
     translation.x   = translation.x - translation.x % 100;
     translation.y   = translation.y - translation.y % 100;
 
-    // Translate the items.
-    for( SCH_ITEM* item = m_currentSheet->GetScreen()->GetDrawItems(); item; item = item->Next() )
-    {
-        item->SetPosition( item->GetPosition() + translation );
-        item->ClearFlags();
-    }
-
     // Add global net labels for the named power input pins in this sheet
     for( SCH_ITEM* item = m_currentSheet->GetScreen()->GetDrawItems(); item; item = item->Next() )
     {
@@ -801,6 +795,15 @@ void SCH_EAGLE_PLUGIN::loadSheet( wxXmlNode* aSheetNode, int aSheetIndex )
             continue;
 
         addImplicitConnections( static_cast<SCH_COMPONENT*>( item ), m_currentSheet->GetScreen(), true );
+    }
+
+    m_connPoints.clear();
+
+    // Translate the items.
+    for( SCH_ITEM* item = m_currentSheet->GetScreen()->GetDrawItems(); item; item = item->Next() )
+    {
+        item->SetPosition( item->GetPosition() + translation );
+        item->ClearFlags();
     }
 }
 
@@ -941,6 +944,9 @@ SCH_LINE* SCH_EAGLE_PLUGIN::loadWire( wxXmlNode* aWireNode )
     wire->SetStartPoint( begin );
     wire->SetEndPoint( end );
 
+    m_connPoints[begin].emplace( wire.get() );
+    m_connPoints[end].emplace( wire.get() );
+
     return wire.release();
 }
 
@@ -1068,7 +1074,7 @@ void SCH_EAGLE_PLUGIN::loadInstance( wxXmlNode* aInstanceNode )
         package = p->second;
     }
 
-    wxString kisymbolname = LIB_ID::FixIllegalChars( symbolname );
+    wxString kisymbolname = LIB_ID::FixIllegalChars( symbolname, LIB_ID::ID_SCH );
 
     LIB_ALIAS* alias = m_pi->LoadSymbol( getLibFileName().GetFullPath(), kisymbolname,
                                          m_properties.get() );
@@ -1193,6 +1199,18 @@ void SCH_EAGLE_PLUGIN::loadInstance( wxXmlNode* aInstanceNode )
             component->GetField( REFERENCE )->SetVisible( false );
     }
 
+
+    // Save the pin positions
+    auto& schLibTable = *m_kiway->Prj().SchSymbolLibTable();
+    wxCHECK( component->Resolve( schLibTable ), /*void*/ );
+    component->UpdatePinCache();
+    std::vector<LIB_PIN*> pins;
+    component->GetPins( pins );
+
+    for( const auto& pin : pins )
+        m_connPoints[component->GetPinPhysicalPosition( pin )].emplace( pin );
+
+
     component->ClearFlags();
 
     screen->Append( component.release() );
@@ -1279,7 +1297,7 @@ EAGLE_LIBRARY* SCH_EAGLE_PLUGIN::loadLibrary( wxXmlNode* aLibraryNode,
             if( gates_count == 1 && ispower )
                 kpart->SetPower();
 
-            wxString name = LIB_ID::FixIllegalChars( kpart->GetName() );
+            wxString name = LIB_ID::FixIllegalChars( kpart->GetName(), LIB_ID::ID_SCH );
             kpart->SetName( name );
             m_pi->SaveSymbol( getLibFileName().GetFullPath(), new LIB_PART( *kpart.get() ),
                               m_properties.get() );
@@ -2469,11 +2487,24 @@ const SEG* SCH_EAGLE_PLUGIN::SEG_DESC::LabelAttached( const SCH_TEXT* aLabel ) c
 }
 
 
+// TODO could be used to place junctions, instead of IsJunctionNeeded() (see SCH_EDIT_FRAME::importFile())
+bool SCH_EAGLE_PLUGIN::checkConnections( const SCH_COMPONENT* aComponent, const LIB_PIN* aPin ) const
+{
+    wxPoint pinPosition = aComponent->GetPinPhysicalPosition( aPin );
+    auto pointIt = m_connPoints.find( pinPosition );
+
+    if( pointIt == m_connPoints.end() )
+        return false;
+
+    const auto& items = pointIt->second;
+    wxASSERT( items.find( aPin ) != items.end() );
+    return items.size() > 1;
+}
+
+
 void SCH_EAGLE_PLUGIN::addImplicitConnections( SCH_COMPONENT* aComponent,
         SCH_SCREEN* aScreen, bool aUpdateSet )
 {
-    auto& schLibTable = *m_kiway->Prj().SchSymbolLibTable();
-    wxCHECK( aComponent->Resolve( schLibTable ), /*void*/ );
     aComponent->UpdatePinCache();
     auto partRef = aComponent->GetPartRef().lock();
     wxCHECK( partRef, /*void*/ );
@@ -2494,7 +2525,10 @@ void SCH_EAGLE_PLUGIN::addImplicitConnections( SCH_COMPONENT* aComponent,
     {
         if( pin->GetType() == PIN_POWER_IN )
         {
-            if( !unit || pin->GetUnit() == unit )
+            bool pinInUnit = !unit || pin->GetUnit() == unit;   // pin belongs to the tested unit
+
+            // Create a global net label only if there are no other wires/pins attached
+            if( pinInUnit && !checkConnections( aComponent, pin ) )
             {
                 // Create a net label to force the net name on the pin
                 SCH_GLOBALLABEL* netLabel = new SCH_GLOBALLABEL;
@@ -2505,7 +2539,7 @@ void SCH_EAGLE_PLUGIN::addImplicitConnections( SCH_COMPONENT* aComponent,
                 aScreen->Append( netLabel );
             }
 
-            else if( aUpdateSet )
+            else if( !pinInUnit && aUpdateSet )
             {
                 // Found a pin creating implicit connection information in another unit.
                 // Such units will be instantiated if they do not appear in another sheet and
