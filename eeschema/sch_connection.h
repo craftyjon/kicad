@@ -29,6 +29,7 @@
 
 #include <bus_alias.h>
 #include <msgpanel.h>
+#include <sch_sheet_path.h>
 
 
 class SCH_ITEM;
@@ -59,7 +60,7 @@ enum CONNECTION_TYPE
 class SCH_CONNECTION
 {
 public:
-    SCH_CONNECTION( SCH_ITEM* aParent = nullptr, SCH_SHEET_PATH* aPath = nullptr );
+    SCH_CONNECTION( SCH_ITEM* aParent = nullptr, SCH_SHEET_PATH aPath = SCH_SHEET_PATH() );
 
     ~SCH_CONNECTION()
     {}
@@ -102,7 +103,7 @@ public:
         return m_driver;
     }
 
-    SCH_SHEET_PATH* Sheet() const
+    SCH_SHEET_PATH Sheet() const
     {
         return m_sheet;
     }
@@ -110,6 +111,11 @@ public:
     void SetDriver( SCH_ITEM* aItem )
     {
         m_driver = aItem;
+    }
+
+    void SetSheet( SCH_SHEET_PATH aSheet )
+    {
+        m_sheet = aSheet;
     }
 
     /**
@@ -145,10 +151,7 @@ public:
         m_dirty = false;
     }
 
-    wxString Name() const
-    {
-        return m_name;
-    }
+    wxString Name( bool aIgnoreSheet = false ) const;
 
     wxString Prefix() const
     {
@@ -286,7 +289,7 @@ private:
 
     bool m_dirty;
 
-    SCH_SHEET_PATH* m_sheet;    ///< The hierarchical sheet this connection is on
+    SCH_SHEET_PATH m_sheet; ///< The hierarchical sheet this connection is on
 
     SCH_ITEM* m_parent;     ///< The SCH_ITEM this connection is owned by
 

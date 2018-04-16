@@ -22,6 +22,7 @@
 #include <wx/tokenzr.h>
 
 #include <connection_graph.h>
+#include <sch_pin_connection.h>
 #include <sch_screen.h>
 
 #include <sch_connection.h>
@@ -59,7 +60,7 @@ static boost::regex bus_label_re( "^([^[:space:]]+)(\\[[\\d]+\\.+[\\d]+\\])$" );
 static boost::regex bus_group_label_re( "^([^[:space:]]+)?\\{((?:[^[:space:]]+(?:\\[[\\d]+\\.+[\\d]+\\])? ?)+)\\}$" );
 
 
-SCH_CONNECTION::SCH_CONNECTION( SCH_ITEM* aParent, SCH_SHEET_PATH* aPath ) :
+SCH_CONNECTION::SCH_CONNECTION( SCH_ITEM* aParent, SCH_SHEET_PATH aPath ) :
         m_sheet( aPath ),
         m_parent( aParent )
 {
@@ -72,7 +73,8 @@ bool SCH_CONNECTION::operator==( const SCH_CONNECTION& aOther ) const
     // NOTE: Not comparing m_dirty or net/bus/subgraph codes
     if( ( aOther.m_driver == m_driver ) &&
         ( aOther.m_type == m_type ) &&
-        ( aOther.m_name == m_name ) )
+        ( aOther.m_name == m_name ) &&
+        ( aOther.m_sheet == m_sheet ) )
     {
         return true;
     }
@@ -184,7 +186,8 @@ void SCH_CONNECTION::Clone( SCH_CONNECTION& aOther )
 {
     m_type = aOther.Type();
     m_driver = aOther.Driver();
-    m_name = aOther.Name();
+    m_sheet = aOther.Sheet();
+    m_name = aOther.Name( true );
     m_prefix = aOther.Prefix();
     m_members = aOther.Members();
     m_net_code = aOther.NetCode();
@@ -214,6 +217,42 @@ bool SCH_CONNECTION::IsDriver() const
     default:
         return false;
     }
+}
+
+
+wxString SCH_CONNECTION::Name( bool aIgnoreSheet ) const
+{
+    wxString ret = m_name;
+
+    if( !Parent() || m_type == CONNECTION_NONE )
+        return ret;
+
+    bool prepend_path = true;
+
+    switch( Parent()->Type() )
+    {
+    case SCH_PIN_CONNECTION_T:
+    {
+        auto pc = static_cast<SCH_PIN_CONNECTION*>( Parent() );
+
+        if( pc->m_pin->IsPowerConnection() )
+            prepend_path = false;
+
+        break;
+    }
+
+    case SCH_GLOBAL_LABEL_T:
+        prepend_path = false;
+        break;
+
+    default:
+        break;
+    }
+
+    if( prepend_path && !aIgnoreSheet )
+        ret = m_sheet.PathHumanReadable() + ret;
+
+    return ret;
 }
 
 

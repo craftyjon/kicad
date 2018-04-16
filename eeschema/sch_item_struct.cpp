@@ -116,6 +116,7 @@ void SCH_ITEM::InitializeConnection( SCH_SHEET_PATH aSheet )
     }
 
     auto connection = new SCH_CONNECTION( this );
+    connection->SetSheet( aSheet );
     m_connection_map.insert( std::make_pair( aSheet, connection ) );
 }
 
