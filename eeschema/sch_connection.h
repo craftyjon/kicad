@@ -218,6 +218,11 @@ public:
         return m_vector_index;
     }
 
+    wxString VectorPrefix() const
+    {
+        return m_vector_prefix;
+    }
+
     std::vector< std::shared_ptr< SCH_CONNECTION > >& Members()
     {
         return m_members;
@@ -313,6 +318,9 @@ private:
     long m_vector_start;    ///< Highest member of a vector bus
 
     long m_vector_end;      ///< Lowest member of a vector bus
+
+    ///< Prefix name of the vector, if m_type == CONNECTION_BUS (or "" if not)
+    wxString m_vector_prefix;
 
     /**
      * For bus connections, store a list of member connections

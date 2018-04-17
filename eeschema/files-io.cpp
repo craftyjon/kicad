@@ -373,6 +373,14 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         GetScreen()->TestDanglingEnds();    // Only perform the dangling end test on root sheet.
 
         RecalculateConnections(); // Update connectivity graph
+
+        // Migrate conflicting bus definitions
+        // TODO(JE) This should only run once based on schematic file version
+        if( g_ConnectionGraph->MigrateBusesWithMultipleLabels() > 0 )
+        {
+            RecalculateConnections();
+            OnModify();
+        }
     }
 
     GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId );

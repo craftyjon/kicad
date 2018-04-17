@@ -96,13 +96,12 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
         m_name = aLabel;
         m_type = CONNECTION_BUS;
 
-        wxString prefix;
-        ParseBusVector( aLabel, &prefix, &m_vector_start, &m_vector_end );
+        ParseBusVector( aLabel, &m_vector_prefix, &m_vector_start, &m_vector_end );
 
         for( long i = m_vector_start; i <= m_vector_end; ++i )
         {
             auto member = std::make_shared< SCH_CONNECTION >( m_parent );
-            wxString name = prefix;
+            wxString name = m_vector_prefix;
             name << i;
             member->m_name = m_prefix + name;
             member->m_vector_index = i;
@@ -179,6 +178,7 @@ void SCH_CONNECTION::Reset()
     m_vector_start = 0;
     m_vector_end = 0;
     m_vector_index = 0;
+    m_vector_prefix = "";
 }
 
 
@@ -196,6 +196,7 @@ void SCH_CONNECTION::Clone( SCH_CONNECTION& aOther )
     m_vector_start = aOther.VectorStart();
     m_vector_end = aOther.VectorEnd();
     m_vector_index = aOther.VectorIndex();
+    m_vector_prefix = aOther.VectorPrefix();
 }
 
 
