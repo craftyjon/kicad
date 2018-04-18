@@ -48,6 +48,7 @@
 #include <transform.h>
 #include <sch_component.h>
 #include <sch_sheet_path.h>
+#include <trace_helpers.h>
 
 
 static const int pin_orientation_codes[] =
