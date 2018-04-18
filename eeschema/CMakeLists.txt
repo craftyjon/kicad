@@ -61,6 +61,8 @@ set( EESCHEMA_DLGS
     dialogs/dialog_lib_new_component_base.cpp
     dialogs/dialog_libedit_options.cpp
     dialogs/dialog_libedit_options_base.cpp
+    dialogs/dialog_migrate_buses.cpp
+    dialogs/dialog_migrate_buses_base.cpp
     dialogs/dialog_netlist.cpp
     dialogs/dialog_netlist_base.cpp
     dialogs/dialog_plot_schematic.cpp

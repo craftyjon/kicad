@@ -61,6 +61,9 @@ public:
      */
     wxString GetNetName();
 
+    /// Returns all the bus labels attached to this subgraph (if any)
+    std::vector<SCH_ITEM*> GetBusLabels();
+
     bool m_dirty;
 
     long m_code;
@@ -176,6 +179,8 @@ public:
      * @return the number of subgraphs that have been affected
      */
     int MigrateBusesWithMultipleLabels();
+
+    std::vector<CONNECTION_SUBGRAPH*> GetBusesNeedingMigration();
 
     /**
      * Runs electrical rule checks on the connectivity graph.

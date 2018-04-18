@@ -152,6 +152,31 @@ wxString CONNECTION_SUBGRAPH::GetNetName()
 }
 
 
+std::vector<SCH_ITEM*> CONNECTION_SUBGRAPH::GetBusLabels()
+{
+    vector<SCH_ITEM*> labels;
+
+    for( auto item : m_drivers )
+    {
+        switch( item->Type() )
+        {
+        case SCH_LABEL_T:
+        case SCH_GLOBAL_LABEL_T:
+        {
+            auto label_conn = item->Connection( m_sheet );
+
+            // Only consider bus vectors
+            if( label_conn->Type() == CONNECTION_BUS )
+                labels.push_back( item );
+        }
+        default: break;
+        }
+    }
+
+    return labels;
+}
+
+
 void CONNECTION_GRAPH::Reset()
 {
     m_items.clear();
@@ -911,6 +936,34 @@ int CONNECTION_GRAPH::MigrateBusesWithMultipleLabels()
     }
 
     return migrated_count;
+}
+
+
+std::vector<CONNECTION_SUBGRAPH*> CONNECTION_GRAPH::GetBusesNeedingMigration()
+{
+    std::vector<CONNECTION_SUBGRAPH*> ret;
+
+    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
+    {
+        auto subgraph = *it;
+
+        // Graph is supposed to be up-to-date before calling this
+        wxASSERT( !subgraph->m_dirty );
+
+        if( !subgraph->m_driver )
+            continue;
+
+        auto sheet = subgraph->m_sheet;
+        auto connection = subgraph->m_driver->Connection( sheet );
+
+        if( !connection->IsBus() )
+            continue;
+
+        if( subgraph->GetBusLabels().size() > 1 )
+            ret.push_back( subgraph );
+    }
+
+    return ret;
 }
 
 

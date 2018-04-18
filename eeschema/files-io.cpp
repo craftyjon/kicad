@@ -51,6 +51,7 @@
 #include <sch_eagle_plugin.h>
 #include <symbol_lib_table.h>
 #include <dialog_symbol_remap.h>
+#include <dialog_migrate_buses.h>
 #include <worksheet_shape_builder.h>
 
 
@@ -376,8 +377,11 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
 
         // Migrate conflicting bus definitions
         // TODO(JE) This should only run once based on schematic file version
-        if( g_ConnectionGraph->MigrateBusesWithMultipleLabels() > 0 )
+        if( g_ConnectionGraph->GetBusesNeedingMigration().size() > 0 )
         {
+            DIALOG_MIGRATE_BUSES dlg( this );
+            dlg.ShowQuasiModal();
+
             RecalculateConnections();
             OnModify();
         }
