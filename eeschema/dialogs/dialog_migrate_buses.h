@@ -48,9 +48,15 @@ public:
 
 private:
 
-    void fillUi();
+    SCH_EDIT_FRAME* m_frame;
+
+    void loadGraphData();
+
+    void updateUi();
 
     wxString getProposedLabel( std::vector<wxString> aLabelList );
+
+    void onItemSelected( wxListEvent& aEvent );
 
     std::vector<BUS_MIGRATION_STATUS> m_items;
 };

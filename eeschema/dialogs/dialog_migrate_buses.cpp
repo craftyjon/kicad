@@ -24,21 +24,22 @@
 
 
 DIALOG_MIGRATE_BUSES::DIALOG_MIGRATE_BUSES( SCH_EDIT_FRAME* aParent ) :
-    DIALOG_MIGRATE_BUSES_BASE( aParent )
+    DIALOG_MIGRATE_BUSES_BASE( aParent ),
+    m_frame( aParent )
 {
-    fillUi();
+    m_migration_list->Bind( wxEVT_LIST_ITEM_SELECTED,
+                            &DIALOG_MIGRATE_BUSES::onItemSelected, this );
+
+    loadGraphData();
+    updateUi();
+
+    m_frame->Zoom_Automatique( false );
 }
 
 
-void DIALOG_MIGRATE_BUSES::fillUi()
+void DIALOG_MIGRATE_BUSES::loadGraphData()
 {
-    m_migration_list->DeleteAllItems();
-
-    m_migration_list->InsertColumn( 0, _( "Sheet" ) );
-    m_migration_list->InsertColumn( 1, _( "Conflicting Labels" ) );
-    m_migration_list->InsertColumn( 2, _( "New Label" ) );
-    m_migration_list->InsertColumn( 3, _( "Status" ) );
-
+    m_items.clear();
     auto subgraphs = g_ConnectionGraph->GetBusesNeedingMigration();
 
     for( auto subgraph : subgraphs )
@@ -55,17 +56,32 @@ void DIALOG_MIGRATE_BUSES::fillUi()
             status.labels.push_back( static_cast<SCH_TEXT*>( label )->GetText() );
 
         status.proposed_label = getProposedLabel( status.labels );
+        m_items.push_back( status );
+    }
+}
+
+
+void DIALOG_MIGRATE_BUSES::updateUi()
+{
+    m_migration_list->DeleteAllItems();
+
+    m_migration_list->InsertColumn( 0, _( "Sheet" ) );
+    m_migration_list->InsertColumn( 1, _( "Conflicting Labels" ) );
+    m_migration_list->InsertColumn( 2, _( "New Label" ) );
+    m_migration_list->InsertColumn( 3, _( "Status" ) );
+
+    for( auto item : m_items )
+    {
+        wxString old = item.labels[0];
+        for( unsigned j = 1; j < item.labels.size(); j++ )
+            old << ", " << item.labels[j];
 
         auto i = m_migration_list->InsertItem( m_migration_list->GetItemCount(),
                                                wxEmptyString );
 
-        wxString old = status.labels[0];
-        for( unsigned j = 1; j < status.labels.size(); j++ )
-            old << ", " << status.labels[j];
-
-        m_migration_list->SetItem( i, 0, subgraph->m_sheet.PathHumanReadable() );
+        m_migration_list->SetItem( i, 0, item.subgraph->m_sheet.PathHumanReadable() );
         m_migration_list->SetItem( i, 1, old );
-        m_migration_list->SetItem( i, 2, status.proposed_label );
+        m_migration_list->SetItem( i, 2, item.proposed_label );
         m_migration_list->SetItem( i, 3, "" );
     }
 
@@ -110,4 +126,29 @@ wxString DIALOG_MIGRATE_BUSES::getProposedLabel( std::vector<wxString> aLabelLis
     proposal << "[" << highest_end << ".." << lowest_start << "]";
 
     return proposal;
+}
+
+
+void DIALOG_MIGRATE_BUSES::onItemSelected( wxListEvent& aEvent )
+{
+    unsigned sel = aEvent.GetIndex();
+    wxASSERT( sel < m_items.size() );
+
+    auto subgraph = m_items[sel].subgraph;
+
+    auto sheet = subgraph->m_sheet;
+    auto driver = subgraph->m_driver;
+
+    if( sheet != *g_CurrentSheet )
+    {
+        sheet.LastScreen()->SetZoom( m_frame->GetScreen()->GetZoom() );
+        *g_CurrentSheet = sheet;
+        g_CurrentSheet->UpdateAllScreenReferences();
+        sheet.LastScreen()->TestDanglingEnds();
+    }
+
+    auto pos = driver->GetPosition();
+
+    m_frame->SetCrossHairPosition( pos );
+    m_frame->RedrawScreen( pos, false );
 }
