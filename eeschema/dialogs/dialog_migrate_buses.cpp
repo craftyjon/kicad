@@ -30,6 +30,9 @@ DIALOG_MIGRATE_BUSES::DIALOG_MIGRATE_BUSES( SCH_EDIT_FRAME* aParent ) :
     m_migration_list->Bind( wxEVT_LIST_ITEM_SELECTED,
                             &DIALOG_MIGRATE_BUSES::onItemSelected, this );
 
+    m_btn_accept->Bind( wxEVT_COMMAND_BUTTON_CLICKED,
+                        &DIALOG_MIGRATE_BUSES::onAcceptClicked, this );
+
     loadGraphData();
     updateUi();
 
@@ -55,7 +58,7 @@ void DIALOG_MIGRATE_BUSES::loadGraphData()
         for( auto label : labels )
             status.labels.push_back( static_cast<SCH_TEXT*>( label )->GetText() );
 
-        status.proposed_label = getProposedLabel( status.labels );
+        status.possible_labels = getProposedLabels( status.labels );
         m_items.push_back( status );
     }
 }
@@ -81,7 +84,7 @@ void DIALOG_MIGRATE_BUSES::updateUi()
 
         m_migration_list->SetItem( i, 0, item.subgraph->m_sheet.PathHumanReadable() );
         m_migration_list->SetItem( i, 1, old );
-        m_migration_list->SetItem( i, 2, item.proposed_label );
+        m_migration_list->SetItem( i, 2, item.possible_labels[0] );
         m_migration_list->SetItem( i, 3, "" );
     }
 
@@ -90,10 +93,8 @@ void DIALOG_MIGRATE_BUSES::updateUi()
 }
 
 
-wxString DIALOG_MIGRATE_BUSES::getProposedLabel( std::vector<wxString> aLabelList )
+std::vector<wxString> DIALOG_MIGRATE_BUSES::getProposedLabels( std::vector<wxString> aLabelList )
 {
-    wxString proposal = "";
-
     int lowest_start = INT_MAX;
     int highest_end = -1;
     int widest_bus = -1;
@@ -113,19 +114,21 @@ wxString DIALOG_MIGRATE_BUSES::getProposedLabel( std::vector<wxString> aLabelLis
             highest_end = end;
 
         if( end - start + 1 > widest_bus )
-        {
             widest_bus = end - start + 1;
-            proposal = label;
-        }
     }
 
     SCH_CONNECTION conn;
-    conn.ConfigureFromLabel( proposal );
+    std::vector<wxString> proposals;
 
-    proposal = conn.VectorPrefix();
-    proposal << "[" << highest_end << ".." << lowest_start << "]";
+    for( auto label : aLabelList )
+    {
+        conn.ConfigureFromLabel( label );
+        wxString proposal = conn.VectorPrefix();
+        proposal << "[" << highest_end << ".." << lowest_start << "]";
+        proposals.push_back( proposal );
+    }
 
-    return proposal;
+    return proposals;
 }
 
 
@@ -133,6 +136,8 @@ void DIALOG_MIGRATE_BUSES::onItemSelected( wxListEvent& aEvent )
 {
     unsigned sel = aEvent.GetIndex();
     wxASSERT( sel < m_items.size() );
+
+    m_selected_index = sel;
 
     auto subgraph = m_items[sel].subgraph;
 
@@ -151,4 +156,30 @@ void DIALOG_MIGRATE_BUSES::onItemSelected( wxListEvent& aEvent )
 
     m_frame->SetCrossHairPosition( pos );
     m_frame->RedrawScreen( pos, false );
+
+    m_cb_new_name->Clear();
+
+    for( auto option : m_items[sel].possible_labels )
+        m_cb_new_name->Append( option );
+
+    m_cb_new_name->Select( 0 );
+}
+
+
+void DIALOG_MIGRATE_BUSES::onAcceptClicked( wxCommandEvent& aEvent )
+{
+    wxASSERT( m_selected_index < m_items.size() );
+
+    auto sel = m_selected_index;
+
+    m_items[sel].approved_label = m_cb_new_name->GetStringSelection();
+    m_items[sel].approved = true;
+
+    m_migration_list->SetItem( sel, 2, m_items[sel].approved_label );
+    m_migration_list->SetItem( sel, 3, _( "Updated" ) );
+
+    if( sel < m_items.size() - 1 )
+    {
+        m_migration_list->Select( sel + 1 );
+    }
 }

@@ -35,7 +35,9 @@ struct BUS_MIGRATION_STATUS
 
     std::vector<wxString> labels;
 
-    wxString proposed_label;
+    std::vector<wxString> possible_labels;
+
+    wxString approved_label;
 
     bool approved;
 };
@@ -50,13 +52,17 @@ private:
 
     SCH_EDIT_FRAME* m_frame;
 
+    unsigned m_selected_index;
+
     void loadGraphData();
 
     void updateUi();
 
-    wxString getProposedLabel( std::vector<wxString> aLabelList );
+    std::vector<wxString> getProposedLabels( std::vector<wxString> aLabelList );
 
     void onItemSelected( wxListEvent& aEvent );
+
+    void onAcceptClicked( wxCommandEvent& aEvent );
 
     std::vector<BUS_MIGRATION_STATUS> m_items;
 };
