@@ -353,16 +353,23 @@ public:
 
             std::map<wxString, wxString>& fieldStore = m_dataStore[ comp->GetTimeStamp() ];
 
-            for( int j = 0; j < comp->GetFieldCount(); ++j )
+            for( std::pair<wxString, wxString> fieldData : fieldStore )
             {
-                SCH_FIELD* field = comp->GetField( j );
-                auto fieldStoreData = fieldStore.find( field->GetName() );
-                if( fieldStoreData != fieldStore.end() )
-                    field->SetText( fieldStoreData->second );
+                wxString   fieldName = fieldData.first;
+                SCH_FIELD* field = comp->FindField( fieldName );
+
+                if( !field )
+                    field = comp->AddField( SCH_FIELD( wxPoint( 0, 0 ), -1, comp, fieldName ) );
+
+                field->SetText( fieldData.second );
             }
         }
     }
 };
+
+
+#define SHOW_COL_SIZE    50
+#define GROUPBY_COL_SIZE 70
 
 
 DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent ) :
@@ -375,9 +382,11 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
 
     m_bRefresh->SetBitmap( KiBitmap( refresh_xpm ) );
 
-    m_fieldsCtrl->AppendTextColumn(   _( "Field" ),    wxDATAVIEW_CELL_INERT );
-    m_fieldsCtrl->AppendToggleColumn( _( "Show" ),     wxDATAVIEW_CELL_ACTIVATABLE, 50, wxALIGN_CENTER, 0 );
-    m_fieldsCtrl->AppendToggleColumn( _( "Group By" ), wxDATAVIEW_CELL_ACTIVATABLE, 70, wxALIGN_CENTER, 0 );
+    m_fieldsCtrl->AppendTextColumn(   _( "Field" ), wxDATAVIEW_CELL_INERT );
+    m_fieldsCtrl->AppendToggleColumn( _( "Show" ), wxDATAVIEW_CELL_ACTIVATABLE,
+                                      SHOW_COL_SIZE, wxALIGN_CENTER, 0 );
+    m_fieldsCtrl->AppendToggleColumn( _( "Group By" ), wxDATAVIEW_CELL_ACTIVATABLE,
+                                      GROUPBY_COL_SIZE, wxALIGN_CENTER, 0 );
 
     // The fact that we're a list should keep the control from reserving space for the
     // expander buttons... but it doesn't.  Fix by forcing the indent to 0.
@@ -578,12 +587,23 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::OnTableItemContextMenu( wxGridEvent& event )
 
 void DIALOG_FIELDS_EDITOR_GLOBAL::OnSizeFieldList( wxSizeEvent& event )
 {
-    int newWidth = event.GetSize().GetX();
+    int nameColSize = event.GetSize().GetX() - SHOW_COL_SIZE - GROUPBY_COL_SIZE - 8;
 
-    newWidth -= m_fieldsCtrl->GetColumn( 1 )->GetWidth();
-    newWidth -= m_fieldsCtrl->GetColumn( 2 )->GetWidth();
+    // Linux loses its head and messes these up when resizing the splitter bar:
+    m_fieldsCtrl->GetColumn( 1 )->SetWidth( SHOW_COL_SIZE );
+    m_fieldsCtrl->GetColumn( 2 )->SetWidth( GROUPBY_COL_SIZE );
 
-    m_fieldsCtrl->GetColumn( 0 )->SetWidth( newWidth - 8 );
+    m_fieldsCtrl->GetColumn( 0 )->SetWidth( nameColSize );
 
     event.Skip();
+}
+
+
+void DIALOG_FIELDS_EDITOR_GLOBAL::OnSaveAndContinue( wxCommandEvent& aEvent )
+{
+    if( TransferDataFromWindow() )
+    {
+        wxCommandEvent dummyEvent;
+        m_parent->OnSaveProject( dummyEvent );
+    }
 }
