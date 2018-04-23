@@ -606,7 +606,13 @@ bool WIZARD_FPLIB_TABLE::downloadGithubLibsFromList( wxArrayString& aUrlList,
                                                      wxString* aErrorMessage )
 {
     // Display a progress bar to show the downlaod state
-    wxProgressDialog pdlg( _( "Downloading libraries" ), wxEmptyString, aUrlList.GetCount() );
+    // for OSX do not enable wPD_APP_MODAL, keep wxPD_AUTO_HIDE
+    wxProgressDialog pdlg( _( "Downloading libraries" ), wxEmptyString, aUrlList.GetCount(),
+                           this,
+#ifndef __WXMAC__
+                           wxPD_APP_MODAL |
+#endif
+                           wxPD_CAN_ABORT | wxPD_AUTO_HIDE );
 
     // Download libs:
     for( unsigned ii = 0; ii < aUrlList.GetCount(); ii++ )
@@ -789,9 +795,13 @@ void WIZARD_FPLIB_TABLE::setupReview()
     int libTotalCount = m_libraries.size();
     int libCount = 0;
     bool validate = true;
+    // for OSX do not enable wPD_APP_MODAL, keep wxPD_AUTO_HIDE
     wxProgressDialog progressDlg( _( "Please wait..." ), _( "Validating libraries" ),
                                   libTotalCount, this,
-                                  wxPD_APP_MODAL | wxPD_CAN_ABORT | wxPD_AUTO_HIDE );
+#ifndef __WXMAC__
+                                  wxPD_APP_MODAL |
+#endif
+                                  wxPD_CAN_ABORT | wxPD_AUTO_HIDE );
 
     m_dvLibName->SetWidth( 280 );
 

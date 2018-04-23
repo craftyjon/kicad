@@ -816,9 +816,6 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
                     layoutfile.Close();
                 }
 
-                SaveProjectSettings( false );
-
-
                 projectpath = Kiway().Prj().GetProjectPath();
                 newfilename.SetPath( Prj().GetProjectPath() );
                 newfilename.SetName( Prj().GetProjectName() );
@@ -831,6 +828,7 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
                 g_RootSheet->SetFileName( newfilename.GetFullPath() );
                 GetScreen()->SetFileName( newfilename.GetFullPath() );
                 GetScreen()->SetModify();
+                SaveProjectSettings( false );
 
                 UpdateFileHistory( fullFileName );
                 SCH_SCREENS schematic;
