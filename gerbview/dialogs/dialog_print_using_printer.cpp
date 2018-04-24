@@ -37,6 +37,8 @@
 #include <gerber_file_image.h>
 #include <gerber_file_image_list.h>
 
+#include <enabler.h>
+
 ///@{
 /// \ingroup config
 
@@ -403,11 +405,14 @@ void DIALOG_PRINT_USING_PRINTER::OnPrintButtonClick( wxCommandEvent& event )
     wxString title = _( "Print" );
     BOARD_PRINTOUT_CONTROLLER printout( s_Parameters, m_Parent, title );
 
+    // Disable 'Print' button to prevent issuing another print
+    // command before the previous one is finished (causes problems on Windows)
+    ENABLER printBtnDisable( *m_buttonPrint, false );
+
     if( !printer.Print( this, &printout, true ) )
     {
         if( wxPrinter::GetLastError() == wxPRINTER_ERROR )
             DisplayError( this, _( "There was a problem printing" ) );
-        return;
     }
     else
     {

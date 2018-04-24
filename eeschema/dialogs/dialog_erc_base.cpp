@@ -14,103 +14,103 @@
 DIALOG_ERC_BASE::DIALOG_ERC_BASE( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : DIALOG_SHIM( parent, id, title, pos, size, style )
 {
 	this->SetSizeHints( wxDefaultSize, wxDefaultSize );
-	
+
 	wxBoxSizer* bSizer1;
 	bSizer1 = new wxBoxSizer( wxVERTICAL );
-	
+
 	m_NoteBook = new wxNotebook( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
 	m_PanelERC = new wxPanel( m_NoteBook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* bercSizer;
 	bercSizer = new wxBoxSizer( wxVERTICAL );
-	
+
 	wxBoxSizer* bupperSizer;
 	bupperSizer = new wxBoxSizer( wxHORIZONTAL );
-	
+
 	wxStaticBoxSizer* sdiagSizer;
 	sdiagSizer = new wxStaticBoxSizer( new wxStaticBox( m_PanelERC, wxID_ANY, _("ERC Report:") ), wxVERTICAL );
-	
+
 	wxGridSizer* gSizeDiag;
 	gSizeDiag = new wxGridSizer( 3, 2, 5, 5 );
-	
+
 	m_ErcTotalErrorsText = new wxStaticText( sdiagSizer->GetStaticBox(), wxID_ANY, _("Total:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_ErcTotalErrorsText->Wrap( -1 );
 	gSizeDiag->Add( m_ErcTotalErrorsText, 1, wxALIGN_CENTER_VERTICAL, 5 );
-	
+
 	m_TotalErrCount = new wxTextCtrl( sdiagSizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_READONLY );
 	gSizeDiag->Add( m_TotalErrCount, 0, wxALIGN_CENTER_VERTICAL, 5 );
-	
+
 	m_WarnErcErrorsText = new wxStaticText( sdiagSizer->GetStaticBox(), wxID_ANY, _("Warnings:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_WarnErcErrorsText->Wrap( -1 );
 	gSizeDiag->Add( m_WarnErcErrorsText, 1, wxALIGN_CENTER_VERTICAL, 5 );
-	
+
 	m_LastWarningCount = new wxTextCtrl( sdiagSizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_READONLY );
 	gSizeDiag->Add( m_LastWarningCount, 0, wxALIGN_CENTER_VERTICAL, 5 );
-	
+
 	m_LastErrCountText = new wxStaticText( sdiagSizer->GetStaticBox(), wxID_ANY, _("Errors:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_LastErrCountText->Wrap( -1 );
 	gSizeDiag->Add( m_LastErrCountText, 1, wxALIGN_CENTER_VERTICAL, 5 );
-	
+
 	m_LastErrCount = new wxTextCtrl( sdiagSizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_READONLY );
 	gSizeDiag->Add( m_LastErrCount, 0, wxALIGN_CENTER_VERTICAL, 5 );
-	
-	
+
+
 	sdiagSizer->Add( gSizeDiag, 0, wxALL|wxEXPAND, 5 );
-	
+
 	m_staticline1 = new wxStaticLine( sdiagSizer->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
 	sdiagSizer->Add( m_staticline1, 0, wxEXPAND|wxTOP|wxBOTTOM, 5 );
-	
+
 	m_WriteResultOpt = new wxCheckBox( sdiagSizer->GetStaticBox(), wxID_ANY, _("Create ERC file report"), wxDefaultPosition, wxDefaultSize, 0 );
 	sdiagSizer->Add( m_WriteResultOpt, 0, wxALL|wxBOTTOM|wxRIGHT|wxTOP, 5 );
-	
-	
+
+
 	bupperSizer->Add( sdiagSizer, 0, wxEXPAND|wxTOP|wxBOTTOM|wxRIGHT, 5 );
-	
+
 	wxBoxSizer* bSizerMessages;
 	bSizerMessages = new wxBoxSizer( wxVERTICAL );
-	
+
 	m_titleMessages = new wxStaticText( m_PanelERC, wxID_ANY, _("Messages:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_titleMessages->Wrap( -1 );
 	m_titleMessages->SetFont( wxFont( 11, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
-	
+
 	bSizerMessages->Add( m_titleMessages, 0, wxRIGHT|wxLEFT, 12 );
-	
+
 	m_MessagesList = new wxTextCtrl( m_PanelERC, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE|wxTE_READONLY );
 	m_MessagesList->SetMinSize( wxSize( 180,-1 ) );
-	
+
 	bSizerMessages->Add( m_MessagesList, 1, wxEXPAND|wxBOTTOM|wxLEFT, 5 );
-	
-	
+
+
 	bupperSizer->Add( bSizerMessages, 1, wxBOTTOM|wxEXPAND|wxRIGHT|wxTOP, 3 );
-	
-	
+
+
 	bercSizer->Add( bupperSizer, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 8 );
-	
+
 	m_textMarkers = new wxStaticText( m_PanelERC, wxID_ANY, _("Error list:"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_textMarkers->Wrap( -1 );
 	m_textMarkers->SetFont( wxFont( 11, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
-	
+
 	bercSizer->Add( m_textMarkers, 0, wxLEFT|wxRIGHT, 20 );
-	
+
 	m_MarkersList = new ERC_HTML_LISTFRAME( m_PanelERC, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHW_SCROLLBAR_AUTO|wxSUNKEN_BORDER );
 	bercSizer->Add( m_MarkersList, 1, wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT, 8 );
-	
+
 	wxBoxSizer* bbuttonsSizer;
 	bbuttonsSizer = new wxBoxSizer( wxHORIZONTAL );
-	
+
 	m_buttondelmarkers = new wxButton( m_PanelERC, ID_ERASE_DRC_MARKERS, _("Delete Markers"), wxDefaultPosition, wxDefaultSize, 0 );
 	bbuttonsSizer->Add( m_buttondelmarkers, 0, wxALL|wxEXPAND, 5 );
-	
+
 	m_buttonERC = new wxButton( m_PanelERC, ID_ERC_CMP, _("Run"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_buttonERC->SetDefault(); 
+	m_buttonERC->SetDefault();
 	bbuttonsSizer->Add( m_buttonERC, 0, wxALL|wxEXPAND, 5 );
-	
+
 	m_buttonClose = new wxButton( m_PanelERC, wxID_CANCEL, _("Close"), wxDefaultPosition, wxDefaultSize, 0 );
 	bbuttonsSizer->Add( m_buttonClose, 0, wxALL|wxEXPAND, 5 );
-	
-	
+
+
 	bercSizer->Add( bbuttonsSizer, 0, wxALIGN_RIGHT|wxRIGHT|wxLEFT, 5 );
-	
-	
+
+
 	m_PanelERC->SetSizer( bercSizer );
 	m_PanelERC->Layout();
 	bercSizer->Fit( m_PanelERC );
@@ -118,67 +118,67 @@ DIALOG_ERC_BASE::DIALOG_ERC_BASE( wxWindow* parent, wxWindowID id, const wxStrin
 	m_PanelERCOptions = new wxPanel( m_NoteBook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* m_panelMatrixSizer;
 	m_panelMatrixSizer = new wxBoxSizer( wxVERTICAL );
-	
+
 	wxStaticBoxSizer* sbSizer2;
-	sbSizer2 = new wxStaticBoxSizer( new wxStaticBox( m_PanelERCOptions, wxID_ANY, _("Label to Label Connections") ), wxVERTICAL );
-	
+	sbSizer2 = new wxStaticBoxSizer( new wxStaticBox( m_PanelERCOptions, wxID_ANY, _("Label to Label Connections:") ), wxVERTICAL );
+
 	m_cbTestSimilarLabels = new wxCheckBox( sbSizer2->GetStaticBox(), wxID_ANY, _("Test similar labels"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_cbTestSimilarLabels->SetToolTip( _("Similar labels are labels (inside a sheet) which differs only by upper/lower case") );
-	
+
 	sbSizer2->Add( m_cbTestSimilarLabels, 0, wxALL, 5 );
-	
+
 	m_cbTestUniqueGlbLabels = new wxCheckBox( sbSizer2->GetStaticBox(), wxID_ANY, _("Test single instances of global labels"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_cbTestUniqueGlbLabels->SetToolTip( _("Global labels are used to connect signals across the full hierarchy.\nThey are expected to be at least two labels with the same name.") );
-	
+
 	sbSizer2->Add( m_cbTestUniqueGlbLabels, 0, wxBOTTOM|wxLEFT|wxRIGHT, 5 );
-	
-	
+
+
 	m_panelMatrixSizer->Add( sbSizer2, 0, wxALL|wxEXPAND, 5 );
-	
+
 	wxStaticBoxSizer* sbSizer3;
-	sbSizer3 = new wxStaticBoxSizer( new wxStaticBox( m_PanelERCOptions, wxID_ANY, _("Pin to Pin Connections") ), wxVERTICAL );
-	
+	sbSizer3 = new wxStaticBoxSizer( new wxStaticBox( m_PanelERCOptions, wxID_ANY, _("Pin to Pin Connections:") ), wxVERTICAL );
+
 	m_matrixPanel = new wxPanel( sbSizer3->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	sbSizer3->Add( m_matrixPanel, 1, wxEXPAND | wxALL, 5 );
-	
+
 	m_ResetOptButton = new wxButton( sbSizer3->GetStaticBox(), ID_RESET_MATRIX, _("Initialize to Default"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer3->Add( m_ResetOptButton, 0, wxALIGN_RIGHT|wxTOP|wxRIGHT|wxLEFT, 5 );
-	
-	
+
+
 	m_panelMatrixSizer->Add( sbSizer3, 0, wxALL|wxEXPAND, 5 );
-	
+
 	m_staticline3 = new wxStaticLine( m_PanelERCOptions, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
 	m_panelMatrixSizer->Add( m_staticline3, 0, wxEXPAND | wxALL, 5 );
-	
+
 	m_staticText81 = new wxStaticText( m_PanelERCOptions, wxID_ANY, _("Bus connections"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticText81->Wrap( -1 );
 	m_panelMatrixSizer->Add( m_staticText81, 0, wxALL, 5 );
-	
+
 	m_cbCheckBusDriverConflicts = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check buses for conflicting drivers"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_panelMatrixSizer->Add( m_cbCheckBusDriverConflicts, 0, wxALL, 5 );
-	
+
 	m_cbCheckBusEntries = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check that nets are members of buses they graphically connect to"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_panelMatrixSizer->Add( m_cbCheckBusEntries, 0, wxALL, 5 );
-	
+
 	m_cbCheckBusToBusConflicts = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check that bus-to-bus connections have shared members"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_panelMatrixSizer->Add( m_cbCheckBusToBusConflicts, 0, wxALL, 5 );
-	
+
 	m_cbCheckBusToNetConflicts = new wxCheckBox( m_PanelERCOptions, wxID_ANY, _("Check that bus wires are not connected to heirarchical net pins and vice versa"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_panelMatrixSizer->Add( m_cbCheckBusToNetConflicts, 0, wxALL, 5 );
-	
-	
+
+
 	m_PanelERCOptions->SetSizer( m_panelMatrixSizer );
 	m_PanelERCOptions->Layout();
 	m_panelMatrixSizer->Fit( m_PanelERCOptions );
 	m_NoteBook->AddPage( m_PanelERCOptions, _("Options"), false );
-	
+
 	bSizer1->Add( m_NoteBook, 1, wxEXPAND | wxALL, 5 );
-	
-	
+
+
 	this->SetSizer( bSizer1 );
 	this->Layout();
 	bSizer1->Fit( this );
-	
+
 	// Connect Events
 	this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( DIALOG_ERC_BASE::OnCloseErcDialog ) );
 	m_MarkersList->Connect( wxEVT_COMMAND_HTML_LINK_CLICKED, wxHtmlLinkEventHandler( DIALOG_ERC_BASE::OnLeftClickMarkersList ), NULL, this );
@@ -199,5 +199,5 @@ DIALOG_ERC_BASE::~DIALOG_ERC_BASE()
 	m_buttonERC->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnErcCmpClick ), NULL, this );
 	m_buttonClose->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnButtonCloseClick ), NULL, this );
 	m_ResetOptButton->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnResetMatrixClick ), NULL, this );
-	
+
 }
