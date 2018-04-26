@@ -53,6 +53,12 @@ void InvokeDialogCreateBOMEditor( SCH_EDIT_FRAME* aCaller )
 #define SHOW_FIELD_COLUMN 1
 #define GROUP_BY_COLUMN   2
 
+#ifdef __WXMAC__
+#define CHECKBOX_COLUMN_MARGIN 5
+#else
+#define CHECKBOX_COLUMN_MARGIN 15
+#endif
+
 #define QUANTITY_COLUMN   ( GetNumberCols() - 1 )
 
 
@@ -382,17 +388,15 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
     m_fieldsCtrl->AppendToggleColumn( _( "Show" ),     wxDATAVIEW_CELL_ACTIVATABLE, 0, wxALIGN_CENTER, 0 );
     m_fieldsCtrl->AppendToggleColumn( _( "Group By" ), wxDATAVIEW_CELL_ACTIVATABLE, 0, wxALIGN_CENTER, 0 );
 
-#ifdef __WXGTK__
-    // GTK auto-sizing doesn't appear to take into account the column headers, which is
-    // where all the width is in this case.
-    m_fieldsCtrl->GetColumn( 1 )->SetWidth( 50 );
-    m_fieldsCtrl->GetColumn( 2 )->SetWidth( 70 );
-#else
-    m_fieldsCtrl->GetColumn( 1 )->SetWidth( wxCOL_WIDTH_AUTOSIZE );
-    m_fieldsCtrl->GetColumn( 2 )->SetWidth( wxCOL_WIDTH_AUTOSIZE );
-#endif
-    m_showColWidth = m_fieldsCtrl->GetColumn( 1 )->GetWidth();
-    m_groupByColWidth = m_fieldsCtrl->GetColumn( 2 )->GetWidth();
+    // SetWidth( wxCOL_WIDTH_AUTOSIZE ) fails here on GTK, so we calculate the title sizes and
+    // set the column widths ourselves.
+    auto column = m_fieldsCtrl->GetColumn( SHOW_FIELD_COLUMN );
+    m_showColWidth = GetTextSize( column->GetTitle(), m_fieldsCtrl ).x + CHECKBOX_COLUMN_MARGIN;
+    column->SetWidth( m_showColWidth );
+
+    column = m_fieldsCtrl->GetColumn( GROUP_BY_COLUMN );
+    m_groupByColWidth = GetTextSize( column->GetTitle(), m_fieldsCtrl ).x + CHECKBOX_COLUMN_MARGIN;
+    column->SetWidth( m_groupByColWidth );
 
     // The fact that we're a list should keep the control from reserving space for the
     // expander buttons... but it doesn't.  Fix by forcing the indent to 0.
@@ -401,6 +405,17 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
     m_dataModel = new FIELDS_EDITOR_GRID_DATA_MODEL( m_componentRefs );
 
     LoadFieldNames();   // loads rows into m_fieldsCtrl and columns into m_dataModel
+
+    // Now that the fields are loaded we can set the initial location of the splitter
+    // based on the list width.  Again, SetWidth( wxCOL_WIDTH_AUTOSIZE ) fails us on GTK.
+    int nameColWidth = 0;
+    for( unsigned int row = 0; row < m_fieldsCtrl->GetItemCount(); ++row )
+    {
+        const wxString& fieldName = m_fieldsCtrl->GetTextValue( row, FIELD_NAME_COLUMN );
+        nameColWidth = std::max( nameColWidth, GetTextSize( fieldName, m_fieldsCtrl ).x );
+    }
+    m_fieldsCtrl->GetColumn( FIELD_NAME_COLUMN )->SetWidth( nameColWidth );
+    m_splitter1->SetSashPosition( nameColWidth + m_showColWidth + m_groupByColWidth + 40 );
 
     m_dataModel->RebuildRows( m_groupComponentsBox, m_fieldsCtrl );
     m_dataModel->Sort( 0, true );
