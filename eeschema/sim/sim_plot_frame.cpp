@@ -133,6 +133,9 @@ SIM_PLOT_FRAME::SIM_PLOT_FRAME( KIWAY* aKiway, wxWindow* aParent )
     icon.CopyFromBitmap( KiBitmap( simulator_xpm ) );
     SetIcon( icon );
 
+    // Gives a minimal size
+    SetSizeHints( 500, 400, -1, -1, -1, -1 );
+
     // Get the previous size and position of windows:
     LoadSettings( config() );
 
@@ -202,8 +205,6 @@ SIM_PLOT_FRAME::SIM_PLOT_FRAME( KIWAY* aKiway, wxWindow* aParent )
     // on Windows: when open it, the simulator frame is sent to the background.
     // instead of being behind the dialog frame (as it does)
     m_settingsDlg = NULL;
-
-    SetSize( ConvertDialogToPixels( wxSize( 400, 300 ) ) );
 
     // resize the subwindows size. At least on Windows, calling wxSafeYield before
     // resizing the subwindows forces the wxSplitWindows size events automatically generated
@@ -403,6 +404,12 @@ SIM_PLOT_PANEL* SIM_PLOT_FRAME::CurrentPlot() const
     wxWindow* curPage = m_plotNotebook->GetCurrentPage();
 
     return ( curPage == m_welcomePanel ) ? nullptr : static_cast<SIM_PLOT_PANEL*>( curPage );
+}
+
+
+const NETLIST_EXPORTER_PSPICE_SIM* SIM_PLOT_FRAME::GetExporter() const
+{
+    return m_exporter.get();
 }
 
 

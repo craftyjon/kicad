@@ -49,7 +49,6 @@
 
 #include <dialog_choose_component.h>
 #include <cmp_tree_model_adapter.h>
-#include <dialog_get_component.h>
 
 
 SCH_BASE_FRAME::COMPONENT_SELECTION SCH_BASE_FRAME::SelectComponentFromLibBrowser(
@@ -126,7 +125,7 @@ SCH_BASE_FRAME::COMPONENT_SELECTION SCH_BASE_FRAME::SelectComponentFromLibrary(
 
         for( unsigned ii = 0; ii < liblist.GetCount(); ii++ )
         {
-            if( libs->HasLibrary( liblist[ii] ) )
+            if( libs->HasLibrary( liblist[ii], true ) )
             {
                 loaded = true;
                 adapter->AddLibrary( liblist[ii] );
