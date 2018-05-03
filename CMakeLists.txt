@@ -861,25 +861,25 @@ if( UNIX AND NOT APPLE )
 
     # Install Mime directory
     install( DIRECTORY ${UNIX_ICON_FILES}
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share
+        DESTINATION share
         COMPONENT resources
         )
 
     # Install Icons
     install( DIRECTORY ${UNIX_MIME_FILES}
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share
+        DESTINATION share
         COMPONENT resources
         )
 
     # Install Applications directory (.desktop files)
     install( DIRECTORY ${UNIX_APPLICATIONS_FILES}
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share
+        DESTINATION share
         COMPONENT resources
         )
 
     # Install AppStream directory (app store entry)
     install( DIRECTORY ${UNIX_APPDATA_FILES}
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share
+        DESTINATION share
         COMPONENT resources
         )
 endif()

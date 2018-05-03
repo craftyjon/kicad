@@ -71,6 +71,7 @@
 #include <tools/pcb_actions.h>
 
 #include <wildcards_and_files_ext.h>
+#include <kicad_string.h>
 
 #if defined(KICAD_SCRIPTING) || defined(KICAD_SCRIPTING_WXPYTHON)
 #include <python_scripting.h>
@@ -215,8 +216,6 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_COMBOBOX( ID_TOOLBARH_PCB_SELECT_LAYER, PCB_EDIT_FRAME::Process_Special_Functions )
     EVT_CHOICE( ID_AUX_TOOLBAR_PCB_TRACK_WIDTH, PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event )
     EVT_CHOICE( ID_AUX_TOOLBAR_PCB_VIA_SIZE, PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event )
-    EVT_TOOL( ID_TOOLBARH_PCB_MODE_MODULE, PCB_EDIT_FRAME::OnSelectAutoPlaceMode )
-    EVT_TOOL( ID_TOOLBARH_PCB_MODE_TRACKS, PCB_EDIT_FRAME::OnSelectAutoPlaceMode )
     EVT_TOOL( ID_TOOLBARH_PCB_FREEROUTE_ACCESS, PCB_EDIT_FRAME::Access_to_External_Tool )
 
 
@@ -276,6 +275,10 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
                     PCB_EDIT_FRAME::Process_Special_Functions )
     EVT_MENU( ID_POPUP_PCB_SPREAD_ALL_MODULES, PCB_EDIT_FRAME::Process_Special_Functions )
     EVT_MENU( ID_POPUP_PCB_SPREAD_NEW_MODULES, PCB_EDIT_FRAME::Process_Special_Functions )
+    EVT_MENU( ID_POPUP_PCB_AUTOPLACE_FIXE_MODULE, PCB_EDIT_FRAME::Process_Special_Functions )
+    EVT_MENU( ID_POPUP_PCB_AUTOPLACE_FIXE_ALL_MODULES, PCB_EDIT_FRAME::Process_Special_Functions )
+    EVT_MENU( ID_POPUP_PCB_AUTOPLACE_FREE_ALL_MODULES, PCB_EDIT_FRAME::Process_Special_Functions )
+    EVT_MENU( ID_POPUP_PCB_AUTOPLACE_FREE_MODULE, PCB_EDIT_FRAME::Process_Special_Functions )
 
     // User interface update event handlers.
     EVT_UPDATE_UI( ID_SAVE_BOARD, PCB_EDIT_FRAME::OnUpdateSave )
@@ -300,8 +303,6 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_UPDATE_UI( ID_POPUP_PCB_SELECT_CUSTOM_WIDTH,
                    PCB_EDIT_FRAME::OnUpdateSelectCustomTrackWidth )
     EVT_UPDATE_UI( ID_AUX_TOOLBAR_PCB_VIA_SIZE, PCB_EDIT_FRAME::OnUpdateSelectViaSize )
-    EVT_UPDATE_UI( ID_TOOLBARH_PCB_MODE_MODULE, PCB_EDIT_FRAME::OnUpdateAutoPlaceModulesMode )
-    EVT_UPDATE_UI( ID_TOOLBARH_PCB_MODE_TRACKS, PCB_EDIT_FRAME::OnUpdateAutoPlaceTracksMode )
     EVT_UPDATE_UI_RANGE( ID_POPUP_PCB_SELECT_WIDTH1, ID_POPUP_PCB_SELECT_WIDTH8,
                          PCB_EDIT_FRAME::OnUpdateSelectTrackWidth )
     EVT_UPDATE_UI_RANGE( ID_POPUP_PCB_SELECT_VIASIZE1, ID_POPUP_PCB_SELECT_VIASIZE8,
@@ -346,17 +347,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     SetBoard( new BOARD() );
 
     // Create the PCB_LAYER_WIDGET *after* SetBoard():
-
-    wxFont font = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT );
-    int pointSize = font.GetPointSize();
-    int screenHeight = wxSystemSettings::GetMetric( wxSYS_SCREEN_Y );
-
-    // printf( "pointSize:%d  80%%:%d\n", pointSize, (pointSize*8)/10 );
-
-    if( screenHeight <= 900 )
-        pointSize = (pointSize * 8) / 10;
-
-    m_Layers = new PCB_LAYER_WIDGET( this, GetCanvas(), pointSize );
+    m_Layers = new PCB_LAYER_WIDGET( this, GetCanvas() );
 
     m_drc = new DRC( this );        // these 2 objects point to each other
     m_plotDialog = nullptr;
@@ -1190,37 +1181,6 @@ void PCB_EDIT_FRAME::ScriptingConsoleEnableDisable( wxCommandEvent& aEvent )
 #endif
 
 
-void PCB_EDIT_FRAME::OnSelectAutoPlaceMode( wxCommandEvent& aEvent )
-{
-    // Automatic placement of modules and tracks is a mutually exclusive operation so
-    // clear the other tool if one of the two is selected.
-    // Be careful: this event function is called both by the
-    // ID_TOOLBARH_PCB_MODE_MODULE and the ID_TOOLBARH_PCB_MODE_TRACKS tool
-    // Therefore we should avoid a race condition when deselecting one of these tools
-    // inside this function (seems happen on some Linux/wxWidgets versions)
-    // when the other tool is selected
-
-    switch( aEvent.GetId() )
-    {
-    case ID_TOOLBARH_PCB_MODE_MODULE:
-        if( aEvent.IsChecked() &&
-            m_mainToolBar->GetToolToggled( ID_TOOLBARH_PCB_MODE_TRACKS ) )
-        {
-            m_mainToolBar->ToggleTool( ID_TOOLBARH_PCB_MODE_TRACKS, false );
-        }
-        break;
-
-    case ID_TOOLBARH_PCB_MODE_TRACKS:
-        if( aEvent.IsChecked() &&
-            m_mainToolBar->GetToolToggled( ID_TOOLBARH_PCB_MODE_MODULE ) )
-        {
-            m_mainToolBar->ToggleTool( ID_TOOLBARH_PCB_MODE_MODULE, false );
-        }
-        break;
-    }
-}
-
-
 void PCB_EDIT_FRAME::OnLayerColorChange( wxCommandEvent& aEvent )
 {
     ReCreateLayerBox();
@@ -1410,4 +1370,29 @@ void PCB_EDIT_FRAME::SetIconScale( int aScale )
     ReCreateMicrowaveVToolbar();
     Layout();
     SendSizeEvent();
+}
+
+
+void PCB_EDIT_FRAME::LockModule( MODULE* aModule, bool aLocked )
+{
+    const wxString ModulesMaskSelection = wxT( "*" );
+    if( aModule )
+    {
+        aModule->SetLocked( aLocked );
+        SetMsgPanel( aModule );
+        OnModify();
+    }
+    else
+    {
+        aModule = GetBoard()->m_Modules;
+
+        for( ; aModule != NULL; aModule = aModule->Next() )
+        {
+            if( WildCompareString( ModulesMaskSelection, aModule->GetReference() ) )
+            {
+                aModule->SetLocked( aLocked );
+                OnModify();
+            }
+        }
+    }
 }
