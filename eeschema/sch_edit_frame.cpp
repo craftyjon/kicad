@@ -1568,12 +1568,6 @@ void SCH_EDIT_FRAME::RecalculateConnections( SCH_SHEET_LIST aSheetList )
 }
 
 
-void SCH_EDIT_FRAME::OnConfigurePaths( wxCommandEvent& aEvent )
-{
-    Pgm().ConfigurePaths( this );
-}
-
-
 int SCH_EDIT_FRAME::GetIconScale()
 {
     int scale = 0;

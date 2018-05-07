@@ -131,7 +131,7 @@ void prepareViewMenu( wxMenu* aParentMenu )
 
     AddMenuItem( aParentMenu,
                  ID_TO_LIBVIEW,
-                 _( "&Library Browser" ),  HELP_RUN_LIB_VIEWER,
+                 _( "Library &Browser" ),  HELP_RUN_LIB_VIEWER,
                  KiBitmap( library_browse_xpm ) );
 
     AddMenuItem( aParentMenu,
@@ -209,12 +209,12 @@ void prepareViewMenu( wxMenu* aParentMenu )
 
 #ifndef __APPLE__
     AddMenuItem( aParentMenu, ID_TB_OPTIONS_SELECT_CURSOR,
-                 _( "Full Window Crosshair" ),
+                 _( "Full &Window Crosshair" ),
                  _( "Change cursor shape" ),
                  KiBitmap( cursor_shape_xpm ), wxITEM_CHECK );
 #else
     AddMenuItem( aParentMenu, ID_TB_OPTIONS_SELECT_CURSOR,
-                 _( "Full Window Crosshair" ),
+                 _( "Full &Window Crosshair" ),
                  _( "Change cursor shape (not supported in Legacy graphics)" ),
                  KiBitmap( cursor_shape_xpm ), wxITEM_CHECK );
 #endif
@@ -222,7 +222,7 @@ void prepareViewMenu( wxMenu* aParentMenu )
     aParentMenu->AppendSeparator();
 
     AddMenuItem( aParentMenu, ID_TB_OPTIONS_HIDDEN_PINS,
-                 _( "Show hidden pins" ),
+                 _( "Show Hidden &Pins" ),
                  wxEmptyString,
                  KiBitmap( hidden_pin_xpm ), wxITEM_CHECK );
 
@@ -676,7 +676,7 @@ static void preparePreferencesMenu( SCH_EDIT_FRAME* aFrame, wxMenu* aParentMenu 
     // Path configuration edit dialog.
     AddMenuItem( aParentMenu,
                  ID_PREFERENCES_CONFIGURE_PATHS,
-                 _( "Configure &Paths..." ),
+                 _( "Configure Pa&ths..." ),
                  _( "Edit path configuration environment variables" ),
                  KiBitmap( path_xpm ) );
 

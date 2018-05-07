@@ -34,6 +34,7 @@
 #include <3d_canvas/cinfo3d_visu.h>
 #include <menus_helpers.h>
 #include <3d_viewer_id.h>
+#include "help_common_strings.h"
 
 extern struct EDA_HOTKEY_CONFIG g_3DViewer_Hokeys_Descr[];
 
@@ -44,6 +45,7 @@ void EDA_3D_VIEWER::CreateMenuBar()
     wxMenuBar* menuBar   = new wxMenuBar;
     wxMenu*    fileMenu  = new wxMenu;
     wxMenu*    editMenu  = new wxMenu;
+    wxMenu*    viewMenu  = new wxMenu;
     wxMenu*    prefsMenu = new wxMenu;
     wxMenu*    helpMenu  = new wxMenu;
 
@@ -68,6 +70,72 @@ void EDA_3D_VIEWER::CreateMenuBar()
                  _( "Copy 3D Image" ),
                  KiBitmap( copy_xpm ) );
 
+    menuBar->Append( viewMenu, _( "&View" ) );
+
+    AddMenuItem( viewMenu, ID_ZOOM_IN,
+                 _( "Zoom &In" ), HELP_ZOOM_IN,
+                 KiBitmap( zoom_in_xpm ) );
+
+    AddMenuItem( viewMenu, ID_ZOOM_OUT,
+                 _( "Zoom &Out" ), HELP_ZOOM_OUT,
+                 KiBitmap( zoom_out_xpm ) );
+
+    AddMenuItem( viewMenu, ID_ZOOM_PAGE,
+                 _( "Zoom to &Fit" ), HELP_ZOOM_FIT,
+                 KiBitmap( zoom_fit_in_page_xpm ) );
+
+    AddMenuItem( viewMenu, ID_ZOOM_REDRAW,
+                 _( "&Redraw" ), HELP_ZOOM_REDRAW,
+                 KiBitmap( zoom_redraw_xpm ) );
+
+    viewMenu->AppendSeparator();
+
+    AddMenuItem( viewMenu, ID_ROTATE3D_X_NEG,
+                 _( "Rotate X Clockwise" ),
+                 KiBitmap( rotate_neg_x_xpm ) );
+
+    AddMenuItem( viewMenu, ID_ROTATE3D_X_POS,
+                 _( "Rotate X Counterclockwise" ),
+                 KiBitmap( rotate_pos_x_xpm ) );
+
+    viewMenu->AppendSeparator();
+
+    AddMenuItem( viewMenu, ID_ROTATE3D_Y_NEG,
+                 _( "Rotate Y Clockwise" ),
+                 KiBitmap( rotate_neg_y_xpm ) );
+
+    AddMenuItem( viewMenu, ID_ROTATE3D_Y_POS,
+                 _( "Rotate Y Counterclockwise" ),
+                 KiBitmap( rotate_pos_y_xpm ) );
+
+    viewMenu->AppendSeparator();
+
+    AddMenuItem( viewMenu, ID_ROTATE3D_Z_NEG,
+                 _( "Rotate Z Clockwise" ),
+                 KiBitmap( rotate_neg_z_xpm ) );
+
+    AddMenuItem( viewMenu, ID_ROTATE3D_Z_POS,
+                 _( "Rotate Z Counterclockwise" ),
+                 KiBitmap( rotate_pos_z_xpm ) );
+
+    viewMenu->AppendSeparator();
+
+    AddMenuItem( viewMenu, ID_MOVE3D_LEFT,
+                 _( "Move left" ),
+                 KiBitmap( left_xpm ) );
+
+    AddMenuItem( viewMenu, ID_MOVE3D_RIGHT,
+                 _( "Move right" ),
+                 KiBitmap( right_xpm ) );
+
+    AddMenuItem( viewMenu, ID_MOVE3D_UP,
+                 _( "Move up" ),
+                 KiBitmap( up_xpm ) );
+
+    AddMenuItem( viewMenu, ID_MOVE3D_DOWN,
+                 _( "Move down" ),
+                 KiBitmap( down_xpm ) );
+
     menuBar->Append( prefsMenu, _( "&Preferences" ) );
 
     AddMenuItem( prefsMenu, ID_MENU3D_MOUSEWHEEL_PANNING,
@@ -76,9 +144,9 @@ void EDA_3D_VIEWER::CreateMenuBar()
 
     prefsMenu->AppendSeparator();
 
-    AddMenuItem( prefsMenu, ID_MENU3D_REALISTIC_MODE,
-                 _( "Realistic Mode" ),
-                 KiBitmap( use_3D_copper_thickness_xpm ), wxITEM_CHECK );
+    AddMenuItem( prefsMenu, ID_TOOL_SET_VISIBLE_ITEMS,
+                 _( "Display Options" ),
+                 KiBitmap( read_setup_xpm ) );
 
     wxMenu * renderEngineList = new wxMenu;
     AddMenuItem( prefsMenu, renderEngineList, ID_MENU3D_ENGINE,
@@ -238,60 +306,6 @@ void EDA_3D_VIEWER::CreateMenuBar()
     else
         gridlistMenu->Check( ID_MENU3D_GRID_NOGRID, true );
 
-
-    // Display elements options
-    // /////////////////////////////////////////////////////////////////////////
-    prefsMenu->AppendSeparator();
-
-    AddMenuItem( prefsMenu, ID_MENU3D_SHOW_BOARD_BODY,
-                 _( "Show Board Bod&y" ), KiBitmap( use_3D_copper_thickness_xpm ), wxITEM_CHECK );
-
-    AddMenuItem( prefsMenu, ID_MENU3D_ZONE_ONOFF,
-                 _( "Show Zone &Filling" ), KiBitmap( add_zone_xpm ), wxITEM_CHECK );
-
-    wxMenu * moduleAttributes = new wxMenu;
-    AddMenuItem( prefsMenu, moduleAttributes, ID_MENU3D_MODULE_ONOFF,
-                 _( "Show 3D M&odels" ), KiBitmap( shape_3d_xpm ) );
-    moduleAttributes->AppendCheckItem( ID_MENU3D_MODULE_ONOFF_ATTRIBUTES_NORMAL,
-                                       _( "Through Hole" ),
-                                       _( "Footprint Properties -> Placement type -> Through hole" ) );
-
-    moduleAttributes->AppendCheckItem( ID_MENU3D_MODULE_ONOFF_ATTRIBUTES_NORMAL_INSERT,
-                                       _( "Surface Mount" ),
-                                       _( "Footprint Properties -> Placement type -> Surface mount" ) );
-
-    moduleAttributes->AppendCheckItem( ID_MENU3D_MODULE_ONOFF_ATTRIBUTES_VIRTUAL,
-                                       _( "Virtual" ),
-                                       _( "Footprint Properties -> Placement type -> Virtual (eg: edge connectors, test points, mechanical parts)" ) );
-
-    // Layer options
-    // /////////////////////////////////////////////////////////////////////////
-    prefsMenu->AppendSeparator();
-
-    wxMenu * layersMenu = new wxMenu;
-    AddMenuItem( prefsMenu, layersMenu, ID_MENU3D_LAYERS,
-                 _( "Show &Layers" ), KiBitmap( tools_xpm ) );
-
-    AddMenuItem( layersMenu, ID_MENU3D_ADHESIVE_ONOFF,
-                 _( "Show &Adhesive Layers" ), KiBitmap( tools_xpm ), wxITEM_CHECK );
-
-    AddMenuItem( layersMenu, ID_MENU3D_SILKSCREEN_ONOFF,
-                 _( "Show &Silkscreen Layers" ), KiBitmap( text_xpm ), wxITEM_CHECK );
-
-    AddMenuItem( layersMenu, ID_MENU3D_SOLDER_MASK_ONOFF,
-                 _( "Show Solder &Mask Layers" ), KiBitmap( pads_mask_layers_xpm ), wxITEM_CHECK );
-
-    AddMenuItem( layersMenu, ID_MENU3D_SOLDER_PASTE_ONOFF,
-                 _( "Show Solder &Paste Layers" ), KiBitmap( pads_mask_layers_xpm ), wxITEM_CHECK );
-
-    // Other layers are not "board" layers, and are not shown in realistic mode
-    // These menus will be disabled in in realistic mode
-    AddMenuItem( layersMenu, ID_MENU3D_COMMENTS_ONOFF,
-                 _( "Show &Comments and Drawings Layers" ), KiBitmap( editor_xpm ), wxITEM_CHECK );
-
-    AddMenuItem( layersMenu, ID_MENU3D_ECO_ONOFF,
-                 _( "Show &Eco Layers" ), KiBitmap( editor_xpm ), wxITEM_CHECK );
-
     // Reset options
     // /////////////////////////////////////////////////////////////////////////
     prefsMenu->AppendSeparator();
@@ -304,11 +318,35 @@ void EDA_3D_VIEWER::CreateMenuBar()
     // /////////////////////////////////////////////////////////////////////////
     menuBar->Append( helpMenu, _( "&Help" ) );
 
+    AddMenuItem( helpMenu, wxID_HELP,
+                 _( "Pcbnew &Manual" ),
+                 _( "Open Pcbnew Manual" ),
+                 KiBitmap( online_help_xpm ) );
+
+    AddMenuItem( helpMenu, wxID_INDEX,
+                 _( "&Getting Started in KiCad" ),
+                 _( "Open \"Getting Started in KiCad\" guide for beginners" ),
+                 KiBitmap( help_xpm ) );
+
     wxString text = AddHotkeyName( _( "&List Hotkeys..." ), g_3DViewer_Hokeys_Descr, HK_HELP );
     AddMenuItem( helpMenu, ID_MENU3D_HELP_HOTKEY_SHOW_CURRENT_LIST,
                  text,
                  _( "Displays the current hotkeys list and corresponding commands" ),
                  KiBitmap( hotkeys_xpm ) );
+
+    helpMenu->AppendSeparator();
+
+    AddMenuItem( helpMenu, ID_HELP_GET_INVOLVED,
+                 _( "Get &Involved" ),
+                 _( "Contribute to KiCad (opens a web browser)" ),
+                 KiBitmap( info_xpm ) );
+
+    helpMenu->AppendSeparator();
+
+    AddMenuItem( helpMenu, wxID_ABOUT,
+                 _( "&About KiCad" ),
+                 _( "Display KiCad About dialog" ),
+                 KiBitmap( about_xpm ) );
 
     SetMenuBar( menuBar );
     SetMenuBarOptionsState();
@@ -339,13 +377,6 @@ void EDA_3D_VIEWER::SetMenuBarOptionsState()
 
     item = menuBar->FindItem( ID_MENU3D_ENGINE_RAYTRACING );
     item->Check( m_settings.RenderEngineGet() == RENDER_ENGINE_RAYTRACING );
-
-    item = menuBar->FindItem( ID_MENU3D_REALISTIC_MODE );
-    item->Check(  m_settings.GetFlag( FL_USE_REALISTIC_MODE ) );
-    item = menuBar->FindItem( ID_MENU3D_COMMENTS_ONOFF );
-    item->Enable( !m_settings.GetFlag( FL_USE_REALISTIC_MODE ) );
-    item = menuBar->FindItem( ID_MENU3D_ECO_ONOFF );
-    item->Enable( !m_settings.GetFlag( FL_USE_REALISTIC_MODE ) );
 
     item = menuBar->FindItem( ID_MENU3D_FL_RENDER_MATERIAL_MODE_NORMAL );
     item->Check( m_settings.MaterialModeGet() == MATERIAL_MODE_NORMAL );
@@ -386,39 +417,7 @@ void EDA_3D_VIEWER::SetMenuBarOptionsState()
     item->Check( m_settings.GetFlag( FL_RENDER_RAYTRACING_PROCEDURAL_TEXTURES ) );
 
 
-    item = menuBar->FindItem( ID_MENU3D_SHOW_BOARD_BODY );
-    item->Check( m_settings.GetFlag( FL_SHOW_BOARD_BODY ) );
-
-    item = menuBar->FindItem( ID_MENU3D_MODULE_ONOFF_ATTRIBUTES_NORMAL );
-    item->Check( m_settings.GetFlag( FL_MODULE_ATTRIBUTES_NORMAL ) );
-
-    item = menuBar->FindItem( ID_MENU3D_MODULE_ONOFF_ATTRIBUTES_NORMAL_INSERT );
-    item->Check( m_settings.GetFlag( FL_MODULE_ATTRIBUTES_NORMAL_INSERT ) );
-
-    item = menuBar->FindItem( ID_MENU3D_MODULE_ONOFF_ATTRIBUTES_VIRTUAL );
-    item->Check( m_settings.GetFlag( FL_MODULE_ATTRIBUTES_VIRTUAL ) );
-
-    item = menuBar->FindItem( ID_MENU3D_ZONE_ONOFF );
-    item->Check( m_settings.GetFlag( FL_ZONE ) );
-
     item = menuBar->FindItem( ID_MENU3D_AXIS_ONOFF );
     item->Check( m_settings.GetFlag( FL_AXIS ) );
 
-    item = menuBar->FindItem( ID_MENU3D_ADHESIVE_ONOFF );
-    item->Check( m_settings.GetFlag( FL_ADHESIVE ) );
-
-    item = menuBar->FindItem( ID_MENU3D_SILKSCREEN_ONOFF );
-    item->Check( m_settings.GetFlag( FL_SILKSCREEN ) );
-
-    item = menuBar->FindItem( ID_MENU3D_SOLDER_MASK_ONOFF );
-    item->Check( m_settings.GetFlag( FL_SOLDERMASK ) );
-
-    item = menuBar->FindItem( ID_MENU3D_SOLDER_PASTE_ONOFF );
-    item->Check( m_settings.GetFlag( FL_SOLDERPASTE ) );
-
-    item = menuBar->FindItem( ID_MENU3D_COMMENTS_ONOFF );
-    item->Check( m_settings.GetFlag( FL_COMMENTS ) );
-
-    item = menuBar->FindItem( ID_MENU3D_ECO_ONOFF );
-    item->Check( m_settings.GetFlag( FL_ECO ));
 }

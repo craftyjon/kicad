@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Apr 19 2018)
+// C++ code generated with wxFormBuilder (version Dec 30 2017)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -23,10 +23,12 @@ class TEXT_CTRL_EVAL;
 #include <wx/textctrl.h>
 #include <wx/button.h>
 #include <wx/sizer.h>
-#include <wx/statbox.h>
 #include <wx/radiobox.h>
 #include <wx/slider.h>
+#include <wx/statbox.h>
+#include <wx/choice.h>
 #include <wx/statline.h>
+#include <wx/gbsizer.h>
 #include <wx/panel.h>
 #include <wx/bitmap.h>
 #include <wx/image.h>
@@ -53,16 +55,16 @@ class DIALOG_FOOTPRINT_FP_EDITOR_BASE : public DIALOG_SHIM
 	protected:
 		wxNotebook* m_NoteBook;
 		wxPanel* m_PanelProperties;
-		wxStaticText* m_staticTextDoc;
-		wxTextCtrl* m_DocCtrl;
-		wxStaticText* m_staticTextKeywords;
-		wxTextCtrl* m_KeywordCtrl;
 		wxStaticText* m_staticTextRef;
 		wxTextCtrl* m_ReferenceCtrl;
 		wxButton* m_button4;
 		wxStaticText* m_staticTextVal;
 		wxTextCtrl* m_ValueCtrl;
 		wxButton* m_button5;
+		wxStaticText* m_staticTextDoc;
+		wxTextCtrl* m_DocCtrl;
+		wxStaticText* m_staticTextKeywords;
+		wxTextCtrl* m_KeywordCtrl;
 		wxStaticText* m_staticTextFp;
 		wxTextCtrl* m_FootprintNameCtrl;
 		wxStaticText* m_staticTextLibNickname;
@@ -73,15 +75,15 @@ class DIALOG_FOOTPRINT_FP_EDITOR_BASE : public DIALOG_SHIM
 		wxSlider* m_CostRot90Ctrl;
 		wxStaticText* m_staticText12;
 		wxSlider* m_CostRot180Ctrl;
+		wxStaticText* m_staticText16;
+		wxChoice* m_ZoneConnectionChoice;
+		wxStaticLine* m_staticline11;
 		wxStaticText* m_staticTextInfo;
 		wxStaticText* m_staticTextInfoValPos;
 		wxStaticText* m_staticTextInfoValNeg;
 		wxStaticText* m_staticTextNetClearance;
 		TEXT_CTRL_EVAL* m_NetClearanceValueCtrl;
 		wxStaticText* m_NetClearanceUnits;
-		wxStaticLine* m_staticline1;
-		wxStaticLine* m_staticline2;
-		wxStaticLine* m_staticline3;
 		wxStaticText* m_MaskClearanceTitle;
 		TEXT_CTRL_EVAL* m_SolderMaskMarginCtrl;
 		wxStaticText* m_SolderMaskMarginUnits;
@@ -91,6 +93,7 @@ class DIALOG_FOOTPRINT_FP_EDITOR_BASE : public DIALOG_SHIM
 		wxStaticText* m_staticTextRatio;
 		TEXT_CTRL_EVAL* m_SolderPasteMarginRatioCtrl;
 		wxStaticText* m_SolderPasteRatioMarginUnits;
+		wxStaticText* m_staticTextInfo2;
 		wxPanel* m_Panel3D;
 		wxListBox* m_3D_ShapeNameListBox;
 		wxButton* m_buttonBrowse;

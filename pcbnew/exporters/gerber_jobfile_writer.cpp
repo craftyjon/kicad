@@ -541,19 +541,17 @@ void GERBER_JOBFILE_WRITER::addJSONDesignRules()
                             minclearanceOuter*m_conversionUnits ) );
 
     removeJSONSepararator();    // remove the last separator
-    closeBlock();
+
+    if( !hasInnerLayers )
+        closeBlock();
+    else
+        closeBlockWithSep();
 
 
     if( hasInnerLayers )
     {
-        closeBlockWithSep();
-
         openBlock();
         addJSONObject( "\"Layers\": \"Inner\",\n" );
-
-        addJSONObject( "\"Values\":\n" );
-        openBlock();
-
         addJSONObject( wxString::Format( "\"PadToPad\":  %.3f,\n", minPadClearanceInner*m_conversionUnits ) );
         addJSONObject( wxString::Format( "\"PadToTrack\":  %.3f,\n", minPadClearanceInner*m_conversionUnits ) );
         addJSONObject( wxString::Format( "\"TrackToTrack\":  %.3f,\n", minclearance_track2track*m_conversionUnits ) );
@@ -680,7 +678,7 @@ void GERBER_JOBFILE_WRITER::addJSONMaterialStackup()
             addJSONObject( wxString::Format( "\"Thickness\":  %f,\n", thickness ) );
 
         std::string strname = formatStringToGerber(  m_pcb->GetLayerName( layer ) );
-        addJSONObject( wxString::Format( "\"S_Notes\":  \"Layer %s\",\n", strname.c_str() ) );
+        addJSONObject( wxString::Format( "\"Notes\":  \"Layer %s\",\n", strname.c_str() ) );
         removeJSONSepararator();
         closeBlockWithSep();
 

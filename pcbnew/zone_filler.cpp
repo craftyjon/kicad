@@ -66,7 +66,8 @@ static double s_thermalRot = 450;    // angle of stubs in thermal reliefs for ro
 static const bool s_DumpZonesWhenFilling = false;
 
 ZONE_FILLER::ZONE_FILLER(  BOARD* aBoard, COMMIT* aCommit ) :
-    m_board( aBoard ), m_commit( aCommit ), m_progressReporter( nullptr ), m_count_done( 0 )
+    m_board( aBoard ), m_commit( aCommit ), m_progressReporter( nullptr ),
+    m_next( 0 ), m_count_done( 0 )
 {
 }
 
@@ -81,7 +82,7 @@ void ZONE_FILLER::SetProgressReporter( WX_PROGRESS_REPORTER* aReporter )
     m_progressReporter = aReporter;
 }
 
-void ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones, bool aCheck )
+bool ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones, bool aCheck )
 {
     int parallelThreadCount = std::max( ( int )std::thread::hardware_concurrency(), 2 );
 
@@ -89,7 +90,7 @@ void ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones, bool aCheck )
     auto connectivity = m_board->GetConnectivity();
 
     if( !connectivity->TryLock() )
-        return;
+        return false;
 
     for( auto zone : aZones )
     {
@@ -201,7 +202,7 @@ void ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones, bool aCheck )
 
             connectivity->SetProgressReporter( nullptr );
             connectivity->Unlock();
-            return;
+            return false;
         }
     }
 
@@ -310,6 +311,7 @@ void ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones, bool aCheck )
     }
 
     connectivity->Unlock();
+    return true;
 }
 
 
