@@ -828,19 +828,17 @@ int PCBNEW_CONTROL::DeleteItemCursor( const TOOL_EVENT& aEvent )
     return 0;
 }
 
+
 int PCBNEW_CONTROL::PasteItemsFromClipboard( const TOOL_EVENT& aEvent )
 {
     CLIPBOARD_IO pi;
-    BOARD tmpBoard;
     BOARD_ITEM* clipItem = pi.Parse();
 
     if( !clipItem )
-    {
         return 0;
-    }
 
     if( clipItem->Type() == PCB_T )
-        static_cast<BOARD*>(clipItem)->ClearAllNetCodes();
+        static_cast<BOARD*>( clipItem )->ClearAllNetCodes();
 
     bool editModules = m_editModules || frame()->IsType( FRAME_PCB_MODULE_EDITOR );
 
@@ -853,7 +851,6 @@ int PCBNEW_CONTROL::PasteItemsFromClipboard( const TOOL_EVENT& aEvent )
         return 0;
     }
 
-
     switch( clipItem->Type() )
     {
         case PCB_T:
@@ -864,28 +861,29 @@ int PCBNEW_CONTROL::PasteItemsFromClipboard( const TOOL_EVENT& aEvent )
                 return 0;
             }
 
-		    placeBoardItems( static_cast<BOARD*>( clipItem ) );
+            placeBoardItems( static_cast<BOARD*>( clipItem ) );
             break;
         }
 
         case PCB_MODULE_T:
         {
-            std::vector<BOARD_ITEM *> items;
+            std::vector<BOARD_ITEM*> items;
 
             clipItem->SetParent( board() );
 
             if( editModules )
             {
-                auto mod = static_cast<MODULE *>( clipItem );
+                auto mod = static_cast<MODULE*>( clipItem );
 
                 for( auto pad : mod->Pads() )
                 {
-                    pad->SetParent ( board()->m_Modules.GetFirst() );
+                    pad->SetParent( board()->m_Modules.GetFirst() );
                     items.push_back( pad );
                 }
+
                 for( auto item : mod->GraphicalItems() )
                 {
-                    item->SetParent ( board()->m_Modules.GetFirst() );
+                    item->SetParent( board()->m_Modules.GetFirst() );
                     items.push_back( item );
                 }
             }
@@ -897,13 +895,15 @@ int PCBNEW_CONTROL::PasteItemsFromClipboard( const TOOL_EVENT& aEvent )
             placeBoardItems( items, true );
             break;
         }
+
         default:
             m_frame->DisplayToolMsg( _( "Invalid clipboard contents" ) );
-            // FAILED
             break;
     }
+
     return 1;
 }
+
 
 int PCBNEW_CONTROL::AppendBoardFromFile( const TOOL_EVENT& aEvent )
 {
@@ -925,44 +925,33 @@ int PCBNEW_CONTROL::AppendBoardFromFile( const TOOL_EVENT& aEvent )
     return AppendBoard( *pi, fileName );
 }
 
+
+// Helper function for PCBNEW_CONTROL::placeBoardItems()
+template<typename T>
+static void moveNoFlagToVector( DLIST<T>& aList, std::vector<BOARD_ITEM*>& aTarget, bool aIsNew )
+{
+    for( auto obj = aIsNew ? aList.PopFront() : aList.GetFirst(); obj;
+            obj = aIsNew ? aList.PopFront() : obj->Next() )
+    {
+        if( obj->GetFlags() & FLAG0 )
+            obj->ClearFlags( FLAG0 );
+        else
+            aTarget.push_back( obj );
+    }
+}
+
+
 int PCBNEW_CONTROL::placeBoardItems( BOARD* aBoard )
 {
-    std::vector<BOARD_ITEM*> items;
-
-    for( auto track : aBoard->Tracks() )
-    {
-        if( track->GetFlags() & FLAG0 )
-            track->ClearFlags( FLAG0 );
-        else
-            items.push_back( track );
-    }
-
-    for( auto module : aBoard->Modules() )
-    {
-        if( module->GetFlags() & FLAG0 )
-            module->ClearFlags( FLAG0 );
-        else
-            items.push_back( module );
-    }
-
-    for( auto drawing : aBoard->Drawings() )
-    {
-        if( drawing->GetFlags() & FLAG0 )
-            drawing->ClearFlags( FLAG0 );
-        else
-            items.push_back( drawing );
-    }
-
-    for( auto zone : aBoard->Zones() )
-    {
-        if( zone->GetFlags() & FLAG0 )
-            zone->ClearFlags( FLAG0 );
-        else
-            items.push_back( zone );
-    }
-
     // items are new if the current board is not the board source
     bool isNew = board() != aBoard;
+    std::vector<BOARD_ITEM*> items;
+
+    moveNoFlagToVector( aBoard->m_Track, items, isNew );
+    moveNoFlagToVector( aBoard->m_Modules, items, isNew );
+    moveNoFlagToVector( aBoard->DrawingsList(), items, isNew );
+    moveNoFlagToVector( aBoard->m_Zone, items, isNew );
+
     return placeBoardItems( items, isNew );
 }
 
@@ -1077,7 +1066,6 @@ int PCBNEW_CONTROL::AppendBoard( PLUGIN& pi, wxString& fileName )
     enabledLayers |= initialEnabledLayers;
     brd->SetEnabledLayers( enabledLayers );
     brd->SetVisibleLayers( enabledLayers );
-
 
     return placeBoardItems( brd );
 }

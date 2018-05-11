@@ -403,7 +403,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     lyrs.LayersToolbarPane();
     lyrs.MinSize( m_Layers->GetBestSize() );    // updated in ReFillLayerWidget
     lyrs.BestSize( m_Layers->GetBestSize() );
-    lyrs.Caption( _( "Visibles" ) );
+    lyrs.Caption( _( "Layers Manager" ) );
     lyrs.TopDockable( false ).BottomDockable( false );
 
     if( m_mainToolBar )    // The main horizontal toolbar
@@ -723,28 +723,8 @@ void PCB_EDIT_FRAME::OnCloseWindow( wxCloseEvent& Event )
 
 void PCB_EDIT_FRAME::Show3D_Frame( wxCommandEvent& event )
 {
-    EDA_3D_VIEWER* draw3DFrame = Get3DViewerFrame();
-
-    if( draw3DFrame )
-    {
-        // Raising the window does not show the window on Windows if iconized.
-        // This should work on any platform.
-        if( draw3DFrame->IsIconized() )
-             draw3DFrame->Iconize( false );
-
-        draw3DFrame->Raise();
-
-        // Raising the window does not set the focus on Linux.  This should work on any platform.
-        if( wxWindow::FindFocus() != draw3DFrame )
-            draw3DFrame->SetFocus();
-
-        return;
-    }
-
-    draw3DFrame = new EDA_3D_VIEWER( &Kiway(), this, _( "3D Viewer" ) );
-    draw3DFrame->SetDefaultFileName( GetBoard()->GetFileName() );
-    draw3DFrame->Raise();     // Needed with some Window Managers
-    draw3DFrame->Show( true );
+    bool forceRecreateIfNotOwner = true;
+    CreateAndShow3D_Frame( forceRecreateIfNotOwner );
 }
 
 
@@ -1087,10 +1067,7 @@ void PCB_EDIT_FRAME::OnModify( )
 {
     PCB_BASE_FRAME::OnModify();
 
-    EDA_3D_VIEWER* draw3DFrame = Get3DViewerFrame();
-
-    if( draw3DFrame )
-        draw3DFrame->ReloadRequest();
+    Update3DView();
 
     m_ZoneFillsDirty = true;
 }
