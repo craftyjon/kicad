@@ -144,6 +144,9 @@ public:
     {
         wxString ref;
 
+        if( m_NumRef < 0 )
+            return wxT( "?" );
+
         // To avoid a risk of duplicate, for power components
         // the ref number is 0nnn instead of nnn.
         // Just because sometimes only power components are annotated
@@ -464,6 +467,15 @@ public:
         }
     }
 #endif
+
+    /**
+     * Function Shorthand
+     * Returns a shorthand string representing all the references in the list.  For instance,
+     * "R1, R2, R4 - R7, U1"
+     * @param aList
+     */
+    static wxString Shorthand( std::vector<SCH_REFERENCE> aList );
+
 
 private:
     /* sort functions used to sort componentFlatList

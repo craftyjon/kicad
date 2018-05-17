@@ -41,25 +41,39 @@
 #include "dialog_fields_editor_global.h"
 
 
-// Create and show fields editor
-void InvokeDialogCreateBOMEditor( SCH_EDIT_FRAME* aCaller )
+enum GROUP_TYPE
 {
-    DIALOG_FIELDS_EDITOR_GLOBAL dlg( aCaller );
-    dlg.ShowQuasiModal();
-}
+    GROUP_SINGLETON,
+    GROUP_COLLAPSED,
+    GROUP_COLLAPSED_DURING_SORT,
+    GROUP_EXPANDED,
+    CHILD_ITEM
+};
+
+struct DATA_MODEL_ROW
+{
+    DATA_MODEL_ROW( SCH_REFERENCE aFirstReference, GROUP_TYPE aType )
+    {
+        m_Refs.push_back( aFirstReference );
+        m_Flag = aType;
+    }
+
+    GROUP_TYPE                 m_Flag;
+    std::vector<SCH_REFERENCE> m_Refs;
+};
 
 
 #define FIELD_NAME_COLUMN 0
 #define SHOW_FIELD_COLUMN 1
 #define GROUP_BY_COLUMN   2
 
+#define QUANTITY_COLUMN   ( GetNumberCols() - 1 )
+
 #ifdef __WXMAC__
 #define CHECKBOX_COLUMN_MARGIN 5
 #else
 #define CHECKBOX_COLUMN_MARGIN 15
 #endif
-
-#define QUANTITY_COLUMN   ( GetNumberCols() - 1 )
 
 
 // Indicator that multiple values exist in child rows
@@ -73,6 +87,8 @@ protected:
 
     SCH_REFERENCE_LIST    m_componentRefs;
     std::vector<wxString> m_fieldNames;
+    int                   m_sortColumn;
+    bool                  m_sortAscending;
 
     // However, the grid view can vary in two ways:
     //   1) the componentRefs can be grouped into fewer rows
@@ -82,11 +98,12 @@ protected:
     // when the groupings change), and we let the wxGrid handle (2) (ie: the number
     // of columns is constant but are hidden/shown by the wxGrid control).
 
-    std::vector< std::vector<SCH_REFERENCE> > m_rows;
+    std::vector< DATA_MODEL_ROW > m_rows;
 
     // Data store
     // A map of compID : fieldSet, where fieldSet is a map of fieldName : fieldValue
     std::map< timestamp_t, std::map<wxString, wxString> > m_dataStore;
+
 
 public:
     FIELDS_EDITOR_GRID_DATA_MODEL( SCH_REFERENCE_LIST& aComponentList )
@@ -133,26 +150,39 @@ public:
 
     wxString GetValue( int aRow, int aCol ) override
     {
-        return GetValue( m_rows[ aRow ], aCol );
+        if( aCol == REFERENCE )
+        {
+            // Poor-man's tree controls
+            if( m_rows[ aRow ].m_Flag == GROUP_COLLAPSED )
+                return wxT( ">  " ) + GetValue( m_rows[ aRow ], aCol );
+            else if (m_rows[ aRow ].m_Flag == GROUP_EXPANDED )
+                return wxT( "v  " ) + GetValue( m_rows[ aRow ], aCol );
+            else if( m_rows[ aRow ].m_Flag == CHILD_ITEM )
+                return wxT( "        " ) + GetValue( m_rows[ aRow ], aCol );
+            else
+                return wxT( "    " ) + GetValue( m_rows[ aRow ], aCol );
+        }
+        else
+            return GetValue( m_rows[ aRow ], aCol );
     }
 
 
-    wxString GetValue( std::vector<SCH_REFERENCE>& group, int aCol )
+    wxString GetValue( DATA_MODEL_ROW& group, int aCol )
     {
-        std::vector<wxString>  rootReferences;
-        wxString               fieldValue;
+        std::vector<SCH_REFERENCE> references;
+        wxString                   fieldValue;
 
-        for( const auto& ref : group )
+        for( const auto& ref : group.m_Refs )
         {
             if( aCol == REFERENCE || aCol == QUANTITY_COLUMN )
             {
-                rootReferences.push_back( ref.GetRef() << ref.GetRefNumber() );
+                references.push_back( ref );
             }
             else // Other columns are either a single value or ROW_MULTI_ITEMS
             {
                 timestamp_t compID = ref.GetComp()->GetTimeStamp();
 
-                if( &ref == &group.front() )
+                if( &ref == &group.m_Refs.front() )
                     fieldValue = m_dataStore[ compID ][ m_fieldNames[ aCol ] ];
                 else if ( fieldValue != m_dataStore[ compID ][ m_fieldNames[ aCol ] ] )
                     return ROW_MULT_ITEMS;
@@ -162,22 +192,26 @@ public:
         if( aCol == REFERENCE || aCol == QUANTITY_COLUMN )
         {
             // Remove duplicates (other units of multi-unit parts)
-            rootReferences.erase( std::unique( rootReferences.begin(), rootReferences.end() ),
-                                  rootReferences.end() );
+            auto logicalEnd = std::unique( references.begin(), references.end(),
+                    []( const SCH_REFERENCE& l, const SCH_REFERENCE& r )
+                    {
+                        // If unannotated then we can't tell what units belong together
+                        // so we have to leave them all
+                        if( l.GetRefNumber() == wxT( "?" ) )
+                            return false;
+
+                        return( l.GetRef() == r.GetRef() && l.GetRefNumber() == r.GetRefNumber() );
+                    } );
+            references.erase( logicalEnd, references.end() );
         }
 
         if( aCol == REFERENCE )
         {
-            for( const auto& ref : rootReferences )
-            {
-                if( fieldValue.length() )
-                    fieldValue += wxT( ", " );
-                fieldValue += ref;
-            }
+            fieldValue = SCH_REFERENCE_LIST::Shorthand( references );
         }
         else if( aCol == QUANTITY_COLUMN )
         {
-            fieldValue = wxString::Format( wxT( "%d" ), ( int )rootReferences.size() );
+            fieldValue = wxString::Format( wxT( "%d" ), ( int )references.size() );
         }
 
         return fieldValue;
@@ -189,34 +223,34 @@ public:
         if( aCol == REFERENCE || aCol == QUANTITY_COLUMN )
             return;             // Can't modify references or quantity
 
-        std::vector<SCH_REFERENCE>& rowGroup = m_rows[ aRow ];
+        DATA_MODEL_ROW& rowGroup = m_rows[ aRow ];
         wxString fieldName = m_fieldNames[ aCol ];
 
-        for( const auto& ref : rowGroup )
+        for( const auto& ref : rowGroup.m_Refs )
             m_dataStore[ ref.GetComp()->GetTimeStamp() ][ fieldName ] = aValue;
     }
 
 
-    static bool cmp( const std::vector<SCH_REFERENCE>& lhGroup, const std::vector<SCH_REFERENCE>& rhGroup,
+    static bool cmp( const DATA_MODEL_ROW& lhGroup, const DATA_MODEL_ROW& rhGroup,
                      FIELDS_EDITOR_GRID_DATA_MODEL* dataModel, int sortCol, bool ascending )
     {
         // Empty rows always go to the bottom, whether ascending or descending
-        if( lhGroup.size() == 0 )
+        if( lhGroup.m_Refs.size() == 0 )
             return true;
-        else if( rhGroup.size() == 0 )
+        else if( rhGroup.m_Refs.size() == 0 )
             return false;
 
         bool retVal;
 
         // Primary sort key is sortCol; secondary is always REFERENCE (column 0)
 
-        wxString lhs = dataModel->GetValue( (std::vector<SCH_REFERENCE>&)lhGroup, sortCol );
-        wxString rhs = dataModel->GetValue( (std::vector<SCH_REFERENCE>&)rhGroup, sortCol );
+        wxString lhs = dataModel->GetValue( (DATA_MODEL_ROW&) lhGroup, sortCol );
+        wxString rhs = dataModel->GetValue( (DATA_MODEL_ROW&) rhGroup, sortCol );
 
         if( lhs == rhs || sortCol == REFERENCE )
         {
-            wxString lhRef = lhGroup[ 0 ].GetRef() + lhGroup[ 0 ].GetRefNumber();
-            wxString rhRef = rhGroup[ 0 ].GetRef() + rhGroup[ 0 ].GetRefNumber();
+            wxString lhRef = lhGroup.m_Refs[ 0 ].GetRef() + lhGroup.m_Refs[ 0 ].GetRefNumber();
+            wxString rhRef = rhGroup.m_Refs[ 0 ].GetRef() + rhGroup.m_Refs[ 0 ].GetRefNumber();
             retVal = RefDesStringCompare( lhRef, rhRef ) < 0;
         }
         else
@@ -234,26 +268,35 @@ public:
         if( aColumn < 0 )
             aColumn = 0;
 
+        m_sortColumn = aColumn;
+        m_sortAscending = ascending;
+
+        CollapseForSort();
+
         std::sort( m_rows.begin(), m_rows.end(),
-                   [ this, aColumn, ascending ]( const std::vector<SCH_REFERENCE>& lhs,
-                                                 const std::vector<SCH_REFERENCE>& rhs ) -> bool
+                   [ this ]( const DATA_MODEL_ROW& lhs, const DATA_MODEL_ROW& rhs ) -> bool
                    {
-                       return cmp( lhs, rhs, this, aColumn, ascending );
+                       return cmp( lhs, rhs, this, m_sortColumn, m_sortAscending );
                    } );
+
+        ExpandAfterSort();
     }
 
 
-    bool match( const SCH_REFERENCE& lhRef, const SCH_REFERENCE& rhRef,
-                wxCheckBox* groupComponentsBox, wxDataViewListCtrl* fieldsCtrl )
+    bool unitMatch( const SCH_REFERENCE& lhRef, const SCH_REFERENCE& rhRef )
     {
-        // Units of same component always match
-        if( lhRef.GetRef() == rhRef.GetRef() && lhRef.GetRefNumber() == rhRef.GetRefNumber() )
-            return true;
-
-        // If we're not grouping, then nothing else matches
-        if( !groupComponentsBox->GetValue() )
+        // If items are unannotated then we can't tell if they're units of the same
+        // component or not
+        if( lhRef.GetRefNumber() == wxT( "?" ) )
             return false;
 
+        return ( lhRef.GetRef() == rhRef.GetRef() && lhRef.GetRefNumber() == rhRef.GetRefNumber() );
+    }
+
+
+    bool groupMatch( const SCH_REFERENCE& lhRef, const SCH_REFERENCE& rhRef,
+                     wxDataViewListCtrl* fieldsCtrl )
+    {
         bool matchFound = false;
 
         // First check the reference column.  This can be done directly out of the
@@ -305,45 +348,134 @@ public:
 
         for( unsigned i = 0; i < m_componentRefs.GetCount(); ++i )
         {
-            SCH_REFERENCE compRef = m_componentRefs[ i ];
+            SCH_REFERENCE ref = m_componentRefs[ i ];
             bool matchFound = false;
 
-            // See if we already have a group which this component fits into
-            for( auto& rowGroup : m_rows )
+            // See if we already have a row which this component fits into
+            for( auto& row : m_rows )
             {
-                // group members are by definition all matching, so just check
-                // against the first member
-                if( match( rowGroup[ 0 ], compRef, groupComponentsBox, fieldsCtrl ) )
+                // all group members must have identical refs so just use the first one
+                SCH_REFERENCE rowRef = row.m_Refs[ 0 ];
+
+                if( unitMatch( ref, rowRef ) )
                 {
                     matchFound = true;
-                    rowGroup.push_back( compRef );
+                    row.m_Refs.push_back( ref );
+                    break;
+                }
+                else if (groupComponentsBox->GetValue() && groupMatch( ref, rowRef, fieldsCtrl ) )
+                {
+                    matchFound = true;
+                    row.m_Refs.push_back( ref );
+                    row.m_Flag = GROUP_COLLAPSED;
                     break;
                 }
             }
 
             if( !matchFound )
-            {
-                std::vector<SCH_REFERENCE> newGroup;
-                newGroup.push_back( compRef );
-                m_rows.push_back( newGroup );
-            }
-        }
-
-        for( auto& rowGroup : m_rows )
-        {
-            std::sort( rowGroup.begin(), rowGroup.end(),
-                       []( const SCH_REFERENCE& lhs, const SCH_REFERENCE& rhs ) -> bool
-                       {
-                           wxString lhRef( lhs.GetRef() << lhs.GetRefNumber() );
-                           wxString rhRef( rhs.GetRef() << rhs.GetRefNumber() );
-                           return RefDesStringCompare( lhRef, rhRef ) < 0;
-                       } );
+                m_rows.push_back( DATA_MODEL_ROW( ref, GROUP_SINGLETON ) );
         }
 
         if ( GetView() )
         {
             wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_APPENDED, m_rows.size() );
             GetView()->ProcessTableMessage( msg );
+        }
+    }
+
+
+    void ExpandRow( int aRow )
+    {
+        std::vector<DATA_MODEL_ROW> children;
+
+        for( auto& ref : m_rows[ aRow ].m_Refs )
+        {
+            bool matchFound = false;
+
+            // See if we already have a child group which this component fits into
+            for( auto& child : children )
+            {
+                // group members are by definition all matching, so just check
+                // against the first member
+                if( unitMatch( ref, child.m_Refs[ 0 ] ) )
+                {
+                    matchFound = true;
+                    child.m_Refs.push_back( ref );
+                    break;
+                }
+            }
+
+            if( !matchFound )
+                children.push_back( DATA_MODEL_ROW( ref, CHILD_ITEM ) );
+        }
+
+        if( children.size() < 2 )
+            return;
+
+        std::sort( children.begin(), children.end(),
+                   [ this ] ( const DATA_MODEL_ROW& lhs, const DATA_MODEL_ROW& rhs ) -> bool
+                   {
+                       return cmp( lhs, rhs, this, m_sortColumn, m_sortAscending );
+                   } );
+
+        m_rows[ aRow ].m_Flag = GROUP_EXPANDED;
+        m_rows.insert( m_rows.begin() + aRow + 1, children.begin(), children.end() );
+
+        wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_INSERTED, aRow, children.size() );
+        GetView()->ProcessTableMessage( msg );
+    }
+
+
+    void CollapseRow( int aRow )
+    {
+        auto firstChild = m_rows.begin() + aRow + 1;
+        auto afterLastChild = firstChild;
+        int  deleted = 0;
+
+        while( afterLastChild != m_rows.end() && afterLastChild->m_Flag == CHILD_ITEM )
+        {
+            deleted++;
+            afterLastChild++;
+        }
+
+        m_rows[ aRow ].m_Flag = GROUP_COLLAPSED;
+        m_rows.erase( firstChild, afterLastChild );
+
+        wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_DELETED, aRow + 1, deleted );
+        GetView()->ProcessTableMessage( msg );
+    }
+
+
+    void ExpandCollapseRow( int aRow )
+    {
+        DATA_MODEL_ROW& group = m_rows[ aRow ];
+
+        if( group.m_Flag == GROUP_COLLAPSED )
+            ExpandRow( aRow );
+        else if( group.m_Flag == GROUP_EXPANDED )
+            CollapseRow( aRow );
+    }
+
+
+    void CollapseForSort()
+    {
+        for( size_t i = 0; i < m_rows.size(); ++i )
+        {
+            if( m_rows[ i ].m_Flag == GROUP_EXPANDED )
+            {
+                CollapseRow( i );
+                m_rows[ i ].m_Flag = GROUP_COLLAPSED_DURING_SORT;
+            }
+        }
+    }
+
+
+    void ExpandAfterSort()
+    {
+        for( size_t i = 0; i < m_rows.size(); ++i )
+        {
+            if( m_rows[ i ].m_Flag == GROUP_COLLAPSED_DURING_SORT )
+                ExpandRow( i );
         }
     }
 
@@ -431,15 +563,19 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
     // give a bit more room for editing
     m_grid->SetDefaultRowSize( m_grid->GetDefaultRowSize() + 2 );
 
-    // set column attributes
-    for( int i = 0; i < m_dataModel->GetRowsCount(); ++i )
-    {
-        m_grid->SetReadOnly( i, 0 );                                   // references
-        m_grid->SetReadOnly( i, m_dataModel->GetColsCount() - 1 );     // quantities
-    }
-    m_grid->SetColFormatNumber( m_dataModel->GetColsCount() - 1 );     // quantities
-    m_grid->SetColMinimalWidth( 0, 100 );                              // references
-    m_grid->SetColMinimalWidth( m_dataModel->GetColsCount() - 1, 50 ); // quantities
+    // set reference column attributes
+    wxGridCellAttr* attr = new wxGridCellAttr;
+    attr->SetReadOnly();
+    m_grid->SetColAttr( 0, attr );
+    m_grid->SetColMinimalWidth( 0, 100 );
+
+    // set quantities column attributes
+    attr = new wxGridCellAttr;
+    attr->SetReadOnly();
+    m_grid->SetColAttr( m_dataModel->GetColsCount() - 1, attr );
+    m_grid->SetColFormatNumber( m_dataModel->GetColsCount() - 1 );
+    m_grid->SetColMinimalWidth( m_dataModel->GetColsCount() - 1, 50 );
+
     m_grid->AutoSizeColumns( false );
 
     m_grid->SetGridCursor( 0, 1 );
@@ -595,6 +731,15 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::OnRegroupComponents( wxCommandEvent& event )
     m_dataModel->RebuildRows( m_groupComponentsBox, m_fieldsCtrl );
     m_dataModel->Sort( m_grid->GetSortingColumn(), m_grid->IsSortOrderAscending() );
     m_grid->ForceRefresh();
+}
+
+
+void DIALOG_FIELDS_EDITOR_GLOBAL::OnTableCellClick( wxGridEvent& event )
+{
+    if( event.GetCol() == REFERENCE )
+        m_dataModel->ExpandCollapseRow( event.GetRow());
+    else
+        event.Skip();
 }
 
 

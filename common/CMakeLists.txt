@@ -17,6 +17,8 @@ include_directories(
     ../pcbnew
     ../polygon
     ${INC_AFTER}
+    ${OCE_INCLUDE_DIRS}
+    ${OCC_INCLUDE_DIR}
     )
 
 

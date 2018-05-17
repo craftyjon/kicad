@@ -4,8 +4,9 @@ include_directories( BEFORE
     ${CMAKE_SOURCE_DIR}/include
 )
 
-include_directories( SYSTEM 
+include_directories( SYSTEM
     ${OCE_INCLUDE_DIRS}
+    ${OCC_INCLUDE_DIR}
 )
 
 set( K2S_FILES
@@ -28,7 +29,7 @@ endif( MINGW )
 
 add_executable( kicad2step ${K2S_FILES} )
 
-target_link_libraries( kicad2step ${wxWidgets_LIBRARIES} ${LIBS_OCE} )
+target_link_libraries( kicad2step ${wxWidgets_LIBRARIES} ${OCC_LIBRARIES} )
 
 if( APPLE )
     # puts binaries into the *.app bundle while linking

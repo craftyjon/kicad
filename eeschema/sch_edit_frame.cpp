@@ -68,7 +68,7 @@
 #include <netlist_exporter_kicad.h>
 #include <connection_graph.h>
 #include <kiway.h>
-
+#include <dialogs/dialog_fields_editor_global.h>
 
 SCH_SHEET_PATH* g_CurrentSheet = nullptr; // declared in general.h
 CONNECTION_GRAPH* g_ConnectionGraph = nullptr;
@@ -957,11 +957,8 @@ void SCH_EDIT_FRAME::OnCreateBillOfMaterials( wxCommandEvent& )
 
 void SCH_EDIT_FRAME::OnLaunchBomManager( wxCommandEvent& event )
 {
-    // First ensure that entire schematic is annotated
-    if( !prepareForNetlist() )
-        return;
-
-    InvokeDialogCreateBOMEditor( this );
+    DIALOG_FIELDS_EDITOR_GLOBAL dlg( this );
+    dlg.ShowQuasiModal();
 }
 
 
