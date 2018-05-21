@@ -22,6 +22,34 @@
 
 #include <dialog_migrate_buses.h>
 
+/**
+ * Migrates buses using legacy multi-label joining behavior.
+ *
+ * In KiCad verions before 6.0, you were allowed to place multiple labels
+ * on a given bus subgraph, and that would have the effect of making those
+ * bus descriptions equivalent according to the bus vector number.
+ *
+ * For example, if the labels PCA[0..15], ADR[0.7], and BUS[5..10] are all
+ * attached to the same subgraph, the intention is that there is connectivity
+ * between PCA0 and ADR0, between PCA10 and BUS10, and between PCA5, ADR5,
+ * and BUS5 (basically connect all the prefix names where the vector numbers
+ * line up).
+ *
+ * This is no longer allowed, because it doesn't map well onto the new
+ * bus groups feature and because it is confusing (the netlist will take on
+ * one of the possible names and it's impossible to control which one is
+ * used).
+ *
+ * This dialog identifies all of the subgraphs that have this behavior,
+ * and corrects them by determining a new name for the subgraph and removing
+ * all but one label.  The name is determined by choosing a prefix and bus
+ * vector notation that can capture all the attached buses.  In the above
+ * example, the result would need to have the vector notation [0..15] to
+ * capture all of the attached buses, and the name could be any of PCA, ADR,
+ * or BUS.  We present a dialog to the user for them to select which name
+ * they want to use.
+ */
+
 
 DIALOG_MIGRATE_BUSES::DIALOG_MIGRATE_BUSES( SCH_EDIT_FRAME* aParent ) :
     DIALOG_MIGRATE_BUSES_BASE( aParent ),
@@ -174,6 +202,21 @@ void DIALOG_MIGRATE_BUSES::onAcceptClicked( wxCommandEvent& aEvent )
 
     m_items[sel].approved_label = m_cb_new_name->GetStringSelection();
     m_items[sel].approved = true;
+
+    auto sheet = m_items[sel].subgraph->m_sheet;
+    auto screen = sheet.LastScreen();
+
+    auto labels =  m_items[sel].subgraph->GetBusLabels();
+
+    static_cast<SCH_TEXT*>( labels[0] )->SetText( m_items[sel].approved_label );
+
+    labels.erase( labels.begin() );
+
+    for( auto label : labels )
+    {
+        label->SetFlags( STRUCT_DELETED );
+        screen->Remove( label );
+    }
 
     m_migration_list->SetItem( sel, 2, m_items[sel].approved_label );
     m_migration_list->SetItem( sel, 3, _( "Updated" ) );
