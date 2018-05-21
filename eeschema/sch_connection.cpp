@@ -411,3 +411,29 @@ bool SCH_CONNECTION::ParseBusGroup( wxString aGroup, wxString* aName,
 
     return true;
 }
+
+
+bool SCH_CONNECTION::IsSubsetOf( SCH_CONNECTION* aOther ) const
+{
+    if( aOther->IsNet() )
+        return IsNet() ? ( aOther->Name( true ) == Name( true ) ) : false;
+
+    if( !IsBus() )
+        return false;
+
+    std::vector<wxString> mine, theirs;
+
+    for( auto m : Members() )
+        mine.push_back( m->Name( true ) );
+
+    for( auto m : aOther->Members() )
+        theirs.push_back( m->Name( true ) );
+
+    std::set<wxString> subset;
+
+    std::set_intersection( mine.begin(), mine.end(),
+                           theirs.begin(), theirs.end(),
+                           std::inserter(subset, subset.begin() ) );
+
+    return ( !subset.empty() );
+}

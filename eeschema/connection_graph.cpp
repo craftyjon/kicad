@@ -677,10 +677,10 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 {
                     if( candidate->m_sheet == subsheet &&
                         candidate->m_driver &&
-                        ( candidate->m_driver->Connection( subsheet )->Name( true ) ==
-                          connection->Name( true ) ) )
+                        candidate->m_driver->Connection( subsheet )->IsSubsetOf( connection ) )
                     {
                         auto target = candidate->m_driver->Connection( subsheet );
+                        target->SetSheet( connection->Sheet() );
 
                         if( connection->IsBus() )
                         {
@@ -691,7 +691,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                             auto old_code = target->NetCode();
 
                             target->SetNetCode( connection->NetCode() );
-                            target->SetSheet( connection->Sheet() );
 
                             m_net_code_to_subgraphs_map[ target->NetCode() ].push_back( candidate );
                             m_net_code_to_subgraphs_map.erase( old_code );
@@ -723,7 +722,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
     // happen to be attached by bus entries to buses from a parent sheet.
 
     // TODO(JE) This loop can be collapsed into the above once the logic is solid
-
+#if 1
     for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
     {
         auto subgraph = *it;
@@ -819,7 +818,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             }
         }
     }
-
+#endif
     phase2.Stop();
     std::cout << "BuildConnectionGraph() " <<  phase2.msecs() << " ms" << std::endl;
 }

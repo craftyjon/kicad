@@ -234,6 +234,16 @@ public:
     }
 
     /**
+     * Returns true if aOther is a subset of this connection or vice versa.
+     *
+     * For plain nets, this just tests whether or not the connectio names are
+     * the same.  For buses, this tests whether the two have any shared members.
+     *
+     * Will always return false if one connection is a bus and the other a net.
+     */
+    bool IsSubsetOf( SCH_CONNECTION* aOther ) const;
+
+    /**
      * Parses a bus vector (e.g. A[7..0]) into name, begin, and end.
      * Ensures that begin and end are positive and that end > begin.
      *
