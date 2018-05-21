@@ -689,7 +689,10 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                         else
                         {
                             auto old_code = target->NetCode();
+
                             target->SetNetCode( connection->NetCode() );
+                            target->SetSheet( connection->Sheet() );
+
                             m_net_code_to_subgraphs_map[ target->NetCode() ].push_back( candidate );
                             m_net_code_to_subgraphs_map.erase( old_code );
                         }
@@ -705,7 +708,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                             }
 
                             if( sub_item != candidate->m_driver )
-                                item_conn->Clone( *connection );
+                                item_conn->Clone( *target );
                         }
                     }
                 }
