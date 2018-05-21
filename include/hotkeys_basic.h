@@ -32,6 +32,8 @@
 #include <common.h>
 
 #define DEFAULT_HOTKEY_FILENAME_EXT wxT( "hotkeys" )
+#define EESCHEMA_HOTKEY_NAME wxT( "Eeschema" )
+#define PCBNEW_HOTKEY_NAME wxT( "PcbNew" )
 
 // A define to allow translation of Hot Key message Info in hotkey help menu
 // We do not want to use the _( x ) usual macro from wxWidgets, which calls wxGetTranslation(),
@@ -222,12 +224,31 @@ EDA_HOTKEY* GetDescriptorFromCommand( int aCommand, EDA_HOTKEY** aList );
  * Function ReadHotkeyConfig
  * Read hotkey configuration for a given app,
  * possibly before the frame for that app has been created
- * @param Appname = the value of the app's m_FrameName
+ * @param aFilename = the filename to save the hotkeys as
  * @param aDescList = the hotkey data
+ * @param aDefaultLocation = if true, add hotkey path and extension to aFilename
+ * @return 1 on success, 0 on failure
 */
-void ReadHotkeyConfig( const wxString& Appname, struct EDA_HOTKEY_CONFIG* aDescList );
+int ReadHotkeyConfigFile( const wxString& aFilename, struct EDA_HOTKEY_CONFIG* aDescList,
+                        const bool aDefaultLocation = true );
 
-void ParseHotkeyConfig( const wxString& data, struct EDA_HOTKEY_CONFIG* aDescList );
+/**
+ * Function ReadHotkeyConfig
+ * Read configuration data and fill the current hotkey list with hotkeys
+ * @param aAppname = the value of the app's m_FrameName
+ * @param aDescList = current hotkey list descr. to initialize.
+ */
+int ReadHotkeyConfig( const wxString& aAppname,  struct EDA_HOTKEY_CONFIG* aDescList );
+
+/**
+ * Function ParseHotkeyConfig
+ * Translates hotkey string data into application hotkeys
+ * @param data The string of data read from the configuration files
+ * @param aDescList The list of hotkeys to update
+ * @param aAppname The application interface requesting hotkey updates or empty for all
+ */
+void ParseHotkeyConfig( const wxString& data, struct EDA_HOTKEY_CONFIG* aDescList,
+        const wxString& aAppname );
 
 
 // common hotkeys event id

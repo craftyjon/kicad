@@ -130,8 +130,6 @@ struct BUS_UNFOLDING_T {
 };
 
 
-#define SCH_EDIT_FRAME_NAME wxT( "SchematicFrame" )
-
 /**
  * Schematic editor (Eeschema) main window.
  */
