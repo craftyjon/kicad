@@ -370,6 +370,7 @@ SELECTION& SELECTION_TOOL::GetSelection()
 
 SELECTION& SELECTION_TOOL::RequestSelection( int aFlags, CLIENT_SELECTION_FILTER aClientFilter )
 {
+    std::vector<EDA_ITEM*> removed_items;
     bool selectionEmpty = m_selection.Empty();
     m_selection.SetIsHover( selectionEmpty );
 
@@ -383,18 +384,15 @@ SELECTION& SELECTION_TOOL::RequestSelection( int aFlags, CLIENT_SELECTION_FILTER
     }
 
     // Be careful with iterators: items can be removed from list that invalidate iterators.
-    for( unsigned ii = 0; ii < m_selection.GetSize(); ii++ )
+    for( auto item : m_selection )
     {
-        EDA_ITEM* item = m_selection[ii];
-
         if( ( aFlags & SELECTION_EDITABLE ) && item->Type() == PCB_MARKER_T )
-        {
-            unselect( static_cast<BOARD_ITEM *>( item ) );
-
-            // unselect() removed the item from list.  Back up to catch the following item.
-            ii--;
-        }
+            removed_items.push_back( item );
     }
+
+    // Now safely remove the items from the selection
+    for( auto item : removed_items )
+        unselect( static_cast<BOARD_ITEM *>( item ) );
 
     if( aFlags & SELECTION_SANITIZE_PADS )
         SanitizeSelection();
@@ -863,11 +861,17 @@ int SELECTION_TOOL::expandSelectedConnection( const TOOL_EVENT& aEvent )
     // copy the selection, since we're going to iterate and modify
     auto selection = m_selection.GetItems();
 
+    // We use the BUSY flag to mark connections
+    for( auto item : selection )
+        item->SetState( BUSY, false );
+
     for( auto item : selection )
     {
         TRACK* trackItem = dynamic_cast<TRACK*>( item );
 
-        if( trackItem )
+        // Track items marked BUSY have already been visited
+        //  therefore their connections have already been marked
+        if( trackItem && !trackItem->GetState( BUSY ) )
             selectAllItemsConnectedToTrack( *trackItem );
     }
 
