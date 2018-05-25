@@ -26,6 +26,7 @@
 #ifndef NETLIST_EXPORT_GENERIC_H
 #define NETLIST_EXPORT_GENERIC_H
 
+#include <project.h>
 #include <netlist_exporter.h>
 
 #include <xnode.h>      // also nests: <wx/xml/xml.h>
@@ -57,6 +58,7 @@ enum GNL_T
 class NETLIST_EXPORTER_GENERIC : public NETLIST_EXPORTER
 {
 private:
+    SCH_EDIT_FRAME*       m_frame;
     std::set< wxString >  m_libraries;    ///< Set of library nicknames.
 
     SYMBOL_LIB_TABLE*     m_libTable;
@@ -68,16 +70,15 @@ protected:
     bool m_use_graph;
 
 public:
-    NETLIST_EXPORTER_GENERIC( NETLIST_OBJECT_LIST* aMasterList,
-                              SYMBOL_LIB_TABLE* aLibTable,
-                              CONNECTION_GRAPH* aGraph = nullptr ) :
+    NETLIST_EXPORTER_GENERIC( SCH_EDIT_FRAME* aFrame,
+                              NETLIST_OBJECT_LIST* aMasterList,
+                              CONNECTION_GRAPH* aGraph = nullptr  ) :
         NETLIST_EXPORTER( aMasterList ),
-        m_libTable( aLibTable ),
+        m_frame( aFrame ),
+        m_libTable( aFrame->Prj().SchSymbolLibTable() ),
         m_graph( aGraph ),
         m_use_graph( false )
-    {
-        wxASSERT( aLibTable );
-    }
+    {}
 
     /**
      * Function WriteNetlist
