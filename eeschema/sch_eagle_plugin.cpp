@@ -92,8 +92,11 @@ static int countChildren( wxXmlNode* aCurrentNode, const wxString& aName )
 static EDA_RECT getSheetBbox( SCH_SHEET* aSheet )
 {
     EDA_RECT bbox;
-
     SCH_ITEM* item = aSheet->GetScreen()->GetDrawItems();
+
+    if( !item )
+        return bbox;
+
     bbox = item->GetBoundingBox();
     item = item->Next();
 
@@ -1061,6 +1064,7 @@ void SCH_EAGLE_PLUGIN::loadInstance( wxXmlNode* aInstanceNode )
     wxString gatename = epart->deviceset + epart->device + einstance.gate;
     wxString symbolname = wxString( epart->deviceset + epart->device );
     symbolname.Replace( "*", "" );
+    LIB_ALIAS::ValidateName( symbolname );
 
     int unit = m_eagleLibs[libraryname].GateUnit[gatename];
 
@@ -1080,7 +1084,10 @@ void SCH_EAGLE_PLUGIN::loadInstance( wxXmlNode* aInstanceNode )
                                          m_properties.get() );
 
     if( !alias || !alias->GetPart() )
+    {
+        wxLogMessage( wxString::Format( _( "Could not find %s in the imported library" ), kisymbolname ) );
         return;
+    }
 
     LIB_PART* part = alias->GetPart();
     LIB_ID libId( getLibName(), kisymbolname );

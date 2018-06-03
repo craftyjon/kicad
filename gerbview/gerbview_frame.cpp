@@ -75,6 +75,7 @@ GERBVIEW_FRAME::GERBVIEW_FRAME( KIWAY* aKiway, wxWindow* aParent ):
                                              // obviously depends on the monitor,
                                              // but this is an acceptable value
 
+    // Be sure a page info is set. this default value will be overwritten later.
     PAGE_INFO pageInfo( wxT( "GERBER" ) );
     SetPageSettings( pageInfo );
 
@@ -360,21 +361,21 @@ bool GERBVIEW_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
 
 double GERBVIEW_FRAME::BestZoom()
 {
-    double   defaultGerberZoom = 1.0;
     EDA_RECT bbox = GetGerberLayout()->ComputeBoundingBox();
 
+    // Reserve a margin around the bounding box, for a better display.
+    double margin_scale_factor = 1.05;
+
+    // If there is not item loaded, use the current page size
     if( bbox.GetWidth() == 0 || bbox.GetHeight() == 0 )
     {
-        SetScrollCenterPosition( wxPoint( 0, 0 ) );
-        return defaultGerberZoom;
+        bbox.SetSize( GetPageSizeIU() );
+        bbox.SetOrigin( 0, 0 );
     }
 
     double  sizeX = (double) bbox.GetWidth();
     double  sizeY = (double) bbox.GetHeight();
     wxPoint centre = bbox.Centre();
-
-    // Reserve no margin because GetGerberLayout()->ComputeBoundingBox() builds one in.
-    double margin_scale_factor = 1.0;
 
     return bestZoom( sizeX, sizeY, margin_scale_factor, centre );
 }
@@ -399,8 +400,6 @@ void GERBVIEW_FRAME::LoadSettings( wxConfigBase* aCfg )
     }
 
     SetPageSettings( pageInfo );
-
-    GetScreen()->InitDataPoints( pageInfo.GetSizeIU() );
 
     bool tmp;
     aCfg->Read( cfgShowDCodes, &tmp, true );
@@ -926,8 +925,6 @@ void GERBVIEW_FRAME::SetVisibleElementColor( GERBVIEW_LAYER_ID aItemIdVisible,
         break;
 
     case LAYER_GERBVIEW_GRID:
-        // Ensure grid always has low alpha
-        aColor.a = 0.8;
         SetGridColor( aColor );
         m_colorsSettings->SetItemColor( aItemIdVisible, aColor );
         break;
@@ -990,9 +987,29 @@ void GERBVIEW_FRAME::SetActiveLayer( int aLayer, bool doLayerWidgetUpdate )
 void GERBVIEW_FRAME::SetPageSettings( const PAGE_INFO& aPageSettings )
 {
     m_paper = aPageSettings;
+    GBR_SCREEN* screen = static_cast<GBR_SCREEN*>( GetScreen() );
 
-    if( GetScreen() )
-        GetScreen()->InitDataPoints( aPageSettings.GetSizeIU() );
+    if( screen )
+        screen->InitDataPoints( aPageSettings.GetSizeIU() );
+
+    if( IsGalCanvasActive() )
+    {
+        GERBVIEW_DRAW_PANEL_GAL* drawPanel =
+                static_cast<GERBVIEW_DRAW_PANEL_GAL*>( GetGalCanvas() );
+
+        // Prepare worksheet template
+        KIGFX::WORKSHEET_VIEWITEM* worksheet;
+        worksheet = new KIGFX::WORKSHEET_VIEWITEM( IU_PER_MILS, &GetPageSettings(), &GetTitleBlock() );
+
+        if( screen != NULL )
+        {
+            worksheet->SetSheetNumber( 1 );
+            worksheet->SetSheetCount( 1 );
+        }
+
+        // PCB_DRAW_PANEL_GAL takes ownership of the worksheet
+        drawPanel->SetWorksheet( worksheet );
+    }
 }
 
 
@@ -1218,6 +1235,8 @@ void GERBVIEW_FRAME::UseGalCanvas( bool aEnable )
         m_colorsSettings->SetLegacyMode( false );
 
         galCanvas->GetGAL()->SetGridColor( GetLayerColor( LAYER_GERBVIEW_GRID ) );
+
+        SetPageSettings( GetPageSettings() );
 
         galCanvas->GetView()->RecacheAllItems();
         galCanvas->SetEventDispatcher( m_toolDispatcher );
