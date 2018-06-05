@@ -484,33 +484,33 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
                 // Switch to OpenGL, which will save the new setting if successful
                 wxCommandEvent evt( wxEVT_MENU, ID_MENU_CANVAS_OPENGL );
-                auto handler = GetEventHandler();
-                handler->ProcessEvent( evt );
+                GetEventHandler()->ProcessEvent( evt );
+
+                // Switch back to Cairo if OpenGL is not supported
+                if( GetGalCanvas()->GetBackend() == EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE )
+                {
+                    wxCommandEvent cairoEvt( wxEVT_MENU, ID_MENU_CANVAS_CAIRO );
+                    GetEventHandler()->ProcessEvent( cairoEvt );
+                }
             }
-            else
+            else if( canvasType == EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE )
             {
                 // If they were on legacy, switch them to Cairo
-
-                if( canvasType == EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE )
-                {
-                    wxCommandEvent evt( wxEVT_MENU, ID_MENU_CANVAS_CAIRO );
-                    auto handler = GetEventHandler();
-                    handler->ProcessEvent( evt );
-                }
+                wxCommandEvent evt( wxEVT_MENU, ID_MENU_CANVAS_CAIRO );
+                GetEventHandler()->ProcessEvent( evt );
             }
         }
 
         m_firstRunDialogSetting = 1;
         SaveSettings( config() );
     }
-
-    // Canvas may have been updated by the dialog
-    canvasType = loadCanvasTypeSetting();
-
-    if( canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE )
+    else
     {
-        if( GetGalCanvas()->SwitchBackend( canvasType ) )
-            UseGalCanvas( true );
+        if( canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE )
+        {
+            if( GetGalCanvas()->SwitchBackend( canvasType ) )
+                UseGalCanvas( true );
+        }
     }
 
     enableGALSpecificMenus();

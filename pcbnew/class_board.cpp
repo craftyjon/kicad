@@ -1019,9 +1019,19 @@ int BOARD::GetNumSegmZone() const
 }
 
 
-unsigned BOARD::GetNodesCount() const
+unsigned BOARD::GetNodesCount( int aNet )
 {
-    return m_connectivity->GetPadCount();
+    unsigned retval = 0;
+    for( auto mod : Modules() )
+    {
+        for( auto pad : mod->Pads() )
+        {
+            if( ( aNet == -1 && pad->GetNetCode() > 0 ) || aNet == pad->GetNetCode() )
+                retval++;
+        }
+    }
+
+    return retval;
 }
 
 
@@ -2727,9 +2737,9 @@ void BOARD::ReplaceNetlist( NETLIST& aNetlist, bool aDeleteSinglePadNets,
     {
         std::vector<unsigned int> padCount( connAlgo->NetCount() );
 
-        for( const auto cnItem : connAlgo->PadList() )
+        for( const auto cnItem : connAlgo->ItemList() )
         {
-            if( !cnItem->Valid() )
+            if( !cnItem->Valid() || cnItem->Parent()->Type() != PCB_PAD_T )
                 continue;
 
             int net = cnItem->Parent()->GetNetCode();
@@ -2941,9 +2951,15 @@ const std::vector<D_PAD*> BOARD::GetPads()
 }
 
 
-unsigned BOARD::GetPadCount() const
+unsigned BOARD::GetPadCount()
 {
-    return m_connectivity->GetPadCount();
+    unsigned retval = 0;
+    for( auto mod : Modules() )
+    {
+        retval += mod->Pads().Size();
+    }
+
+    return retval;
 }
 
 
