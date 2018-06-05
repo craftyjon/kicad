@@ -526,10 +526,12 @@ void DIALOG_ERC::TestErc( REPORTER& aReporter )
     // Reset the connection type indicator
     objectsConnectedList->ResetConnectionsType();
 
+    // TODO(JE) Remove once working in the new system
     unsigned lastItemIdx;
+#if 0
     unsigned nextItemIdx = lastItemIdx = 0;
     int MinConn    = NOC;
-
+#endif
     /* Check that a pin appears in only one net.  This check is necessary
      * because multi-unit components that have shared pins can be wired to
      * different nets.
@@ -554,14 +556,14 @@ void DIALOG_ERC::TestErc( REPORTER& aReporter )
         auto net = item->GetNet();
 
         wxASSERT_MSG( lastNet <= net, wxT( "Netlist not correctly ordered" ) );
-
+#if 0
         if( lastNet != net )
         {
             // New net found:
             MinConn      = NOC;
             nextItemIdx = itemIdx;
         }
-
+#endif
         switch( item->m_Type )
         {
         // These items do not create erc problems

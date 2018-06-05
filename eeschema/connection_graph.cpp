@@ -438,7 +438,16 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                     subgraph->m_drivers.push_back( item );
 
                 if( item->Type() == SCH_NO_CONNECT_T )
+                {
                     subgraph->m_no_connect = item;
+                }
+                else if( item->Type() == SCH_PIN_CONNECTION_T )
+                {
+                    auto pc = static_cast<SCH_PIN_CONNECTION*>( item );
+
+                    if( pc->m_pin->GetType() == PIN_NC )
+                        subgraph->m_no_connect = item;
+                }
 
                 connection->SetSubgraphCode( subgraph->m_code );
 
