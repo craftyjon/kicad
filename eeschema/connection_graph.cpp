@@ -741,6 +741,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
         auto sheet = subgraph->m_sheet;
         auto connection = subgraph->m_driver->Connection( sheet );
+        int old_code = connection->NetCode();
 
         if( connection->IsBus() )
             continue;
@@ -815,6 +816,10 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                                 sub_item->Connection( sheet )->SetSheet( connection->Sheet() );
                                 sub_item->Connection( sheet )->SetNetCode( code );
                             }
+
+                            m_net_code_to_subgraphs_map[ code ].push_back( subgraph );
+                            // TODO(JE) should we clear the vector or just remove subgraph from it?
+                            m_net_code_to_subgraphs_map.erase( old_code );
                         }
                         catch( const std::out_of_range& oor )
                         {
