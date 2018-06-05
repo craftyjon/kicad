@@ -1231,7 +1231,8 @@ bool CONNECTION_GRAPH::ercCheckNoConnects( CONNECTION_SUBGRAPH* aSubgraph,
             }
         }
 
-        if( pin && !has_other_connections )
+        if( pin && !has_other_connections &&
+            pin->m_pin->GetType() != PIN_NC )
         {
             auto pos = pin->GetPosition();
             msg.Printf( _( "Pin %s of component %s is unconnected." ),
