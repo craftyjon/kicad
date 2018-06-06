@@ -561,7 +561,7 @@ void SCH_SCREEN::Draw( EDA_DRAW_PANEL* aCanvas, wxDC* aDC, GR_DRAWMODE aDrawMode
         {
             auto pos = item->GetBoundingBox().Centre();
             int sz = Mils2iu( 15 );
-            auto label = conn->Name();
+            auto label = conn->Name( true );
 
             auto text = SCH_TEXT( pos, label, SCH_TEXT_T );
             text.SetTextSize( wxSize( sz, sz ) );
