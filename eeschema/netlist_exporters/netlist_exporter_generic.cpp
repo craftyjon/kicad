@@ -503,14 +503,11 @@ XNODE* NETLIST_EXPORTER_GENERIC::makeListOfNets()
     {
         for( auto it : m_graph->m_net_code_to_subgraphs_map )
         {
+            bool added = false;
+
             auto code = it.first;
             auto subgraphs = it.second;
             auto net_name = subgraphs[0]->GetNetName();
-
-            xnets->AddChild( xnet = node( "net" ) );
-            netCodeTxt.Printf( "%d", code );
-            xnet->AddAttribute( "code", netCodeTxt );
-            xnet->AddAttribute( "name", net_name );
 
             XNODE* xnode;
 
@@ -524,8 +521,19 @@ XNODE* NETLIST_EXPORTER_GENERIC::makeListOfNets()
                     {
                         auto pc = static_cast<SCH_PIN_CONNECTION*>( item );
 
-                        if( pc->m_pin->IsPowerConnection() )
+                        if( pc->m_pin->IsPowerConnection() ||
+                            (LIB_PART*)( pc->m_pin->GetParent() )->IsPower() )
                             continue;
+
+                        if( !added )
+                        {
+                            xnets->AddChild( xnet = node( "net" ) );
+                            netCodeTxt.Printf( "%d", code );
+                            xnet->AddAttribute( "code", netCodeTxt );
+                            xnet->AddAttribute( "name", net_name );
+
+                            added = true;
+                        }
 
                         auto refText = pc->m_comp->GetRef( &sheet );
                         auto pinText = pc->m_pin->GetNumber();
