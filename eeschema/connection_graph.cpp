@@ -612,8 +612,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
             connection->SetNetCode( code );
 
-            m_net_code_to_subgraphs_map[ connection->NetCode() ].push_back( subgraph );
-
             if( debug )
             {
                 std::cout << "SG " << subgraph->m_code << " got netcode " << code
@@ -687,12 +685,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                         }
                         else
                         {
-                            auto old_code = target->NetCode();
-
                             target->SetNetCode( connection->NetCode() );
-
-                            m_net_code_to_subgraphs_map[ target->NetCode() ].push_back( candidate );
-                            m_net_code_to_subgraphs_map.erase( old_code );
                         }
 
                         for( auto sub_item : candidate->m_items )
@@ -731,7 +724,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
         auto sheet = subgraph->m_sheet;
         auto connection = subgraph->m_driver->Connection( sheet );
-        int old_code = connection->NetCode();
 
         if( connection->IsBus() )
             continue;
@@ -806,10 +798,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                                 sub_item->Connection( sheet )->SetSheet( connection->Sheet() );
                                 sub_item->Connection( sheet )->SetNetCode( code );
                             }
-
-                            m_net_code_to_subgraphs_map[ code ].push_back( subgraph );
-                            // TODO(JE) should we clear the vector or just remove subgraph from it?
-                            m_net_code_to_subgraphs_map.erase( old_code );
                         }
                         catch( const std::out_of_range& oor )
                         {
@@ -823,6 +811,18 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         }
     }
 #endif
+
+    m_net_code_to_subgraphs_map.clear();
+
+    for( auto subgraph : m_subgraphs )
+    {
+        if( !subgraph->m_driver )
+            continue;
+
+        int code = subgraph->m_driver->Connection( subgraph->m_sheet )->NetCode();
+        m_net_code_to_subgraphs_map[ code ].push_back( subgraph );
+    }
+
     phase2.Stop();
     std::cout << "BuildConnectionGraph() " <<  phase2.msecs() << " ms" << std::endl;
 }
