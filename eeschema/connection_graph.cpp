@@ -51,10 +51,6 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
 
     m_driver = nullptr;
 
-    // Don't worry about drivers for graphs with no-connects
-    if( m_no_connect )
-        return true;
-
     for( auto item : m_drivers )
     {
         int item_priority = 0;
@@ -530,12 +526,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         }
         else
         {
-            if( subgraph->m_no_connect )
-            {
-                subgraph->m_dirty = false;
-                continue;
-            }
-
             // Now the subgraph has only one driver
             auto driver = subgraph->m_driver;
             auto sheet = subgraph->m_sheet;

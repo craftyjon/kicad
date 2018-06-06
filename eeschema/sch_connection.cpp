@@ -233,14 +233,10 @@ wxString SCH_CONNECTION::Name( bool aIgnoreSheet ) const
     switch( Parent()->Type() )
     {
     case SCH_PIN_CONNECTION_T:
-    {
-        auto pc = static_cast<SCH_PIN_CONNECTION*>( Parent() );
-
-        if( pc->m_pin->IsPowerConnection() )
-            prepend_path = false;
-
+        // Pins are either power connections or belong to a uniquely-annotated
+        // component, so they don't need a path
+        prepend_path = false;
         break;
-    }
 
     case SCH_GLOBAL_LABEL_T:
         prepend_path = false;
