@@ -290,23 +290,11 @@ STATUS_FLAGS TRACK::IsPointOnEnds( const wxPoint& point, int min_dist )
 const EDA_RECT TRACK::GetBoundingBox() const
 {
     // end of track is round, this is its radius, rounded up
-    int radius;
-
-    int ymax;
-    int xmax;
-
-    int ymin;
-    int xmin;
+    int radius = ( m_Width + 1 ) / 2;
+    int ymax, xmax, ymin, xmin;
 
     if( Type() == PCB_VIA_T )
     {
-        // Because vias are sometimes drawn larger than their m_Width would
-        // provide, erasing them using a dirty rect must also compensate for this
-        // possibility (that the via is larger on screen than its m_Width would provide).
-        // Because it is cheap to return a larger BoundingBox, do it so that
-        // the via gets erased properly.  Do not divide width by 2 for this reason.
-        radius = m_Width;
-
         ymax = m_Start.y;
         xmax = m_Start.x;
 
@@ -315,17 +303,12 @@ const EDA_RECT TRACK::GetBoundingBox() const
     }
     else
     {
-        radius = ( m_Width + 1 ) / 2;
-
         ymax = std::max( m_Start.y, m_End.y );
         xmax = std::max( m_Start.x, m_End.x );
 
         ymin = std::min( m_Start.y, m_End.y );
         xmin = std::min( m_Start.x, m_End.x );
     }
-
-    // + 1 is for the clearance line itself.
-    radius += GetClearance() + 1;
 
     ymax += radius;
     xmax += radius;
@@ -822,6 +805,14 @@ unsigned int TRACK::ViewGetLOD( int aLayer, KIGFX::VIEW* aView ) const
 }
 
 
+const BOX2I TRACK::ViewBBox() const
+{
+    BOX2I bbox( GetBoundingBox() );
+    bbox.Inflate( 2 * GetClearance() );
+    return bbox;
+}
+
+
 void VIA::Draw( EDA_DRAW_PANEL* panel, wxDC* aDC, GR_DRAWMODE aDrawMode, const wxPoint& aOffset )
 {
     wxCHECK_RET( panel != NULL, wxT( "VIA::Draw panel cannot be NULL." ) );
@@ -1091,7 +1082,15 @@ void TRACK::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
     {
         double trackLen = 0;
         double lenPadToDie = 0;
-        board->MarkTrace( this, NULL, &trackLen, &lenPadToDie, false );
+
+        // Find the beginning of the track buffer containing this, because it is not
+        // always the track list on board, but can be a "private" list
+        TRACK* track_buffer_start = this;
+
+        while( track_buffer_start->Back() )
+            track_buffer_start = track_buffer_start->Back();
+
+        board->MarkTrace( track_buffer_start, this, NULL, &trackLen, &lenPadToDie, false );
         msg = ::LengthDoubleToString( trackLen );
         aList.push_back( MSG_PANEL_ITEM( _( "Length" ), msg, DARKCYAN ) );
 

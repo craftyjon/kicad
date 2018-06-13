@@ -38,7 +38,6 @@
 #include <sch_edit_frame.h>
 #include <sch_reference_list.h>
 #include <kiface_i.h>
-#include <wx/tokenzr.h>
 
 #include "dialog_fields_editor_global.h"
 
@@ -76,10 +75,6 @@ struct DATA_MODEL_ROW
 #else
 #define CHECKBOX_COLUMN_MARGIN 15
 #endif
-
-
-#define SHOWNFIELD_TOKENS wxT( "FieldsEditorShownFieldTokensKey" )
-#define GROUPBY_TOKENS    wxT( "FieldsEditorGroupByTokensKey" )
 
 
 // Indicator that multiple values exist in child rows
@@ -177,6 +172,11 @@ public:
             return GetValue( m_rows[ aRow ], aCol );
     }
 
+    std::vector<SCH_REFERENCE> GetRowReferences( int aRow )
+    {
+        wxCHECK( aRow < m_rows.size(), std::vector<SCH_REFERENCE>() );
+        return m_rows[ aRow ].m_Refs;
+    }
 
     wxString GetValue( DATA_MODEL_ROW& group, int aCol )
     {
@@ -626,27 +626,6 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
 
 DIALOG_FIELDS_EDITOR_GLOBAL::~DIALOG_FIELDS_EDITOR_GLOBAL()
 {
-    // Update the config values for the show and group-by checkboxes
-    wxString showTokens, groupTokens;
-
-    for( int i = 0; i < m_fieldsCtrl->GetItemCount(); ++i )
-    {
-        if( m_fieldsCtrl->GetToggleValue( i, 1 ) )
-        {
-            if( showTokens.length() > 0 ) showTokens << wxT( " " );
-            showTokens << m_fieldsCtrl->GetTextValue( i, 0 );
-        }
-
-        if( m_fieldsCtrl->GetToggleValue( i, 2 ) )
-        {
-            if( groupTokens.length() > 0 ) groupTokens << wxT( " " );
-            groupTokens << m_fieldsCtrl->GetTextValue( i, 0 );
-        }
-    }
-
-    m_config->Write( SHOWNFIELD_TOKENS, showTokens );
-    m_config->Write( GROUPBY_TOKENS, groupTokens );
-
     // Disconnect Events
     m_grid->Disconnect( wxEVT_GRID_COL_SORT, wxGridEventHandler( DIALOG_FIELDS_EDITOR_GLOBAL::OnColSort ), NULL, this );
 
@@ -679,15 +658,18 @@ bool DIALOG_FIELDS_EDITOR_GLOBAL::TransferDataFromWindow()
 
 
 void DIALOG_FIELDS_EDITOR_GLOBAL::AddField( const wxString& aName,
-                                            std::set<wxString>& show, std::set<wxString>& group )
+                                            bool defaultShow, bool defaultSortBy )
 {
     m_dataModel->AddColumn( aName );
 
     wxVector<wxVariant> fieldsCtrlRow;
 
+    m_config->Read("SymbolFieldEditor/Show/" + aName, &defaultShow);
+    m_config->Read("SymbolFieldEditor/GroupBy/" + aName, &defaultSortBy);
+
     fieldsCtrlRow.push_back( wxVariant( aName ) );
-    fieldsCtrlRow.push_back( wxVariant( show.count( "*" ) > 0 || show.count( aName ) > 0 ) );
-    fieldsCtrlRow.push_back( wxVariant( group.count( "*" ) > 0 || group.count( aName ) > 0 ) );
+    fieldsCtrlRow.push_back( wxVariant( defaultShow ) );
+    fieldsCtrlRow.push_back( wxVariant( defaultSortBy ) );
 
     m_fieldsCtrl->AppendItem( fieldsCtrlRow );
 }
@@ -699,54 +681,26 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::AddField( const wxString& aName,
  */
 void DIALOG_FIELDS_EDITOR_GLOBAL::LoadFieldNames()
 {
-    // Fetch the config checkbox values
-    std::set<wxString> fieldsToShow, fieldsToGroupBy;
-    wxString serializedShowTokens, serializedGroupTokens;
-
-    m_config->Read( SHOWNFIELD_TOKENS, &serializedShowTokens, "*" );
-    wxStringTokenizer showTokens( serializedShowTokens );
-
-    while( showTokens.HasMoreTokens() )
-        fieldsToShow.insert( showTokens.GetNextToken() );
-
-    m_config->Read( GROUPBY_TOKENS, &serializedGroupTokens, wxEmptyString );
-
-    if( serializedGroupTokens.IsEmpty() )
-    {
-        fieldsToGroupBy.insert( _( "Reference" )  );
-        fieldsToGroupBy.insert( _( "Value" )  );
-        fieldsToGroupBy.insert( _( "Footprint" )  );
-    }
-    else
-    {
-        wxStringTokenizer groupTokens( serializedGroupTokens );
-
-        while( groupTokens.HasMoreTokens() )
-            fieldsToGroupBy.insert( groupTokens.GetNextToken() );
-    }
-
-    // Add the mandatory fields
-    AddField( _( "Reference" ), fieldsToShow, fieldsToGroupBy );
-    AddField( _( "Value" ), fieldsToShow, fieldsToGroupBy );
-    AddField( _( "Footprint" ), fieldsToShow, fieldsToGroupBy );
-    AddField( _( "Datasheet" ), fieldsToShow, fieldsToGroupBy );
-
-    // Add the user and default fields
-    std::set<wxString> userAndDefaultFieldnames;
+    std::set<wxString> userFieldNames;
 
     for( unsigned i = 0; i < m_componentRefs.GetCount(); ++i )
     {
         SCH_COMPONENT* comp = m_componentRefs[ i ].GetComp();
 
         for( int j = MANDATORY_FIELDS; j < comp->GetFieldCount(); ++j )
-            userAndDefaultFieldnames.insert( comp->GetField( j )->GetName() );
+            userFieldNames.insert( comp->GetField( j )->GetName() );
     }
 
-    for( TEMPLATE_FIELDNAME defaultField : m_parent->GetTemplateFieldNames() )
-        userAndDefaultFieldnames.insert( defaultField.m_Name );
+    AddField( _( "Reference" ), true, true  );
+    AddField( _( "Value" ),     true, true  );
+    AddField( _( "Footprint" ), true, true  );
+    AddField( _( "Datasheet" ), true, false );
 
-    for( auto fieldName : userAndDefaultFieldnames )
-        AddField( fieldName, fieldsToShow, fieldsToGroupBy );
+    for( auto fieldName : userFieldNames )
+        AddField( fieldName, true, false );
+
+    for( auto templateFieldName : m_parent->GetTemplateFieldNames() )
+        AddField( templateFieldName.m_Name, false, false );
 }
 
 
@@ -763,16 +717,28 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::OnColumnItemToggled( wxDataViewEvent& event )
         break;
 
     case SHOW_FIELD_COLUMN:
-        if( m_fieldsCtrl->GetToggleValue( row, col ) )
+    {
+        bool value = m_fieldsCtrl->GetToggleValue( row, col );
+        wxString fieldName = m_fieldsCtrl->GetTextValue( row, FIELD_NAME_COLUMN );
+        m_config->Write( "SymbolFieldEditor/Show/" + fieldName, value );
+
+        if( value )
             m_grid->ShowCol( row );
         else
             m_grid->HideCol( row );     // grid's columns map to fieldsCtrl's rows
         break;
+    }
 
     case GROUP_BY_COLUMN:
+    {
+        bool value = m_fieldsCtrl->GetToggleValue( row, col );
+        wxString fieldName = m_fieldsCtrl->GetTextValue( row, FIELD_NAME_COLUMN );
+        m_config->Write( "SymbolFieldEditor/GroupBy/" + fieldName, value );
         m_dataModel->RebuildRows( m_groupComponentsBox, m_fieldsCtrl );
         m_dataModel->Sort( m_grid->GetSortingColumn(), m_grid->IsSortOrderAscending() );
+        m_grid->ForceRefresh();
         break;
+    }
     }
 }
 
@@ -820,9 +786,21 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::OnRegroupComponents( wxCommandEvent& event )
 void DIALOG_FIELDS_EDITOR_GLOBAL::OnTableCellClick( wxGridEvent& event )
 {
     if( event.GetCol() == REFERENCE )
-        m_dataModel->ExpandCollapseRow( event.GetRow());
+    {
+        m_dataModel->ExpandCollapseRow( event.GetRow() );
+        std::vector<SCH_REFERENCE> refs = m_dataModel->GetRowReferences( event.GetRow() );
+
+        // Focus eeschema view on the component selected in the dialog
+        if( refs.size() == 1 )
+        {
+            m_parent->FindComponentAndItem( refs[0].GetRef() + refs[0].GetRefNumber(),
+                                            true, FIND_COMPONENT_ONLY, wxEmptyString, false );
+        }
+    }
     else
+    {
         event.Skip();
+    }
 }
 
 
@@ -888,5 +866,9 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::OnClose( wxCloseEvent& event )
             event.Skip();
             break;
         }
+    }
+    else
+    {
+        event.Skip();
     }
 }

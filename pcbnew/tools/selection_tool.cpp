@@ -54,6 +54,7 @@ using namespace std::placeholders;
 #include <tool/tool_manager.h>
 #include <router/router_tool.h>
 #include <connectivity_data.h>
+#include <footprint_viewer_frame.h>
 #include "tool_event_utils.h"
 
 #include "selection_tool.h"
@@ -158,7 +159,7 @@ private:
 
         const auto& selection = getToolManager()->GetTool<SELECTION_TOOL>()->GetSelection();
 
-        bool connItem = ( S_C::OnlyType( PCB_VIA_T ) || S_C::OnlyType( PCB_TRACE_T ) )( selection );
+        bool connItem = S_C::OnlyTypes( GENERAL_COLLECTOR::Tracks )( selection );
         bool sheetSelEnabled = ( S_C::OnlyType( PCB_MODULE_T ) )( selection );
 
         Enable( getMenuId( PCB_ACTIONS::selectNet ), connItem );
@@ -206,6 +207,15 @@ SELECTION_TOOL::~SELECTION_TOOL()
 
 bool SELECTION_TOOL::Init()
 {
+    auto frame = getEditFrame<PCB_BASE_FRAME>();
+
+    if( frame && ( frame->IsType( FRAME_PCB_MODULE_VIEWER )
+                   || frame->IsType( FRAME_PCB_MODULE_VIEWER_MODAL ) ) )
+    {
+        m_menu.AddStandardSubMenus( *frame );
+        return true;
+    }
+
     auto selectMenu = std::make_shared<SELECT_MENU>();
     selectMenu->SetTool( this );
     m_menu.AddSubMenu( selectMenu );
@@ -214,8 +224,6 @@ bool SELECTION_TOOL::Init()
 
     menu.AddMenu( selectMenu.get(), false, SELECTION_CONDITIONS::NotEmpty );
     menu.AddSeparator( SELECTION_CONDITIONS::NotEmpty, 1000 );
-
-    auto frame = getEditFrame<PCB_BASE_FRAME>();
 
     if( frame )
     {
@@ -616,7 +624,9 @@ bool SELECTION_TOOL::selectMultiple()
 
                 if( windowSelection )
                 {
-                    if( selectionBox.Contains( item->ViewBBox() ) )
+                    BOX2I bbox( item->GetBoundingBox() );
+
+                    if( selectionBox.Contains( bbox ) )
                     {
                         if( m_subtractive )
                             unselect( item );
@@ -938,7 +948,7 @@ int SELECTION_TOOL::selectCopper( const TOOL_EVENT& aEvent )
 void SELECTION_TOOL::selectAllItemsConnectedToTrack( TRACK& aSourceTrack )
 {
     int segmentCount;
-    TRACK* trackList = board()->MarkTrace( &aSourceTrack, &segmentCount,
+    TRACK* trackList = board()->MarkTrace( board()->m_Track, &aSourceTrack, &segmentCount,
                                            nullptr, nullptr, true );
 
     for( int i = 0; i < segmentCount; ++i )

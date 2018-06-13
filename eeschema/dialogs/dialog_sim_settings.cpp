@@ -130,6 +130,15 @@ bool DIALOG_SIM_SETTINGS::TransferDataFromWindow()
                 DisplayError( this, e.what() );
                 return false;
             }
+            catch( const KI_PARAM_ERROR& e )
+            {
+                DisplayError( this, e.What() );
+                return false;
+            }
+            catch( ... )
+            {
+                return false;
+            }
         }
 
         if( m_dcEnable2->IsChecked() )
@@ -160,6 +169,16 @@ bool DIALOG_SIM_SETTINGS::TransferDataFromWindow()
                 DisplayError( this, e.what() );
                 return false;
             }
+            catch( const KI_PARAM_ERROR& e )
+            {
+                DisplayError( this, e.What() );
+                return false;
+            }
+            catch( ... )
+            {
+                return false;
+            }
+
         }
 
         m_simCommand = simCmd;
