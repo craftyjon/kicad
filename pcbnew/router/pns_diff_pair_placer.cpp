@@ -164,9 +164,6 @@ bool DIFF_PAIR_PLACER::attemptWalk( NODE* aNode, DIFF_PAIR* aCurrent,
     WALKAROUND walkaround( aNode, Router() );
     WALKAROUND::WALKAROUND_STATUS wf1;
 
-    Router()->GetRuleResolver()->OverrideClearance( true,
-            aCurrent->NetP(), aCurrent->NetN(), aCurrent->Gap() );
-
     walkaround.SetSolidsOnly( aSolidsOnly );
     walkaround.SetIterationLimit( Settings().WalkaroundIterationLimit() );
 
@@ -233,7 +230,6 @@ bool DIFF_PAIR_PLACER::attemptWalk( NODE* aNode, DIFF_PAIR* aCurrent,
         return false;
 
     aWalk.SetShape( cur.CP(), cur.CN() );
-    Router()->GetRuleResolver()->OverrideClearance( false );
 
     return true;
 }
@@ -741,7 +737,7 @@ void DIFF_PAIR_PLACER::UpdateSizes( const SIZES_SETTINGS& aSizes )
 }
 
 
-bool DIFF_PAIR_PLACER::FixRoute( const VECTOR2I& aP, ITEM* aEndItem )
+bool DIFF_PAIR_PLACER::FixRoute( const VECTOR2I& aP, ITEM* aEndItem, bool aForceFinish )
 {
     if( !m_fitOk )
         return false;
@@ -755,7 +751,7 @@ bool DIFF_PAIR_PLACER::FixRoute( const VECTOR2I& aP, ITEM* aEndItem )
 
     TOPOLOGY topo( m_lastNode );
 
-    if( !m_snapOnTarget && !m_currentTrace.EndsWithVias() )
+    if( !m_snapOnTarget && !m_currentTrace.EndsWithVias() && !aForceFinish )
     {
         SHAPE_LINE_CHAIN newP( m_currentTrace.CP() );
         SHAPE_LINE_CHAIN newN( m_currentTrace.CN() );
@@ -777,7 +773,7 @@ bool DIFF_PAIR_PLACER::FixRoute( const VECTOR2I& aP, ITEM* aEndItem )
     }
     else
     {
-        m_chainedPlacement = !m_snapOnTarget;
+        m_chainedPlacement = !m_snapOnTarget && !aForceFinish;
     }
 
     LINE lineP( m_currentTrace.PLine() );
@@ -796,7 +792,7 @@ bool DIFF_PAIR_PLACER::FixRoute( const VECTOR2I& aP, ITEM* aEndItem )
     m_lastNode = NULL;
     m_placingVia = false;
 
-    if( m_snapOnTarget )
+    if( m_snapOnTarget || aForceFinish )
     {
         m_idle = true;
         return true;

@@ -68,21 +68,23 @@
 #include <TopoDS_Compound.hxx>
 #include <TopoDS_Builder.hxx>
 
+#include <Standard_Failure.hxx>
+
 #include <gp_Ax2.hxx>
 #include <gp_Circ.hxx>
 #include <gp_Dir.hxx>
 #include <gp_Pnt.hxx>
 
-#define USER_PREC (1e-4)
-#define USER_ANGLE_PREC (1e-6)
+static constexpr double USER_PREC = 1e-4;
+static constexpr double USER_ANGLE_PREC = 1e-6;
 // minimum PCB thickness in mm (2 microns assumes a very thin polyimide film)
-#define THICKNESS_MIN (0.002)
+static constexpr double THICKNESS_MIN = 0.002;
 // default PCB thickness in mm
-#define THICKNESS_DEFAULT (1.6)
+static constexpr double THICKNESS_DEFAULT = 1.6;
 // nominal offset from the board
-#define BOARD_OFFSET (0.05 )
+static constexpr double BOARD_OFFSET = 0.05;
 // min. length**2 below which 2 points are considered coincident
-#define MIN_LENGTH2 (0.0001)    // = 0.01*0.01
+static constexpr double MIN_LENGTH2 = MIN_DISTANCE * MIN_DISTANCE;
 
 static void getEndPoints( const KICADCURVE& aCurve, double& spx0, double& spy0,
     double& epx0, double& epy0 )
@@ -224,6 +226,7 @@ PCBMODEL::PCBMODEL()
     m_precision = USER_PREC;
     m_angleprec = USER_ANGLE_PREC;
     m_thickness = THICKNESS_DEFAULT;
+    m_minDistance2 = MIN_LENGTH2;
     m_minx = 1.0e10;    // absurdly large number; any valid PCB X value will be smaller
     m_mincurve = m_curves.end();
     BRepBuilderAPI::Precision( 1.0e-6 );
@@ -250,13 +253,13 @@ bool PCBMODEL::AddOutlineSegment( KICADCURVE* aCurve )
         double dy = aCurve->m_end.y - aCurve->m_start.y;
         double distance = dx * dx + dy * dy;
 
-        if( distance < MIN_LENGTH2 )
+        if( distance < m_minDistance2 )
         {
             std::ostringstream ostr;
 #ifdef __WXDEBUG__
             ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
 #endif /* __WXDEBUG */
-            ostr << "  * rejected a zero-length line\n";
+            ostr << "  * rejected a zero-length " << aCurve->Describe() << "\n";
             wxLogMessage( "%s", ostr.str().c_str() );
             return false;
         }
@@ -269,13 +272,13 @@ bool PCBMODEL::AddOutlineSegment( KICADCURVE* aCurve )
         double dy = aCurve->m_end.y - aCurve->m_start.y;
         double rad = dx * dx + dy * dy;
 
-        if( rad < MIN_LENGTH2 )
+        if( rad < m_minDistance2 )
         {
             std::ostringstream ostr;
 #ifdef __WXDEBUG__
             ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
 #endif /* __WXDEBUG */
-            ostr << "  * rejected a zero-radius arc or circle\n";
+            ostr << "  * rejected a zero-radius " << aCurve->Describe() << "\n";
             wxLogMessage( "%s", ostr.str().c_str() );
             return false;
         }
@@ -309,13 +312,14 @@ bool PCBMODEL::AddOutlineSegment( KICADCURVE* aCurve )
             dy = aCurve->m_ep.y - aCurve->m_end.y;
             rad = dx * dx + dy * dy;
 
-            if( rad < MIN_LENGTH2 )
+            if( rad < m_minDistance2 )
             {
                 std::ostringstream ostr;
 #ifdef __WXDEBUG__
                 ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
 #endif /* __WXDEBUG */
-                ostr << "  * rejected an arc with equivalent end points\n";
+                ostr << "  * rejected an arc with equivalent end points, "
+                    << aCurve->Describe() << "\n";
                 wxLogMessage( "%s", ostr.str().c_str() );
                 return false;
             }
@@ -525,6 +529,7 @@ bool PCBMODEL::AddPadHole( KICADPAD* aPad )
     p3.y += aPad->m_position.y;
 
     OUTLINE oln;
+    oln.SetMinSqDistance( m_minDistance2 );
     KICADCURVE crv0, crv1, crv2, crv3;
 
     // crv0 = arc
@@ -676,6 +681,7 @@ bool PCBMODEL::CreatePCB()
     m_hasPCB = true;    // whether or not operations fail we note that CreatePCB has been invoked
     TopoDS_Shape board;
     OUTLINE oln;    // loop to assemble (represents PCB outline and cutouts)
+    oln.SetMinSqDistance( m_minDistance2 );
     oln.AddSegment( *m_mincurve );
     m_curves.erase( m_mincurve );
 
@@ -748,6 +754,10 @@ bool PCBMODEL::CreatePCB()
             ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
 #endif /* __WXDEBUG */
             ostr << "  * could not close outline (dropping outline data with " << oln.m_curves.size() << " segments)\n";
+
+            for( const auto& c : oln.m_curves )
+                ostr << "    + " << c.Describe() << "\n";
+
             wxLogMessage( "%s", ostr.str().c_str() );
             oln.Clear();
 
@@ -1272,6 +1282,7 @@ TDF_Label PCBMODEL::transferModel( Handle( TDocStd_Document )& source,
 OUTLINE::OUTLINE()
 {
     m_closed = false;
+    m_minDistance2 = MIN_LENGTH2;
     return;
 }
 
@@ -1323,7 +1334,7 @@ bool OUTLINE::AddSegment( const KICADCURVE& aCurve )
     dx = epx1 - spx0;
     dy = epy1 - spy0;
 
-    if( dx * dx + dy * dy < MIN_LENGTH2 )
+    if( dx * dx + dy * dy < m_minDistance2 )
     {
         m_curves.push_front( aCurve );
         m_closed = testClosed( m_curves.front(), m_curves.back() );
@@ -1334,7 +1345,7 @@ bool OUTLINE::AddSegment( const KICADCURVE& aCurve )
         dx = spx1 - spx0;
         dy = spy1 - spy0;
 
-        if( dx * dx + dy * dy < MIN_LENGTH2 )
+        if( dx * dx + dy * dy < m_minDistance2 )
         {
             KICADCURVE curve = aCurve;
             reverseCurve( curve );
@@ -1349,7 +1360,7 @@ bool OUTLINE::AddSegment( const KICADCURVE& aCurve )
     dx = spx1 - epx0;
     dy = spy1 - epy0;
 
-    if( dx * dx + dy * dy < MIN_LENGTH2 )
+    if( dx * dx + dy * dy < m_minDistance2 )
     {
         m_curves.push_back( aCurve );
         m_closed = testClosed( m_curves.front(), m_curves.back() );
@@ -1360,7 +1371,7 @@ bool OUTLINE::AddSegment( const KICADCURVE& aCurve )
         dx = epx1 - epx0;
         dy = epy1 - epy0;
 
-        if( dx * dx + dy * dy < MIN_LENGTH2 )
+        if( dx * dx + dy * dy < m_minDistance2 )
         {
             KICADCURVE curve = aCurve;
             reverseCurve( curve );
@@ -1392,13 +1403,28 @@ bool OUTLINE::MakeShape( TopoDS_Shape& aShape, double aThickness )
 
     for( auto i : m_curves )
     {
-        if( !addEdge( &wire, i, lastPoint ) )
+        bool success = false;
+
+        try
+        {
+            success = addEdge( &wire, i, lastPoint );
+        }
+        catch( const Standard_Failure& e )
+        {
+#ifdef __WXDEBUG__
+            wxLogMessage( "Exception caught: %s", e.GetMessageString() );
+#endif /* __WXDEBUG */
+            success = false;
+        }
+
+        if( !success )
         {
             std::ostringstream ostr;
 #ifdef __WXDEBUG__
             ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
 #endif /* __WXDEBUG */
-            ostr << "  * failed to add an edge\n";
+            ostr << "  * failed to add an edge: " << i.Describe() << "\n";
+            ostr << "  * last valid outline point: " << lastPoint << "\n";
             wxLogMessage( "%s", ostr.str().c_str() );
             return false;
         }
@@ -1437,8 +1463,34 @@ bool OUTLINE::addEdge( BRepBuilderAPI_MakeWire* aWire, KICADCURVE& aCurve, DOUBL
             break;
 
         case CURVE_ARC:
-            do
             {
+                // Arcs are particularly tricky to be used in contiguous outlines.
+                // If an arc is not precisely aligned with the previous segment end point
+                // (aLastPoint != aCurve.m_end), then it might be impossible to request an arc
+                // passing through aLastPoint and the other arc end. To fix this, a small segment
+                // is added, joining aLastPoint and aCurve.m_end, but only if the distance
+                // is small.
+                double dx = aLastPoint.x - aCurve.m_end.x;
+                double dy = aLastPoint.y - aCurve.m_end.y;
+                double distance = dx * dx + dy * dy;
+
+                if( distance > 0 && distance < m_minDistance2 )
+                {
+                    std::ostringstream ostr;
+
+#ifdef __WXDEBUG__
+                    ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
+#endif /* __WXDEBUG */
+                    ostr << "  * added an auxiliary segment from "
+                         << aLastPoint << " to " << aCurve.m_end << "\n";
+                    wxLogMessage( "%s", ostr.str().c_str() );
+
+                    edge = BRepBuilderAPI_MakeEdge( gp_Pnt( aLastPoint.x, aLastPoint.y, 0.0 ),
+                        gp_Pnt( aCurve.m_end.x, aCurve.m_end.y, 0.0 ) );
+                    aWire->Add( edge );
+                    aLastPoint = aCurve.m_end;
+                }
+
                 gp_Circ arc( gp_Ax2( gp_Pnt( aCurve.m_start.x, aCurve.m_start.y, 0.0 ),
                     gp_Dir( 0.0, 0.0, 1.0 ) ), aCurve.m_radius );
 
@@ -1449,8 +1501,7 @@ bool OUTLINE::addEdge( BRepBuilderAPI_MakeWire* aWire, KICADCURVE& aCurve, DOUBL
                     edge = BRepBuilderAPI_MakeEdge( arc, ea, sa );
                 else
                     edge = BRepBuilderAPI_MakeEdge( arc, sa, ea );
-
-            } while( 0 );
+            }
             break;
 
         case CURVE_CIRCLE:
@@ -1459,7 +1510,6 @@ bool OUTLINE::addEdge( BRepBuilderAPI_MakeWire* aWire, KICADCURVE& aCurve, DOUBL
             break;
 
         default:
-            do
             {
                 std::ostringstream ostr;
 #ifdef __WXDEBUG__
@@ -1469,7 +1519,7 @@ bool OUTLINE::addEdge( BRepBuilderAPI_MakeWire* aWire, KICADCURVE& aCurve, DOUBL
                 wxLogMessage( "%s", ostr.str().c_str() );
 
                 return false;
-            } while( 0 );
+            }
     }
 
     if( edge.IsNull() )
@@ -1505,7 +1555,7 @@ bool OUTLINE::testClosed( KICADCURVE& aFrontCurve, KICADCURVE& aBackCurve )
     double dy = epy1 - spy0;
     double r = dx * dx + dy * dy;
 
-    if( r < MIN_LENGTH2 )
+    if( r < m_minDistance2 )
         return true;
 
     return false;

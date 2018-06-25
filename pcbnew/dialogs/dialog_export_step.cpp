@@ -219,6 +219,8 @@ void DIALOG_EXPORT_STEP::onUpdateYPos( wxUpdateUIEvent& aEvent )
     aEvent.Enable( m_rbUserDefinedOrigin->GetValue() );
 }
 
+extern bool BuildBoardPolygonOutlines( BOARD* aBoard, SHAPE_POLY_SET& aOutlines,
+                                wxString* aErrorText, unsigned int aTolerance );
 
 void DIALOG_EXPORT_STEP::onExportButton( wxCommandEvent& aEvent )
 {
@@ -226,8 +228,7 @@ void DIALOG_EXPORT_STEP::onExportButton( wxCommandEvent& aEvent )
     wxString msg;
 
     // Check if the board outline is continuous
-    // TODO the check below is more forgiving than kicad2step, needs to be more strict
-    if( !m_parent->GetBoard()->GetBoardPolygonOutlines( outline, &msg ) )
+    if( !BuildBoardPolygonOutlines( m_parent->GetBoard(), outline, &msg, Millimeter2iu( 0.01 ) ) )
     {
         DisplayErrorMessage( this, _( "Cannot determine the board outline." ), msg );
         return;
@@ -249,6 +250,19 @@ void DIALOG_EXPORT_STEP::onExportButton( wxCommandEvent& aEvent )
     double yOrg = 0.0;
 
     wxFileName appK2S( wxStandardPaths::Get().GetExecutablePath() );
+
+#ifdef __WXMAC__
+    // On macOS, we have standalone applications inside the main bundle, so we handle that here:
+        if( appK2S.GetPath().find( "/Contents/Applications/pcbnew.app/Contents/MacOS" ) != wxNOT_FOUND )
+        {
+            appK2S.AppendDir( ".." );
+            appK2S.AppendDir( ".." );
+            appK2S.AppendDir( ".." );
+            appK2S.AppendDir( ".." );
+            appK2S.AppendDir( "MacOS" );
+        }
+#endif
+
     appK2S.SetName( "kicad2step" );
 
     wxString cmdK2S = "\"";

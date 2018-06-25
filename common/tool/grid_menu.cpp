@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2015 CERN
  * @author Maciej Suminski <maciej.suminski@cern.ch>
- * Copyright (C) 2015-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2015-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -63,9 +63,17 @@ OPT_TOOL_EVENT GRID_MENU::eventHandler( const wxMenuEvent& aEvent )
 
 void GRID_MENU::update()
 {
-    for( unsigned int i = 0; i < GetMenuItemCount(); ++i )
-        Check( ID_POPUP_GRID_SELECT + 1 + i, false );
+    BASE_SCREEN*  screen = m_parent->GetScreen();
+    int           currentId = screen->GetGridCmdId();
+    wxArrayString gridsList;
 
-    // Check the current grid size
-    Check( m_parent->GetScreen()->GetGridCmdId(), true );
+    screen->BuildGridsChoiceList( gridsList, g_UserUnit != INCHES );
+
+    for( unsigned int i = 0; i < GetMenuItemCount(); ++i )
+    {
+        int menuId = ID_POPUP_GRID_SELECT + 1 + i;
+
+        SetLabel( menuId, gridsList[i] );      // Refresh label in case units have changed
+        Check( menuId, menuId == currentId );  // Refresh checkmark
+    }
 }

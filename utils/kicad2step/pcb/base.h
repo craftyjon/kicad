@@ -30,6 +30,9 @@
 #ifndef KICADBASE_H
 #define KICADBASE_H
 
+///> Minimum distance between points to treat them as separate ones (mm)
+static constexpr double MIN_DISTANCE = 0.01;
+
 namespace SEXPR
 {
     class SEXPR;
@@ -66,6 +69,8 @@ struct DOUBLET
     DOUBLET( double aX, double aY ) : x( aX ), y( aY ) { return; }
 };
 
+std::ostream& operator<<( std::ostream& aStream, const DOUBLET& aDoublet );
+
 struct TRIPLET
 {
     double x;
@@ -80,6 +85,8 @@ struct TRIPLET
     TRIPLET() : x( 0.0 ), y( 0.0 ), z( 0.0 ) { return; }
     TRIPLET( double aX, double aY, double aZ ) : x( aX ), y( aY ), z( aZ ) { return; }
 };
+
+std::ostream& operator<<( std::ostream& aStream, const TRIPLET& aTriplet );
 
 bool Get2DPositionAndRotation( SEXPR::SEXPR* data, DOUBLET& aPosition, double& aRotation );
 bool Get2DCoordinate( SEXPR::SEXPR* data, DOUBLET& aCoordinate );
