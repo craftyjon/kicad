@@ -527,7 +527,7 @@ void DIALOG_ERC::TestErc( REPORTER& aReporter )
     objectsConnectedList->ResetConnectionsType();
 
     // TODO(JE) Remove once working in the new system
-    unsigned lastItemIdx;
+    unsigned lastItemIdx = 0;
 #if 0
     unsigned nextItemIdx = lastItemIdx = 0;
     int MinConn    = NOC;
