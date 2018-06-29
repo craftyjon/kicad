@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Nov 30 2016)
+// C++ code generated with wxFormBuilder (version Oct 17 2016)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -10,6 +10,7 @@
 
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
+#include <wx/intl.h>
 class DIALOG_SHIM;
 class wxListView;
 
@@ -48,7 +49,7 @@ class DIALOG_MIGRATE_BUSES_BASE : public DIALOG_SHIM
 	
 	public:
 		
-		DIALOG_MIGRATE_BUSES_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxEmptyString, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE ); 
+		DIALOG_MIGRATE_BUSES_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Migrate Buses"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE ); 
 		~DIALOG_MIGRATE_BUSES_BASE();
 	
 };
