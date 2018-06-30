@@ -64,8 +64,7 @@ void LIB_EDIT_FRAME::EditField( LIB_FIELD* aField )
     if( dlg.ShowQuasiModal() != wxID_OK )
         return;
 
-    newFieldValue = dlg.GetText();
-    LIB_ALIAS::ValidateName( newFieldValue );
+    newFieldValue = LIB_ID::FixIllegalChars( dlg.GetText(), LIB_ID::ID_SCH );
     wxString oldFieldValue = aField->GetFullText( m_unit );
     bool renamed = aField->GetId() == VALUE && newFieldValue != oldFieldValue;
 
