@@ -83,6 +83,24 @@ bool SCH_CONNECTION::operator==( const SCH_CONNECTION& aOther ) const
 }
 
 
+void SCH_CONNECTION::SetDriver( SCH_ITEM* aItem )
+{
+    m_driver = aItem;
+
+    for( auto member : m_members )
+        member->SetDriver( aItem );
+}
+
+
+void SCH_CONNECTION::SetSheet( SCH_SHEET_PATH aSheet )
+{
+    m_sheet = aSheet;
+
+    for( auto member : m_members )
+        member->SetSheet( aSheet );
+}
+
+
 bool SCH_CONNECTION::operator!=( const SCH_CONNECTION& aOther ) const
 {
     return !( aOther == *this );
@@ -100,9 +118,10 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
 
         for( long i = m_vector_start; i <= m_vector_end; ++i )
         {
-            auto member = std::make_shared< SCH_CONNECTION >( m_parent );
+            auto member = std::make_shared< SCH_CONNECTION >( m_parent, m_sheet );
             wxString name = m_vector_prefix;
             name << i;
+            member->m_type = CONNECTION_NET;
             member->m_name = m_prefix + name;
             member->m_vector_index = i;
             m_members.push_back( member );
@@ -128,7 +147,7 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
                 {
                     for( auto alias_member : alias->Members() )
                     {
-                        auto member = std::make_shared< SCH_CONNECTION >( m_parent );
+                        auto member = std::make_shared< SCH_CONNECTION >( m_parent, m_sheet );
                         member->SetPrefix( prefix );
                         member->ConfigureFromLabel( alias_member );
                         m_members.push_back( member );
@@ -136,7 +155,7 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
                 }
                 else
                 {
-                    auto member = std::make_shared< SCH_CONNECTION >( m_parent );
+                    auto member = std::make_shared< SCH_CONNECTION >( m_parent, m_sheet );
                     member->SetPrefix( prefix );
                     member->ConfigureFromLabel( group_member );
                     m_members.push_back( member );

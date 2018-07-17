@@ -118,7 +118,7 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
                     candidates[1]->GetSelectMenuText(),
                     candidates[0]->Connection( m_sheet )->Name() );
 
-        wxASSERT( candidates[0]->GetSelectMenuText() != candidates[1]->GetSelectMenuText() );
+        wxASSERT( candidates[0] != candidates[1] );
 
         auto marker = new SCH_MARKER();
         marker->SetTimeStamp( GetNewTimeStamp() );

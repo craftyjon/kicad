@@ -108,15 +108,9 @@ public:
         return m_sheet;
     }
 
-    void SetDriver( SCH_ITEM* aItem )
-    {
-        m_driver = aItem;
-    }
+    void SetDriver( SCH_ITEM* aItem );
 
-    void SetSheet( SCH_SHEET_PATH aSheet )
-    {
-        m_sheet = aSheet;
-    }
+    void SetSheet( SCH_SHEET_PATH aSheet );
 
     /**
      * Checks if the SCH_ITEM this connection is attached to can drive connections
