@@ -770,21 +770,22 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
         for( const auto& member : connection->Members() )
         {
             int id = ID_POPUP_SCH_UNFOLD_BUS + ( idx++ );
+            auto name = member->Name( true );
 
             if( member->Type() == CONNECTION_BUS )
             {
                 wxMenu* submenu = new wxMenu;
-                bus_unfolding_menu->AppendSubMenu( submenu, _( member->Name() ) );
+                bus_unfolding_menu->AppendSubMenu( submenu, _( name ) );
 
                 for( const auto& sub_member : member->Members() )
                 {
                     id = ID_POPUP_SCH_UNFOLD_BUS + ( idx++ );
 
-                    submenu->Append( id, sub_member->Name(), wxEmptyString );
+                    submenu->Append( id, sub_member->Name( true ), wxEmptyString );
 
                     // See comment in else clause below
                     auto sub_item_clone = new wxMenuItem();
-                    sub_item_clone->SetItemLabel( sub_member->Name() );
+                    sub_item_clone->SetItemLabel( sub_member->Name( true ) );
 
                     frame->Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
                                  frame, id, id, sub_item_clone );
@@ -792,8 +793,7 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
             }
             else
             {
-                bus_unfolding_menu->Append( id, member->Name(),
-                                            wxEmptyString );
+                bus_unfolding_menu->Append( id, name, wxEmptyString );
 
                 // Because Bind() takes ownership of the user data item, we
                 // make a new menu item here and set its label.  Why create a
@@ -801,7 +801,7 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
                 // Bind() requires a pointer to wxObject rather than a void
                 // pointer.  Maybe at some point I'll think of a better way...
                 auto item_clone = new wxMenuItem();
-                item_clone->SetItemLabel( member->Name() );
+                item_clone->SetItemLabel( name );
 
                 frame->Bind( wxEVT_COMMAND_MENU_SELECTED, &SCH_EDIT_FRAME::OnUnfoldBus,
                              frame, id, id, item_clone );
