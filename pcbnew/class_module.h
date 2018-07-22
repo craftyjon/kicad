@@ -87,7 +87,8 @@ class MODULE_3D_SETTINGS
             // Initialize with sensible values
             m_Scale { 1, 1, 1 },
             m_Rotation { 0, 0, 0 },
-            m_Offset { 0, 0, 0 }
+            m_Offset { 0, 0, 0 },
+            m_Preview( true )
         {
         }
 
@@ -100,6 +101,7 @@ class MODULE_3D_SETTINGS
         VECTOR3D m_Rotation;    ///< 3D model rotation (degrees)
         VECTOR3D m_Offset;      ///< 3D model offset (mm)
         wxString m_Filename;    ///< The 3D shape filename in 3D library
+        bool     m_Preview;     ///< Include module in 3D preview
 };
 
 class MODULE : public BOARD_ITEM_CONTAINER
@@ -434,7 +436,7 @@ public:
             const wxPoint& offset, int dim_ancre, GR_DRAWMODE draw_mode );
 
     ///> @copydoc EDA_ITEM::GetMsgPanelInfo
-    void GetMsgPanelInfo( std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     bool HitTest( const wxPoint& aPosition ) const override;
 
@@ -596,7 +598,7 @@ public:
         return wxT( "MODULE" );
     }
 
-    wxString GetSelectMenuText() const override;
+    wxString GetSelectMenuText( EDA_UNITS_T aUnits ) const override;
 
     BITMAP_DEF GetMenuImage() const override;
 
@@ -739,7 +741,7 @@ private:
     timestamp_t m_LastEditTime;
     int m_arflag;           ///< Use to trace ratsnest and auto routing.
     double m_Surface;       ///< Bounding box area
-    timestamp_t m_Link;     ///< Temporary logical link used in edition
+    timestamp_t m_Link;     ///< Temporary logical link used during editing
     int m_CntRot90;         ///< Horizontal automatic placement cost ( 0..10 ).
     int m_CntRot180;        ///< Vertical automatic placement cost ( 0..10 ).
 

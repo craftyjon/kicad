@@ -55,8 +55,7 @@ as key. This can be used to restore the input string of a text entry field.
 
 Unit conversion
 The evaluator uses a default unit and constants can be specified with a unit.
-As long as no units are used the default unit is not relevant. The default
-unit is taken from the global (Kicad) variable g_UserUnit.
+As long as no units are used the default unit is not relevant.
 Supported units are millimeters (mm), Mil (mil) and inch (")
 
   eval.process("1\"");
@@ -68,51 +67,43 @@ Supported units are millimeters (mm), Mil (mil) and inch (")
 #ifndef NUMERIC_EVALUATOR_H_
 #define NUMERIC_EVALUATOR_H_
 
-#include "grammar.h"
 #include <stddef.h>
 #include <string>
 #include <string>
 #include <map>
 
+#include <base_units.h>
+
 // This namespace is used for the lemon parser
 namespace numEval
 {
 
-struct TokenType
-{
-    union {
-        double dValue;
-        int    iValue;
-    };
+    struct TokenType
+    {
+        union
+        {
+            double dValue;
+            int    iValue;
+        };
 
-    bool valid;
-    char text[32];
-};
+        bool valid;
+        char text[32];
+    };
 
 } // namespace numEval
 
-class NumericEvaluator {
-   enum class Unit { Invalid, Metric, Inch, Mil };
+class NUMERIC_EVALUATOR
+{
+    enum class Unit { Invalid, Metric, Inch, Mil };
 
 public:
-    NumericEvaluator();
-    ~NumericEvaluator();
+    NUMERIC_EVALUATOR( EDA_UNITS_T aUnits, bool aUseMils = false );
+    ~NUMERIC_EVALUATOR();
 
-    /* Initialization and destruction. init() is invoked be the constructor and should not be needed
-     * by the user.
-     * clear() should be invoked by the user if a new input string is to be processed. It will reset
-     * the parser and clear the original expression value for a requested object (if pObj != null).
+    /* clear() should be invoked by the client if a new input string is to be processed. It
+     * will reset the parser. User defined variables are retained.
      */
-    void init();
-    void clear(const void* pObj = nullptr);
-
-    /* Set the decimal separator for the input string. Defaults to '.' */
-    void setDecimalSeparator(char sep);
-
-    /* Enable or disable support for input string storage.
-     * If enabled the input string is saved if process(const char*, const void*) is used.
-     */
-    void enableTextInputStorage(bool w) { bClTextInputStorage = w; }
+    void Clear();
 
     /* Used by the lemon parser */
     void parseError(const char* s);
@@ -120,76 +111,75 @@ public:
     void parseSetResult(double);
 
     /* Check if previous invokation of process() was successful */
-    inline bool isValid() const { return !bClError; }
+    inline bool IsValid() const { return !m_parseError; }
 
     /* Result of string processing. Undefined if !isValid() */
-    inline const char* result() const { return clToken.token; }
+    inline wxString Result() const { return wxString::FromUTF8( m_token.token ); }
 
     /* Evaluate input string.
      * Result can be retrieved by result().
      * Returns true if input string could be evaluated, otherwise false.
      */
-    bool process(const char* s);
+    bool Process( const wxString& aString );
 
-    /* Like process(const char*) but also stores input string in a std:map with key pObj. */
-    bool process(const char* s, const void* pObj);
-
-    /* Retrieve old input string with key pObj. */
-    const char* textInput(const void* pObj) const;
+    /* Retrieve the original text before evaluation. */
+    wxString OriginalText() const;
 
     /* Add/set variable with value */
-    void setVar(const std::string&, double value);
+    void SetVar( const wxString& aString, double aValue );
 
     /* Get value of variable. Returns 0.0 if not defined. */
-    double getVar(const std::string&);
+    double GetVar( const wxString& aString );
 
     /* Remove single variable */
-    void removeVar(const std::string& s) { clVarMap.erase(s); }
+    void RemoveVar( const wxString& aString ) { m_varMap.erase( aString ); }
 
     /* Remove all variables */
-    void clearVar() { clVarMap.clear(); }
+    void ClearVar() { m_varMap.clear(); }
 
 protected:
-   /* Token type used by the tokenizer */
-    struct Token {
+    /* Token type used by the tokenizer */
+    struct Token
+    {
         int token;
         numEval::TokenType value;
     };
 
     /* Begin processing of a new input string */
-    void newString(const char* s);
+    void newString( const wxString& aString );
 
     /* Tokenizer: Next token/value taken from input string. */
     Token getToken();
 
     /* Used by processing loop */
-    void parse(int token, numEval::TokenType value);
+    void parse( int token, numEval::TokenType value );
 
 private:
-    void* pClParser; // the current lemon parser state machine
+    void* m_parser; // the current lemon parser state machine
 
     /* Token state for input string. */
-    struct TokenStat {
-        enum { OutLen=32 };
-        TokenStat() : input(0), token(0), inputLen(0), pos(0) { /* empty */ }
-        const char* input; // current input string ("var=4")
-        char* token;       // output token ("var", type:VAR; "4", type:VALUE)
-        size_t inputLen;   // strlen(input)
-        size_t pos;        // current index
-    } clToken;
+    struct TokenStat
+    {
+        enum { OutLen = 32 };
+        TokenStat() : input( 0 ), token( 0 ), inputLen( 0 ), pos( 0 ) { /* empty */ }
+        const char* input;      // current input string ("var=4")
+        char*       token;      // output token ("var", type:VAR; "4", type:VALUE)
+        size_t      inputLen;   // strlen(input)
+        size_t      pos;        // current index
+    }
+            m_token;
 
-    char cClDecSep;       // decimal separator ('.')
+    char m_localeDecimalSeparator;
 
     /* Parse progress. Set by parser actions. */
-    bool bClError;
-    bool bClParseFinished;
+    bool m_parseError;
+    bool m_parseFinished;
 
-    bool bClTextInputStorage; // Enable input string storage used by process(const char*, const void*)
+    Unit m_defaultUnits;      // Default unit for values
 
-    Unit eClUnitDefault;      // Default unit for values
+    wxString m_originalText;
 
-    std::map<const void*, std::string> clObjMap; // Map pointer to text entry -> (original) input string
-    std::map<std::string, double> clVarMap;
+    std::map<wxString, double> m_varMap;
 };
 
 

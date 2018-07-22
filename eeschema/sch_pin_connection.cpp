@@ -30,18 +30,18 @@ SCH_PIN_CONNECTION::SCH_PIN_CONNECTION( EDA_ITEM* aParent ) :
 }
 
 
-wxString SCH_PIN_CONNECTION::GetSelectMenuText() const
+wxString SCH_PIN_CONNECTION::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
     wxString tmp;
 
 #ifdef DEBUG
     tmp.Printf( _( "SCH_PIN_CONNECTION for %s %s" ),
-                GetChars( m_comp->GetSelectMenuText() ),
-                GetChars( m_pin->GetSelectMenuText() ) );
+                GetChars( m_comp->GetSelectMenuText( aUnits ) ),
+                GetChars( m_pin->GetSelectMenuText( aUnits ) ) );
 #else
     tmp.Printf( _( "%s %s" ),
-                GetChars( m_comp->GetSelectMenuText() ),
-                GetChars( m_pin->GetSelectMenuText() ) );
+                GetChars( m_comp->GetSelectMenuText( aUnits ) ),
+                GetChars( m_pin->GetSelectMenuText( aUnits ) ) );
 #endif
 
     return tmp;

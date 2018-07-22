@@ -35,10 +35,8 @@
 
 #include <sch_base_frame.h>
 #include <sch_screen.h>
-
 #include <lib_draw_item.h>
 #include <lib_collectors.h>
-
 #include <core/optional.h>
 
 class SCH_EDIT_FRAME;
@@ -80,10 +78,10 @@ class LIB_EDIT_FRAME : public SCH_BASE_FRAME
      * Set to true to not synchronize pins at the same position when editing
      * symbols with multiple units or multiple body styles.
      * Therefore deleting, moving pins are made for all pins at the same location
-     * When units are interchangeable, synchronizing edition of pins is usually
+     * When units are interchangeable, synchronizing editing of pins is usually
      * the best way, because if units are interchangeable, it imply all similar
      * pins are on the same location.
-     * When units are non interchangeable, do not synchronize edition of pins, because
+     * When units are non interchangeable, do not synchronize editing of pins, because
      * each part is specific, and there are no similar pins between units.
      *
      * Setting this to false allows editing each pin per part or body style
@@ -179,10 +177,12 @@ public:
     /** @return the default pin num text size.
      */
     static int GetPinNumDefaultSize() { return m_textPinNumDefaultSize; }
+    static void SetPinNumDefaultSize( int aSize ) { m_textPinNumDefaultSize = aSize; }
 
-    /** @return The default  pin name text size setting.
+    /** @return The default pin name text size setting.
      */
     static int GetPinNameDefaultSize() { return m_textPinNameDefaultSize; }
+    static void SetPinNameDefaultSize( int aSize ) { m_textPinNameDefaultSize = aSize; }
 
     /** @return The default pin len setting.
      */
@@ -213,7 +213,7 @@ public:
     void Process_Config( wxCommandEvent& event );
 
     /**
-     * Pin edition (add, delete, move...) can be synchronized between units
+     * Pin editing (add, delete, move...) can be synchronized between units
      * when units are interchangeable because in this case similar pins are expected
      * at the same location
      * @return true if the edit pins separately option is false and the current symbol
@@ -710,8 +710,17 @@ public:
      */
     void SyncLibraries( bool aLoad );
 
-    int GetIconScale() override;
-    void SetIconScale( int aScale ) override;
+    /**
+     * Allows Libedit to install its preferences panel into the preferences dialog.
+     */
+    void InstallPreferences( PAGED_DIALOG* aParent ) override;
+
+    /**
+     * Called after the preferences dialog is run.
+     */
+    void CommonSettingsChanged() override;
+
+    void ShowChangedLanguage() override;
 
 private:
     ///> Helper screen used when no part is loaded

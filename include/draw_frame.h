@@ -101,6 +101,7 @@ protected:
                                             // is at scale = 1
     int         m_UndoRedoCountMax;         ///< default Undo/Redo command Max depth, to be handed
                                             // to screens
+    EDA_UNITS_T m_UserUnits;
 
     /// The area to draw on.
     EDA_DRAW_PANEL* m_canvas;
@@ -129,7 +130,7 @@ protected:
     long    m_firstRunDialogSetting;
 
     /// Choice box to choose the grid size.
-    wxChoice*       m_gridSelectBox;
+    wxChoice*           m_gridSelectBox;
 
     /// Choice box to choose the zoom value.
     wxChoice*       m_zoomSelectBox;
@@ -176,6 +177,8 @@ protected:
      * in your derived class or the status bar will not get updated properly.
      */
     virtual void unitsChangeRefresh();
+
+    void CommonSettingsChanged() override;
 
     /**
      * Function GeneralControlKeyMovement
@@ -254,6 +257,13 @@ public:
     virtual const wxSize GetPageSizeIU() const = 0;
 
     /**
+     * Function GetUserUnits
+     * returns the user units currently in use
+     */
+    EDA_UNITS_T GetUserUnits() const override { return m_UserUnits; }
+    void SetUserUnits( EDA_UNITS_T aUnits ) { m_UserUnits = aUnits; }
+
+    /**
      * Function GetAuxOrigin
      * returns the origin of the axis used for plotting and various exports.
      */
@@ -268,6 +278,9 @@ public:
      */
     virtual const wxPoint& GetGridOrigin() const = 0;
     virtual void SetGridOrigin( const wxPoint& aPosition ) = 0;
+
+    int GetLastGridSizeId() const { return m_LastGridSizeId; }
+    void SetLastGridSizeId( int aId ) { m_LastGridSizeId = aId; }
 
     //-----<BASE_SCREEN API moved here>------------------------------------------
     /**
@@ -848,28 +861,6 @@ public:
      * @param aData = a pointer on an auxiliary data (not always used, NULL if not used)
      */
     virtual void PrintPage( wxDC* aDC, LSET aPrintMask, bool aPrintMirrorMode, void* aData = NULL );
-
-    /**
-     * Function CoordinateToString
-     * is a helper to convert the \a integer coordinate \a aValue to a string in inches or mm
-     * according to the current user units setting.
-     * @param aValue The coordinate to convert.
-     * @param aConvertToMils Convert inch values to mils if true.  This setting has no effect if
-     *                       the current user unit is millimeters.
-     * @return The converted string for display in user interface elements.
-     */
-    wxString CoordinateToString( int aValue, bool aConvertToMils = false ) const;
-
-    /**
-     * Function LengthDoubleToString
-     * is a helper to convert the \a double value \a aValue to a string in inches or mm
-     * according to the current user units setting.
-     * @param aValue The coordinate to convert.
-     * @param aConvertToMils Convert inch values to mils if true.  This setting has no effect if
-     *                       the current user unit is millimeters.
-     * @return The converted string for display in user interface elements.
-     */
-    wxString LengthDoubleToString( double aValue, bool aConvertToMils = false ) const;
 
     /**
      * Function UseGalCanvas

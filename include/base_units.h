@@ -37,6 +37,14 @@
 #include <common.h>
 #include <convert_to_biu.h>
 
+
+/**
+ * Used for holding indeterminate values, such as with multiple selections
+ * holding different values or controls which do not wish to set a value.
+ */
+#define INDETERMINATE wxString( "<...>" )
+
+
 /// Convert mm to mils.
 inline int Mm2mils( double x ) { return KiROUND( x * 1000./25.4 ); }
 
@@ -69,25 +77,9 @@ void StripTrailingZeros( wxString& aStringValue, unsigned aTrailingZeroAllowed =
  * @return The converted value, in double
  * @param aUnit The units to convert \a aValue to.
  * @param aValue The value in internal units to convert.
+ * @param aUseMils Indicates mils should be used for imperial units (inches).
  */
-double To_User_Unit( EDA_UNITS_T aUnit, double aValue );
-
-/**
- * Function CoordinateToString
- * is a helper to convert the \a integer coordinate \a aValue to a string in inches,
- * millimeters, or unscaled units according to the current user units setting.
- *
- * Should be used only to display a coordinate in status, but not in dialogs,
- * because the mantissa of the number displayed has 4 digits max for readability.
- * (i.e. the value shows the decimils or the microns )
- * However the actual internal value could need up to 8 digits to be printed
- *
- * @param aValue The integer coordinate to convert.
- * @param aConvertToMils Convert inch values to mils if true.  This setting has no effect if
- *                       the current user unit is millimeters.
- * @return The converted string for display in user interface elements.
- */
-wxString CoordinateToString( int aValue, bool aConvertToMils = false );
+double To_User_Unit( EDA_UNITS_T aUnit, double aValue, bool aUseMils = false );
 
 /**
  * Function AngleToStringDegrees
@@ -97,21 +89,26 @@ wxString CoordinateToString( int aValue, bool aConvertToMils = false );
 wxString AngleToStringDegrees( double aAngle );
 
 /**
- * Function LengthDoubleToString
+ * Function MessageTextFromValue
  * is a helper to convert the \a double length \a aValue to a string in inches,
- * millimeters, or unscaled units according to the current user units setting.
+ * millimeters, or unscaled units.
  *
  * Should be used only to display a coordinate in status, but not in dialogs,
- * because the mantissa of the number displayed has 4 digits max for readability.
- * (i.e. the value shows the decimils or the microns )
- * However the actual internal value could need up to 8 digits to be printed
+ * files, etc., because the mantissa of the number displayed has 4 digits max
+ * for readability.  The actual internal value could need up to 8 digits to be
+ * printed.
  *
+ * Use StringFromValue() instead where precision matters.
+ *
+ * @param aUnits The units to show the value in.  The unit string is added to the
+ *               message text.
  * @param aValue The double value to convert.
- * @param aConvertToMils Convert inch values to mils if true.  This setting has no effect if
- *                       the current user unit is millimeters.
+ * @param aUseMils Convert inch values to mils if true.
  * @return The converted string for display in user interface elements.
  */
-wxString LengthDoubleToString( double aValue, bool aConvertToMils = false );
+wxString MessageTextFromValue( EDA_UNITS_T aUnits, double aValue, bool aUseMils = false );
+
+wxString MessageTextFromValue( EDA_UNITS_T aUnits, int aValue, bool aUseMils = false );
 
 /**
  * Function StringFromValue
@@ -130,34 +127,17 @@ wxString LengthDoubleToString( double aValue, bool aConvertToMils = false );
  * @param aUnit = display units (INCHES, MILLIMETRE ..)
  * @param aValue = value in Internal_Unit
  * @param aAddUnitSymbol = true to add symbol unit to the string value
+ * @param aUseMils Indicates mils should be used for imperial units (inches).
  * @return A wxString object containing value and optionally the symbol unit (like 2.000 mm)
  */
-wxString StringFromValue( EDA_UNITS_T aUnit, int aValue, bool aAddUnitSymbol = false );
-
-/**
- * Operator << overload
- * outputs a point to the argument string in a format resembling
- * "@ (x,y)
- * @param aString Where to put the text describing the point value
- * @param aPoint  The point to output.
- * @return wxString& - the input string
- */
-wxString& operator <<( wxString& aString, const wxPoint& aPoint );
-
-/**
- * Function PutValueInLocalUnits
- * converts \a aValue from internal units to user units and append the units notation
- * (mm or ")then inserts the string an \a aTextCtrl.
- *
- * This function is used in dialog boxes for entering values depending on selected units.
- */
-void PutValueInLocalUnits( wxTextCtrl& aTextCtr, int aValue );
+wxString StringFromValue( EDA_UNITS_T aUnit, int aValue, bool aAddUnitSymbol = false,
+                          bool aUseMils = false );
 
 /**
  * Return in internal units the value "val" given in a real unit
  * such as "in", "mm" or "deg"
  */
-double From_User_Unit( EDA_UNITS_T aUnit, double aValue );
+double From_User_Unit( EDA_UNITS_T aUnit, double aValue, bool aUseMils = false );
 
 
 /**
@@ -165,9 +145,11 @@ double From_User_Unit( EDA_UNITS_T aUnit, double aValue );
  * converts \a aTextValue to a double
  * @param aUnits The units of \a aTextValue.
  * @param aTextValue A reference to a wxString object containing the string to convert.
+ * @param aUseMils Indicates mils should be used for imperial units (inches).
  * @return A double representing that value in internal units
  */
-double DoubleValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue );
+double DoubleValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue,
+                              bool aUseMils = false );
 
 /**
  * Function ValueFromString
@@ -175,51 +157,24 @@ double DoubleValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue );
  *
  * @param aUnits The units of \a aTextValue.
  * @param aTextValue A reference to a wxString object containing the string to convert.
+ * @param aUseMils Indicates mils should be used for imperial units (inches).
  * @return The string from Value, according to units (inch, mm ...) for display,
  */
-int ValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue );
+int ValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue, bool aUseMils = false );
 
 /**
- * Function ValueFromString
-
- * converts \a aTextValue in \a aUnits to internal units used by the application,
- * unit type will be obtained from g_UserUnit.
- *
- * @param aTextValue A reference to a wxString object containing the string to convert.
- * @return The string from Value, according to units (inch, mm ...) for display,
+ * Function FetchUnitsFromString
+ * writes any unit info found in the string to aUnits and aUseMils.
  */
-
-int ValueFromString( const wxString& aTextValue );
-
-/**
- * Convert the number Value in a string according to the internal units
- *  and the selected unit (g_UserUnit) and put it in the wxTextCtrl TextCtrl
- */
-int ValueFromTextCtrl( const wxTextCtrl& aTextCtr );
+void FetchUnitsFromString( const wxString& aTextValue, EDA_UNITS_T& aUnits, bool& aUseMils );
 
 /**
- * Returns the units symbol.
+ * Get the units string for a given units type.
  *
- * @param aUnits - Units type, default is current units setting.
- * @param aFormatString - A formatting string to embed the units symbol into.  Note:
- *                        the format string must contain the %s format specifier.
- * @return The formatted units symbol.
- */
-wxString ReturnUnitSymbol( EDA_UNITS_T aUnits = g_UserUnit,
-                           const wxString& aFormatString = " (%s):" );
-
-/**
- * Get a human readable units string.
- *
- * The strings returned are full text name and not abbreviations or symbolic
- * representations of the units.  Use ReturnUnitSymbol() for that.
- *
- * @param aUnits - The units text to return.
+ * @param aUnits - The units requested.
  * @return The human readable units string.
  */
-wxString GetUnitsLabel( EDA_UNITS_T aUnits );
-wxString GetAbbreviatedUnitsLabel( EDA_UNITS_T aUnit = g_UserUnit );
+wxString GetAbbreviatedUnitsLabel( EDA_UNITS_T aUnit, bool aUseMils = false );
 
-void AddUnitSymbol( wxStaticText& Stext, EDA_UNITS_T aUnit = g_UserUnit );
 
 #endif   // _BASE_UNITS_H_

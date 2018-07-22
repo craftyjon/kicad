@@ -91,6 +91,7 @@
 #define DRCE_MICRO_VIA_NOT_ALLOWED             47   ///< micro vias are not allowed
 #define DRCE_BURIED_VIA_NOT_ALLOWED            48   ///< buried vias are not allowed
 #define DRCE_DISABLED_LAYER_ITEM               49   ///< item on a disabled layer
+#define DRCE_DRILLED_HOLES_TOO_CLOSE           50   ///< overlapping drilled holes break drill bits
 
 
 class EDA_DRAW_PANEL;
@@ -172,17 +173,12 @@ private:
     bool     m_doZonesTest;
     bool     m_doKeepoutTest;
     bool     m_doCreateRptFile;
-    bool     m_doFootprintOverlapping;
-    bool     m_doNoCourtyardDefined;
     bool     m_refillZones;
     bool     m_reportAllTrackErrors;
 
     wxString m_rptFilename;
 
     MARKER_PCB* m_currentMarker;
-
-    bool        m_abortDRC;
-    bool        m_drcInProgress;
 
     /**
      * in legacy canvas, when creating a track, the drc test must only display the
@@ -218,6 +214,7 @@ private:
     PCB_EDIT_FRAME*     m_pcbEditorFrame;   ///< The pcb frame editor which owns the board
     BOARD*              m_pcb;
     DIALOG_DRC_CONTROL* m_drcDialog;
+    EDA_UNITS_T         m_units;
 
     DRC_LIST            m_unconnected;      ///< list of unconnected pads, as DRC_ITEMs
 
@@ -229,43 +226,47 @@ private:
 
 
     /**
-     * Creates a marker and fills it in with information but does not add it to the BOARD.
+     * Function fillMarker
+     * Optionally creates a marker and fills it in with information, but does not add it to
+     * the BOARD.  Use this to report any kind of DRC problem, or unconnected pad problem.
      *
-     * Use this to report any kind of DRC problem or unconnected pad problem.
-     *
-     * @param aTrack The reference track.
-     * @param aItem  Another item on the BOARD, such as a VIA, SEGZONE,
-     *               or TRACK.
-     * @param aErrorCode A categorizing identifier for the particular type
-     *                   of error that is being reported.
-     * @param fillMe A MARKER_PCB* which is to be filled in, or NULL if one is to
-     *               first be allocated, then filled.
+     * @param aTrack/aPad The reference item.
+     * @param aItem  Another item on the BOARD, such as a VIA, SEGZONE, or TRACK, which is
+     *               in conflict with the reference item.
+     * @param aErrorCode An ID for the particular type of error that is being reported.
+     * @param fillMe A MARKER_PCB* which is to be filled in, or NULL if one is to be created.
      */
-    MARKER_PCB* fillMarker( const TRACK* aTrack, BOARD_ITEM* aItem, int aErrorCode,
-                            MARKER_PCB* fillMe );
+    MARKER_PCB* fillMarker( TRACK* aTrack, BOARD_ITEM* aItem, int aErrorCode, MARKER_PCB* fillMe );
 
     MARKER_PCB* fillMarker( D_PAD* aPad, BOARD_ITEM* aItem, int aErrorCode, MARKER_PCB* fillMe );
 
-    MARKER_PCB* fillMarker( ZONE_CONTAINER* aArea, int aErrorCode, MARKER_PCB* fillMe );
-
-    MARKER_PCB* fillMarker( const wxPoint& aPos, int aErrorCode,
-                            const wxString& aMessage, MARKER_PCB* fillMe );
+    /**
+     * Function fillMarker
+     * Optionally creates a marker and fills it in with information, but does not add it to
+     * the BOARD.  Use this to report any kind of DRC problem, or unconnected pad problem.
+     *
+     * @param aItem The reference item.
+     * @param aPos Usually the position of the item, but could be more specific for a zone.
+     * @param aErrorCode An ID for the particular type of error that is being reported.
+     * @param fillMe A MARKER_PCB* which is to be filled in, or NULL if one is to be created.
+     */
+    MARKER_PCB* fillMarker( BOARD_ITEM* aItem, const wxPoint& aPos, int aErrorCode,
+                            MARKER_PCB* fillMe );
 
     /**
-     * Create a marker and fills it in with information but do not add it to the BOARD.
+     * Function fillMarker
+     * Optionally creates a marker and fills it in with information, but does not add it to
+     * the BOARD.  Use this to report any kind of DRC problem, or unconnected pad problem.
      *
-     * Use this to report any kind of DRC problem, or unconnected pad problem.
-     *
-     * @param aArea The zone to test
-     * @param aPos position of error
-     * @param aErrorCode  Type of error
-     * @param fillMe A MARKER_PCB* which is to be filled in, or NULL if one is to
-     *               first be allocated, then filled.
+     * @param aPos The reference location.
+     * @param aErrorCode An ID for the particular type of error that is being reported.
+     * @param aItem The first item in conflict.
+     * @param bItem (Optional) The second item in conflict or NULL.
+     * @param aErrorCode An ID for the particular type of error that is being reported.
+     * @param fillMe A MARKER_PCB* which is to be filled in, or NULL if one is to be created.
      */
-    MARKER_PCB* fillMarker( const ZONE_CONTAINER* aArea,
-                            const wxPoint&        aPos,
-                            int                   aErrorCode,
-                            MARKER_PCB*           fillMe );
+    MARKER_PCB* fillMarker( const wxPoint& aPos, BOARD_ITEM* aItem, BOARD_ITEM* bItem,
+                            int aErrorCode, MARKER_PCB* fillMe );
 
     /**
      * Fill a MARKER which will report on a generic problem with the board which is
@@ -302,6 +303,8 @@ private:
     void testTracks( wxWindow * aActiveWindow, bool aShowProgressBar );
 
     void testPad2Pad();
+
+    void testDrilledHoles();
 
     void testUnconnected();
 
@@ -431,6 +434,7 @@ public:
     ~DRC();
 
     /**
+     * Function Drc
      * tests the current segment and returns the result and displays the error
      * in the status panel only if one exists.
      * No marker created or added to the board. Must be used only during track
@@ -442,6 +446,7 @@ public:
     int DrcOnCreatingTrack( TRACK* aRefSeg, TRACK* aList );
 
     /**
+     * Function Drc
      * tests the outline segment starting at CornerIndex and returns the result and displays
      * the error in the status panel only if one exists.
      *      Test Edge inside other areas
@@ -499,15 +504,12 @@ public:
      * @param aZonesTest Tells whether to test zones.
      * @param aRefillZones Refill zones before performing DRC.
      * @param aKeepoutTest Tells whether to test keepout areas.
-     * @param aCourtyardTest Tells whether to test footprint courtyard overlap.
-     * @param aCourtyardMissingTest Tells whether to test missing courtyard definition in footprint.
      * @param aReportAllTrackErrors Tells whether or not to stop checking track connections after the first error.
      * @param aReportName A string telling the disk file report name entered.
      * @param aSaveReport A boolean telling whether to generate disk file report.
      */
     void SetSettings( bool aPad2PadTest, bool aUnconnectedTest,
                       bool aZonesTest, bool aKeepoutTest, bool aRefillZones,
-                      bool aCourtyardTest, bool aCourtyardMissingTest,
                       bool aReportAllTrackErrors,
                       const wxString& aReportName, bool aSaveReport )
     {
@@ -517,8 +519,6 @@ public:
         m_doKeepoutTest         = aKeepoutTest;
         m_rptFilename           = aReportName;
         m_doCreateRptFile       = aSaveReport;
-        m_doFootprintOverlapping = aCourtyardTest;
-        m_doNoCourtyardDefined  = aCourtyardMissingTest;
         m_refillZones           = aRefillZones;
         m_drcInLegacyRoutingMode = false;
         m_reportAllTrackErrors  = aReportAllTrackErrors;

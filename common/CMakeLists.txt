@@ -153,19 +153,22 @@ set( COMMON_ABOUT_DLG_SRCS
     )
 
 set( COMMON_DLG_SRCS
+    dialogs/dialog_configure_paths.cpp
+    dialogs/dialog_configure_paths_base.cpp
     dialogs/dialog_display_info_HTML_base.cpp
-    dialogs/dialog_env_var_config.cpp
-    dialogs/dialog_env_var_config_base.cpp
+    dialogs/dialog_edit_library_tables.cpp
     dialogs/dialog_exit_base.cpp
     dialogs/dialog_file_dir_picker.cpp
-    dialogs/dialog_hotkeys_editor.cpp
-    dialogs/dialog_hotkeys_editor_base.cpp
     dialogs/dialog_image_editor.cpp
     dialogs/dialog_image_editor_base.cpp
     dialogs/dialog_list_selector_base.cpp
     dialogs/dialog_page_settings_base.cpp
     dialogs/dialog_text_entry_base.cpp
     dialogs/dialog_text_entry.cpp
+    dialogs/panel_common_settings.cpp
+    dialogs/panel_common_settings_base.cpp
+    dialogs/panel_hotkeys_editor.cpp
+    dialogs/panel_hotkeys_editor_base.cpp
     dialogs/wx_html_report_panel.cpp
     dialogs/wx_html_report_panel_base.cpp
     )
@@ -178,14 +181,19 @@ set( COMMON_WIDGET_SRCS
     widgets/footprint_preview_widget.cpp
     widgets/footprint_select_widget.cpp
     widgets/gal_options_panel.cpp
+    widgets/grid_combobox.cpp
+    widgets/grid_icon_text_helpers.cpp
+    widgets/grid_text_button_helpers.cpp
     widgets/indicator_icon.cpp
     widgets/mathplot.cpp
+    widgets/paged_dialog.cpp
     widgets/progress_reporter.cpp
+    widgets/stepped_slider.cpp
     widgets/text_ctrl_eval.cpp
     widgets/two_column_tree_list.cpp
     widgets/unit_binder.cpp
     widgets/widget_hotkey_list.cpp
-    widgets/stepped_slider.cpp
+    widgets/wx_grid.cpp
     )
 
 set( COMMON_PAGE_LAYOUT_SRCS
@@ -256,10 +264,11 @@ set( COMMON_SRCS
     eda_dde.cpp
     eda_doc.cpp
     eda_pattern_match.cpp
-    eda_graphic_text_ctrl.cpp
+    eda_size_ctrl.cpp
     env_paths.cpp
     exceptions.cpp
     executable_names.cpp
+    filename_resolver.cpp
     filter_reader.cpp
     footprint_filter.cpp
     footprint_info.cpp

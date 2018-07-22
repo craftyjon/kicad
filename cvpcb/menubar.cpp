@@ -64,12 +64,12 @@ void CVPCB_MAINFRAME::ReCreateMenuBar()
     // Path configuration edit dialog.
     AddMenuItem( preferencesMenu,
                  ID_PREFERENCES_CONFIGURE_PATHS,
-                 _( "Configure &Paths..." ),
+                 _( "&Configure Paths..." ),
                  _( "Edit path configuration environment variables" ),
                  KiBitmap( editor_xpm ) );
 
     AddMenuItem( preferencesMenu, ID_CVPCB_LIB_TABLE_EDIT,
-                 _( "Manage Footprint &Libraries..." ), _( "Manage footprint libraries" ),
+                 _( "Manage &Footprint Libraries..." ), _( "Manage footprint libraries" ),
                  KiBitmap( library_table_xpm ) );
 
     preferencesMenu->AppendSeparator();
@@ -99,10 +99,7 @@ void CVPCB_MAINFRAME::ReCreateMenuBar()
                  KiBitmap( help_xpm ) );
 
     // About CvPcb
-    AddMenuItem( helpMenu, wxID_ABOUT,
-                 _( "&About KiCad" ),
-                 _( "About KiCad" ),
-                 KiBitmap( about_xpm ) );
+    AddMenuItem( helpMenu, wxID_ABOUT, _( "&About KiCad" ), KiBitmap( about_xpm ) );
 
     // Create the menubar and append all submenus
     menuBar->Append( filesMenu, _( "&File" ) );

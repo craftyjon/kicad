@@ -92,12 +92,10 @@ void SCH_EDIT_FRAME::OnFindDrcMarker( wxFindDialogEvent& event )
 
         RedrawScreen( lastMarker->GetPosition(), warpCursor );
 
-        wxString path = sheetFoundIn->Path();
-        wxString units = GetAbbreviatedUnitsLabel();
-        double x = To_User_Unit( g_UserUnit, (double) lastMarker->GetPosition().x );
-        double y = To_User_Unit( g_UserUnit, (double) lastMarker->GetPosition().y );
-        msg.Printf( _( "Design rule check marker found in sheet %s at %0.3f%s, %0.3f%s" ),
-                    GetChars( path ), x, GetChars( units ), y, GetChars( units) );
+        msg.Printf( _( "Design rule check marker found in sheet %s at %s, %s" ),
+                    sheetFoundIn->Path(),
+                    MessageTextFromValue( m_UserUnits, lastMarker->GetPosition().x ),
+                    MessageTextFromValue( m_UserUnits, lastMarker->GetPosition().y ) );
         SetStatusText( msg );
     }
     else
@@ -440,16 +438,11 @@ void SCH_EDIT_FRAME::updateFindReplaceView( wxFindDialogEvent& aEvent )
     wxString                msg;
     SCH_SHEET_LIST          schematic( g_RootSheet );
     SCH_FIND_COLLECTOR_DATA data;
-    SCH_FIND_REPLACE_DATA   searchCriteria;
     bool                    warpCursor = !( aEvent.GetFlags() & FR_NO_WARP_CURSOR );
-
-    searchCriteria.SetFlags( aEvent.GetFlags() );
-    searchCriteria.SetFindString( aEvent.GetFindString() );
-    searchCriteria.SetReplaceString( aEvent.GetReplaceString() );
 
     if( m_foundItems.GetItem( data ) != NULL )
     {
-        wxLogTrace( traceFindReplace, wxT( "Found " ) + m_foundItems.GetText() );
+        wxLogTrace( traceFindReplace, wxT( "Found " ) + m_foundItems.GetText( MILLIMETRES ) );
 
         SCH_SHEET_PATH* sheet = schematic.GetSheetByPath( data.GetSheetPath() );
 
@@ -483,7 +476,7 @@ void SCH_EDIT_FRAME::updateFindReplaceView( wxFindDialogEvent& aEvent )
 
         RedrawScreen( data.GetPosition(), warpCursor );
 
-        msg = m_foundItems.GetText();
+        msg = m_foundItems.GetText( m_UserUnits );
 
         if( aEvent.GetFlags() & FR_SEARCH_REPLACE )
             aEvent.SetFlags( aEvent.GetFlags() | FR_REPLACE_ITEM_FOUND );
@@ -496,5 +489,6 @@ void SCH_EDIT_FRAME::updateFindReplaceView( wxFindDialogEvent& aEvent )
         msg.Printf( _( "No item found matching %s." ), GetChars( aEvent.GetFindString() ) );
     }
 
+    *m_findReplaceStatus = msg;
     SetStatusText( msg );
 }

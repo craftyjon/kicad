@@ -810,7 +810,7 @@ bool ZONE_CONTAINER::HitTestFilledArea( const wxPoint& aRefPos ) const
 }
 
 
-void ZONE_CONTAINER::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
+void ZONE_CONTAINER::GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector< MSG_PANEL_ITEM >& aList )
 {
     wxString msg;
 
@@ -1044,53 +1044,20 @@ bool ZONE_CONTAINER::AppendCorner( wxPoint aPosition, int aHoleIdx, bool aAllowD
 }
 
 
-wxString ZONE_CONTAINER::GetSelectMenuText() const
+wxString ZONE_CONTAINER::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
     wxString text;
-    NETINFO_ITEM* net;
-    BOARD* board = GetBoard();
 
     // Check whether the selected contour is a hole (contour index > 0)
     if( m_CornerSelection != nullptr &&  m_CornerSelection->m_contour > 0 )
-            text << wxT( " " ) << _( "(Cutout)" );
+        text << wxT( " " ) << _( "(Cutout)" );
 
     if( GetIsKeepout() )
         text << wxT( " " ) << _( "(Keepout)" );
+    else
+        text << GetNetnameMsg();
 
-    text << wxString::Format( wxT( " (%08lX)" ), m_TimeStamp );
-
-    // Display net name for copper zones
-    if( !GetIsKeepout() )
-    {
-        if( GetNetCode() >= 0 )
-        {
-            if( board )
-            {
-                net = GetNet();
-
-                if( net )
-                {
-                    text << wxT( " [" ) << net->GetNetname() << wxT( "]" );
-                }
-            }
-            else
-            {
-                text << _( "** NO BOARD DEFINED **" );
-            }
-        }
-        else
-        {   // A netcode < 0 is an error:
-            // Netname not found or area not initialised
-            text << wxT( " [" ) << GetNetname() << wxT( "]" );
-            text << wxT( " <" ) << _( "Not Found" ) << wxT( ">" );
-        }
-    }
-
-    wxString msg;
-    msg.Printf( _( "Zone Outline %s on %s" ), GetChars( text ),
-                 GetChars( GetLayerName() ) );
-
-    return msg;
+    return wxString::Format( _( "Zone Outline %s on %s" ), text, GetLayerName() );
 }
 
 

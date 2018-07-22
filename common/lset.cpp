@@ -783,6 +783,13 @@ LSET LSET::BackMask()
 }
 
 
+LSET LSET::ForbiddenTextLayers()
+{
+    static const LSET saved( 6, Edge_Cuts, Margin, F_Paste, B_Paste, F_Mask, B_Mask );
+    return saved;
+}
+
+
 LSEQ LSET::UIOrder() const
 {
     LSEQ order = CuStack();
@@ -795,7 +802,7 @@ LSEQ LSET::UIOrder() const
 
 PCB_LAYER_ID ToLAYER_ID( int aLayer )
 {
-    wxASSERT( unsigned( aLayer ) < PCB_LAYER_ID_COUNT );
+    wxASSERT( aLayer < GAL_LAYER_ID_END );
     return PCB_LAYER_ID( aLayer );
 }
 

@@ -61,12 +61,11 @@ CONTEXT_MENU::~CONTEXT_MENU()
 static void set_wxMenuIcon( wxMenuItem* aMenu, const BITMAP_OPAQUE* aIcon )
 {
     // Retrieve the global applicaton show icon option:
-    bool useImagesInMenus = Pgm().GetUseIconsInMenus();
+    bool useImagesInMenus;
+    Pgm().CommonSettings()->Read( USE_ICONS_IN_MENUS_KEY, &useImagesInMenus );
 
     if( aIcon && useImagesInMenus )
-    {
         aMenu->SetBitmap( KiBitmap( aIcon ) );
-    }
 }
 
 
@@ -276,7 +275,7 @@ CONTEXT_MENU* CONTEXT_MENU::create() const
 }
 
 
-TOOL_MANAGER* CONTEXT_MENU::getToolManager()
+TOOL_MANAGER* CONTEXT_MENU::getToolManager() const
 {
     wxASSERT( m_tool );
     return m_tool ? m_tool->GetManager() : nullptr;
@@ -455,7 +454,8 @@ wxMenuItem* CONTEXT_MENU::appendCopy( const wxMenuItem* aSource )
     wxMenuItem* newItem = new wxMenuItem( this, aSource->GetId(), aSource->GetItemLabel(),
                                           aSource->GetHelp(), aSource->GetKind() );
 
-    bool useImagesInMenus = Pgm().GetUseIconsInMenus();
+    bool useImagesInMenus;
+    Pgm().CommonSettings()->Read( USE_ICONS_IN_MENUS_KEY, &useImagesInMenus );
 
     if( aSource->GetKind() == wxITEM_NORMAL && useImagesInMenus )
         newItem->SetBitmap( aSource->GetBitmap() );

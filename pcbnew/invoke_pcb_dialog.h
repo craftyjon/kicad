@@ -95,7 +95,7 @@ void Invoke3DShapeLibsDownloaderWizard( wxTopLevelWindow* aCaller );
  * @param aOptions is the options string on calling into this function.
  * @param aResult is where to put the result of the editing.
  */
-void InvokePluginOptionsEditor( wxTopLevelWindow* aCaller, const wxString& aNickname,
+void InvokePluginOptionsEditor( wxWindow* aCaller, const wxString& aNickname,
     const wxString& aPluginType, const wxString& aOptions, wxString* aResult );
 
 /**
@@ -118,30 +118,12 @@ bool InvokeDXFDialogBoardImport( PCB_BASE_FRAME* aCaller );
 bool InvokeDXFDialogModuleImport( PCB_BASE_FRAME* aCaller, MODULE* aModule );
 
 /**
- * Function InvokeLayerSetup
- * shows the layer setup dialog
- * @param aCaller is the PCB_EDIT_FRAME which is invoking the dialog.
+ * Function InvokeExportSVG
+ * shows the Export SVG dialog
+ * @param aCaller is the PCB_BASE_FRAME which is invoking the dialog.
  * @param aBoard is the currently edited board.
  * @return bool - true if user pressed OK (did not abort), else false.
  */
-bool InvokeLayerSetup( PCB_EDIT_FRAME* aCaller, BOARD* aBoard );
-
-/**
- * Function InvokeSVGPrint
- * shows the SVG print dialog
- * @param aCaller is the wxTopLevelWindow which is invoking the dialog.
- * @param aBoard is the currently edited board.
- * @param aSettings is the current pcb plot parameters.
- * @return bool - true if user pressed OK (did not abort), else false.
- */
-bool InvokeSVGPrint( wxTopLevelWindow* aCaller, BOARD* aBoard, PCB_PLOT_PARAMS* aSettings );
-
-/**
- * Function InvokeSVGPrint
- * shows the SVG print dialog
- * @param aCaller is the FOOTPRINT_EDIT_FRAME which is invoking the dialog.
- * @return bool - true if user pressed OK (did not abort), else false.
- */
-bool InvokeFPEditorPrefsDlg( FOOTPRINT_EDIT_FRAME* aCaller );
+bool InvokeExportSVG( PCB_BASE_FRAME* aCaller, BOARD* aBoard );
 
 #endif  // INVOKE_A_DIALOG_H_

@@ -33,18 +33,14 @@
 #include <pcb_edit_frame.h>
 #include <collectors.h>
 #include <build_version.h>
-#include <macros.h>
 #include <3d_viewer/eda_3d_viewer.h>
-#include <msgpanel.h>
 #include <fp_lib_table.h>
 #include <bitmaps.h>
 #include <trace_helpers.h>
-
 #include <pcbnew.h>
 #include <pcbnew_id.h>
 #include <drc.h>
 #include <layer_widget.h>
-#include <dialog_design_rules.h>
 #include <pcb_layer_widget.h>
 #include <hotkeys.h>
 #include <config_params.h>
@@ -53,33 +49,33 @@
 #include <dialog_plot.h>
 #include <dialog_exchange_footprints.h>
 #include <dialog_edit_footprint_for_BoardEditor.h>
+#include <dialog_board_setup.h>
+#include <dialog_configure_paths.h>
 #include <convert_to_biu.h>
 #include <view/view.h>
 #include <view/view_controls.h>
 #include <pcb_painter.h>
 #include <invoke_pcb_dialog.h>
-
 #include <class_track.h>
 #include <class_board.h>
 #include <class_module.h>
 #include <worksheet_viewitem.h>
 #include <connectivity_data.h>
 #include <ratsnest_viewitem.h>
-
+#include <wildcards_and_files_ext.h>
+#include <kicad_string.h>
+#include <pcb_draw_panel_gal.h>
+#include <gal/graphics_abstraction_layer.h>
+#include <functional>
 #include <tool/tool_manager.h>
 #include <tool/tool_dispatcher.h>
 #include <tools/pcb_actions.h>
 
-#include <wildcards_and_files_ext.h>
-#include <kicad_string.h>
-
 #if defined(KICAD_SCRIPTING) || defined(KICAD_SCRIPTING_WXPYTHON)
 #include <python_scripting.h>
+
 #endif
 
-#include <pcb_draw_panel_gal.h>
-#include <gal/graphics_abstraction_layer.h>
-#include <functional>
 
 using namespace std::placeholders;
 
@@ -87,12 +83,9 @@ using namespace std::placeholders;
 /// \ingroup config
 
 static const wxString PlotLineWidthEntry =      "PlotLineWidth_mm";
-static const wxString MagneticPadsEntry =       "PcbMagPadOpt";
-static const wxString MagneticTracksEntry =     "PcbMagTrackOpt";
 static const wxString ShowMicrowaveEntry =      "ShowMicrowaveTools";
 static const wxString ShowLayerManagerEntry =   "ShowLayerManagerTools";
 static const wxString ShowPageLimitsEntry =     "ShowPageLimits";
-static const wxString IconScaleEntry =          "PcbIconScale";
 
 ///@}
 
@@ -144,21 +137,11 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_MENU( wxID_EXIT, PCB_EDIT_FRAME::OnQuit )
 
     // menu Config
-    EVT_MENU( ID_PCB_DRAWINGS_WIDTHS_SETUP, PCB_EDIT_FRAME::OnConfigurePcbOptions )
     EVT_MENU( ID_PCB_LIB_TABLE_EDIT, PCB_EDIT_FRAME::Process_Config )
     EVT_MENU( ID_PCB_3DSHAPELIB_WIZARD, PCB_EDIT_FRAME::Process_Config )
     EVT_MENU( ID_PREFERENCES_CONFIGURE_PATHS, PCB_EDIT_FRAME::OnConfigurePaths )
-    EVT_MENU( ID_CONFIG_SAVE, PCB_EDIT_FRAME::Process_Config )
-    EVT_MENU( ID_CONFIG_READ, PCB_EDIT_FRAME::Process_Config )
-    EVT_MENU_RANGE( ID_PREFERENCES_HOTKEY_START, ID_PREFERENCES_HOTKEY_END,
-                    PCB_EDIT_FRAME::Process_Config )
+    EVT_MENU( ID_PREFERENCES_HOTKEY_SHOW_CURRENT_LIST, PCB_EDIT_FRAME::Process_Config )
     EVT_MENU( wxID_PREFERENCES, PCB_EDIT_FRAME::Process_Config )
-    EVT_MENU( ID_PCB_LAYERS_SETUP, PCB_EDIT_FRAME::Process_Config )
-    EVT_MENU( ID_PCB_MASK_CLEARANCE, PCB_EDIT_FRAME::Process_Config )
-    EVT_MENU( ID_PCB_PAD_SETUP, PCB_EDIT_FRAME::Process_Config )
-    EVT_MENU( ID_CONFIG_SAVE, PCB_EDIT_FRAME::Process_Config )
-    EVT_MENU( ID_CONFIG_READ, PCB_EDIT_FRAME::Process_Config )
-    EVT_MENU( ID_PCB_DISPLAY_OPTIONS_SETUP, PCB_EDIT_FRAME::InstallDisplayOptionsDialog )
     EVT_MENU( ID_PCB_USER_GRID_SETUP, PCB_EDIT_FRAME::Process_Special_Functions )
 
     // menu Postprocess
@@ -170,14 +153,13 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
 
     // menu Miscellaneous
     EVT_MENU( ID_MENU_LIST_NETS, PCB_EDIT_FRAME::ListNetsAndSelect )
-    EVT_MENU( ID_PCB_EDIT_ALL_VIAS_AND_TRACK_SIZE, PCB_EDIT_FRAME::Process_Special_Functions )
+    EVT_MENU( ID_PCB_EDIT_TRACKS_AND_VIAS, PCB_EDIT_FRAME::OnEditTracksAndVias )
     EVT_MENU( ID_PCB_GLOBAL_DELETE, PCB_EDIT_FRAME::Process_Special_Functions )
     EVT_MENU( ID_MENU_PCB_CLEAN, PCB_EDIT_FRAME::Process_Special_Functions )
     EVT_MENU( ID_MENU_PCB_UPDATE_FOOTPRINTS, PCB_EDIT_FRAME::Process_Special_Functions )
     EVT_MENU( ID_MENU_PCB_EXCHANGE_FOOTPRINTS, PCB_EDIT_FRAME::Process_Special_Functions )
     EVT_MENU( ID_MENU_PCB_SWAP_LAYERS, PCB_EDIT_FRAME::Process_Special_Functions )
-    EVT_MENU( ID_MENU_PCB_RESET_TEXTMODULE_FIELDS_SIZES,
-              PCB_EDIT_FRAME::OnResetModuleTextSizes )
+    EVT_MENU( ID_MENU_PCB_EDIT_TEXT_AND_GRAPHICS, PCB_EDIT_FRAME::OnEditTextAndGraphics )
 
     // Menu Help
     EVT_MENU( wxID_HELP, EDA_DRAW_FRAME::GetKicadHelp )
@@ -194,7 +176,7 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_MENU( ID_MENU_CANVAS_OPENGL, PCB_EDIT_FRAME::OnSwitchCanvas )
 
     // Menu Get Design Rules Editor
-    EVT_MENU( ID_MENU_PCB_SHOW_DESIGN_RULES_DIALOG, PCB_EDIT_FRAME::ShowDesignRulesEditor )
+    EVT_MENU( ID_BOARD_SETUP_DIALOG, PCB_EDIT_FRAME::ShowBoardSetupDialog )
 
     // Horizontal toolbar
     EVT_TOOL( ID_RUN_LIBRARY, PCB_EDIT_FRAME::Process_Special_Functions )
@@ -205,7 +187,7 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_TOOL( wxID_UNDO, PCB_BASE_EDIT_FRAME::RestoreCopyFromUndoList )
     EVT_TOOL( wxID_REDO, PCB_BASE_EDIT_FRAME::RestoreCopyFromRedoList )
     EVT_TOOL( wxID_PRINT, PCB_EDIT_FRAME::ToPrinter )
-    EVT_TOOL( ID_GEN_PLOT_SVG, PCB_EDIT_FRAME::SVG_Print )
+    EVT_TOOL( ID_GEN_PLOT_SVG, PCB_EDIT_FRAME::ExportSVG )
     EVT_TOOL( ID_GEN_PLOT, PCB_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_FIND_ITEMS, PCB_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_GET_NETLIST, PCB_EDIT_FRAME::Process_Special_Functions )
@@ -295,11 +277,6 @@ BEGIN_EVENT_TABLE( PCB_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_UPDATE_UI( ID_NO_TOOL_SELECTED, PCB_EDIT_FRAME::OnUpdateVerticalToolbar )
     EVT_UPDATE_UI( ID_ZOOM_SELECTION, PCB_EDIT_FRAME::OnUpdateVerticalToolbar )
     EVT_UPDATE_UI( ID_AUX_TOOLBAR_PCB_TRACK_WIDTH, PCB_EDIT_FRAME::OnUpdateSelectTrackWidth )
-    EVT_UPDATE_UI( ID_AUX_TOOLBAR_PCB_SELECT_AUTO_WIDTH,
-                   PCB_EDIT_FRAME::OnUpdateSelectAutoTrackWidth )
-    EVT_UPDATE_UI( ID_POPUP_PCB_SELECT_AUTO_WIDTH, PCB_EDIT_FRAME::OnUpdateSelectAutoTrackWidth )
-    EVT_UPDATE_UI( ID_POPUP_PCB_SELECT_CUSTOM_WIDTH,
-                   PCB_EDIT_FRAME::OnUpdateSelectCustomTrackWidth )
     EVT_UPDATE_UI( ID_AUX_TOOLBAR_PCB_VIA_SIZE, PCB_EDIT_FRAME::OnUpdateSelectViaSize )
     EVT_UPDATE_UI_RANGE( ID_POPUP_PCB_SELECT_WIDTH1, ID_POPUP_PCB_SELECT_WIDTH8,
                          PCB_EDIT_FRAME::OnUpdateSelectTrackWidth )
@@ -799,16 +776,29 @@ void PCB_EDIT_FRAME::enableGALSpecificMenus()
 }
 
 
-void PCB_EDIT_FRAME::ShowDesignRulesEditor( wxCommandEvent& event )
+void PCB_EDIT_FRAME::ShowBoardSetupDialog( wxCommandEvent& event )
 {
-    DIALOG_DESIGN_RULES dR_editor( this );
-    int returncode = dR_editor.ShowModal();
+    DIALOG_BOARD_SETUP dlg( this );
 
-    if( returncode == wxID_OK )     // New rules, or others changes.
+    if( dlg.ShowModal() == wxID_OK )
     {
-        ReCreateLayerBox();
+        Prj().ConfigSave( Kiface().KifaceSearch(), GROUP_PCB, GetProjectFileParameters() );
+
+        UpdateUserInterface();
         ReCreateAuxiliaryToolbar();
-        m_Layers->ReFillRender();
+
+        if( IsGalCanvasActive() )
+        {
+            for( MODULE* module = GetBoard()->m_Modules; module; module = module->Next() )
+                GetGalCanvas()->GetView()->Update( module );
+
+            GetGalCanvas()->Refresh();
+        }
+
+        //this event causes the routing tool to reload its design rules information
+        TOOL_EVENT toolEvent( TC_COMMAND, TA_MODEL_CHANGE, AS_ACTIVE );
+        m_toolManager->ProcessEvent( toolEvent );
+
         OnModify();
     }
 }
@@ -835,6 +825,7 @@ void PCB_EDIT_FRAME::LoadSettings( wxConfigBase* aCfg )
 
     aCfg->Read( ShowMicrowaveEntry, &m_show_microwave_tools );
     aCfg->Read( ShowLayerManagerEntry, &m_show_layer_manager_tools );
+
     aCfg->Read( ShowPageLimitsEntry, &m_showPageLimits );
 }
 
@@ -1077,24 +1068,9 @@ void PCB_EDIT_FRAME::OnModify( )
 }
 
 
-void PCB_EDIT_FRAME::SVG_Print( wxCommandEvent& event )
+void PCB_EDIT_FRAME::ExportSVG( wxCommandEvent& event )
 {
-    PCB_PLOT_PARAMS  plot_prms = GetPlotSettings();
-
-    // we don't want dialogs knowing about complex wxFrame functions so
-    // pass everything the dialog needs without reference to *this frame's class.
-    if( InvokeSVGPrint( this, GetBoard(), &plot_prms ) )
-    {
-        if( !plot_prms.IsSameAs( GetPlotSettings(), false ) )
-        {
-            // First, mark board as modified only for parameters saved in file
-            if( !plot_prms.IsSameAs( GetPlotSettings(), true ) )
-                OnModify();
-
-            // Now, save any change, for the session
-            SetPlotSettings( plot_prms );
-        }
-    }
+    InvokeExportSVG( this, GetBoard() );
 }
 
 
@@ -1216,7 +1192,8 @@ bool PCB_EDIT_FRAME::SetCurrentNetClass( const wxString& aNetClassName )
 
 void PCB_EDIT_FRAME::OnConfigurePaths( wxCommandEvent& aEvent )
 {
-    Pgm().ConfigurePaths( this );
+    DIALOG_CONFIGURE_PATHS dlg( this, Prj().Get3DCacheManager()->GetResolver() );
+    dlg.ShowModal();
 }
 
 
@@ -1299,7 +1276,7 @@ void PCB_EDIT_FRAME::InstallFootprintPropertiesDialog( MODULE* Module, wxDC* DC 
     /* retvalue =
      *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_ABORT if abort,
      *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_WANT_EXCHANGE_FP if exchange module,
-     *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_EDIT_OK for normal edition
+     *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_EDIT_OK for normal edit
      *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_WANT_MODEDIT for a goto editor command
      */
 
@@ -1343,18 +1320,10 @@ int PCB_EDIT_FRAME::InstallExchangeModuleFrame( MODULE* Module, bool updateMode 
 }
 
 
-int PCB_EDIT_FRAME::GetIconScale()
+void PCB_EDIT_FRAME::CommonSettingsChanged()
 {
-    int scale = 0;
-    Kiface().KifaceSettings()->Read( IconScaleEntry, &scale, 0 );
-    return scale;
-}
+    PCB_BASE_EDIT_FRAME::CommonSettingsChanged();
 
-
-void PCB_EDIT_FRAME::SetIconScale( int aScale )
-{
-    Kiface().KifaceSettings()->Write( IconScaleEntry, aScale );
-    ReCreateMenuBar();
     ReCreateHToolbar();
     ReCreateAuxiliaryToolbar();
     ReCreateVToolbar();

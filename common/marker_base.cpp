@@ -103,6 +103,17 @@ MARKER_BASE::MARKER_BASE()
 }
 
 
+MARKER_BASE::MARKER_BASE( EDA_UNITS_T aUnits, int aErrorCode, const wxPoint& aMarkerPos,
+                          EDA_ITEM* aItem, const wxPoint& aPos,
+                          EDA_ITEM* bItem, const wxPoint& bPos )
+{
+    m_ScalingFactor = M_SHAPE_SCALE;
+    init();
+
+    SetData( aUnits, aErrorCode, aMarkerPos, aItem, aPos, bItem, bPos );
+}
+
+
 MARKER_BASE::MARKER_BASE( int aErrorCode, const wxPoint& aMarkerPos,
                           const wxString& aText, const wxPoint& aPos,
                           const wxString& bText, const wxPoint& bPos )
@@ -110,9 +121,7 @@ MARKER_BASE::MARKER_BASE( int aErrorCode, const wxPoint& aMarkerPos,
     m_ScalingFactor = M_SHAPE_SCALE;
     init();
 
-    SetData( aErrorCode, aMarkerPos,
-             aText, aPos,
-             bText, bPos );
+    SetData( aErrorCode, aMarkerPos, aText, aPos, bText, bPos );
 }
 
 
@@ -121,6 +130,7 @@ MARKER_BASE::MARKER_BASE( int aErrorCode, const wxPoint& aMarkerPos,
 {
     m_ScalingFactor = M_SHAPE_SCALE;
     init();
+
     SetData( aErrorCode, aMarkerPos, aText, aPos );
 }
 
@@ -130,23 +140,22 @@ MARKER_BASE::~MARKER_BASE()
 }
 
 
-void MARKER_BASE::SetData( int aErrorCode, const wxPoint& aMarkerPos,
-                           const wxString& aText, const wxPoint& aPos,
-                           const wxString& bText, const wxPoint& bPos )
+void MARKER_BASE::SetData( EDA_UNITS_T aUnits, int aErrorCode, const wxPoint& aMarkerPos,
+                           EDA_ITEM* aItem, const wxPoint& aPos,
+                           EDA_ITEM* bItem, const wxPoint& bPos )
 {
     m_Pos = aMarkerPos;
-    m_drc.SetData( aErrorCode,
-                   aText, bText, aPos, bPos );
+    m_drc.SetData( aUnits, aErrorCode, aItem, aPos, bItem, bPos );
     m_drc.SetParent( this );
 }
 
 
 void MARKER_BASE::SetData( int aErrorCode, const wxPoint& aMarkerPos,
-                           const wxString& aText, const wxPoint& aPos )
+                           const wxString& aText, const wxPoint& aPos,
+                           const wxString& bText, const wxPoint& bPos )
 {
     m_Pos = aMarkerPos;
-    m_drc.SetData( aErrorCode,
-                   aText, aPos );
+    m_drc.SetData( aErrorCode, aText, aPos, bText, bPos );
     m_drc.SetParent( this );
 }
 
@@ -199,7 +208,7 @@ void MARKER_BASE::DrawMarker( EDA_DRAW_PANEL* aPanel, wxDC* aDC, GR_DRAWMODE aDr
 
 void MARKER_BASE::DisplayMarkerInfo( EDA_DRAW_FRAME* aFrame )
 {
-    wxString msg = m_drc.ShowHtml();
+    wxString msg = m_drc.ShowHtml( aFrame->GetUserUnits() );
     DIALOG_DISPLAY_HTML_TEXT_BASE infodisplay( (wxWindow*)aFrame, wxID_ANY, _( "Marker Info" ),
                                                wxGetMousePosition(), wxSize( 550, 140 ) );
 

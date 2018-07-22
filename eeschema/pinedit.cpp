@@ -99,36 +99,9 @@ void LIB_EDIT_FRAME::OnEditPin( wxCommandEvent& event )
     STATUS_FLAGS item_flags = GetDrawItem()->GetFlags(); // save flags to restore them after editing
     LIB_PIN* pin = (LIB_PIN*) GetDrawItem();
 
+    pin->EnableEditMode( true, !SynchronizePins() );
+
     DIALOG_LIB_EDIT_PIN dlg( this, pin );
-
-    wxString units = GetUnitsLabel( g_UserUnit );
-    dlg.SetDlgUnitsLabel( units );
-
-    dlg.SetOrientationList( LIB_PIN::GetOrientationNames(), LIB_PIN::GetOrientationSymbols() );
-    dlg.SetOrientation( LIB_PIN::GetOrientationCodeIndex( pin->GetOrientation() ) );
-    dlg.SetStyle( pin->GetShape() );
-    dlg.SetElectricalType( pin->GetType() );
-    dlg.SetPinName( pin->GetName() );
-    dlg.SetPinNameTextSize( StringFromValue( g_UserUnit, pin->GetNameTextSize() ) );
-    dlg.SetPinPositionX( StringFromValue( g_UserUnit, pin->GetPosition().x ) );
-    dlg.SetPinPositionY( StringFromValue( g_UserUnit, -pin->GetPosition().y ) );
-    dlg.SetPadName( pin->GetNumber() );
-    dlg.SetPadNameTextSize( StringFromValue( g_UserUnit, pin->GetNumberTextSize() ) );
-
-    dlg.SetLength( StringFromValue( g_UserUnit, pin->GetLength() ) );
-    dlg.SetAddToAllParts( pin->GetUnit() == 0 );
-    dlg.SetAddToAllBodyStyles( pin->GetConvert() == 0 );
-    dlg.SetVisible( pin->IsVisible() );
-
-    /* This ugly hack fixes a bug in wxWidgets 2.8.7 and likely earlier
-     * versions for the flex grid sizer in wxGTK that prevents the last
-     * column from being sized correctly.  It doesn't cause any problems
-     * on win32 so it doesn't need to wrapped in ugly #ifdef __WXGTK__
-     * #endif.
-     */
-    dlg.Layout();
-    dlg.Fit();
-    dlg.SetMinSize( dlg.GetSize() );
 
     if( dlg.ShowModal() == wxID_CANCEL )
     {
@@ -140,60 +113,12 @@ void LIB_EDIT_FRAME::OnEditPin( wxCommandEvent& event )
         return;
     }
 
-    // Test the pin position validity: to avoid issues in schematic,
-    // it must be on a 50 mils grid
-    wxPoint pinpos;
-    pinpos.x = ValueFromString( g_UserUnit, dlg.GetPinPositionX() );
-    pinpos.y = -ValueFromString( g_UserUnit, dlg.GetPinPositionY() );
-    const int acceptable_mingrid = 50;
-
-    if( (pinpos.x % acceptable_mingrid) || (pinpos.y % acceptable_mingrid) )
-    {
-        wxString msg;
-        msg.Printf( _( "This pin is not on a %d mils grid\n"
-                       "It will be not easy to connect in schematic\n"
-                       "Do you want to continue?"), acceptable_mingrid );
-
-        if( !IsOK( this, msg ) )
-            return;
-    }
-
-
-    // Save the pin properties to use for the next new pin.
-    LastPinNameSize = ValueFromString( g_UserUnit, dlg.GetPinNameTextSize() );
-    LastPinNumSize = ValueFromString( g_UserUnit, dlg.GetPadNameTextSize() );
-    LastPinOrient = LIB_PIN::GetOrientationCode( dlg.GetOrientation() );
-    LastPinLength = ValueFromString( g_UserUnit, dlg.GetLength() );
-    LastPinShape = dlg.GetStyle();
-    LastPinType = dlg.GetElectricalType();
-    LastPinCommonConvert = dlg.GetAddToAllBodyStyles();
-    LastPinCommonUnit = dlg.GetAddToAllParts();
-    LastPinVisible = dlg.GetVisible();
-
-    if( !pin->InEditMode() )
-        SaveCopyInUndoList( pin->GetParent() );
-
-    pin->EnableEditMode( true, SynchronizePins()? false : true );
-    pin->SetName( dlg.GetPinName() );
-    pin->SetNameTextSize( GetLastPinNameSize() );
-    pin->SetNumber( dlg.GetPadName() );
-    pin->SetNumberTextSize( GetLastPinNumSize() );
-    pin->SetOrientation( LastPinOrient );
-    pin->SetLength( GetLastPinLength() );
-    pin->SetPinPosition( pinpos );
-
-    pin->SetType( LastPinType );
-    pin->SetShape( LastPinShape );
-    pin->SetConversion( ( LastPinCommonConvert ) ? 0 : m_convert );
-    pin->SetPartNumber( ( LastPinCommonUnit ) ? 0 : m_unit );
-    pin->SetVisible( LastPinVisible );
-
     if( pin->IsModified() || pin->IsNew() )
     {
         OnModify( );
 
         MSG_PANEL_ITEMS items;
-        pin->GetMsgPanelInfo( items );
+        pin->GetMsgPanelInfo( m_UserUnits, items );
         SetMsgPanel( items );
         m_canvas->Refresh();
     }
@@ -203,6 +128,17 @@ void LIB_EDIT_FRAME::OnEditPin( wxCommandEvent& event )
     // Restore pin flags, that can be changed by the dialog editor
     pin->ClearFlags();
     pin->SetFlags( item_flags );
+
+    // Save the pin properties to use for the next new pin.
+    LastPinNameSize = pin->GetNameTextSize();
+    LastPinNumSize = pin->GetNumberTextSize();
+    LastPinOrient = pin->GetOrientation();
+    LastPinLength = pin->GetLength();
+    LastPinShape = pin->GetShape();
+    LastPinType = pin->GetType();
+    LastPinCommonConvert = pin->GetConvert() == 0;
+    LastPinCommonUnit = pin->GetUnit() == 0;
+    LastPinVisible = pin->IsVisible();
 }
 
 /**
@@ -269,10 +205,14 @@ void LIB_EDIT_FRAME::PlacePin()
         {
             m_canvas->SetIgnoreMouseEvents( true );
             wxString msg;
-            msg.Printf( _( "This position is already occupied by another pin, in unit %d.\n"
-                           "Continue?" ), pin->GetUnit() );
+            msg.Printf( _( "This position is already occupied by another pin, in unit %d." ),
+                        pin->GetUnit() );
 
-            bool status = IsOK( this, msg );
+            KIDIALOG dlg( this, msg, _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
+            dlg.SetOKLabel( _( "Create Pin Anyway" ) );
+            dlg.DoNotShowCheckbox();
+
+            bool status = dlg.ShowModal() == wxID_OK;
 
             m_canvas->MoveCursorToCrossHair();
             m_canvas->SetIgnoreMouseEvents( false );
@@ -365,7 +305,7 @@ void LIB_EDIT_FRAME::StartMovePin( LIB_ITEM* aItem )
 
     MSG_PANEL_ITEMS items;
 
-    cur_pin->GetMsgPanelInfo( items );
+    cur_pin->GetMsgPanelInfo( m_UserUnits, items );
     SetMsgPanel( items );
     m_canvas->SetMouseCapture( DrawMovePin, AbortPinMove );
 
@@ -497,7 +437,7 @@ void LIB_EDIT_FRAME::CreateImagePins( LIB_PIN* aPin )
     int      ii;
     LIB_PIN* newPin;
 
-    // if "synchronize pins edition" option is off, do not create any similar pin for other
+    // if "synchronize pins editing" option is off, do not create any similar pin for other
     // units and/or shapes: each unit is edited regardless other units or body
     if( !SynchronizePins() )
         return;
@@ -507,7 +447,7 @@ void LIB_EDIT_FRAME::CreateImagePins( LIB_PIN* aPin )
 
     // When units are interchangeable, all units are expected to have similar pins
     // at the same position
-    // to facilitate pin edition, create pins for all other units for the current body style
+    // to facilitate pin editing, create pins for all other units for the current body style
     // at the same position as aPin
 
     for( ii = 1; ii <= aPin->GetParent()->GetUnitCount(); ii++ )
@@ -654,7 +594,7 @@ void LIB_EDIT_FRAME::RepeatPinItem( wxDC* DC, LIB_PIN* SourcePin )
     m_canvas->CrossHairOn( DC );
 
     MSG_PANEL_ITEMS items;
-    pin->GetMsgPanelInfo( items );
+    pin->GetMsgPanelInfo( m_UserUnits, items );
     SetMsgPanel( items );
     OnModify( );
 }

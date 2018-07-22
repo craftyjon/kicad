@@ -315,7 +315,7 @@ void PCB_DRAW_PANEL_GAL::SyncLayersVisibility( const BOARD* aBoard )
 }
 
 
-void PCB_DRAW_PANEL_GAL::GetMsgPanelInfo( std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_DRAW_PANEL_GAL::GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector<MSG_PANEL_ITEM>& aList )
 {
     BOARD* board = static_cast<PCB_BASE_FRAME*>( m_parent )->GetBoard();
     wxString txt;
@@ -371,8 +371,9 @@ void PCB_DRAW_PANEL_GAL::OnShow()
     {
         SetTopLayer( frame->GetActiveLayer() );
         PCB_DISPLAY_OPTIONS* displ_opts = (PCB_DISPLAY_OPTIONS*) frame->GetDisplayOptions();
-        static_cast<KIGFX::PCB_RENDER_SETTINGS*>(
-            m_view->GetPainter()->GetSettings() )->LoadDisplayOptions( displ_opts );
+        KIGFX::PAINTER* painter = m_view->GetPainter();
+        auto settings = static_cast<KIGFX::PCB_RENDER_SETTINGS*>( painter->GetSettings() );
+        settings->LoadDisplayOptions( displ_opts, frame->ShowPageLimits() );
     }
 }
 

@@ -87,14 +87,14 @@ public:
 
     void SetTextAngle( double aAngle );
 
-    bool IsUnlocked()
+    bool IsKeepUpright()
     {
-        return m_unlocked;
+        return m_keepUpright;
     }
 
-    void SetUnlocked( bool unlocked )
+    void SetKeepUpright( bool aKeepUpright )
     {
-        m_unlocked = unlocked;
+        m_keepUpright = aKeepUpright;
     }
 
     /// Rotate text, in footprint editor
@@ -106,7 +106,7 @@ public:
 
     bool IsParentFlipped() const;
 
-    /// Mirror text position in footprint edition
+    /// Mirror text position in footprint editing
     /// the text itself is not mirrored, and the layer not modified,
     /// only position is mirrored.
     /// (use Flip to change layer to its paired and mirror the text in fp editor).
@@ -194,7 +194,7 @@ public:
                         GR_DRAWMODE     aDrawMode,
                         const wxPoint&  aOffset = ZeroOffset );
 
-    void GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList ) override;
+    void GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector< MSG_PANEL_ITEM >& aList ) override;
 
     virtual bool TextHitTest( const wxPoint& aPoint, int aAccuracy = 0 ) const override;
 
@@ -215,7 +215,7 @@ public:
         return wxT( "MTEXT" );
     }
 
-    wxString GetSelectMenuText() const override;
+    wxString GetSelectMenuText( EDA_UNITS_T aUnits ) const override;
 
     BITMAP_DEF GetMenuImage() const override;
 
@@ -243,7 +243,7 @@ private:
     wxPoint   m_Pos0;       ///< text coordinates relative to the footprint anchor, orient 0.
                             ///< text coordinate ref point is the text center
 
-    bool      m_unlocked;
+    bool      m_keepUpright;
 };
 
 #endif // TEXT_MODULE_H_

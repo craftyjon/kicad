@@ -248,8 +248,7 @@ BEGIN_EVENT_TABLE( SCH_EDIT_FRAME, EDA_DRAW_FRAME )
 
     EVT_MENU( ID_CONFIG_SAVE, SCH_EDIT_FRAME::Process_Config )
     EVT_MENU( ID_CONFIG_READ, SCH_EDIT_FRAME::Process_Config )
-    EVT_MENU_RANGE( ID_PREFERENCES_HOTKEY_START, ID_PREFERENCES_HOTKEY_END,
-                    SCH_EDIT_FRAME::Process_Config )
+    EVT_MENU( ID_PREFERENCES_HOTKEY_SHOW_CURRENT_LIST, SCH_EDIT_FRAME::Process_Config )
 
     EVT_TOOL( wxID_PREFERENCES, SCH_EDIT_FRAME::OnPreferencesOptions )
     EVT_MENU( ID_PREFERENCES_CONFIGURE_PATHS, SCH_EDIT_FRAME::OnConfigurePaths )
@@ -363,7 +362,7 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ):
     m_item_to_repeat( 0 )
 {
     g_CurrentSheet = new SCH_SHEET_PATH();
-    g_ConnectionGraph = new CONNECTION_GRAPH();
+    g_ConnectionGraph = new CONNECTION_GRAPH( this );
 
     m_showAxis = false;                 // true to show axis
     m_showBorderAndTitleBlock = true;   // true to show sheet references
@@ -379,6 +378,7 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ):
     m_hotkeysDescrList = g_Schematic_Hokeys_Descr;
     m_dlgFindReplace = NULL;
     m_findReplaceData = new wxFindReplaceData( wxFR_DOWN );
+    m_findReplaceStatus = new wxString( wxEmptyString );
     m_undoItem = NULL;
     m_hasAutoSave = true;
     m_busUnfold = {};
@@ -474,12 +474,14 @@ SCH_EDIT_FRAME::~SCH_EDIT_FRAME()
     delete m_undoItem;
     delete g_RootSheet;
     delete m_findReplaceData;
+    delete m_findReplaceStatus;
 
     g_CurrentSheet = nullptr;
     g_ConnectionGraph = nullptr;
-    m_undoItem = nullptr;
-    g_RootSheet = nullptr;
-    m_findReplaceData = nullptr;
+    m_undoItem = NULL;
+    g_RootSheet = NULL;
+    m_findReplaceData = NULL;
+    m_findReplaceStatus = NULL;
 }
 
 
@@ -997,8 +999,8 @@ void SCH_EDIT_FRAME::OnFindItems( wxCommandEvent& aEvent )
     if( aEvent.GetId() == wxID_REPLACE )
         style = wxFR_REPLACEDIALOG;
 
-    m_dlgFindReplace = new DIALOG_SCH_FIND( this, m_findReplaceData, position, m_findDialogSize,
-                                            style );
+    m_dlgFindReplace = new DIALOG_SCH_FIND( this, m_findReplaceData, m_findReplaceStatus,
+                                            position, m_findDialogSize, style );
 
     m_dlgFindReplace->SetFindEntries( m_findStringHistoryList );
     m_dlgFindReplace->SetReplaceEntries( m_replaceStringHistoryList );
@@ -1565,21 +1567,30 @@ void SCH_EDIT_FRAME::RecalculateConnections( SCH_SHEET_LIST aSheetList )
 }
 
 
-int SCH_EDIT_FRAME::GetIconScale()
+void SCH_EDIT_FRAME::CommonSettingsChanged()
 {
-    int scale = 0;
-    Kiface().KifaceSettings()->Read( SchIconScaleEntry, &scale, 0 );
-    return scale;
-}
+    SCH_BASE_FRAME::CommonSettingsChanged();
 
-
-void SCH_EDIT_FRAME::SetIconScale( int aScale )
-{
-    Kiface().KifaceSettings()->Write( SchIconScaleEntry, aScale );
-    ReCreateMenuBar();
     ReCreateHToolbar();
     ReCreateVToolbar();
     ReCreateOptToolbar();
     Layout();
     SendSizeEvent();
 }
+
+
+void SCH_EDIT_FRAME::ShowChangedLanguage()
+{
+    // call my base class
+    SCH_BASE_FRAME::ShowChangedLanguage();
+
+    // tooltips in toolbars
+    ReCreateHToolbar();
+    ReCreateVToolbar();
+    ReCreateOptToolbar();
+
+    // status bar
+    UpdateMsgPanel();
+}
+
+

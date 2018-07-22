@@ -41,7 +41,7 @@ wxString DRC_ITEM::GetErrorText() const
     case ERCE_DUPLICATE_SHEET_NAME:
         return wxString( _("Duplicate sheet names within a given sheet") );
     case ERCE_PIN_NOT_CONNECTED:
-        return wxString( _("Pin not connected (and no connect symbol found on this pin)") );
+        return wxString( _("Pin not connected (use a \"no connection\" flag to suppress this error)") );
     case ERCE_PIN_NOT_DRIVEN:
         return wxString( _("Pin connected to some others pins but no pin to drive it") );
     case ERCE_PIN_TO_PIN_WARNING:
@@ -51,9 +51,9 @@ wxString DRC_ITEM::GetErrorText() const
     case ERCE_HIERACHICAL_LABEL:
         return wxString( _("Mismatch between hierarchical labels and pins sheets"));
     case ERCE_NOCONNECT_CONNECTED:
-        return wxString( _("A no connect symbol is connected to more than 1 pin"));
+        return wxString( _("A pin with a \"no connection\" flag is connected"));
     case ERCE_LABEL_NOT_CONNECTED:
-        return wxString( _("Label not connected") );
+        return wxString( _("A label not connected to any other item") );
     case ERCE_SIMILAR_LABELS:
         return wxString( _("Labels are similar (lower/upper case difference only)") );
     case ERCE_SIMILAR_GLBL_LABELS:
@@ -80,9 +80,80 @@ wxString DRC_ITEM::GetErrorText() const
     }
 }
 
-wxString DRC_ITEM::ShowCoord( const wxPoint& aPos )
+wxString DRC_ITEM::ShowCoord( EDA_UNITS_T aUnits, const wxPoint& aPos )
 {
-    wxString ret;
-    ret << aPos;
-    return ret;
+    return wxString::Format( _( "@(%s, %s)" ),
+                             MessageTextFromValue( aUnits, aPos.x ),
+                             MessageTextFromValue( aUnits, aPos.y ) );
 }
+
+
+wxString DRC_ITEM::ShowHtml( EDA_UNITS_T aUnits ) const
+{
+    wxString mainText = m_MainText;
+    // a wxHtmlWindows does not like < and > in the text to display
+    // because these chars have a special meaning in html
+    mainText.Replace( wxT("<"), wxT("&lt;") );
+    mainText.Replace( wxT(">"), wxT("&gt;") );
+
+    wxString errText = GetErrorText();
+    errText.Replace( wxT("<"), wxT("&lt;") );
+    errText.Replace( wxT(">"), wxT("&gt;") );
+
+    wxColour hrefColour = wxSystemSettings::GetColour( wxSYS_COLOUR_HOTLIGHT );
+
+    if( m_noCoordinate )
+    {
+        // omit the coordinate, a NETCLASS has no location
+        return wxString::Format( _( "<p><b>%s</b><br>&nbsp;&nbsp; %s" ), errText, mainText );
+    }
+    else if( m_hasSecondItem )
+    {
+        wxString auxText = m_AuxiliaryText;
+        auxText.Replace( wxT("<"), wxT("&lt;") );
+        auxText.Replace( wxT(">"), wxT("&gt;") );
+
+        // an html fragment for the entire message in the listbox.  feel free
+        // to add color if you want:
+        return wxString::Format( _( "<p><b>%s</b><br>&nbsp;&nbsp; <font color='%s'><a href=''>%s</a></font>: %s<br>&nbsp;&nbsp; %s: %s" ),
+                                 errText,
+                                 hrefColour.GetAsString( wxC2S_HTML_SYNTAX ),
+                                 ShowCoord( aUnits, m_MainPosition ),
+                                 mainText,
+                                 ShowCoord( aUnits, m_AuxiliaryPosition ),
+                                 auxText  );
+    }
+    else
+    {
+        return wxString::Format( _( "<p><b>%s</b><br>&nbsp;&nbsp; <font color='%s'><a href=''>%s</a></font>: %s" ),
+                                 errText,
+                                 hrefColour.GetAsString( wxC2S_HTML_SYNTAX ),
+                                 ShowCoord( aUnits, m_MainPosition ),
+                                 mainText );
+    }
+}
+
+
+wxString DRC_ITEM::ShowReport( EDA_UNITS_T aUnits ) const
+{
+    if( m_hasSecondItem )
+    {
+        return wxString::Format( wxT( "ErrType(%d): %s\n    %s: %s\n    %s: %s\n" ),
+                                 m_ErrorCode,
+                                 GetErrorText(),
+                                 ShowCoord( aUnits, m_MainPosition ),
+                                 m_MainText,
+                                 ShowCoord( aUnits, m_AuxiliaryPosition ),
+                                 m_AuxiliaryText );
+    }
+    else
+    {
+        return wxString::Format( wxT( "ErrType(%d): %s\n    %s: %s\n" ),
+                                 m_ErrorCode,
+                                 GetErrorText(),
+                                 ShowCoord( aUnits, m_MainPosition ),
+                                 m_MainText );
+    }
+}
+
+

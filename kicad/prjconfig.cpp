@@ -67,7 +67,7 @@ void KICAD_MANAGER_FRAME::LoadProject( const wxFileName& aProjectFileName )
     // Any open KIFACE's must be closed if they are not part of the new project.
     // (We never want a KIWAY_PLAYER open on a KIWAY that isn't in the same project.)
     // User is prompted here to close those KIWAY_PLAYERs:
-    if( !Kiway.PlayersClose( false ) )
+    if( !Kiway().PlayersClose( false ) )
         return;
 
     SetTitle( wxString( "KiCad " ) + GetBuildVersion() );
@@ -359,19 +359,15 @@ void KICAD_MANAGER_FRAME::OnCreateProjectFromTemplate( wxCommandEvent& event )
             wxString extendedMsg = _( "Overwriting files:" ) + "\n";
 
             for( const auto& file : overwrittenFiles )
-            {
                 extendedMsg += "\n" + file.GetFullName();
-            }
 
-            wxMessageDialog owDlg( this,
-                                   _( "Are you sure you want to overwrite files in "
-                                      "the destination folder?" ),
-                                   _( "Warning!" ),
-                                   wxYES_NO | wxICON_QUESTION | wxCENTER );
-            owDlg.SetExtendedMessage( extendedMsg );
-            owDlg.SetYesNoLabels( _( "Overwrite" ), _( "Do Not Overwrite" ) );
+            KIDIALOG msgDlg( this, _( "Similar files already exist in the destination folder." ),
+                          _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
+            msgDlg.SetExtendedMessage( extendedMsg );
+            msgDlg.SetOKLabel( _( "Overwrite" ) );
+            msgDlg.DoNotShowCheckbox();
 
-            if( owDlg.ShowModal() == wxID_NO )
+            if( msgDlg.ShowModal() == wxID_CANCEL )
                 return;
         }
     }

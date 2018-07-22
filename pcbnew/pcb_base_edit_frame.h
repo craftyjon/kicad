@@ -98,7 +98,7 @@ public:
                             const wxPoint& aTransformPoint = wxPoint( 0, 0 ) ) override;
     /**
      * Function RestoreCopyFromRedoList
-     *  Redo the last edition:
+     *  Redo the last edit:
      *  - Save the current board in Undo list
      *  - Get an old version of the board from Redo list
      *  @return none
@@ -107,7 +107,7 @@ public:
 
     /**
      * Function RestoreCopyFromUndoList
-     *  Undo the last edition:
+     *  Undo the last edit:
      *  - Save the current board in Redo list
      *  - Get an old version of the board from Undo list
      *  @return none
@@ -157,6 +157,9 @@ public:
      * Sets the angle used for rotate operations.
      */
     void SetRotationAngle( int aRotationAngle );
+
+    void InstallTextOptionsFrame( BOARD_ITEM* aText, wxDC* aDC );
+    void InstallGraphicItemPropertiesDialog( BOARD_ITEM* aItem, wxDC* aDC );
 
     ///> @copydoc EDA_DRAW_FRAME::UseGalCanvas()
     void UseGalCanvas( bool aEnable ) override;

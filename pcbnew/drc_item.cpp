@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2007 Dick Hollenbeck, dick@softplc.com
- * Copyright (C) 2015 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2015-2018 KiCad Developers, see change_log.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,15 +23,13 @@
  */
 
 
-/*************************************************/
-/* class_drc_item.cpp - DRC_ITEM class functions */
-/*************************************************/
 #include <fctsys.h>
 #include <common.h>
 
 #include <pcbnew.h>
 #include <drc.h>
 #include <drc_item.h>
+#include <class_board.h>
 #include <base_units.h>
 
 
@@ -99,6 +97,8 @@ wxString DRC_ITEM::GetErrorText() const
         return wxString( _( "Too small via drill" ) );
     case DRCE_TOO_SMALL_MICROVIA_DRILL:
         return wxString( _( "Too small micro via drill" ) );
+    case DRCE_DRILLED_HOLES_TOO_CLOSE:
+        return wxString( _( "Drilled holes too close together" ) );
 
     // use &lt; since this is text ultimately embedded in HTML
     case DRCE_NETCLASS_TRACKWIDTH:
@@ -142,15 +142,95 @@ wxString DRC_ITEM::GetErrorText() const
         return wxString( _( "Footprint has incorrect courtyard (not a closed shape)" ) );
 
     default:
-        return wxString::Format( wxT( "Unknown DRC error code %d" ), m_ErrorCode );
+        return wxString::Format( _( "Unknown DRC error code %d" ), m_ErrorCode );
     }
 }
 
 
-wxString DRC_ITEM::ShowCoord( const wxPoint& aPos )
+wxString DRC_ITEM::ShowCoord( EDA_UNITS_T aUnits, const wxPoint& aPos )
 {
-    wxString ret;
-
-    ret << aPos;
-    return ret;
+    return wxString::Format( wxT( "@(%s, %s)" ),
+                             MessageTextFromValue( aUnits, aPos.x ),
+                             MessageTextFromValue( aUnits, aPos.y ) );
 }
+
+
+wxString DRC_ITEM::ShowHtml( EDA_UNITS_T aUnits ) const
+{
+    wxString mainText = m_MainText;
+    // a wxHtmlWindows does not like < and > in the text to display
+    // because these chars have a special meaning in html
+    mainText.Replace( wxT("<"), wxT("&lt;") );
+    mainText.Replace( wxT(">"), wxT("&gt;") );
+
+    wxString errText = GetErrorText();
+    errText.Replace( wxT("<"), wxT("&lt;") );
+    errText.Replace( wxT(">"), wxT("&gt;") );
+
+
+    if( m_noCoordinate )
+    {
+        // omit the coordinate, a NETCLASS has no location
+        return wxString::Format( wxT( "<b>%s</b><br>&nbsp;&nbsp; %s" ),
+                                 errText,
+                                 mainText );
+    }
+    else if( m_hasSecondItem )
+    {
+        wxString auxText = m_AuxiliaryText;
+        auxText.Replace( wxT("<"), wxT("&lt;") );
+        auxText.Replace( wxT(">"), wxT("&gt;") );
+
+        // an html fragment for the entire message in the listbox.  feel free
+        // to add color if you want:
+        return wxString::Format( wxT( "<b>%s</b><br>&nbsp;&nbsp; %s: %s<br>&nbsp;&nbsp; %s: %s" ),
+                                 errText,
+                                 ShowCoord( aUnits, m_MainPosition ),
+                                 mainText,
+                                 ShowCoord( aUnits, m_AuxiliaryPosition ),
+                                 auxText );
+    }
+    else
+    {
+        return wxString::Format( wxT( "<b>%s</b><br>&nbsp;&nbsp; %s: %s" ),
+                                 errText,
+                                 ShowCoord( aUnits, m_MainPosition ),
+                                 mainText );
+    }
+}
+
+
+wxString DRC_ITEM::ShowReport( EDA_UNITS_T aUnits ) const
+{
+    if( m_hasSecondItem )
+    {
+        return wxString::Format( wxT( "ErrType(%d): %s\n    %s: %s\n    %s: %s\n" ),
+                                 m_ErrorCode,
+                                 GetErrorText(),
+                                 ShowCoord( aUnits, m_MainPosition ),
+                                 m_MainText,
+                                 ShowCoord( aUnits, m_AuxiliaryPosition ),
+                                 m_AuxiliaryText );
+    }
+    else
+    {
+        return wxString::Format( wxT( "ErrType(%d): %s\n    %s: %s\n" ),
+                                 m_ErrorCode,
+                                 GetErrorText(),
+                                 ShowCoord( aUnits, m_MainPosition ),
+                                 m_MainText );
+    }
+}
+
+
+BOARD_ITEM* DRC_ITEM::GetMainItem( BOARD* aBoard ) const
+{
+    return aBoard->GetItem( m_mainItemWeakRef, false /* copper only */ );
+}
+
+
+BOARD_ITEM* DRC_ITEM::GetAuxiliaryItem( BOARD* aBoard ) const
+{
+    return aBoard->GetItem( m_auxItemWeakRef, false /* copper only */ );
+}
+

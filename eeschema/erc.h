@@ -86,7 +86,7 @@ enum ERCE_T
  *
  * @param aFullFileName A wxString object containing the file name and path.
  */
-bool WriteDiagnosticERC( const wxString& aFullFileName );
+bool WriteDiagnosticERC( EDA_UNITS_T aUnits, const wxString& aFullFileName );
 
 /**
  * Performs ERC testing and creates an ERC marker to show the ERC problem for aNetItemRef

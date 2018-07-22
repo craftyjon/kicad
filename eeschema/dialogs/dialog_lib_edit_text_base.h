@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Apr 19 2018)
+// C++ code generated with wxFormBuilder (version Dec 30 2017)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -22,9 +22,8 @@
 #include <wx/button.h>
 #include <wx/sizer.h>
 #include <wx/checkbox.h>
+#include <wx/choice.h>
 #include <wx/statline.h>
-#include <wx/statbox.h>
-#include <wx/radiobox.h>
 #include <wx/dialog.h>
 
 ///////////////////////////////////////////////////////////////////////////
@@ -39,32 +38,42 @@ class DIALOG_LIB_EDIT_TEXT_BASE : public DIALOG_SHIM
 	protected:
 		wxStaticText* m_staticText1;
 		wxTextCtrl* m_TextValue;
-		wxButton* m_TextValueSelectButton;
-		wxStaticText* m_TextSizeText;
-		wxTextCtrl* m_TextSize;
 		wxStaticText* m_PowerComponentValues;
-		wxCheckBox* m_Orient;
-		wxStaticLine* m_staticline1;
+		wxButton* m_TextValueSelectButton;
+		wxCheckBox* m_visible;
+		wxStaticText* m_xPosLabel;
+		wxTextCtrl* m_xPosCtrl;
+		wxStaticText* m_xPosUnits;
+		wxCheckBox* m_italic;
+		wxStaticText* m_orientLabel;
+		wxChoice* m_orientChoice;
+		wxStaticText* m_yPosLabel;
+		wxTextCtrl* m_yPosCtrl;
+		wxStaticText* m_yPosUnits;
+		wxCheckBox* m_bold;
+		wxStaticText* m_hAlignLabel;
+		wxChoice* m_hAlignChoice;
+		wxStaticText* m_textSizeLabel;
+		wxTextCtrl* m_textSizeCtrl;
+		wxStaticText* m_textSizeUnits;
+		wxStaticText* m_vAlignLabel;
+		wxChoice* m_vAlignChoice;
 		wxCheckBox* m_CommonUnit;
 		wxCheckBox* m_CommonConvert;
-		wxCheckBox* m_Invisible;
-		wxRadioBox* m_TextShapeOpt;
-		wxRadioBox* m_TextHJustificationOpt;
-		wxRadioBox* m_TextVJustificationOpt;
+		wxStaticLine* m_staticline2;
 		wxStdDialogButtonSizer* m_sdbSizerButtons;
 		wxButton* m_sdbSizerButtonsOK;
 		wxButton* m_sdbSizerButtonsCancel;
 		
 		// Virtual event handlers, overide them in your derived class
 		virtual void OnCloseDialog( wxCloseEvent& event ) { event.Skip(); }
+		virtual void OnSetFocusText( wxFocusEvent& event ) { event.Skip(); }
 		virtual void OnTextValueSelectButtonClick( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCancelClick( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnOkClick( wxCommandEvent& event ) { event.Skip(); }
 		
 	
 	public:
 		
-		DIALOG_LIB_EDIT_TEXT_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Library Text Properties"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER ); 
+		DIALOG_LIB_EDIT_TEXT_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Text Item Properties"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER ); 
 		~DIALOG_LIB_EDIT_TEXT_BASE();
 	
 };

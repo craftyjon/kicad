@@ -72,10 +72,10 @@ BEGIN_EVENT_TABLE( DISPLAY_FOOTPRINTS_FRAME, PCB_BASE_FRAME )
 END_EVENT_TABLE()
 
 
-DISPLAY_FOOTPRINTS_FRAME::DISPLAY_FOOTPRINTS_FRAME( KIWAY* aKiway, CVPCB_MAINFRAME* aParent ) :
+DISPLAY_FOOTPRINTS_FRAME::DISPLAY_FOOTPRINTS_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     PCB_BASE_FRAME( aKiway, aParent, FRAME_CVPCB_DISPLAY, _( "Footprint Viewer" ),
-        wxDefaultPosition, wxDefaultSize,
-        KICAD_DEFAULT_DRAWFRAME_STYLE, FOOTPRINTVIEWER_FRAME_NAME )
+                    wxDefaultPosition, wxDefaultSize,
+                    KICAD_DEFAULT_DRAWFRAME_STYLE, FOOTPRINTVIEWER_FRAME_NAME )
 {
     m_showAxis = true;         // true to draw axis.
 
@@ -259,7 +259,6 @@ void DISPLAY_FOOTPRINTS_FRAME::OnUpdateTextDrawMode( wxUpdateUIEvent& aEvent )
 
     aEvent.Check( displ_opts->m_DisplayModTextFill == SKETCH );
     m_optionsToolBar->SetToolShortHelp( ID_TB_OPTIONS_SHOW_MODULE_TEXT_SKETCH, msgTextsFill[i] );
-
 }
 
 
@@ -467,59 +466,43 @@ MODULE* DISPLAY_FOOTPRINTS_FRAME::Get_Module( const wxString& aFootprintName )
 
 void DISPLAY_FOOTPRINTS_FRAME::InitDisplay()
 {
-    wxString msg;
+    CVPCB_MAINFRAME*      parentframe = (CVPCB_MAINFRAME *) GetParent();
+    MODULE*               module = nullptr;
+    const FOOTPRINT_INFO* module_info = nullptr;
 
-    CVPCB_MAINFRAME* parentframe = (CVPCB_MAINFRAME *) GetParent();
+    if( GetBoard()->m_Modules.GetCount() )
+        GetBoard()->m_Modules.DeleteAll();
 
     wxString footprintName = parentframe->GetSelectedFootprint();
 
+    if( footprintName.IsEmpty() )
+    {
+        COMPONENT* comp = parentframe->GetSelectedComponent();
+
+        if( comp )
+            footprintName = comp->GetFPID().GetUniStringLibId();
+    }
+
     if( !footprintName.IsEmpty() )
     {
-        msg.Printf( _( "Footprint: %s" ), GetChars( footprintName ) );
+        SetTitle( wxString::Format( _( "Footprint: %s" ), footprintName ) );
 
-        SetTitle( msg );
-        const FOOTPRINT_INFO* module_info =
-                parentframe->m_FootprintsList->GetModuleInfo( footprintName );
+        module = Get_Module( footprintName );
 
-        const wxChar* libname;
-
-        if( module_info )
-            libname = GetChars( module_info->GetNickname() );
-        else
-            libname = GetChars( wxT( "???" ) );
-
-        msg.Printf( _( "Lib: %s" ), libname );
-
-        SetStatusText( msg, 0 );
-
-        if( GetBoard()->m_Modules.GetCount() )
-        {
-            // there is only one module in the list
-            GetBoard()->m_Modules.DeleteAll();
-        }
-
-        MODULE* module = Get_Module( footprintName );
-
-        if( module )
-            GetBoard()->m_Modules.PushBack( module );
-
-        Zoom_Automatique( false );
-    }
-    else   // No footprint to display. Erase old footprint, if any
-    {
-        if( GetBoard()->m_Modules.GetCount() )
-        {
-            GetBoard()->m_Modules.DeleteAll();
-            Zoom_Automatique( false );
-            SetStatusText( wxEmptyString, 0 );
-        }
+        module_info = parentframe->m_FootprintsList->GetModuleInfo( footprintName );
     }
 
-    // Display new cursor coordinates and zoom value:
+    if( module )
+        GetBoard()->m_Modules.PushBack( module );
+
+    if( module_info )
+        SetStatusText( wxString::Format( _( "Lib: %s" ), module_info->GetNickname() ), 0 );
+    else
+        SetStatusText( wxEmptyString, 0 );
+
     UpdateStatusBar();
-
+    Zoom_Automatique( false );
     GetCanvas()->Refresh();
-
     Update3DView();
 }
 
@@ -537,7 +520,7 @@ void DISPLAY_FOOTPRINTS_FRAME::RedrawActiveWindow( wxDC* DC, bool EraseBg )
     if ( Module )
     {
         MSG_PANEL_ITEMS items;
-        Module->GetMsgPanelInfo( items );
+        Module->GetMsgPanelInfo( m_UserUnits, items );
         SetMsgPanel( items );
     }
 

@@ -80,8 +80,6 @@ public:
      */
     PARAM_CFG_ARRAY& GetConfigurationSettings();
 
-    void InstallOptionsFrame( const wxPoint& pos );
-
     void OnCloseWindow( wxCloseEvent& Event ) override;
     void CloseModuleEditor( wxCommandEvent& Event );
 
@@ -274,7 +272,6 @@ public:
     /// Return the current library nickname.
     const wxString GetCurrentLib() const;
 
-    // Footprint edition
     void RemoveStruct( EDA_ITEM* Item );
 
     /**
@@ -375,28 +372,11 @@ public:
      */
     void End_Edge_Module( EDGE_MODULE* Edge );
 
-    /**
-     * Function Enter_Edge_Width
-     * Edition of width of module outlines
-     * Ask for a new width.
-     * Change the width of EDGE_MODULE Edge if aEdge != NULL
-     * @param aEdge = edge to edit, or NULL
-     * changes ModuleSegmentWidth (global) = new width
-     */
-    void Enter_Edge_Width( EDGE_MODULE* aEdge );
-
     /// Function to initialize the move function params of a graphic item type DRAWSEGMENT
     void Start_Move_EdgeMod( EDGE_MODULE* drawitem, wxDC* DC );
 
     /// Function to place a graphic item type EDGE_MODULE currently moved
     void Place_EdgeMod( EDGE_MODULE* drawitem );
-
-    /**
-     * Function InstallFootprintBodyItemPropertiesDlg
-     * Install a dialog to edit a graphic item of a footprint body.
-     * @param aItem = a pointer to the graphic item to edit
-     */
-    void InstallFootprintBodyItemPropertiesDlg( EDGE_MODULE* aItem );
 
     /**
      * Function DlgGlobalChange_PadSettings
@@ -405,7 +385,7 @@ public:
      * Options are set by the opened dialog.
      * @param aPad is the pattern. The given footprint is the parent of this pad
      */
-    void DlgGlobalChange_PadSettings( D_PAD* aPad );
+    void PushPadProperties( D_PAD* aPad );
 
     /**
      * Function DeleteModuleFromCurrentLibrary
@@ -477,7 +457,15 @@ public:
      */
     bool OpenProjectFiles( const std::vector<wxString>& aFileSet, int aCtl = 0 ) override;
 
-    int GetIconScale() override;
+    /**
+     * Allows Modedit to install its preferences panel into the preferences dialog.
+     */
+    void InstallPreferences( PAGED_DIALOG* aParent ) override;
+
+    /**
+     * Called after the preferences dialog is run.
+     */
+    void CommonSettingsChanged() override;
 
     /**
      * redraws the message panel.
@@ -499,9 +487,6 @@ protected:
 
     /// List of footprint editor configuration parameters.
     PARAM_CFG_ARRAY   m_configParams;
-
-    /// Pretty much what it says on the tin.
-    int               m_iconScale;
 
     /**
      * Function UpdateTitle

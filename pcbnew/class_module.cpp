@@ -546,7 +546,7 @@ SHAPE_POLY_SET MODULE::GetBoundingPoly() const
 }
 
 
-void MODULE::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
+void MODULE::GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector< MSG_PANEL_ITEM >& aList )
 {
     int      nbpad;
     wxString msg;
@@ -867,14 +867,14 @@ SEARCH_RESULT MODULE::Visit( INSPECTOR inspector, void* testData, const KICAD_T 
 }
 
 
-wxString MODULE::GetSelectMenuText() const
+wxString MODULE::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
-    wxString text;
-    text.Printf( _( "Footprint %s on %s" ),
-                 GetChars ( GetReference() ),
-                 GetChars ( GetLayerName() ) );
+    wxString reference = GetReference();
 
-    return text;
+    if( reference.IsEmpty() )
+        reference = _( "<no reference>" );
+
+    return wxString::Format( _( "Footprint %s on %s" ), reference, GetLayerName() );
 }
 
 
@@ -1016,8 +1016,7 @@ const BOX2I MODULE::ViewBBox() const
         area.Inflate( biggest_clearance );
     }
 
-
-    return BOX2I( area );
+    return area;
 }
 
 

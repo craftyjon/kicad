@@ -28,6 +28,7 @@
  */
 
 #include <dialog_lib_edit_text_base.h>
+#include <widgets/unit_binder.h>
 
 class SCH_BASE_FRAME;
 class LIB_FIELD;
@@ -50,11 +51,10 @@ public:
     DIALOG_EDIT_ONE_FIELD( SCH_BASE_FRAME* aParent, const wxString& aTitle,
                            const EDA_TEXT* aTextItem );
 
-    ~DIALOG_EDIT_ONE_FIELD() {}
+    ~DIALOG_EDIT_ONE_FIELD() override {}
 
-    virtual bool TransferDataToWindow() override;
-
-    virtual bool TransferDataFromWindow() override;
+    bool TransferDataToWindow() override;
+    bool TransferDataFromWindow() override;
 
     SCH_BASE_FRAME* GetParent() { return dynamic_cast< SCH_BASE_FRAME* >( wxDialog::GetParent() ); }
 
@@ -77,41 +77,28 @@ protected:
      */
     void OnTextValueSelectButtonClick( wxCommandEvent& aEvent ) override;
 
-    /// @todo Update DIALOG_SHIM to handle this transparently so no matter what mode the
-    ///       dialogs is shown, everything is handled without this ugliness.
-    void OnOkClick( wxCommandEvent& aEvent ) override
-    {
-        if( IsQuasiModal() )
-            EndQuasiModal( wxID_OK );
-        else
-            EndDialog( wxID_OK );
-    }
+    /**
+     * Used to select the variant part of some text fields (for instance, the question mark
+     * or number in a reference).
+     * @param event
+     */
+    virtual void OnSetFocusText( wxFocusEvent& event ) override;
 
-    void OnCancelClick( wxCommandEvent& event ) override
-    {
-        if( IsQuasiModal() )
-            EndQuasiModal( wxID_CANCEL );
-        else
-            EndDialog( wxID_CANCEL );
-    }
+    UNIT_BINDER m_posX;
+    UNIT_BINDER m_posY;
+    UNIT_BINDER m_textSize;
 
-    void OnCloseDialog( wxCloseEvent& aEvent ) override
-    {
-        if( IsQuasiModal() )
-            EndQuasiModal( wxID_CANCEL );
-        else
-            EndDialog( wxID_CANCEL );
-    }
-
-    int       m_fieldId;
-    bool      m_isPower;
-    wxString  m_text;
-    int       m_style;
-    int       m_size;
-    bool      m_orientation;
-    int       m_verticalJustification;
-    int       m_horizontalJustification;
-    bool      m_isVisible;
+    int         m_fieldId;
+    bool        m_isPower;
+    wxString    m_text;
+    bool        m_isItalic;
+    bool        m_isBold;
+    wxPoint     m_position;
+    int         m_size;
+    bool        m_isVertical;
+    int         m_verticalJustification;
+    int         m_horizontalJustification;
+    bool        m_isVisible;
 };
 
 

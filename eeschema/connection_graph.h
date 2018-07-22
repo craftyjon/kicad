@@ -28,6 +28,8 @@
 #include <sch_connection.h>
 #include <sch_item_struct.h>
 
+class SCH_EDIT_FRAME;
+
 
 /**
  * A subgraph is a set of items that are "physically" connected in the schematic.
@@ -45,6 +47,9 @@
 class CONNECTION_SUBGRAPH
 {
 public:
+    CONNECTION_SUBGRAPH( SCH_EDIT_FRAME* aFrame) :
+        m_frame( aFrame )
+    {}
     /**
      * Determines which potential driver should drive the subgraph.
      *
@@ -78,6 +83,9 @@ public:
     SCH_ITEM* m_driver;
 
     SCH_SHEET_PATH m_sheet;
+
+    // Needed for m_UserUnits for now; maybe refactor later
+    SCH_EDIT_FRAME* m_frame;
 };
 
 
@@ -87,7 +95,9 @@ public:
 class CONNECTION_GRAPH
 {
 public:
-    CONNECTION_GRAPH() {}
+    CONNECTION_GRAPH( SCH_EDIT_FRAME* aFrame) :
+        m_frame( aFrame )
+    {}
 
     void Reset();
 
@@ -189,6 +199,9 @@ private:
     int m_last_net_code;
 
     int m_last_bus_code;
+
+    // Needed for m_UserUnits for now; maybe refactor later
+    SCH_EDIT_FRAME* m_frame;
 
     /**
      * Checks one subgraph for conflicting connections between net and bus labels

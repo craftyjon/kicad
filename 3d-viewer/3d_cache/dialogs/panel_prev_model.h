@@ -47,23 +47,23 @@
 #define MAX_ROTATION       180.0
 #define MAX_OFFSET         1000.0
 
-#define SCALE_INCREMENT_FINE    0.02
-#define SCALE_INCREMENT     0.1
+#define SCALE_INCREMENT_FINE       0.02
+#define SCALE_INCREMENT            0.1
 
 #define ROTATION_INCREMENT 5             // in degrees, for spin button command
 #define ROTATION_INCREMENT_WHEEL 15      // in degrees, for mouse wheel command
 #define ROTATION_INCREMENT_WHEEL_FINE 1  // in degrees, for mouse wheel command
 
-#define OFFSET_INCREMENT_MM   0.5
-#define OFFSET_INCREMENT_MM_FINE 0.1
+#define OFFSET_INCREMENT_MM        0.5
+#define OFFSET_INCREMENT_MM_FINE   0.1
 
-#define OFFSET_INCREMENT_MIL   25.0
-#define OFFSET_INCREMENT_MIL_FINE   5.0
+#define OFFSET_INCREMENT_MIL       25.0
+#define OFFSET_INCREMENT_MIL_FINE  5.0
 
 
 // Declared classes to create pointers
 class S3D_CACHE;
-class S3D_FILENAME_RESOLVER;
+class FILENAME_RESOLVER;
 class BOARD;
 class CINFO3D_VISU;
 class MODULE;
@@ -72,37 +72,22 @@ class COLORS_DESIGN_SETTINGS;
 class PANEL_PREV_3D: public PANEL_PREV_3D_BASE
 {
 public:
-    PANEL_PREV_3D( wxWindow* aParent, S3D_CACHE* aCacheManager,
-                     MODULE* aModuleCopy,
-                     COLORS_DESIGN_SETTINGS *aColors,
-                     std::vector<MODULE_3D_SETTINGS> *aParentInfoList = NULL );
+    PANEL_PREV_3D( wxWindow* aParent, PCB_BASE_FRAME* aFrame, MODULE* aModule,
+                   std::vector<MODULE_3D_SETTINGS> *aParentModelList );
 
     ~PANEL_PREV_3D();
 
 private:
-    wxString                currentModelFile;   ///< Used to check if the model file was changed
-    S3D_FILENAME_RESOLVER   *m_resolver;        ///< Used to get the full path name
+    EDA_3D_CANVAS*                   m_previewPane;
+    CINFO3D_VISU*                    m_settings3Dviewer;
 
-    /// The 3D canvas
-    EDA_3D_CANVAS   *m_previewPane;
+    BOARD*                           m_dummyBoard;
+    MODULE*                          m_dummyModule;
 
-    /// A dummy board used to store the copy moduled
-    BOARD           *m_dummyBoard;
+    std::vector<MODULE_3D_SETTINGS>* m_parentModelList;
+    int                              m_selected;   /// Index into m_parentInfoList
 
-    /// The settings that will be used for this 3D viewer canvas
-    CINFO3D_VISU    *m_settings3Dviewer;
-
-    /// A pointer to a new copy of the original module
-    MODULE          *m_copyModule;
-
-    /// A pointer to the parent MODULE_3D_SETTINGS list that we will use to copy to the preview module
-    std::vector<MODULE_3D_SETTINGS> *m_parentInfoList;
-
-    /// The current selected index of the MODULE_3D_SETTINGS list
-    int             m_currentSelectedIdx;
-
-    /// Current MODULE_3D_SETTINGS that is being edited
-    MODULE_3D_SETTINGS        m_modelInfo;
+    EDA_UNITS_T                      m_userUnits;
 
     // Methods of the class
 private:
@@ -118,32 +103,38 @@ private:
 	void onMouseWheelRot( wxMouseEvent& event ) override;
 	void onMouseWheelOffset( wxMouseEvent& event ) override;
 
-	void onIncrementRot( wxSpinEvent& event ) override;
-	void onDecrementRot( wxSpinEvent& event ) override;
-	void onIncrementScale( wxSpinEvent& event ) override;
-	void onDecrementScale( wxSpinEvent& event ) override;
-	void onIncrementOffset( wxSpinEvent& event ) override;
-	void onDecrementOffset( wxSpinEvent& event ) override;
-
-    /**
-     * @brief getOrientationVars - gets the transformation from entries and validate it
-     * @param aScale: output scale var
-     * @param aRotation: output rotation var
-     * @param aOffset: output offset var
-     */
-    void getOrientationVars( SGPOINT& aScale, SGPOINT& aRotation, SGPOINT& aOffset );
-
-    /**
-     * @brief updateListOnModelCopy - copy the current shape list to the copy of module that is on
-     * the preview dummy board
-     */
-    void updateListOnModelCopy();
-
-
-	void onEnterPreviewCanvas( wxMouseEvent& event )
+	void onIncrementRot( wxSpinEvent& event ) override
     {
-        m_previewPane->SetFocus();
+        doIncrementRotation( event, 1.0 );
     }
+	void onDecrementRot( wxSpinEvent& event ) override
+    {
+        doIncrementRotation( event, -1.0 );
+    }
+	void onIncrementScale( wxSpinEvent& event ) override
+    {
+        doIncrementScale( event, 1.0 );
+    }
+	void onDecrementScale( wxSpinEvent& event ) override
+    {
+        doIncrementScale( event, -1.0 );
+    }
+	void onIncrementOffset( wxSpinEvent& event ) override
+    {
+        doIncrementOffset( event, 1.0 );
+    }
+	void onDecrementOffset( wxSpinEvent& event ) override
+    {
+        doIncrementOffset( event, -1.0 );
+    }
+
+    void doIncrementScale( wxSpinEvent& aEvent, double aSign );
+    void doIncrementRotation( wxSpinEvent& aEvent, double aSign );
+    void doIncrementOffset( wxSpinEvent& aEvent, double aSign );
+
+    wxString formatScaleValue( double aValue );
+    wxString formatRotationValue( double aValue );
+    wxString formatOffsetValue( double aValue );
 
 	void View3DISO( wxCommandEvent& event ) override
     {
@@ -189,33 +180,16 @@ private:
 
 public:
     /**
-     * @brief SetModelDataIdx - This will set the index of the INFO list that was set on the parent.
-     * So we will update our values to edit based on the index on that list.
-     * @param idx - The index that was selected
-     * @param aReloadPreviewModule: if need to update the preview module
+     * @brief SetModelDataIdx - Sets the currently selected index in the model list so that
+     * the scale/rotation/offset controls can be updated.
      */
-    void SetModelDataIdx( int idx, bool aReloadPreviewModule = false );
+    void SetSelectedModel( int idx );
 
     /**
-     * @brief ResetModelData - Clear the values and reload the preview board
-     * @param aReloadPreviewModule: if need to update the preview module
+     * @brief UpdateModelInfoList - copy shapes from the current shape list which are flagged
+     * for preview to the copy of module that is on the preview dummy board
      */
-    void ResetModelData( bool aReloadPreviewModule = false );
-
-    void UpdateModelName( wxString const& aModel );
-
-    /**
-     * @brief verify X,Y and Z scale factors are acceptable (> 0.001 and < 1000.0)
-     * @return false if one (or more) value is not acceptable.
-     * @param aErrorMessage is a wxString to store error messages, if any
-     */
-    bool ValidateWithMessage( wxString& aErrorMessage );
-
-    bool Validate() override
-    {
-        wxString temp;
-        return ValidateWithMessage(temp);
-    }
+    void UpdateDummyModule( bool aRelaodRequired = true );
 };
 
 #endif  // PANEL_PREV_MODEL_H

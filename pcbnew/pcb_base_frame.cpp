@@ -362,13 +362,37 @@ double PCB_BASE_FRAME::BestZoom()
 }
 
 
+// Find the first child dialog.
+wxWindow* findDialog( wxWindowList& aList )
+{
+    for( wxWindowList::iterator iter = aList.begin(); iter != aList.end(); ++iter )
+    {
+        if( dynamic_cast<DIALOG_SHIM*>( *iter ) )
+            return *iter;
+    }
+    return NULL;
+}
+
+
 void PCB_BASE_FRAME::FocusOnLocation( const wxPoint& aPos,
                                       bool aWarpMouseCursor, bool aCenterView )
 {
     if( IsGalCanvasActive() )
     {
         if( aCenterView )
-            GetGalCanvas()->GetView()->SetCenter( aPos );
+        {
+            wxWindow* dialog = findDialog( GetChildren() );
+
+            // If a dialog partly obscures the window, then center on the uncovered area.
+            if( dialog )
+            {
+                wxRect dialogRect( GetGalCanvas()->ScreenToClient( dialog->GetScreenPosition() ),
+                                   dialog->GetSize() );
+                GetGalCanvas()->GetView()->SetCenter( aPos, dialogRect );
+            }
+            else
+                GetGalCanvas()->GetView()->SetCenter( aPos );
+        }
 
         if( aWarpMouseCursor )
             GetGalCanvas()->GetViewControls()->SetCursorPosition( aPos );
@@ -732,14 +756,14 @@ void PCB_BASE_FRAME::UpdateMsgPanel()
 
     if( item )
     {
-        item->GetMsgPanelInfo( items );
+        item->GetMsgPanelInfo( m_UserUnits, items );
     }
     else       // show general information about the board
     {
         if( IsGalCanvasActive() )
-            GetGalCanvas()->GetMsgPanelInfo( items );
+            GetGalCanvas()->GetMsgPanelInfo( m_UserUnits, items );
         else
-            m_Pcb->GetMsgPanelInfo( items );
+            m_Pcb->GetMsgPanelInfo( m_UserUnits, items );
     }
 
     SetMsgPanel( items );
@@ -832,7 +856,7 @@ void PCB_BASE_FRAME::UpdateStatusBar()
 
         ro = hypot( dx, dy );
         wxString formatter;
-        switch( g_UserUnit )
+        switch( GetUserUnits() )
         {
         case INCHES:
             formatter = wxT( "r %.6f  theta %.1f" );
@@ -851,19 +875,19 @@ void PCB_BASE_FRAME::UpdateStatusBar()
             break;
         }
 
-        line.Printf( formatter, To_User_Unit( g_UserUnit, ro ), theta );
+        line.Printf( formatter, To_User_Unit( GetUserUnits(), ro ), theta );
 
         SetStatusText( line, 3 );
     }
 
     // Display absolute coordinates:
-    dXpos = To_User_Unit( g_UserUnit, GetCrossHairPosition().x );
-    dYpos = To_User_Unit( g_UserUnit, GetCrossHairPosition().y );
+    dXpos = To_User_Unit( GetUserUnits(), GetCrossHairPosition().x );
+    dYpos = To_User_Unit( GetUserUnits(), GetCrossHairPosition().y );
 
     // The following sadly is an if Eeschema/if Pcbnew
     wxString absformatter;
 
-    switch( g_UserUnit )
+    switch( GetUserUnits() )
     {
     case INCHES:
         absformatter = wxT( "X %.6f  Y %.6f" );
@@ -893,8 +917,8 @@ void PCB_BASE_FRAME::UpdateStatusBar()
         // Display relative coordinates:
         dx = GetCrossHairPosition().x - screen->m_O_Curseur.x;
         dy = GetCrossHairPosition().y - screen->m_O_Curseur.y;
-        dXpos = To_User_Unit( g_UserUnit, dx );
-        dYpos = To_User_Unit( g_UserUnit, dy );
+        dXpos = To_User_Unit( GetUserUnits(), dx );
+        dYpos = To_User_Unit( GetUserUnits(), dy );
 
         // We already decided the formatter above
         line.Printf( locformatter, dXpos, dYpos, hypot( dXpos, dYpos ) );
@@ -953,9 +977,9 @@ void PCB_BASE_FRAME::SaveSettings( wxConfigBase* aCfg )
 
     wxString baseCfgName = GetName();
 
-    aCfg->Write( baseCfgName + UserGridSizeXEntry, To_User_Unit( g_UserUnit, m_UserGridSize.x ) );
-    aCfg->Write( baseCfgName + UserGridSizeYEntry, To_User_Unit( g_UserUnit, m_UserGridSize.y ) );
-    aCfg->Write( baseCfgName + UserGridUnitsEntry, ( long )g_UserUnit );
+    aCfg->Write( baseCfgName + UserGridSizeXEntry, To_User_Unit( m_UserUnits, m_UserGridSize.x ) );
+    aCfg->Write( baseCfgName + UserGridSizeYEntry, To_User_Unit( m_UserUnits, m_UserGridSize.y ) );
+    aCfg->Write( baseCfgName + UserGridUnitsEntry, ( long )m_UserUnits );
     aCfg->Write( baseCfgName + DisplayPadFillEntry, m_DisplayOptions.m_DisplayPadFill );
     aCfg->Write( baseCfgName + DisplayViaFillEntry, m_DisplayOptions.m_DisplayViaFill );
     aCfg->Write( baseCfgName + DisplayPadNumberEntry, m_DisplayOptions.m_DisplayPadNum );
@@ -996,7 +1020,7 @@ void PCB_BASE_FRAME::updateGridSelectBox()
     // Update grid values with the current units setting.
     m_gridSelectBox->Clear();
     wxArrayString gridsList;
-    int icurr = GetScreen()->BuildGridsChoiceList( gridsList, g_UserUnit != INCHES );
+    int icurr = GetScreen()->BuildGridsChoiceList( gridsList, GetUserUnits() != INCHES );
 
     for( size_t i = 0; i < GetScreen()->GetGridCount(); i++ )
     {
@@ -1122,7 +1146,7 @@ void PCB_BASE_FRAME::UseGalCanvas( bool aEnable )
         auto painter = static_cast<KIGFX::PCB_PAINTER*>( galCanvas->GetView()->GetPainter() );
         auto settings = painter->GetSettings();
         auto displ_opts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
-        settings->LoadDisplayOptions( displ_opts );
+        settings->LoadDisplayOptions( displ_opts, ShowPageLimits() );
 
         galCanvas->GetView()->RecacheAllItems();
         galCanvas->SetEventDispatcher( m_toolDispatcher );

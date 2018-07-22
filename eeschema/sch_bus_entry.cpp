@@ -336,13 +336,13 @@ void SCH_BUS_ENTRY_BASE::GetConnectionPoints( std::vector< wxPoint >& aPoints ) 
 }
 
 
-wxString SCH_BUS_WIRE_ENTRY::GetSelectMenuText() const
+wxString SCH_BUS_WIRE_ENTRY::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
     return wxString( _( "Bus to Wire Entry" ) );
 }
 
 
-wxString SCH_BUS_BUS_ENTRY::GetSelectMenuText() const
+wxString SCH_BUS_BUS_ENTRY::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
     return wxString( _( "Bus to Bus Entry" ) );
 }
@@ -414,7 +414,7 @@ char SCH_BUS_ENTRY_BASE::GetBusEntryShape() const
 }
 
 
-void SCH_BUS_ENTRY_BASE::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
+void SCH_BUS_ENTRY_BASE::GetMsgPanelInfo( EDA_UNITS_T aUnits, MSG_PANEL_ITEMS& aList )
 {
     if( auto conn = Connection( *g_CurrentSheet ) )
     {

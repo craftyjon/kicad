@@ -23,70 +23,241 @@
  */
 
 #include <wx/stattext.h>
-#include <wx/sizer.h>
 #include <wx/textentry.h>
 #include <limits>
 #include <base_units.h>
-#include <wx/valnum.h>
+#include <draw_frame.h>
+#include <confirm.h>
 
 #include "widgets/unit_binder.h"
 
-UNIT_BINDER::UNIT_BINDER( wxWindow* aParent, wxTextEntry* aTextInput,
-                                wxStaticText* aUnitLabel, wxSpinButton* aSpinButton ) :
-    m_textEntry( aTextInput ),
+UNIT_BINDER::UNIT_BINDER( EDA_DRAW_FRAME* aParent,
+                          wxStaticText* aLabel, wxWindow* aValue, wxStaticText* aUnitLabel,
+                          bool aUseMils, int aMin, int aMax, bool allowEval ) :
+    m_label( aLabel ),
+    m_value( aValue ),
     m_unitLabel( aUnitLabel ),
-    m_units( g_UserUnit ),
-    m_step( 1 ),
-    m_min( 0 ),
-    m_max( 1 )
+    m_showMessage( true ),
+    m_eval( aParent->GetUserUnits(), aUseMils )
 {
-    // Use the currently selected units
-    m_textEntry->SetValue( wxT( "0" ) );
-    m_unitLabel->SetLabel( GetAbbreviatedUnitsLabel( m_units ) );
+    // Fix the units (to the current units) for the life of the binder
+    m_units = aParent->GetUserUnits();
+    m_useMils = aUseMils;
+    m_min = aMin;
+    m_max = aMax;
+    m_allowEval = allowEval && dynamic_cast<wxTextEntry*>( m_value );
+
+    auto textEntry = dynamic_cast<wxTextEntry*>( m_value );
+    if( textEntry )
+    {
+        // Use ChangeValue() instead of SetValue() so we don't generate events.
+        textEntry->ChangeValue( wxT( "0" ) );
+    }
+
+    m_unitLabel->SetLabel( GetAbbreviatedUnitsLabel( m_units, m_useMils ) );
+
+    m_value->Connect( wxEVT_SET_FOCUS, wxFocusEventHandler( UNIT_BINDER::onSetFocus ), NULL, this );
+    m_value->Connect( wxEVT_KILL_FOCUS, wxFocusEventHandler( UNIT_BINDER::onKillFocus ), NULL, this );
+    m_value->Connect( wxEVT_TEXT_ENTER, wxCommandEventHandler( UNIT_BINDER::onTextEnter ), NULL, this );
 }
 
 
-UNIT_BINDER::~UNIT_BINDER()
+void UNIT_BINDER::SetUnits( EDA_UNITS_T aUnits, bool aUseMils )
 {
+    m_units = aUnits;
+    m_useMils = aUseMils;
+    m_unitLabel->SetLabel( GetAbbreviatedUnitsLabel( m_units, m_useMils ) );
+}
+
+
+void UNIT_BINDER::onSetFocus( wxFocusEvent& aEvent )
+{
+    auto textEntry = dynamic_cast<wxTextEntry*>( m_value );
+
+    if( m_allowEval && textEntry )
+    {
+        wxString oldStr = m_eval.OriginalText();
+
+        if( oldStr.length() )
+            textEntry->SetValue( oldStr );
+    }
+
+    aEvent.Skip();
+}
+
+
+void UNIT_BINDER::onKillFocus( wxFocusEvent& aEvent )
+{
+    // The ship is going down; no need to do anything...
+    if( !aEvent.GetWindow() || aEvent.GetWindow()->GetId() == wxID_CANCEL )
+        return;
+
+    if( m_allowEval )
+        evaluate();
+
+    Validate( true );
+
+    aEvent.Skip();
+}
+
+
+void UNIT_BINDER::onTextEnter( wxCommandEvent& aEvent )
+{
+    if( m_allowEval )
+        evaluate();
+
+    // Send an OK event to the parent dialog
+    wxCommandEvent event( wxEVT_COMMAND_BUTTON_CLICKED, wxID_OK );
+    wxPostEvent( m_value->GetParent(), event );
+}
+
+
+void UNIT_BINDER::evaluate()
+{
+    auto textEntry = dynamic_cast<wxTextEntry*>( m_value );
+
+    if( !textEntry )
+        return;
+
+    if( textEntry->GetValue().IsEmpty() )
+        textEntry->ChangeValue( "0" );
+
+    if( m_eval.Process( textEntry->GetValue() ) )
+        textEntry->ChangeValue( m_eval.Result() );
+}
+
+
+wxString valueDescriptionFromLabel( wxStaticText* aLabel )
+{
+    wxString desc = aLabel->GetLabel();
+
+    desc.EndsWith( wxT( ":" ), &desc );
+    return desc;
+}
+
+
+void UNIT_BINDER::delayedFocusHandler( wxIdleEvent& )
+{
+    m_value->SetFocus();
+    m_showMessage = true;
+
+    m_value->Unbind( wxEVT_IDLE, &UNIT_BINDER::delayedFocusHandler, this );
+}
+
+
+bool UNIT_BINDER::Validate( bool setFocusOnError )
+{
+    auto textEntry = dynamic_cast<wxTextEntry*>( m_value );
+
+    if( !textEntry || textEntry->GetValue() == INDETERMINATE )
+        return true;
+
+    if( m_min > INT_MIN && GetValue() < m_min )
+    {
+        if( m_showMessage )
+        {
+            wxString msg = wxString::Format( _( "%s must be larger than %s." ),
+                                             valueDescriptionFromLabel( m_label ),
+                                             StringFromValue( m_units, m_min, true ) );
+            DisplayError( m_value->GetParent(), msg );
+        }
+
+        if( setFocusOnError )
+        {
+            textEntry->SelectAll();
+            // Don't focus directly; we might be inside a KillFocus event handler
+            m_value->Bind( wxEVT_IDLE, &UNIT_BINDER::delayedFocusHandler, this );
+            m_showMessage = false;
+        }
+
+        return false;
+    }
+
+    if( m_max < INT_MAX && GetValue() > m_max )
+    {
+        if( m_showMessage )
+        {
+            wxString msg = wxString::Format( _( "%s must be smaller than %s." ),
+                                             valueDescriptionFromLabel( m_label ),
+                                             StringFromValue( m_units, m_max, true ) );
+            DisplayError( m_value->GetParent(), msg );
+        }
+
+        if( setFocusOnError )
+        {
+            textEntry->SelectAll();
+            // Don't focus directly; we might be inside a KillFocus event handler
+            m_value->Bind( wxEVT_IDLE, &UNIT_BINDER::delayedFocusHandler, this );
+            m_showMessage = false;
+        }
+
+        return false;
+    }
+
+    return true;
 }
 
 
 void UNIT_BINDER::SetValue( int aValue )
 {
-    wxString s = StringFromValue( m_units, aValue, false );
+    SetValue( StringFromValue( m_units, aValue, false, m_useMils ) );
+}
 
-    m_textEntry->SetValue( s );
 
-    m_unitLabel->SetLabel( GetAbbreviatedUnitsLabel( m_units ) );
+void UNIT_BINDER::SetValue( wxString aValue )
+{
+    if( dynamic_cast<wxTextEntry*>( m_value ) )
+        dynamic_cast<wxTextEntry*>( m_value )->SetValue( aValue );
+    else if( dynamic_cast<wxStaticText*>( m_value ) )
+        dynamic_cast<wxStaticText*>( m_value )->SetLabel( aValue );
+
+    if( m_allowEval )
+        m_eval.Clear();
+
+    m_unitLabel->SetLabel( GetAbbreviatedUnitsLabel( m_units, m_useMils ) );
 }
 
 
 int UNIT_BINDER::GetValue() const
 {
-    wxString s = m_textEntry->GetValue();
+    wxString s;
 
-    return ValueFromString( m_units, s );
+    if( dynamic_cast<wxTextEntry*>( m_value ) )
+        s = dynamic_cast<wxTextEntry*>( m_value )->GetValue();
+    else if( dynamic_cast<wxStaticText*>( m_value ) )
+        s = dynamic_cast<wxStaticText*>( m_value )->GetLabel();
+
+    return ValueFromString( m_units, s, m_useMils );
 }
 
 
-bool UNIT_BINDER::Valid() const
+bool UNIT_BINDER::IsIndeterminate() const
 {
-    double dummy;
+    if( dynamic_cast<wxTextEntry*>( m_value ) )
+        return dynamic_cast<wxTextEntry*>( m_value )->GetValue() == INDETERMINATE;
 
-    return m_textEntry->GetValue().ToDouble( &dummy );
+    return false;
+}
+
+
+void UNIT_BINDER::SetLabel( const wxString& aLabel )
+{
+    m_label->SetLabel( aLabel );
 }
 
 
 void UNIT_BINDER::Enable( bool aEnable )
 {
-    wxWindow* wxWin = dynamic_cast<wxWindow*>( m_textEntry );
-    wxASSERT( wxWin );
-
-    // Most text input entry widgets inherit from wxTextEntry and wxWindow, so it should be fine.
-    // Still, it is better to be safe than sorry.
-    if( wxWin )
-        wxWin->Enable( aEnable );
-
+    m_label->Enable( aEnable );
+    m_value->Enable( aEnable );
     m_unitLabel->Enable( aEnable );
+}
+
+
+void UNIT_BINDER::Show( bool aShow )
+{
+    m_label->Show( aShow );
+    m_value->Show( aShow );
+    m_unitLabel->Show( aShow );
 }
 

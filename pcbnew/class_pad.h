@@ -123,8 +123,7 @@ public:
     void ExportTo( DRAWSEGMENT* aTarget );
 
     /** Export the PAD_CS_PRIMITIVE parameters to a EDGE_MODULE
-     * useful to convert a primitive shape to a EDGE_MODULE shape for edition
-     * in footprint editor
+     * useful to convert a primitive shape to a EDGE_MODULE shape for editing in footprint editor
      * @param aTarget is the EDGE_MODULE to initialize
      */
     void ExportTo( EDGE_MODULE* aTarget );
@@ -645,7 +644,7 @@ public:
     int GetSubRatsnest() const                  { return m_SubRatsnest; }
     void SetSubRatsnest( int aSubRatsnest )     { m_SubRatsnest = aSubRatsnest; }
 
-    void GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList ) override;
+    void GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector< MSG_PANEL_ITEM >& aList ) override;
 
     bool IsOnLayer( PCB_LAYER_ID aLayer ) const override
     {
@@ -685,7 +684,7 @@ public:
 
     void Rotate( const wxPoint& aRotCentre, double aAngle ) override;
 
-    wxString GetSelectMenuText() const override;
+    wxString GetSelectMenuText( EDA_UNITS_T aUnits ) const override;
 
     BITMAP_DEF GetMenuImage() const override;
 

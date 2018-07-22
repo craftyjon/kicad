@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Nov 30 2016)
+// C++ code generated with wxFormBuilder (version Dec 30 2017)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO "NOT" EDIT THIS FILE!
@@ -47,7 +47,7 @@ class ERC_HTML_LISTFRAME;
 class DIALOG_ERC_BASE : public DIALOG_SHIM
 {
 	private:
-	
+
 	protected:
 		wxNotebook* m_NoteBook;
 		wxPanel* m_PanelERC;
@@ -77,7 +77,7 @@ class DIALOG_ERC_BASE : public DIALOG_SHIM
 		wxCheckBox* m_cbCheckBusEntries;
 		wxCheckBox* m_cbCheckBusToBusConflicts;
 		wxCheckBox* m_cbCheckBusToNetConflicts;
-		
+
 		// Virtual event handlers, overide them in your derived class
 		virtual void OnCloseErcDialog( wxCloseEvent& event ) { event.Skip(); }
 		virtual void OnLeftClickMarkersList( wxHtmlLinkEvent& event ) { event.Skip(); }
@@ -86,13 +86,13 @@ class DIALOG_ERC_BASE : public DIALOG_SHIM
 		virtual void OnErcCmpClick( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnButtonCloseClick( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnResetMatrixClick( wxCommandEvent& event ) { event.Skip(); }
-		
-	
+
+
 	public:
-		
-		DIALOG_ERC_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Electrical Rules Checker"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER ); 
+
+		DIALOG_ERC_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Electrical Rules Checker"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
 		~DIALOG_ERC_BASE();
-	
+
 };
 
 #endif //__DIALOG_ERC_BASE_H__

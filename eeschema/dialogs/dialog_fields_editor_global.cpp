@@ -25,21 +25,92 @@
 
 #include <wx/msgdlg.h>
 #include <wx/grid.h>
-
+#include <base_units.h>
 #include <confirm.h>
 #include <bitmaps.h>
 #include <grid_tricks.h>
 #include <kicad_string.h>
-
 #include <build_version.h>
 #include <general.h>
 #include <class_library.h>
-
 #include <sch_edit_frame.h>
 #include <sch_reference_list.h>
 #include <kiface_i.h>
+#include <eda_doc.h>
+#include <widgets/grid_text_button_helpers.h>
 
 #include "dialog_fields_editor_global.h"
+
+
+enum
+{
+    MYID_SELECT_FOOTPRINT = 991,         // must be within GRID_TRICKS' enum range
+    MYID_SHOW_DATASHEET
+};
+
+
+class FIELDS_EDITOR_GRID_TRICKS : public GRID_TRICKS
+{
+public:
+    FIELDS_EDITOR_GRID_TRICKS( DIALOG_SHIM* aParent, wxGrid* aGrid,
+                               wxDataViewListCtrl* aFieldsCtrl ) :
+            GRID_TRICKS( aGrid ),
+            m_dlg( aParent ),
+            m_fieldsCtrl( aFieldsCtrl )
+    {}
+
+protected:
+    void showPopupMenu( wxMenu& menu ) override
+    {
+        if( m_grid->GetGridCursorCol() == FOOTPRINT )
+        {
+            menu.Append( MYID_SELECT_FOOTPRINT, _( "Select Footprint..." ), _( "Browse for footprint" ) );
+            menu.AppendSeparator();
+        }
+        else if( m_grid->GetGridCursorCol() == DATASHEET )
+        {
+            menu.Append( MYID_SHOW_DATASHEET,   _( "Show Datasheet" ),      _( "Show datasheet in browser" ) );
+            menu.AppendSeparator();
+        }
+
+        GRID_TRICKS::showPopupMenu( menu );
+    }
+
+    void doPopupSelection( wxCommandEvent& event ) override
+    {
+        if( event.GetId() == MYID_SELECT_FOOTPRINT )
+        {
+            // pick a footprint using the footprint picker.
+            wxString      fpid = m_grid->GetCellValue( m_grid->GetGridCursorRow(), FOOTPRINT );
+            KIWAY_PLAYER* frame = m_dlg->Kiway().Player( FRAME_PCB_MODULE_VIEWER_MODAL, true, m_dlg );
+
+            if( frame->ShowModal( &fpid, m_dlg ) )
+                m_grid->SetCellValue( m_grid->GetGridCursorRow(), FOOTPRINT, fpid );
+
+            frame->Destroy();
+        }
+        else if (event.GetId() == MYID_SHOW_DATASHEET )
+        {
+            wxString datasheet_uri = m_grid->GetCellValue( m_grid->GetGridCursorRow(), DATASHEET );
+            datasheet_uri = ResolveUriByEnvVars( datasheet_uri );
+            GetAssociatedDocument( m_dlg, datasheet_uri );
+        }
+        else
+        {
+            GRID_TRICKS::doPopupSelection( event );
+        }
+
+        if( event.GetId() >= GRIDTRICKS_FIRST_SHOWHIDE && event.GetId() < GRIDTRICKS_LAST_ID )
+        {
+            // Refresh Show checkboxes from grid columns
+            for( int i = 0; i < m_fieldsCtrl->GetItemCount(); ++i )
+                m_fieldsCtrl->SetToggleValue( m_grid->IsColShown( i ), i, 1 );
+        }
+    }
+
+    DIALOG_SHIM*        m_dlg;
+    wxDataViewListCtrl* m_fieldsCtrl;
+};
 
 
 enum GROUP_TYPE
@@ -75,10 +146,6 @@ struct DATA_MODEL_ROW
 #else
 #define CHECKBOX_COLUMN_MARGIN 15
 #endif
-
-
-// Indicator that multiple values exist in child rows
-#define ROW_MULT_ITEMS wxString( "< ... >" )
 
 
 class FIELDS_EDITOR_GRID_DATA_MODEL : public wxGridTableBase
@@ -142,7 +209,7 @@ public:
     wxString GetColLabelValue( int aCol ) override
     {
         if( aCol == QUANTITY_COLUMN )
-            return _T( "Qty" );
+            return _( "Qty" );
         else
             return m_fieldNames[ aCol ];
     }
@@ -196,7 +263,7 @@ public:
                 if( &ref == &group.m_Refs.front() )
                     fieldValue = m_dataStore[ compID ][ m_fieldNames[ aCol ] ];
                 else if ( fieldValue != m_dataStore[ compID ][ m_fieldNames[ aCol ] ] )
-                    return ROW_MULT_ITEMS;
+                    return INDETERMINATE;
             }
         }
 
@@ -590,16 +657,26 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
     }
 
     // add Cut, Copy, and Paste to wxGrid
-    m_grid->PushEventHandler( new GRID_TRICKS( m_grid ) );
+    m_grid->PushEventHandler( new FIELDS_EDITOR_GRID_TRICKS( this, m_grid, m_fieldsCtrl ) );
 
-    // give a bit more room for editing
-    m_grid->SetDefaultRowSize( m_grid->GetDefaultRowSize() + 2 );
+    // give a bit more room for comboboxes
+    m_grid->SetDefaultRowSize( m_grid->GetDefaultRowSize() + 4 );
 
     // set reference column attributes
     wxGridCellAttr* attr = new wxGridCellAttr;
     attr->SetReadOnly();
-    m_grid->SetColAttr( 0, attr );
+    m_grid->SetColAttr( REFERENCE, attr );
     m_grid->SetColMinimalWidth( 0, 100 );
+
+    // set footprint column browse button
+    attr = new wxGridCellAttr;
+    attr->SetEditor( new GRID_CELL_FOOTPRINT_EDITOR( this ) );
+    m_grid->SetColAttr( FOOTPRINT, attr );
+
+    // set datasheet column viewer button
+    attr = new wxGridCellAttr;
+    attr->SetEditor( new GRID_CELL_URL_EDITOR( this ) );
+    m_grid->SetColAttr( DATASHEET, attr );
 
     // set quantities column attributes
     attr = new wxGridCellAttr;
@@ -611,7 +688,7 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
     m_grid->AutoSizeColumns( false );
 
     m_grid->SetGridCursor( 0, 1 );
-    m_grid->SetFocus();
+    SetInitialFocus( m_grid );
 
     m_sdbSizer1OK->SetDefault();
 
@@ -699,8 +776,55 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::LoadFieldNames()
     for( auto fieldName : userFieldNames )
         AddField( fieldName, true, false );
 
+    // Add any templateFieldNames which aren't already present in the userFieldNames
     for( auto templateFieldName : m_parent->GetTemplateFieldNames() )
-        AddField( templateFieldName.m_Name, false, false );
+        if( userFieldNames.count( templateFieldName.m_Name ) == 0 )
+            AddField( templateFieldName.m_Name, false, false );
+}
+
+
+void DIALOG_FIELDS_EDITOR_GLOBAL::OnAddField( wxCommandEvent& event )
+{
+    // quantities column will become new field column, so it needs to be reset
+    auto attr = new wxGridCellAttr;
+    m_grid->SetColAttr( m_dataModel->GetColsCount() - 1, attr );
+    m_grid->SetColFormatCustom( m_dataModel->GetColsCount() - 1, wxGRID_VALUE_STRING );
+
+    wxTextEntryDialog dlg( this, _( "New field name:" ), _( "Add Field" ) );
+
+    if( dlg.ShowModal() != wxID_OK )
+        return;
+
+    wxString fieldName = dlg.GetValue();
+
+    if( fieldName.IsEmpty() )
+    {
+        DisplayError( this, _( "Field must have a name." ) );
+        return;
+    }
+
+    for( int i = 0; i < m_dataModel->GetNumberCols(); ++i )
+    {
+        if( fieldName == m_dataModel->GetColLabelValue( i ) )
+        {
+            DisplayError( this, wxString::Format( _( "Field name \"%s\" already in use." ), fieldName ) );
+            return;
+        }
+    }
+
+    m_config->Write( "SymbolFieldEditor/Show/" + fieldName, true );
+
+    AddField( fieldName, true, false );
+
+    wxGridTableMessage msg( m_dataModel, wxGRIDTABLE_NOTIFY_COLS_INSERTED, m_fieldsCtrl->GetItemCount(), 1 );
+    m_grid->ProcessTableMessage( msg );
+
+    // set up attributes on the new quantities column
+    attr = new wxGridCellAttr;
+    attr->SetReadOnly();
+    m_grid->SetColAttr( m_dataModel->GetColsCount() - 1, attr );
+    m_grid->SetColFormatNumber( m_dataModel->GetColsCount() - 1 );
+    m_grid->SetColMinimalWidth( m_dataModel->GetColsCount() - 1, 50 );
 }
 
 

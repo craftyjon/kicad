@@ -22,7 +22,9 @@
 #include <unordered_map>
 #include <profile.h>
 
+#include <common.h>
 #include <erc.h>
+#include <sch_edit_frame.h>
 #include <sch_bus_entry.h>
 #include <sch_component.h>
 #include <sch_line.h>
@@ -114,8 +116,8 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
         wxString msg;
         msg.Printf( _( "%s and %s are both attached to the same wires. "
                        "%s was picked as the label to use for netlisting." ),
-                    candidates[0]->GetSelectMenuText(),
-                    candidates[1]->GetSelectMenuText(),
+                    candidates[0]->GetSelectMenuText( m_frame->GetUserUnits() ),
+                    candidates[1]->GetSelectMenuText( m_frame->GetUserUnits() ),
                     candidates[0]->Connection( m_sheet )->Name() );
 
         wxASSERT( candidates[0] != candidates[1] );
@@ -417,7 +419,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
             if( connection->SubgraphCode() == 0 )
             {
-                auto subgraph = new CONNECTION_SUBGRAPH( {} );
+                auto subgraph = new CONNECTION_SUBGRAPH( m_frame );
 
                 subgraph->m_code = subgraph_code++;
                 subgraph->m_sheet = sheet;
@@ -427,7 +429,9 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 if( debug )
                 {
                     std::cout << "SG " << subgraph->m_code << " started with "
-                              << item << " " << item->GetSelectMenuText() << std::endl;
+                              << item << " "
+                              << item->GetSelectMenuText( m_frame->GetUserUnits() )
+                              << std::endl;
                 }
 
                 if( connection->IsDriver() )
@@ -453,10 +457,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                 for( auto connected_item : members )
                 {
                     if( !connected_item->Connection( sheet ) )
-                    {
-                        // std::cout << "Warning: uninitialized " << connected_item->GetSelectMenuText() << std::endl;
                         connected_item->InitializeConnection( sheet );
-                    }
 
                     if( connected_item->Type() == SCH_NO_CONNECT_T )
                         subgraph->m_no_connect = connected_item;
@@ -471,7 +472,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                         subgraph->m_items.push_back( connected_item );
 
                         if( debug )
-                            std::cout << "   +" << connected_item << " " << connected_item->GetSelectMenuText() << std::endl;
+                            std::cout << "   +" << connected_item << " " << connected_item->GetSelectMenuText( m_frame->GetUserUnits() ) << std::endl;
 
                         if( connected_conn->IsDriver() )
                             subgraph->m_drivers.push_back( connected_item );
@@ -971,8 +972,8 @@ bool CONNECTION_GRAPH::ercCheckBusToNetConflicts( CONNECTION_SUBGRAPH* aSubgraph
             msg.Printf( _( "%s and %s are graphically connected but cannot"
                            " electrically connect because one is a bus and"
                            " the other is a net." ),
-                        bus_item->GetSelectMenuText(),
-                        net_item->GetSelectMenuText() );
+                        bus_item->GetSelectMenuText( m_frame->GetUserUnits() ),
+                        net_item->GetSelectMenuText( m_frame->GetUserUnits() ) );
 
             auto marker = new SCH_MARKER();
             marker->SetTimeStamp( GetNewTimeStamp() );
@@ -1052,8 +1053,8 @@ bool CONNECTION_GRAPH::ercCheckBusToBusConflicts( CONNECTION_SUBGRAPH* aSubgraph
             {
                 msg.Printf( _( "%s and %s are graphically connected but do "
                                "not share any bus members" ),
-                            label->GetSelectMenuText(),
-                            port->GetSelectMenuText() );
+                            label->GetSelectMenuText( m_frame->GetUserUnits() ),
+                            port->GetSelectMenuText( m_frame->GetUserUnits() ) );
 
                 auto marker = new SCH_MARKER();
                 marker->SetTimeStamp( GetNewTimeStamp() );
@@ -1135,8 +1136,10 @@ bool CONNECTION_GRAPH::ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSub
         if( aCreateMarkers )
         {
             msg.Printf( _( "%s (%s) is connected to %s (%s) but is not a member of the bus" ),
-                        bus_entry->GetSelectMenuText(), bus_entry->Connection( sheet )->Name(),
-                        bus_wire->GetSelectMenuText(), bus_wire->Connection( sheet )->Name() );
+                        bus_entry->GetSelectMenuText( m_frame->GetUserUnits() ),
+                        bus_entry->Connection( sheet )->Name(),
+                        bus_wire->GetSelectMenuText( m_frame->GetUserUnits() ),
+                        bus_wire->Connection( sheet )->Name() );
 
             auto marker = new SCH_MARKER();
             marker->SetTimeStamp( GetNewTimeStamp() );

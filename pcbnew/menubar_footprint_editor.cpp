@@ -331,21 +331,6 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
 #endif
 
 
-    //-------- Setup menu --------------------
-    wxMenu* setupMenu = new wxMenu;
-
-    // Sizes and Widths
-    AddMenuItem( setupMenu, ID_PCB_DRAWINGS_WIDTHS_SETUP,
-                 _( "Te&xts and Drawings..." ),
-                 _( "Adjust dimensions for texts and drawings" ),
-                 KiBitmap( text_xpm ) );
-
-    // Pad settings
-    AddMenuItem( setupMenu, ID_MODEDIT_PAD_SETTINGS,
-                 _( "Default &Pad Properties..." ),
-                 _( "Edit settings for new pads" ),
-                 KiBitmap( pad_dimensions_xpm ) );
-
     //-------- Place menu --------------------
     wxMenu* placeMenu = new wxMenu;
 
@@ -437,40 +422,32 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
     // Path configuration edit dialog.
     AddMenuItem( prefs_menu,
                  ID_PREFERENCES_CONFIGURE_PATHS,
-                 _( "Configure Pa&ths..." ),
+                 _( "&Configure Paths..." ),
                  _( "Edit path configuration environment variables" ),
                  KiBitmap( path_xpm ) );
 
     AddMenuItem( prefs_menu, ID_PCB_LIB_TABLE_EDIT,
-                _( "Manage Footprint Li&braries..." ), _( "Configure footprint library table" ),
+                _( "Manage &Footprint Libraries..." ), _( "Configure footprint library table" ),
                 KiBitmap( library_table_xpm ) );
 
     // Settings
     AddMenuItem( prefs_menu, wxID_PREFERENCES,
-                 _( "General &Settings..." ), _( "Change footprint editor settings." ),
+                 _( "&Preferences..." ), _( "Show preferences for all open tools" ),
                  KiBitmap( preference_xpm ) );
 
     prefs_menu->AppendSeparator();
 
-    AddMenuItem( prefs_menu, ID_PCB_DISPLAY_OPTIONS_SETUP,
-              _( "&Display Options..." ),
-              _( "Graphics acceleration, grid and cursor settings." ),
-              KiBitmap( display_options_xpm ) );
-
-    text = AddHotkeyName( _( "Legacy Tool&set" ), m_hotkeysDescrList,
-                          HK_CANVAS_LEGACY );
+    text = AddHotkeyName( _( "Legacy Tool&set" ), m_hotkeysDescrList, HK_CANVAS_LEGACY );
     AddMenuItem( prefs_menu, ID_MENU_CANVAS_LEGACY, text,
                  _( "Use Legacy Toolset (not all features will be available)" ),
                  KiBitmap( tools_xpm ), wxITEM_RADIO );
 
-    text = AddHotkeyName( _( "Modern Toolset (&Accelerated)" ),
-                          m_hotkeysDescrList, HK_CANVAS_OPENGL );
+    text = AddHotkeyName( _( "Modern Toolset (&Accelerated)" ), m_hotkeysDescrList, HK_CANVAS_OPENGL );
     AddMenuItem( prefs_menu, ID_MENU_CANVAS_OPENGL, text,
                  _( "Use Modern Toolset with hardware-accelerated graphics (recommended)" ),
                  KiBitmap( tools_xpm ), wxITEM_RADIO );
 
-    text = AddHotkeyName( _( "Modern Toolset (&Fallback)" ),
-                          m_hotkeysDescrList, HK_CANVAS_CAIRO );
+    text = AddHotkeyName( _( "Modern Toolset (&Fallback)" ), m_hotkeysDescrList, HK_CANVAS_CAIRO );
     AddMenuItem( prefs_menu, ID_MENU_CANVAS_CAIRO, text,
                  _( "Use Modern Toolset with software graphics (fall-back)" ),
                  KiBitmap( tools_xpm ), wxITEM_RADIO );
@@ -479,9 +456,6 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
 
     // Language submenu
     Pgm().AddMenuLanguageList( prefs_menu );
-
-    // Hotkey submenu
-    AddHotkeyConfigMenu( prefs_menu );
 
     //----- Help menu --------------------
     wxMenu* helpMenu = new wxMenu;
@@ -512,16 +486,12 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
 
     // About Pcbnew
     helpMenu->AppendSeparator();
-    AddMenuItem( helpMenu, wxID_ABOUT,
-                 _( "&About KiCad" ),
-                 _( "About KiCad" ),
-                 KiBitmap( about_xpm ) );
+    AddMenuItem( helpMenu, wxID_ABOUT, _( "&About KiCad" ), KiBitmap( about_xpm ) );
 
     // Append menus to the menubar
     menuBar->Append( fileMenu, _( "&File" ) );
     menuBar->Append( editMenu, _( "&Edit" ) );
     menuBar->Append( viewMenu, _( "&View" ) );
-    menuBar->Append( setupMenu, _( "&Setup" ) );
     menuBar->Append( placeMenu, _( "&Place" ) );
     menuBar->Append( inspectMenu, _( "&Inspect" ) );
     menuBar->Append( toolsMenu, _( "&Tools" ) );

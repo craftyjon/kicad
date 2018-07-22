@@ -86,7 +86,7 @@ void SCH_EDIT_FRAME::EditComponentFieldText( SCH_FIELD* aField )
     m_canvas->Refresh();
 
     MSG_PANEL_ITEMS items;
-    component->GetMsgPanelInfo( items );
+    component->GetMsgPanelInfo( m_UserUnits, items );
     SetMsgPanel( items );
 }
 

@@ -155,8 +155,7 @@ BEGIN_EVENT_TABLE( LIB_EDIT_FRAME, EDA_DRAW_FRAME )
     // Multiple item selection context menu commands.
     EVT_MENU_RANGE( ID_SELECT_ITEM_START, ID_SELECT_ITEM_END, LIB_EDIT_FRAME::OnSelectItem )
 
-    EVT_MENU_RANGE( ID_PREFERENCES_HOTKEY_START, ID_PREFERENCES_HOTKEY_END,
-                    LIB_EDIT_FRAME::Process_Config )
+    EVT_MENU( ID_PREFERENCES_HOTKEY_SHOW_CURRENT_LIST, LIB_EDIT_FRAME::Process_Config )
 
     // Context menu events and commands.
     EVT_MENU( ID_LIBEDIT_EDIT_PIN, LIB_EDIT_FRAME::OnEditPin )
@@ -264,12 +263,11 @@ LIB_EDIT_FRAME::LIB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     ReCreateVToolbar();
 
     // Ensure the current alias name is valid if a part is loaded
-    // Sometimes it is not valid. This is the case
-    // when a part value (the part lib name), or the alias list was modified
-    // during a previous session and the modifications not saved in lib.
-    // Reopen libedit in a new session gives a non valid m_aliasName
-    // because the curr part is reloaded from the library (and this is the unmodified part)
-    // and the old alias name (from the previous edition) can be invalid
+    // Sometimes it is not valid. This is the case when a part value (the part lib name), or
+    // the alias list was modified during a previous session and the modifications not saved
+    // in lib.  Reopen libedit in a new session gives a non valid m_aliasName because the curr
+    // part is reloaded from the library (and this is the unmodified part) and the old alias
+    // name (from the previous session) can be invalid
     LIB_PART* part = GetCurPart();
 
     if( part == NULL )
@@ -1126,9 +1124,11 @@ void LIB_EDIT_FRAME::EditSymbolText( wxDC* DC, LIB_ITEM* DrawItem )
         DrawItem->Draw( m_canvas, DC, wxPoint( 0, 0 ), COLOR4D::UNSPECIFIED, g_XorMode, NULL,
                         DefaultTransform );
 
-    DIALOG_LIB_EDIT_TEXT* frame = new DIALOG_LIB_EDIT_TEXT( this, (LIB_TEXT*) DrawItem );
-    frame->ShowModal();
-    frame->Destroy();
+    DIALOG_LIB_EDIT_TEXT dlg( this, (LIB_TEXT*) DrawItem );
+
+    if( dlg.ShowModal() != wxID_OK )
+        return;
+
     OnModify();
 
     // Display new text
@@ -1401,7 +1401,7 @@ LIB_ITEM* LIB_EDIT_FRAME::locateItem( const wxPoint& aPosition, const KICAD_T aF
 
             for( int i = 0;  i < m_collectedItems.GetCount() && i < MAX_SELECT_ITEM_IDS;  i++ )
             {
-                wxString    text = m_collectedItems[i]->GetSelectMenuText();
+                wxString    text = m_collectedItems[i]->GetSelectMenuText( m_UserUnits );
                 BITMAP_DEF  xpm = m_collectedItems[i]->GetMenuImage();
 
                 AddMenuItem( &selectMenu, ID_SELECT_ITEM_START + i, text, KiBitmap( xpm ) );
@@ -1419,7 +1419,7 @@ LIB_ITEM* LIB_EDIT_FRAME::locateItem( const wxPoint& aPosition, const KICAD_T aF
     if( item )
     {
         MSG_PANEL_ITEMS items;
-        item->GetMsgPanelInfo( items );
+        item->GetMsgPanelInfo( m_UserUnits, items );
         SetMsgPanel( items );
     }
     else
@@ -1449,8 +1449,7 @@ void LIB_EDIT_FRAME::deleteItem( wxDC* aDC, LIB_ITEM* aItem )
 
         part->RemoveDrawItem( (LIB_ITEM*) pin, m_canvas, aDC );
 
-        // when pin edition is synchronized, all pins of the same body style
-        // are removed:
+        // when pin editing is synchronized, all pins of the same body style are removed:
         if( SynchronizePins() )
         {
             int curr_convert = pin->GetConvert();
@@ -1519,12 +1518,15 @@ void LIB_EDIT_FRAME::OnSelectItem( wxCommandEvent& aEvent )
 void LIB_EDIT_FRAME::OnOpenPinTable( wxCommandEvent& aEvent )
 {
     LIB_PART* part = GetCurPart();
+    SaveCopyInUndoList( part );
 
-    DIALOG_LIB_EDIT_PIN_TABLE dlg( this, *part );
+    DIALOG_LIB_EDIT_PIN_TABLE dlg( this, part );
 
     if( dlg.ShowModal() == wxID_CANCEL )
         return;
 
+    OnModify();
+    m_canvas->Refresh();
     return;
 }
 
@@ -1776,21 +1778,29 @@ void LIB_EDIT_FRAME::emptyScreen()
 }
 
 
-int LIB_EDIT_FRAME::GetIconScale()
+void LIB_EDIT_FRAME::CommonSettingsChanged()
 {
-    int scale = 0;
-    Kiface().KifaceSettings()->Read( LibIconScaleEntry, &scale, 0 );
-    return scale;
-}
+    SCH_BASE_FRAME::CommonSettingsChanged();
 
-
-void LIB_EDIT_FRAME::SetIconScale( int aScale )
-{
-    Kiface().KifaceSettings()->Write( LibIconScaleEntry, aScale );
-    ReCreateMenuBar();
-    ReCreateVToolbar();
     ReCreateHToolbar();
+    ReCreateVToolbar();
     ReCreateOptToolbar();
     Layout();
     SendSizeEvent();
 }
+
+
+void LIB_EDIT_FRAME::ShowChangedLanguage()
+{
+    // call my base class
+    SCH_BASE_FRAME::ShowChangedLanguage();
+
+    // tooltips in toolbars
+    ReCreateHToolbar();
+    ReCreateVToolbar();
+    ReCreateOptToolbar();
+
+    // status bar
+    UpdateMsgPanel();
+}
+

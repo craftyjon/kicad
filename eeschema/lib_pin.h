@@ -128,7 +128,7 @@ public:
 
     bool HitTest( const wxPoint &aPosRef, int aThreshold, const TRANSFORM& aTransform ) const override;
 
-    void GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList ) override;
+    void GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector< MSG_PANEL_ITEM >& aList ) override;
 
     /**
      * Display pin info (given by GetMsgPanelInfo) and add some info related to aComponent
@@ -136,7 +136,8 @@ public:
      * @param aList is the message list to fill
      * @param aComponent is the component which "owns" the pin
      */
-    void GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList, SCH_COMPONENT* aComponent );
+    void GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector< MSG_PANEL_ITEM >& aList,
+                          SCH_COMPONENT* aComponent );
 
     bool Matches( wxFindReplaceData& aSearchData, void* aAuxData, wxPoint* aFindLocation ) override;
 
@@ -348,7 +349,7 @@ public:
      * @param aEnable = true marks all common pins for editing mode.  False
      *                clears the editing mode.
      * @param aEditPinByPin == true enables the edit pin by pin mode.
-     * aEditPinByPin == false enables the pin edition coupling between pins at the same location
+     * aEditPinByPin == false enables the pin edit coupling between pins at the same location
      * if aEnable == false, aEditPinByPin is not used
      */
     void EnableEditMode( bool aEnable, bool aEditPinByPin = false );
@@ -451,7 +452,7 @@ public:
      * @return  The index of the orientation code if found.  Otherwise,
      *          return wxNOT_FOUND.
      */
-    static int GetOrientationCodeIndex( int aCode );
+    static int GetOrientationIndex( int aCode );
 
     void SetOffset( const wxPoint& aOffset ) override;
 
@@ -463,7 +464,7 @@ public:
 
     /**
      * move this and all linked pins to the new position
-     * used in pin edition.
+     * used in pin editing.
      * use SetPinPosition to set the position of this only
      * @param aPosition is the new position of this and linked pins
      */
@@ -484,7 +485,7 @@ public:
 
     BITMAP_DEF GetMenuImage() const override;
 
-    wxString GetSelectMenuText() const override;
+    wxString GetSelectMenuText( EDA_UNITS_T aUnits ) const override;
 
     EDA_ITEM* Clone() const override;
 
@@ -494,7 +495,7 @@ private:
      * they are pin info without the actual pin position, which
      * is not known in schematic without knowing the parent component
      */
-    void getMsgPanelInfoBase( std::vector< MSG_PANEL_ITEM >& aList );
+    void getMsgPanelInfoBase( EDA_UNITS_T aUnits, std::vector< MSG_PANEL_ITEM >& aList );
 
 
     /**

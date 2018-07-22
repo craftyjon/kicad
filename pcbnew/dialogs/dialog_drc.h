@@ -38,7 +38,7 @@
 
 #include <dialog_drc_base.h>
 #include <dialog_drclistbox.h>
-
+#include <widgets/unit_binder.h>
 
 // forward declarations
 class DRCLISTBOX;
@@ -94,8 +94,11 @@ private:
 
     void SetDrcParmeters( );
 
-    /// wxEVT_COMMAND_CHECKBOX_CLICKED event handler for ID_CHECKBOX
+    /// wxEVT_COMMAND_CHECKBOX_CLICKED event handler for ID_CHECKBOX_RPT_FILE
     void OnReportCheckBoxClicked( wxCommandEvent& event ) override;
+
+    /// wxEVT_COMMAND_TEXT_UPDATED event handler for m_RptFilenameCtrl
+    void OnReportFilenameEdited( wxCommandEvent &event ) override;
 
     /// wxEVT_COMMAND_BUTTON_CLICKED event handler for ID_BUTTON_BROWSE_RPT_FILE
     void OnButtonBrowseRptFileClick( wxCommandEvent& event ) override;
@@ -127,9 +130,6 @@ private:
     /// wxEVT_COMMAND_BUTTON_CLICKED event handler for wxID_CANCEL
     void OnCancelClick( wxCommandEvent& event ) override;
 
-    /// wxEVT_COMMAND_BUTTON_CLICKED event handler for wxID_OK
-    void OnOkClick( wxCommandEvent& event ) override;
-
     /// handler for activate event, updating data which can be modified outside the dialog
     /// (DRC parameters)
     void OnActivateDlg( wxActivateEvent& event ) override;
@@ -141,12 +141,21 @@ private:
     void DelDRCMarkers();
     void RedrawDrawPanel();
 
-    void OnPopupMenu( wxCommandEvent& event );
+    /// Run the SELECTION_TOOL's disambiguation menu to highlight the two BOARD_ITEMs
+    /// in the DRC_ITEM.
+    void doSelectionMenu( const DRC_ITEM* aItem );
 
     BOARD*              m_currentBoard;     // the board currently on test
     DRC*                m_tester;
     PCB_EDIT_FRAME*     m_brdEditor;
     wxConfigBase*       m_config;
+
+    wxString            m_markersTitleTemplate;
+    wxString            m_unconnectedTitleTemplate;
+
+    UNIT_BINDER         m_trackMinWidth;
+    UNIT_BINDER         m_viaMinSize;
+    UNIT_BINDER         m_uviaMinSize;
 };
 
 #endif  // _DIALOG_DRC_H_

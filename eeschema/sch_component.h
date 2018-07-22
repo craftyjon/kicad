@@ -69,8 +69,6 @@ extern std::string toUTFTildaText( const wxString& txt );
  */
 class SCH_COMPONENT : public SCH_ITEM
 {
-    friend class DIALOG_EDIT_COMPONENT_IN_SCHEMATIC;
-
 public:
     enum AUTOPLACED { AUTOPLACED_NO = 0, AUTOPLACED_AUTO, AUTOPLACED_MANUAL };
 
@@ -298,7 +296,7 @@ public:
      */
     wxPoint GetScreenCoord( const wxPoint& aPoint );
 
-    void GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList ) override;
+    void GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector< MSG_PANEL_ITEM >& aList ) override;
 
     /**
      * Clear exiting component annotation.
@@ -602,7 +600,7 @@ public:
      */
     LIB_ITEM* GetDrawItem( const wxPoint& aPosition, KICAD_T aType = TYPE_NOT_INIT );
 
-    wxString GetSelectMenuText() const override;
+    wxString GetSelectMenuText( EDA_UNITS_T aUnits ) const override;
 
     BITMAP_DEF GetMenuImage() const override;
 

@@ -146,6 +146,10 @@ public:
 
     void             DisplayModule( wxCommandEvent& event );
 
+    void             OnComponentRightClick( wxMouseEvent& event );
+
+    void             OnFootprintRightClick( wxMouseEvent& event );
+
     /**
      * Called by the automatic association button
      * Read *.equ files to try to find corresponding footprint

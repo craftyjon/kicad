@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2012 CERN
- * Copyright (C) 1992-2011 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see change_log.txt for contributors.
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -45,8 +45,10 @@
 #if defined( PCBNEW ) || defined( CVPCB ) || defined( EESCHEMA ) || defined( GERBVIEW ) || defined( PL_EDITOR )
 #define IU_TO_MM( x )       ( x / IU_PER_MM )
 #define IU_TO_IN( x )       ( x / IU_PER_MILS / 1000 )
+#define IU_TO_MILS( x )     ( x / IU_PER_MILS )
 #define MM_TO_IU( x )       ( x * IU_PER_MM )
 #define IN_TO_IU( x )       ( x * IU_PER_MILS * 1000 )
+#define MILS_TO_IU( x )     ( x * IU_PER_MILS )
 #else
 #error "Cannot resolve internal units due to no definition of EESCHEMA, CVPCB or PCBNEW."
 #endif
@@ -88,7 +90,7 @@ std::string Double2Str( double aValue )
 }
 
 
-double To_User_Unit( EDA_UNITS_T aUnit, double aValue )
+double To_User_Unit( EDA_UNITS_T aUnit, double aValue, bool aUseMils )
 {
     switch( aUnit )
     {
@@ -96,7 +98,10 @@ double To_User_Unit( EDA_UNITS_T aUnit, double aValue )
         return IU_TO_MM( aValue );
 
     case INCHES:
-        return IU_TO_IN( aValue );
+        if( aUseMils )
+            return IU_TO_MILS( aValue );
+        else
+            return IU_TO_IN( aValue );
 
     case DEGREES:
         return aValue / 10.0f;
@@ -115,27 +120,30 @@ double To_User_Unit( EDA_UNITS_T aUnit, double aValue )
  * but not in dialogs, because 4 digits only
  * could truncate the actual value
  */
-wxString CoordinateToString( int aValue, bool aConvertToMils )
+
+// A lower-precision (for readability) version of StringFromValue()
+wxString MessageTextFromValue( EDA_UNITS_T aUnits, int aValue, bool aUseMils )
 {
-    return LengthDoubleToString( (double) aValue, aConvertToMils );
+    return MessageTextFromValue( aUnits, (double) aValue, aUseMils );
 }
 
-wxString LengthDoubleToString( double aValue, bool aConvertToMils )
+
+// A lower-precision (for readability) version of StringFromValue()
+wxString MessageTextFromValue( EDA_UNITS_T aUnits, double aValue, bool aUseMils )
 {
     wxString      text;
     const wxChar* format;
-    double        value = To_User_Unit( g_UserUnit, aValue );
+    double        value = To_User_Unit( aUnits, aValue, aUseMils );
 
-    if( g_UserUnit == INCHES )
+    if( aUnits == INCHES )
     {
-        if( aConvertToMils )
+        if( aUseMils )
         {
 #if defined( EESCHEMA )
             format = wxT( "%.0f" );
 #else
             format = wxT( "%.1f" );
 #endif
-            value *= 1000;
         }
         else
         {
@@ -158,10 +166,7 @@ wxString LengthDoubleToString( double aValue, bool aConvertToMils )
     text.Printf( format, value );
     text += " ";
 
-    if( g_UserUnit == INCHES )
-        text += ( aConvertToMils ) ? _( "mils" ) : _( "in" );
-    else
-        text += _( "mm" );
+    text += GetAbbreviatedUnitsLabel( aUnits, aUseMils );
 
     return text;
 }
@@ -202,9 +207,9 @@ void StripTrailingZeros( wxString& aStringValue, unsigned aTrailingZeroAllowed )
  * otherwise the actual value is rounded when read from dialog and converted
  * in internal units, and therefore modified.
  */
-wxString StringFromValue( EDA_UNITS_T aUnit, int aValue, bool aAddUnitSymbol )
+wxString StringFromValue( EDA_UNITS_T aUnits, int aValue, bool aAddUnitSymbol, bool aUseMils )
 {
-    double  value_to_print = To_User_Unit( aUnit, aValue );
+    double  value_to_print = To_User_Unit( aUnits, aValue, aUseMils );
 
 #if defined( EESCHEMA )
     wxString    stringValue = wxString::Format( wxT( "%.3f" ), value_to_print );
@@ -232,7 +237,10 @@ wxString StringFromValue( EDA_UNITS_T aUnit, int aValue, bool aAddUnitSymbol )
     }
     else
     {
-        len = sprintf( buf, "%.10g", value_to_print );
+        if( aUnits == INCHES && aUseMils )
+            len = sprintf( buf, "%.7g", value_to_print );
+        else
+            len = sprintf( buf, "%.10g", value_to_print );
     }
 
     wxString    stringValue( buf, wxConvUTF8 );
@@ -241,18 +249,21 @@ wxString StringFromValue( EDA_UNITS_T aUnit, int aValue, bool aAddUnitSymbol )
 
     if( aAddUnitSymbol )
     {
-        switch( aUnit )
+        switch( aUnits )
         {
         case INCHES:
-            stringValue += " " + _( "\"" );
+            if( aUseMils )
+                stringValue += wxT( " mils" );
+            else
+                stringValue += wxT( " in" );
             break;
 
         case MILLIMETRES:
-            stringValue += " " + _( "mm" );
+            stringValue += wxT( " mm" );
             break;
 
         case DEGREES:
-            stringValue += " " + _( "deg" );
+            stringValue += wxT( " deg" );
             break;
 
         case UNSCALED_UNITS:
@@ -264,43 +275,31 @@ wxString StringFromValue( EDA_UNITS_T aUnit, int aValue, bool aAddUnitSymbol )
 }
 
 
-void PutValueInLocalUnits( wxTextCtrl& aTextCtr, int aValue )
+double From_User_Unit( EDA_UNITS_T aUnits, double aValue, bool aUseMils )
 {
-    wxString msg = StringFromValue( g_UserUnit, aValue );
-
-    aTextCtr.SetValue( msg );
-}
-
-
-double From_User_Unit( EDA_UNITS_T aUnit, double aValue )
-{
-    double value;
-
-    switch( aUnit )
+    switch( aUnits )
     {
     case MILLIMETRES:
-        value = MM_TO_IU( aValue );
-        break;
+        return MM_TO_IU( aValue );
 
     case INCHES:
-        value = IN_TO_IU( aValue );
-        break;
+        if( aUseMils )
+            return MILS_TO_IU( aValue );
+        else
+            return IN_TO_IU( aValue );
 
     case DEGREES:
         // Convert to "decidegrees"
-        value = aValue * 10;
-        break;
+        return aValue * 10;
 
     default:
     case UNSCALED_UNITS:
-        value = aValue;
+        return aValue;
     }
-
-    return value;
 }
 
 
-double DoubleValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue )
+double DoubleValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue, bool aUseMils )
 {
     double value;
     double dtmp = 0;
@@ -342,15 +341,16 @@ double DoubleValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue )
         if( unit == wxT( "in" ) || unit == wxT( "\"" ) )
         {
             aUnits = INCHES;
+            aUseMils = false;
         }
         else if( unit == wxT( "mm" ) )
         {
             aUnits = MILLIMETRES;
         }
-        else if( unit == wxT( "mi" ) || unit == wxT( "th" ) ) // Mils or thous
+        else if( unit == wxT( "mi" ) || unit == wxT( "th" ) )  // "mils" or "thou"
         {
             aUnits = INCHES;
-            dtmp /= 1000;
+            aUseMils = true;
         }
     }
     else if( aUnits == DEGREES )
@@ -361,51 +361,66 @@ double DoubleValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue )
         }
     }
 
-    value = From_User_Unit( aUnits, dtmp );
+    value = From_User_Unit( aUnits, dtmp, aUseMils );
 
     return value;
 }
 
 
-int ValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue )
+void FetchUnitsFromString( const wxString& aTextValue, EDA_UNITS_T& aUnits, bool& aUseMils )
 {
-    double value = DoubleValueFromString( aUnits, aTextValue );
+    // Acquire the 'right' decimal point separator
+    const struct lconv* lc = localeconv();
+
+    wxChar      decimal_point = lc->decimal_point[0];
+    wxString    buf( aTextValue.Strip( wxString::both ) );
+
+    // Convert the period in decimal point
+    buf.Replace( wxT( "." ), wxString( decimal_point, 1 ) );
+
+    // Find the end of the numeric part
+    unsigned brk_point = 0;
+
+    while( brk_point < buf.Len() )
+    {
+        wxChar ch = buf[brk_point];
+
+        if( !( (ch >= '0' && ch <='9') || (ch == decimal_point) || (ch == '-') || (ch == '+') ) )
+            break;
+
+        ++brk_point;
+    }
+
+    // Check the unit designator (2 ch significant)
+    wxString unit( buf.Mid( brk_point ).Strip( wxString::leading ).Left( 2 ).Lower() );
+
+    if( unit == wxT( "in" ) || unit == wxT( "\"" ) )
+    {
+        aUnits = INCHES;
+        aUseMils = false;
+    }
+    else if( unit == wxT( "mm" ) )
+    {
+        aUnits = MILLIMETRES;
+    }
+    else if( unit == wxT( "mi" ) || unit == wxT( "th" ) )  // "mils" or "thou"
+    {
+        aUnits = INCHES;
+        aUseMils = true;
+    }
+    else if( unit == wxT( "de" ) || unit == wxT( "ra" ) )  // "deg" or "rad"
+    {
+        aUnits = DEGREES;
+    }
+}
+
+
+int ValueFromString( EDA_UNITS_T aUnits, const wxString& aTextValue, bool aUseMils )
+{
+    double value = DoubleValueFromString( aUnits, aTextValue, aUseMils );
     return KiROUND( value );
 }
 
-
-int ValueFromString( const wxString& aTextValue )
-{
-    int      value;
-
-    value = ValueFromString( g_UserUnit, aTextValue);
-
-    return value;
-}
-
-int ValueFromTextCtrl( const wxTextCtrl& aTextCtr )
-{
-    int value;
-    wxString msg = aTextCtr.GetValue();
-    NumericEvaluator eval;
-
-    if( eval.process( msg.mb_str() ) )
-        msg = wxString::FromUTF8( eval.result() );
-
-    value = ValueFromString( g_UserUnit, msg );
-
-    return value;
-}
-
-
-wxString& operator <<( wxString& aString, const wxPoint& aPos )
-{
-    aString << wxT( "@ (" ) << CoordinateToString( aPos.x );
-    aString << wxT( "," ) << CoordinateToString( aPos.y );
-    aString << wxT( ")" );
-
-    return aString;
-}
 
 /**
  * Function AngleToStringDegrees
@@ -423,100 +438,27 @@ wxString AngleToStringDegrees( double aAngle )
 }
 
 
-wxString ReturnUnitSymbol( EDA_UNITS_T aUnit, const wxString& formatString )
+wxString GetAbbreviatedUnitsLabel( EDA_UNITS_T aUnit, bool aUseMils )
 {
-    wxString tmp;
-    wxString label;
-
     switch( aUnit )
     {
     case INCHES:
-        tmp = _( "\"" );
-        break;
+        if( aUseMils )
+            return _( "mils" );
+        else
+            return _( "in" );
 
     case MILLIMETRES:
-        tmp = _( "mm" );
-        break;
+        return _( "mm" );
 
     case UNSCALED_UNITS:
-        break;
+        return wxEmptyString;
 
     case DEGREES:
-        wxASSERT( false );
-        break;
-    }
-
-    if( formatString.IsEmpty() )
-        return tmp;
-
-    label.Printf( formatString, GetChars( tmp ) );
-
-    return label;
-}
-
-
-wxString GetUnitsLabel( EDA_UNITS_T aUnit )
-{
-    wxString label;
-
-    switch( aUnit )
-    {
-    case INCHES:
-        label = _( "inches" );
-        break;
-
-    case MILLIMETRES:
-        label = _( "millimeters" );
-        break;
-
-    case UNSCALED_UNITS:
-        label = _( "units" );
-        break;
-
-    case DEGREES:
-        label = _( "degrees" );
-        break;
-    }
-
-    return label;
-}
-
-
-wxString GetAbbreviatedUnitsLabel( EDA_UNITS_T aUnit )
-{
-    wxString label;
-
-    switch( aUnit )
-    {
-    case INCHES:
-        label = _( "in" );
-        break;
-
-    case MILLIMETRES:
-        label = _( "mm" );
-        break;
-
-    case UNSCALED_UNITS:
-        break;
-
-    case DEGREES:
-        label = _( "deg" );
-        break;
+        return _( "deg" );
 
     default:
-        label = wxT( "??" );
-        break;
+        return wxT( "??" );
     }
-
-    return label;
 }
 
-
-void AddUnitSymbol( wxStaticText& Stext, EDA_UNITS_T aUnit )
-{
-    wxString msg = Stext.GetLabel();
-
-    msg += ReturnUnitSymbol( aUnit );
-
-    Stext.SetLabel( msg );
-}

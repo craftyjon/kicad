@@ -69,19 +69,10 @@ TEXTE_MODULE* FOOTPRINT_EDIT_FRAME::CreateTextModule( MODULE* aModule, wxDC* aDC
 
     text->SetFlags( IS_NEW );
 
-    GetDesignSettings().m_ModuleTextWidth = Clamp_Text_PenSize( GetDesignSettings().m_ModuleTextWidth,
-            std::min( GetDesignSettings().m_ModuleTextSize.x,
-                      GetDesignSettings().m_ModuleTextSize.y ), true );
-    text->SetTextSize( GetDesignSettings().m_ModuleTextSize );
-    text->SetThickness( GetDesignSettings().m_ModuleTextWidth );
-    text->SetPosition( GetCrossHairPosition() );
-
     if( LSET::AllTechMask().test( GetActiveLayer() ) )    // i.e. a possible layer for a text
         text->SetLayer( GetActiveLayer() );
 
-    InstallTextModOptionsFrame( text, NULL );
-
-    m_canvas->MoveCursorToCrossHair();
+    InstallTextOptionsFrame( text, NULL );
 
     if( text->GetText().IsEmpty() )
     {
@@ -297,13 +288,12 @@ static void Show_MoveTexte_Module( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPo
 
 void PCB_BASE_FRAME::ResetTextSize( BOARD_ITEM* aItem, wxDC* aDC )
 {
-    wxSize newSize;
-    int newThickness;
+    wxSize newSize = GetDesignSettings().GetTextSize( aItem->GetLayer() );
+    int newThickness = GetDesignSettings().GetTextThickness( aItem->GetLayer() );
+    bool newItalic = GetDesignSettings().GetTextItalic( aItem->GetLayer() );
 
     if( aItem->Type() == PCB_TEXT_T )
     {
-        newSize = GetDesignSettings().m_PcbTextSize;
-        newThickness = GetDesignSettings().m_PcbTextWidth;
         TEXTE_PCB* text = static_cast<TEXTE_PCB*>( aItem );
 
         // Exit if there's nothing to do
@@ -313,12 +303,11 @@ void PCB_BASE_FRAME::ResetTextSize( BOARD_ITEM* aItem, wxDC* aDC )
         SaveCopyInUndoList( text, UR_CHANGED );
         text->SetTextSize( newSize );
         text->SetThickness( newThickness );
+        text->SetItalic( newItalic );
     }
 
     else if( aItem->Type() ==  PCB_MODULE_TEXT_T )
     {
-        newSize = GetDesignSettings().m_ModuleTextSize;
-        newThickness = GetDesignSettings().m_ModuleTextWidth;
         TEXTE_MODULE* text = static_cast<TEXTE_MODULE*>( aItem );
 
         // Exit if there's nothing to do
@@ -328,6 +317,7 @@ void PCB_BASE_FRAME::ResetTextSize( BOARD_ITEM* aItem, wxDC* aDC )
         SaveCopyInUndoList( text->GetParent(), UR_CHANGED );
         text->SetTextSize( newSize );
         text->SetThickness( newThickness );
+        text->SetItalic( newItalic );
     }
     else
         return;

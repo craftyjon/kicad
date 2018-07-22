@@ -34,7 +34,7 @@
 #include <sch_edit_frame.h>
 #include <dialog_plot_schematic_base.h>
 #include <reporter.h>
-
+#include <widgets/unit_binder.h>
 
 enum PageFormatReq {
     PAGE_SIZE_AUTO,
@@ -49,11 +49,13 @@ private:
     SCH_EDIT_FRAME* m_parent;
     wxConfigBase*   m_config;
     bool            m_configChanged;        // true if a project config param has changed
-    static int      m_pageSizeSelect;       // Static to keep last option for some format:
-                                            // Static to keep last option:
-                                            // use default size or force A or A4 size
-    int             m_HPGLPaperSizeSelect;  // for HPGL format only: last selected paper size
+    PlotFormat      m_plotFormat;
+    static int      m_pageSizeSelect;       // Static to keep last option for some format
+    static int      m_HPGLPaperSizeSelect;  // for HPGL format only: last selected paper size
     double          m_HPGLPenSize;          // for HPGL format only: pen size
+
+    UNIT_BINDER     m_defaultLineWidth;
+    UNIT_BINDER     m_penWidth;
 
 public:
     // / Constructors
@@ -63,10 +65,10 @@ public:
                                                         // and therefore should be saved
 
 private:
-    void OnPlotFormatSelection( wxCommandEvent& event ) override;
-    void OnButtonPlotCurrentClick( wxCommandEvent& event ) override;
-    void OnButtonPlotAllClick( wxCommandEvent& event ) override;
-    void OnButtonCancelClick( wxCommandEvent& event ) override;
+    void OnPageSizeSelected( wxCommandEvent& event ) override;
+    void OnPlotCurrent( wxCommandEvent& event ) override;
+    void OnPlotAll( wxCommandEvent& event ) override;
+    void OnUpdateUI( wxUpdateUIEvent& event ) override;
 
     void    initDlg();
 

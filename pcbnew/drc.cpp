@@ -118,11 +118,7 @@ void DRC::DestroyDRCDialog( int aReason )
 {
     if( m_drcDialog )
     {
-        if( aReason == wxID_OK )
-        {
-            // if user clicked OK, save his choices in this DRC object.
-            m_drcDialog->GetRptSettings( &m_doCreateRptFile, m_rptFilename);
-        }
+        m_drcDialog->GetRptSettings( &m_doCreateRptFile, m_rptFilename);
 
         m_drcDialog->Destroy();
         m_drcDialog = NULL;
@@ -135,6 +131,7 @@ DRC::DRC( PCB_EDIT_FRAME* aPcbWindow )
     m_pcbEditorFrame = aPcbWindow;
     m_pcb = aPcbWindow->GetBoard();
     m_drcDialog  = NULL;
+    m_units = aPcbWindow->GetUserUnits();
 
     // establish initial values for everything:
     m_drcInLegacyRoutingMode = false;
@@ -142,10 +139,6 @@ DRC::DRC( PCB_EDIT_FRAME* aPcbWindow )
     m_doUnconnectedTest = true;     // enable unconnected tests
     m_doZonesTest = true;           // enable zone to items clearance tests
     m_doKeepoutTest = true;         // enable keepout areas to items clearance tests
-    m_doFootprintOverlapping = true; // enable courtyards areas overlap tests
-    m_doNoCourtyardDefined = true;  // enable missing courtyard in footprint warning
-    m_abortDRC = false;
-    m_drcInProgress = false;
     m_refillZones = false;            // Only fill zones if requested by user.
     m_reportAllTrackErrors = false;
     m_doCreateRptFile = false;
@@ -213,6 +206,7 @@ int DRC::DrcOnCreatingTrack( TRACK* aRefSegm, TRACK* aList )
 int DRC::TestZoneToZoneOutline( ZONE_CONTAINER* aZone, bool aCreateMarkers )
 {
     BOARD* board = m_pcbEditorFrame->GetBoard();
+    EDA_UNITS_T units = m_pcbEditorFrame->GetUserUnits();
     BOARD_COMMIT commit( m_pcbEditorFrame );
     int nerrors = 0;
 
@@ -280,10 +274,8 @@ int DRC::TestZoneToZoneOutline( ZONE_CONTAINER* aZone, bool aCreateMarkers )
                     if( aCreateMarkers )
                     {
                         wxPoint pt( currentVertex.x, currentVertex.y );
-                        wxString msg1 = zoneRef->GetSelectMenuText();
-                        wxString msg2 = zoneToTest->GetSelectMenuText();
-                        MARKER_PCB* marker = new MARKER_PCB( COPPERAREA_INSIDE_COPPERAREA,
-                                                             pt, msg1, pt, msg2, pt );
+                        auto marker = new MARKER_PCB( units, COPPERAREA_INSIDE_COPPERAREA,
+                                                      pt, zoneRef, pt, zoneToTest, pt );
                         commit.Add( marker );
                     }
 
@@ -302,10 +294,8 @@ int DRC::TestZoneToZoneOutline( ZONE_CONTAINER* aZone, bool aCreateMarkers )
                     if( aCreateMarkers )
                     {
                         wxPoint pt( currentVertex.x, currentVertex.y );
-                        wxString msg1 = zoneToTest->GetSelectMenuText();
-                        wxString msg2 = zoneRef->GetSelectMenuText();
-                        MARKER_PCB* marker = new MARKER_PCB( COPPERAREA_INSIDE_COPPERAREA,
-                                                              pt, msg1, pt, msg2, pt );
+                        auto marker = new MARKER_PCB( units, COPPERAREA_INSIDE_COPPERAREA,
+                                                      pt, zoneToTest, pt, zoneRef, pt );
                         commit.Add( marker );
                     }
 
@@ -350,10 +340,8 @@ int DRC::TestZoneToZoneOutline( ZONE_CONTAINER* aZone, bool aCreateMarkers )
                         // COPPERAREA_COPPERAREA error : intersect or too close
                         if( aCreateMarkers )
                         {
-                            wxString msg1 = zoneRef->GetSelectMenuText();
-                            wxString msg2 = zoneToTest->GetSelectMenuText();
-                            MARKER_PCB* marker = new MARKER_PCB( COPPERAREA_CLOSE_TO_COPPERAREA,
-                                                                 pt, msg1, pt, msg2, pt );
+                            auto marker = new MARKER_PCB( units, COPPERAREA_CLOSE_TO_COPPERAREA,
+                                                          pt, zoneRef, pt, zoneToTest, pt );
                             commit.Add( marker );
                         }
 
@@ -433,6 +421,15 @@ void DRC::RunTests( wxTextCtrl* aMessages )
         testPad2Pad();
     }
 
+    // test clearances between drilled holes
+    if( aMessages )
+    {
+        aMessages->AppendText( _( "Drill clearances...\n" ) );
+        wxSafeYield();
+    }
+
+    testDrilledHoles();
+
     // test track and via clearances to other tracks, pads, and vias
     if( aMessages )
     {
@@ -503,7 +500,8 @@ void DRC::RunTests( wxTextCtrl* aMessages )
     testTexts();
 
     // find overlapping courtyard ares.
-    if( m_doFootprintOverlapping || m_doNoCourtyardDefined )
+    if( m_pcb->GetDesignSettings().m_ProhibitOverlappingCourtyards
+        || m_pcb->GetDesignSettings().m_RequireCourtyards )
     {
         if( aMessages )
         {
@@ -551,8 +549,10 @@ void DRC::updatePointers()
 
     if( m_drcDialog )  // Use diag list boxes only in DRC dialog
     {
-        m_drcDialog->m_ClearanceListBox->SetList( new DRC_LIST_MARKERS( m_pcb ) );
-        m_drcDialog->m_UnconnectedListBox->SetList( new DRC_LIST_UNCONNECTED( &m_unconnected ) );
+        m_drcDialog->m_ClearanceListBox->SetList(
+                m_pcbEditorFrame->GetUserUnits(), new DRC_LIST_MARKERS( m_pcb ) );
+        m_drcDialog->m_UnconnectedListBox->SetList(
+                m_pcbEditorFrame->GetUserUnits(), new DRC_LIST_UNCONNECTED( &m_unconnected ) );
 
         m_drcDialog->UpdateDisplayedCounts();
     }
@@ -565,7 +565,7 @@ bool DRC::doNetClass( const NETCLASSPTR& nc, wxString& msg )
 
     const BOARD_DESIGN_SETTINGS& g = m_pcb->GetDesignSettings();
 
-#define FmtVal( x ) GetChars( StringFromValue( g_UserUnit, x ) )
+#define FmtVal( x ) GetChars( StringFromValue( m_pcbEditorFrame->GetUserUnits(), x ) )
 
 #if 0   // set to 1 when (if...) BOARD_DESIGN_SETTINGS has a m_MinClearance value
     if( nc->GetClearance() < g.m_MinClearance )
@@ -718,6 +718,79 @@ void DRC::testPad2Pad()
 }
 
 
+void DRC::testDrilledHoles()
+{
+    int holeToHoleMin = m_pcb->GetDesignSettings().m_HoleToHoleMin;
+
+    if( holeToHoleMin == 0 )    // No min setting turns testing off.
+        return;
+
+    // Test drilled hole clearances to minimize drill bit breakage.
+    //
+    // Notes: slots are milled, so we're only concerned with circular holes
+    //        microvias are laser-drilled, so we're only concerned with standard vias
+
+    struct DRILLED_HOLE
+    {
+        wxPoint     m_location;
+        int         m_drillRadius;
+        BOARD_ITEM* m_owner;
+    };
+
+    std::vector<DRILLED_HOLE> holes;
+    DRILLED_HOLE              hole;
+
+    for( MODULE* mod : m_pcb->Modules() )
+    {
+        for( D_PAD* pad : mod->Pads( ) )
+        {
+            if( pad->GetDrillSize().x && pad->GetDrillShape() == PAD_DRILL_SHAPE_CIRCLE )
+            {
+                hole.m_location = pad->GetPosition();
+                hole.m_drillRadius = pad->GetDrillSize().x / 2;
+                hole.m_owner = pad;
+                holes.push_back( hole );
+            }
+        }
+    }
+
+    for( TRACK* track : m_pcb->Tracks() )
+    {
+        VIA* via = dynamic_cast<VIA*>( track );
+        if( via && via->GetViaType() == VIA_THROUGH )
+        {
+            hole.m_location = via->GetPosition();
+            hole.m_drillRadius = via->GetDrillValue() / 2;
+            hole.m_owner = via;
+            holes.push_back( hole );
+        }
+    }
+
+    for( size_t ii = 0; ii < holes.size(); ++ii )
+    {
+        const DRILLED_HOLE& refHole = holes[ ii ];
+
+        for( size_t jj = ii + 1; jj < holes.size(); ++jj )
+        {
+            const DRILLED_HOLE& checkHole = holes[ jj ];
+
+            // Holes with identical locations are allowable
+            if( checkHole.m_location == refHole.m_location )
+                continue;
+
+            if( KiROUND( GetLineLength( checkHole.m_location, refHole.m_location ) )
+                    <  checkHole.m_drillRadius + refHole.m_drillRadius + holeToHoleMin )
+            {
+                addMarkerToPcb( new MARKER_PCB( m_pcbEditorFrame->GetUserUnits(),
+                                                DRCE_DRILLED_HOLES_TOO_CLOSE, refHole.m_location,
+                                                refHole.m_owner, refHole.m_location,
+                                                checkHole.m_owner, checkHole.m_location ) );
+            }
+        }
+    }
+}
+
+
 void DRC::testTracks( wxWindow *aActiveWindow, bool aShowProgressBar )
 {
     wxProgressDialog * progressDialog = NULL;
@@ -791,17 +864,15 @@ void DRC::testUnconnected()
 
     for( const auto& edge : edges )
     {
-        wxString t_src = edge.GetSourceNode()->Parent()->GetSelectMenuText();
-        wxString t_dst = edge.GetTargetNode()->Parent()->GetSelectMenuText();
         auto src = edge.GetSourcePos();
         auto dst = edge.GetTargetPos();
 
-
-        DRC_ITEM* uncItem = new DRC_ITEM( DRCE_UNCONNECTED_ITEMS,
-                                          t_src,
-                                          t_dst,
-                                          wxPoint( src.x, src.y ), wxPoint( dst.x, dst.y ) );
-        m_unconnected.push_back( uncItem );
+        m_unconnected.emplace_back( new DRC_ITEM( m_pcbEditorFrame->GetUserUnits(),
+                                                  DRCE_UNCONNECTED_ITEMS,
+                                                  edge.GetSourceNode()->Parent(),
+                                                  wxPoint( src.x, src.y ),
+                                                  edge.GetTargetNode()->Parent(),
+                                                  wxPoint( dst.x, dst.y ) ) );
 
     }
 }
@@ -834,7 +905,7 @@ void DRC::testZones()
 
         if( ( netcode < 0 ) || pads_in_net == 0 )
         {
-            addMarkerToPcb( fillMarker( test_area,
+            addMarkerToPcb( fillMarker( test_area, test_area->GetPosition(),
                                         DRCE_SUSPICIOUS_NET_FOR_ZONE_OUTLINE, m_currentMarker ) );
             m_currentMarker = nullptr;
         }
@@ -947,8 +1018,7 @@ void DRC::testTexts()
                     if( dist < min_dist )
                     {
                         addMarkerToPcb( fillMarker( track, text,
-                                                    DRCE_TRACK_INSIDE_TEXT,
-                                                    m_currentMarker ) );
+                                                    DRCE_TRACK_INSIDE_TEXT, m_currentMarker ) );
                         m_currentMarker = nullptr;
                         break;
                     }
@@ -1031,10 +1101,8 @@ void DRC::testDisabledLayers()
 
     auto createMarker = [&]( BOARD_ITEM* aItem )
     {
-        wxString msg;
-        msg.Printf( _( "\"%s\" is on a disabled layer" ), aItem->GetSelectMenuText() );
-        m_currentMarker = fillMarker( aItem->GetPosition(), DRCE_DISABLED_LAYER_ITEM,
-                msg, m_currentMarker );
+        m_currentMarker = fillMarker( aItem, aItem->GetPosition(), DRCE_DISABLED_LAYER_ITEM,
+                                      m_currentMarker );
         addMarkerToPcb( m_currentMarker );
         m_currentMarker = nullptr;
     };
@@ -1047,10 +1115,11 @@ void DRC::testDisabledLayers()
 
     for( auto module : board->Modules() )
     {
-        module->RunOnChildren( [&]( BOARD_ITEM* aItem ) {
-            if( disabledLayers.test( aItem->GetLayer() ) )
-                createMarker( aItem );
-        } );
+        module->RunOnChildren( [&]( BOARD_ITEM* aItem )
+            {
+                if( disabledLayers.test( aItem->GetLayer() ) )
+                    createMarker( aItem );
+            } );
     }
 
     for( auto zone : board->Zones() )
@@ -1256,37 +1325,33 @@ bool DRC::doFootprintOverlappingDrc()
     {
         bool is_ok = footprint->BuildPolyCourtyard();
 
-        if( !is_ok && m_doFootprintOverlapping )
+        if( !is_ok && m_pcb->GetDesignSettings().m_ProhibitOverlappingCourtyards )
         {
-            msg.Printf( _( "footprint \"%s\" has malformed courtyard" ),
-                        footprint->GetReference().GetData() );
-            m_currentMarker = fillMarker( footprint->GetPosition(),
+            m_currentMarker = fillMarker( footprint, footprint->GetPosition(),
                                           DRCE_MALFORMED_COURTYARD_IN_FOOTPRINT,
-                                          msg, m_currentMarker );
+                                          m_currentMarker );
             addMarkerToPcb( m_currentMarker );
             m_currentMarker = nullptr;
             success = false;
         }
 
-        if( !m_doNoCourtyardDefined )
+        if( !m_pcb->GetDesignSettings().m_RequireCourtyards )
             continue;
 
         if( footprint->GetPolyCourtyardFront().OutlineCount() == 0 &&
             footprint->GetPolyCourtyardBack().OutlineCount() == 0 &&
             is_ok )
         {
-            msg.Printf( _( "footprint \"%s\" has no courtyard defined" ),
-                        footprint->GetReference().GetData() );
-            m_currentMarker = fillMarker( footprint->GetPosition(),
+            m_currentMarker = fillMarker( footprint, footprint->GetPosition(),
                                           DRCE_MISSING_COURTYARD_IN_FOOTPRINT,
-                                          msg, m_currentMarker );
+                                          m_currentMarker );
             addMarkerToPcb( m_currentMarker );
             m_currentMarker = nullptr;
             success = false;
         }
     }
 
-    if( !m_doFootprintOverlapping )
+    if( !m_pcb->GetDesignSettings().m_ProhibitOverlappingCourtyards )
         return success;
 
     // Now test for overlapping on top layer:
@@ -1314,13 +1379,9 @@ bool DRC::doFootprintOverlappingDrc()
             if( courtyard.OutlineCount() )
             {
                 //Overlap between footprint and candidate
-                msg.Printf( _( "footprints \"%s\" and \"%s\" overlap on front (top) layer" ),
-                            footprint->GetReference().GetData(),
-                            candidate->GetReference().GetData() );
                 VECTOR2I& pos = courtyard.Vertex( 0, 0, -1 );
-                wxPoint loc( pos.x, pos.y );
-                m_currentMarker = fillMarker( loc, DRCE_OVERLAPPING_FOOTPRINTS, msg,
-                                              m_currentMarker );
+                m_currentMarker = fillMarker( wxPoint( pos.x, pos.y ), footprint, candidate,
+                                              DRCE_OVERLAPPING_FOOTPRINTS, m_currentMarker );
                 addMarkerToPcb( m_currentMarker );
                 m_currentMarker = nullptr;
                 success = false;
@@ -1351,13 +1412,9 @@ bool DRC::doFootprintOverlappingDrc()
             if( courtyard.OutlineCount() )
             {
                 //Overlap between footprint and candidate
-                msg.Printf( _( "footprints \"%s\" and \"%s\" overlap on back (bottom) layer" ),
-                            footprint->GetReference().GetData(),
-                            candidate->GetReference().GetData() );
                 VECTOR2I& pos = courtyard.Vertex( 0, 0, -1 );
-                wxPoint loc( pos.x, pos.y );
-                m_currentMarker = fillMarker( loc, DRCE_OVERLAPPING_FOOTPRINTS, msg,
-                                              m_currentMarker );
+                m_currentMarker = fillMarker( wxPoint( pos.x, pos.y ), footprint, candidate,
+                                              DRCE_OVERLAPPING_FOOTPRINTS, m_currentMarker );
                 addMarkerToPcb( m_currentMarker );
                 m_currentMarker = nullptr;
                 success = false;

@@ -51,7 +51,6 @@
 #include <footprint_viewer_frame.h>
 #include <pcb_layer_box_selector.h>
 #include <dialog_drc.h>
-#include <dialog_global_edit_tracks_and_vias.h>
 #include <invoke_pcb_dialog.h>
 #include <array_creator.h>
 #include <connectivity_data.h>
@@ -301,7 +300,7 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_DRC_CONTROL:
-        // Shows the DRC dialog in non modal mode, to allows board edition
+        // Shows the DRC dialog in non modal mode, to allows board editing
         // with the DRC dialog opened and showing errors.
         m_drc->ShowDRCDialog();
         break;
@@ -343,26 +342,10 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         OnModify();
         break;
 
-    case ID_PCB_EDIT_ALL_VIAS_AND_TRACK_SIZE:
-        {
-        DIALOG_GLOBAL_EDIT_TRACKS_AND_VIAS dlg( this, GetBoard()->GetHighLightNetCode() );
-        dlg.ShowModal();
-        }
-        break;
-
     case ID_POPUP_PCB_EDIT_ALL_VIAS_AND_TRACK_SIZE:
-        if( GetCurItem() == NULL )
-            break;
         {
-        int type = GetCurItem()->Type();
-
-        if( type == PCB_TRACE_T || type == PCB_VIA_T )
-        {
-            BOARD_CONNECTED_ITEM*item = (BOARD_CONNECTED_ITEM*) GetCurItem();
-            DIALOG_GLOBAL_EDIT_TRACKS_AND_VIAS dlg( this, item->GetNetCode() );
-            dlg.ShowModal();
-        }
-
+            wxCommandEvent dummy;
+            OnEditTracksAndVias( dummy );
         }
         m_canvas->MoveCursorToCrossHair();
         break;
@@ -470,21 +453,22 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_POPUP_PCB_DELETE_TRACKSEG:
-        if( GetCurItem() == NULL )
-            break;
-
-        m_canvas->MoveCursorToCrossHair();
-        SetCurItem( Delete_Segment( &dc, (TRACK*) GetCurItem() ) );
-        OnModify();
+        if( GetCurItem() )
+        {
+            m_canvas->MoveCursorToCrossHair();
+            SetCurItem( Delete_Segment( &dc, (TRACK*) GetCurItem() ) );
+            OnModify();
+        }
         break;
 
     case ID_POPUP_PCB_DELETE_TRACK:
-        if( GetCurItem() == NULL )
-            break;
-        m_canvas->MoveCursorToCrossHair();
-        Delete_Track( &dc, (TRACK*) GetCurItem() );
-        SetCurItem( NULL );
-        OnModify();
+        if( GetCurItem() )
+        {
+            m_canvas->MoveCursorToCrossHair();
+            Delete_Track( &dc, (TRACK*) GetCurItem() );
+            SetCurItem( NULL );
+            OnModify();
+        }
         break;
 
     case ID_POPUP_PCB_DELETE_TRACKNET:
@@ -524,9 +508,7 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
     case ID_POPUP_PCB_DELETE_ZONE:
         m_canvas->MoveCursorToCrossHair();
 
-        if( GetCurItem() == NULL )
-            break;
-
+        if( GetCurItem() )
         {
             SEGZONE* zsegm   = (SEGZONE*) GetCurItem();
             int      netcode = zsegm->GetNetCode();
@@ -858,19 +840,19 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_POPUP_PCB_UPDATE_FOOTPRINTS:
-        if( GetCurItem() && GetCurItem()->Type() != PCB_MODULE_T )
-            break;
-
-        InstallExchangeModuleFrame( (MODULE*) GetCurItem(), true );
-        m_canvas->MoveCursorToCrossHair();
+        if( GetCurItem() && GetCurItem()->Type() == PCB_MODULE_T )
+        {
+            InstallExchangeModuleFrame( (MODULE*) GetCurItem(), true );
+            m_canvas->MoveCursorToCrossHair();
+        }
         break;
 
     case ID_POPUP_PCB_EXCHANGE_FOOTPRINTS:
-        if( GetCurItem() && GetCurItem()->Type() != PCB_MODULE_T )
-            break;
-
-        InstallExchangeModuleFrame( (MODULE*) GetCurItem(), false );
-        m_canvas->MoveCursorToCrossHair();
+        if( GetCurItem() && GetCurItem()->Type() == PCB_MODULE_T )
+        {
+            InstallExchangeModuleFrame( (MODULE*) GetCurItem(), false );
+            m_canvas->MoveCursorToCrossHair();
+        }
         break;
 
     case ID_POPUP_PCB_EDIT_MODULE_PRMS:
@@ -964,7 +946,7 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
     case ID_POPUP_PCB_GLOBAL_IMPORT_PAD_SETTINGS:
         m_canvas->MoveCursorToCrossHair();
-        DlgGlobalChange_PadSettings( (D_PAD*) GetCurItem(), true );
+        PushPadProperties((D_PAD*) GetCurItem() );
         break;
 
     case ID_POPUP_PCB_COPY_PAD_SETTINGS:
@@ -980,8 +962,7 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_POPUP_PCB_EDIT_TEXTMODULE:
-        InstallTextModOptionsFrame( static_cast<TEXTE_MODULE*>( GetCurItem() ), &dc );
-        m_canvas->MoveCursorToCrossHair();
+        InstallTextOptionsFrame( GetCurItem(), &dc );
         break;
 
     case ID_POPUP_PCB_RESET_TEXT_SIZE:
@@ -1060,8 +1041,7 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_POPUP_PCB_EDIT_TEXTEPCB:
-        InstallTextPCBOptionsFrame( (TEXTE_PCB*) GetCurItem(), &dc );
-        m_canvas->MoveCursorToCrossHair();
+        InstallTextOptionsFrame( GetCurItem(), &dc );
         break;
 
     case ID_POPUP_PCB_ROTATE_TEXTEPCB:
@@ -1144,14 +1124,7 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_POPUP_PCB_EDIT_DRAWING:
-#ifndef USE_WX_OVERLAY
-        InstallGraphicItemPropertiesDialog( (DRAWSEGMENT*) GetCurItem(), &dc );
-#else
-        // #1277772 - Draw into dialog converted in refresh request
-        InstallGraphicItemPropertiesDialog( (DRAWSEGMENT*) GetCurItem(), NULL );
-        m_canvas->Refresh();
-#endif
-        m_canvas->MoveCursorToCrossHair();
+        InstallGraphicItemPropertiesDialog( GetCurItem(), &dc );
         break;
 
     case ID_POPUP_PCB_MOVE_DRAWING_REQUEST:
@@ -1598,9 +1571,11 @@ void PCB_EDIT_FRAME::OnSelectTool( wxCommandEvent& aEvent )
 
 void PCB_EDIT_FRAME::moveExact()
 {
-    MOVE_PARAMETERS params;
+    wxPoint         translation;
+    double          rotation;
+    ROTATION_ANCHOR rotationAnchor = ROTATE_AROUND_ITEM_ANCHOR;
 
-    DIALOG_MOVE_EXACT dialog( this, params );
+    DIALOG_MOVE_EXACT dialog( this, translation, rotation, rotationAnchor );
     int ret = dialog.ShowModal();
 
     if( ret == wxID_OK )
@@ -1616,43 +1591,23 @@ void PCB_EDIT_FRAME::moveExact()
             // Could be moved or rotated
             SaveCopyInUndoList( itemToSave, UR_CHANGED );
 
-            // begin with the default anchor
-            wxPoint anchorPoint = item->GetPosition();
+            item->Move( translation );
 
-            if( item->Type() == PCB_MODULE_T )
+            switch( rotationAnchor )
             {
-                // cast to module to allow access to the pads
-                MODULE* mod = static_cast<MODULE*>( item );
-
-                switch( params.anchor )
-                {
-                case ANCHOR_TOP_LEFT_PAD:
-                    if( mod->GetTopLeftPad()->GetAttribute() == PAD_ATTRIB_SMD )
-                    {
-                        anchorPoint = mod->GetTopLeftPad()->GetBoundingBox().GetPosition();
-                    }
-                    else
-                    {
-                        anchorPoint = mod->GetTopLeftPad()->GetPosition();
-                    }
-                    break;
-                case ANCHOR_CENTER_FOOTPRINT:
-                    anchorPoint = mod->GetFootprintRect().GetCenter();
-                    break;
-                case ANCHOR_FROM_LIBRARY:
-                    ; // nothing to do
-                }
+            case ROTATE_AROUND_ITEM_ANCHOR:
+                item->Rotate( item->GetPosition(), rotation );
+                break;
+            case ROTATE_AROUND_USER_ORIGIN:
+                item->Rotate( GetScreen()->m_O_Curseur, rotation );
+                break;
+            case ROTATE_AROUND_AUX_ORIGIN:
+                item->Rotate( GetAuxOrigin(), rotation );
+                break;
+            default:
+                wxFAIL_MSG( "Rotation choice shouldn't have been available in this context." );
             }
 
-            if( params.origin == RELATIVE_TO_CURRENT_POSITION )
-            {
-                anchorPoint = wxPoint( 0, 0 );
-            }
-
-            wxPoint finalMoveVector = params.translation - anchorPoint;
-
-            item->Move( finalMoveVector );
-            item->Rotate( item->GetPosition(), params.rotation );
             m_canvas->Refresh();
         }
     }

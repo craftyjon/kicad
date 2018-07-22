@@ -212,7 +212,7 @@ void PCB_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
             if( net )
             {
                 MSG_PANEL_ITEMS items;
-                net->GetMsgPanelInfo( items );
+                net->GetMsgPanelInfo( m_UserUnits, items );
                 SetMsgPanel( items );
             }
         }
@@ -585,7 +585,7 @@ void PCB_EDIT_FRAME::OnEditItemRequest( wxDC* aDC, BOARD_ITEM* aItem )
         break;
 
     case PCB_TEXT_T:
-        InstallTextPCBOptionsFrame( static_cast<TEXTE_PCB*>( aItem ), aDC );
+        InstallTextOptionsFrame( aItem, aDC );
         break;
 
     case PCB_PAD_T:
@@ -605,11 +605,11 @@ void PCB_EDIT_FRAME::OnEditItemRequest( wxDC* aDC, BOARD_ITEM* aItem )
         break;
 
     case PCB_MODULE_TEXT_T:
-        InstallTextModOptionsFrame( static_cast<TEXTE_MODULE*>( aItem ), aDC );
+        InstallTextOptionsFrame( aItem, aDC );
         break;
 
     case PCB_LINE_T:
-        InstallGraphicItemPropertiesDialog( static_cast<DRAWSEGMENT*>( aItem ), aDC );
+        InstallGraphicItemPropertiesDialog( aItem, aDC );
         break;
 
     case PCB_ZONE_AREA_T:

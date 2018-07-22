@@ -43,7 +43,7 @@ class KIFACE_I;
  * is a mix in class which holds the location of a wxWindow's KIWAY.  It allows
  * calls to Kiway() and SetKiway().
  *
- * Known to be used in at least DIALOG_SHIM and KIWAY_PLAYER classes.
+ * Known to be used in at least DIALOG_SHIM, KICAD_MANAGER_FRAME and KIWAY_PLAYER classes.
  */
 class KIWAY_HOLDER
 {
@@ -68,6 +68,15 @@ public:
      * returns a reference to the PROJECT "associated with" this KIWAY.
      */
     PROJECT& Prj() const;
+
+    /**
+     * Function GetUserUnits
+     * Allows participation in KEYWAY_PLAYER/DIALOG_SHIM userUnits inheritance.
+     *
+     * This would fit better in KEYWAY_PLAYER, but DIALOG_SHIMs can only use mix-ins
+     * because their primary superclass must be wxDialog.
+     */
+    VTBL_ENTRY EDA_UNITS_T GetUserUnits() const;
 
     /**
      * Function SetKiway
@@ -235,13 +244,6 @@ protected:
      * is an event handler called on a language menu selection.
      */
     void language_change( wxCommandEvent& event );
-
-    /**
-     * Function OnChangeIconsOptions
-     * is an event handler called on a icons options in menus or toolbars
-     * menu selection.
-     */
-    void OnChangeIconsOptions( wxCommandEvent& event ) override;
 
     // variables for modal behavior support, only used by a few derivatives.
     bool            m_modal;        // true if frame is intended to be modal, not modeless

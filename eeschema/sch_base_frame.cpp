@@ -26,15 +26,15 @@
 #include <kiway.h>
 #include <class_drawpanel.h>
 #include <confirm.h>
-
 #include <class_library.h>
 #include <eeschema_id.h>
 #include <lib_edit_frame.h>
 #include <viewlib_frame.h>
 #include <sch_base_frame.h>
 #include <symbol_lib_table.h>
-#include <pgm_base.h>
-#include "dialogs/dialog_sym_lib_table.h"
+#include <dialog_configure_paths.h>
+
+#include "dialogs/panel_sym_lib_table.h"
 
 
 
@@ -202,10 +202,10 @@ void SCH_BASE_FRAME::UpdateStatusBar()
     EDA_DRAW_FRAME::UpdateStatusBar();
 
     // Display absolute coordinates:
-    double dXpos = To_User_Unit( g_UserUnit, GetCrossHairPosition().x );
-    double dYpos = To_User_Unit( g_UserUnit, GetCrossHairPosition().y );
+    double dXpos = To_User_Unit( GetUserUnits(), GetCrossHairPosition().x );
+    double dYpos = To_User_Unit( GetUserUnits(), GetCrossHairPosition().y );
 
-    if ( g_UserUnit == MILLIMETRES )
+    if ( GetUserUnits() == MILLIMETRES )
     {
         dXpos = RoundTo0( dXpos, 100.0 );
         dYpos = RoundTo0( dYpos, 100.0 );
@@ -214,7 +214,7 @@ void SCH_BASE_FRAME::UpdateStatusBar()
     wxString absformatter;
     wxString locformatter;
 
-    switch( g_UserUnit )
+    switch( GetUserUnits() )
     {
     case INCHES:
         absformatter = wxT( "X %.3f  Y %.3f" );
@@ -243,10 +243,10 @@ void SCH_BASE_FRAME::UpdateStatusBar()
     dx = GetCrossHairPosition().x - screen->m_O_Curseur.x;
     dy = GetCrossHairPosition().y - screen->m_O_Curseur.y;
 
-    dXpos = To_User_Unit( g_UserUnit, dx );
-    dYpos = To_User_Unit( g_UserUnit, dy );
+    dXpos = To_User_Unit( GetUserUnits(), dx );
+    dYpos = To_User_Unit( GetUserUnits(), dy );
 
-    if( g_UserUnit == MILLIMETRES )
+    if( GetUserUnits() == MILLIMETRES )
     {
         dXpos = RoundTo0( dXpos, 100.0 );
         dYpos = RoundTo0( dYpos, 100.0 );
@@ -263,14 +263,17 @@ void SCH_BASE_FRAME::UpdateStatusBar()
 
 void SCH_BASE_FRAME::OnConfigurePaths( wxCommandEvent& aEvent )
 {
-    Pgm().ConfigurePaths( this );
+    DIALOG_CONFIGURE_PATHS dlg( this, nullptr );
+    dlg.ShowModal();
 }
 
 
 void SCH_BASE_FRAME::OnEditSymbolLibTable( wxCommandEvent& aEvent )
 {
-    DIALOG_SYMBOL_LIB_TABLE dlg( this, &SYMBOL_LIB_TABLE::GetGlobalLibTable(),
-                                 Prj().SchSymbolLibTable() );
+    DIALOG_EDIT_LIBRARY_TABLES dlg( this, _( "Footprint Libraries" ) );
+
+    dlg.InstallPanel( new PANEL_SYM_LIB_TABLE( &dlg, &SYMBOL_LIB_TABLE::GetGlobalLibTable(),
+                                                  Prj().SchSymbolLibTable() ) );
 
     if( dlg.ShowModal() == wxID_CANCEL )
         return;
@@ -290,6 +293,15 @@ void SCH_BASE_FRAME::OnEditSymbolLibTable( wxCommandEvent& aEvent )
 
     if( viewer )
         viewer->ReCreateListLib();
+}
+
+
+void SCH_BASE_FRAME::InstallLibraryTablesPanel( DIALOG_EDIT_LIBRARY_TABLES* aDialog )
+{
+    SYMBOL_LIB_TABLE* globalTable = &SYMBOL_LIB_TABLE::GetGlobalLibTable();
+    SYMBOL_LIB_TABLE* projectTable = Prj().SchSymbolLibTable();
+
+    aDialog->InstallPanel( new PANEL_SYM_LIB_TABLE( aDialog, globalTable, projectTable ) );
 }
 
 

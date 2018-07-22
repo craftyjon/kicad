@@ -177,7 +177,7 @@ wxPoint SCH_TEXT::GetSchematicTextOffset() const
 
 bool SCH_TEXT::Matches( wxFindReplaceData& aSearchData, void* aAuxData, wxPoint * aFindLocation )
 {
-    wxLogTrace( traceFindItem, wxT( "  item " ) + GetSelectMenuText() );
+    wxLogTrace( traceFindItem, wxT( "  item " ) + GetSelectMenuText( MILLIMETRES ) );
 
     if( SCH_ITEM::Matches( m_Text, aSearchData ) )
     {
@@ -522,11 +522,9 @@ const EDA_RECT SCH_TEXT::GetBoundingBox() const
 }
 
 
-wxString SCH_TEXT::GetSelectMenuText() const
+wxString SCH_TEXT::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
-    wxString msg;
-    msg.Printf( _( "Graphic Text %s" ), GetChars( ShortenedShownText() ) );
-    return msg;
+    return wxString::Format( _( "Graphic Text \"%s\"" ), GetChars( ShortenedShownText() ) );
 }
 
 
@@ -634,7 +632,7 @@ void SCH_TEXT::Plot( PLOTTER* aPlotter )
 /*
  * Display the type, shape, size and some other props to the Message panel
  */
-void SCH_TEXT::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
+void SCH_TEXT::GetMsgPanelInfo( EDA_UNITS_T aUnits, MSG_PANEL_ITEMS& aList )
 {
     wxString msg;
 
@@ -722,7 +720,7 @@ void SCH_TEXT::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
     }
 
     // Display text size (X or Y value, with are the same value in Eeschema)
-    msg = StringFromValue( g_UserUnit, GetTextWidth(), true );
+    msg = MessageTextFromValue( aUnits, GetTextWidth(), true );
     aList.push_back( MSG_PANEL_ITEM( _( "Size" ), msg, RED ) );
 
 #if defined(DEBUG)
@@ -849,11 +847,9 @@ const EDA_RECT SCH_LABEL::GetBoundingBox() const
 }
 
 
-wxString SCH_LABEL::GetSelectMenuText() const
+wxString SCH_LABEL::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
-    wxString msg;
-    msg.Printf( _( "Label %s" ), GetChars( ShortenedShownText() ) );
-    return msg;
+    return wxString::Format( _( "Label %s" ), ShortenedShownText() );
 }
 
 
@@ -1218,11 +1214,9 @@ const EDA_RECT SCH_GLOBALLABEL::GetBoundingBox() const
 }
 
 
-wxString SCH_GLOBALLABEL::GetSelectMenuText() const
+wxString SCH_GLOBALLABEL::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
-    wxString msg;
-    msg.Printf( _( "Global Label %s" ), GetChars( ShortenedShownText() ) );
-    return msg;
+    return wxString::Format( _( "Global Label %s" ), GetChars( ShortenedShownText() ) );
 }
 
 
@@ -1485,11 +1479,9 @@ void SCH_HIERLABEL::Rotate( wxPoint aPosition )
 }
 
 
-wxString SCH_HIERLABEL::GetSelectMenuText() const
+wxString SCH_HIERLABEL::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
-    wxString msg;
-    msg.Printf( _( "Hierarchical Label %s" ), GetChars( ShortenedShownText() ) );
-    return msg;
+    return wxString::Format( _( "Hierarchical Label %s" ), GetChars( ShortenedShownText() ) );
 }
 
 

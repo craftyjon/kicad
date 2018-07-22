@@ -76,6 +76,12 @@ DIALOG_ERC::DIALOG_ERC( SCH_EDIT_FRAME* parent ) :
 {
     m_parent = parent;
     m_lastMarkerFound = NULL;
+
+    wxFont infoFont = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT );
+    infoFont.SetSymbolicSize( wxFONTSIZE_SMALL );
+    m_textMarkers->SetFont( infoFont );
+    m_titleMessages->SetFont( infoFont );
+
     Init();
 
     // Now all widgets have the size fixed, call FinishDialogSettings
@@ -434,7 +440,7 @@ void DIALOG_ERC::DisplayERC_MarkersList()
         }
     }
 
-    m_MarkersList->DisplayList();
+    m_MarkersList->DisplayList( GetUserUnits() );
 }
 
 
@@ -673,7 +679,7 @@ void DIALOG_ERC::TestErc( REPORTER& aReporter )
         if( dlg.ShowModal() == wxID_CANCEL )
             return;
 
-        if( WriteDiagnosticERC( dlg.GetPath() ) )
+        if( WriteDiagnosticERC( GetUserUnits(), dlg.GetPath() ) )
             ExecuteFile( this, Pgm().GetEditorName(), QuoteFullPath( fn ) );
     }
 }

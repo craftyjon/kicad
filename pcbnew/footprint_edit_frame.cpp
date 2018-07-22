@@ -26,7 +26,6 @@
  */
 
 #include <fctsys.h>
-#include <pgm_base.h>
 #include <kiface_i.h>
 #include <kiway.h>
 #include <project.h>
@@ -48,8 +47,6 @@
 #include <pcbnew.h>
 #include <pcbnew_id.h>
 #include <hotkeys.h>
-#include <dialogs/dialog_modedit_display_options.h>
-#include <dialog_hotkeys_editor.h>
 #include <footprint_edit_frame.h>
 #include <footprint_viewer_frame.h>
 #include <wildcards_and_files_ext.h>
@@ -61,6 +58,13 @@
 #include <tool/tool_dispatcher.h>
 #include <tool/zoom_tool.h>
 
+#include <widgets/paged_dialog.h>
+#include <dialogs/panel_modedit_settings.h>
+#include <dialogs/panel_modedit_defaults.h>
+#include <dialogs/panel_modedit_display_options.h>
+#include <dialog_configure_paths.h>
+
+#include <tools/position_relative_tool.h>
 #include "tools/selection_tool.h"
 #include "tools/edit_tool.h"
 #include "tools/drawing_tool.h"
@@ -72,12 +76,6 @@
 #include "tools/pad_tool.h"
 #include "tools/pcb_actions.h"
 
-///@{
-/// \ingroup config
-
-static const wxString IconScaleEntry =          "PcbIconScale";
-
-///@}
 
 BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_MENU_RANGE( ID_POPUP_PCB_ITEM_SELECTION_START, ID_POPUP_PCB_ITEM_SELECTION_END,
@@ -130,19 +128,11 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_TOOL( ID_TB_OPTIONS_SHOW_HIGH_CONTRAST_MODE, FOOTPRINT_EDIT_FRAME::OnSelectOptionToolbar )
 
     // Preferences and option menus
-    EVT_MENU( ID_PREFERENCES_HOTKEY_EXPORT_CONFIG,
-              FOOTPRINT_EDIT_FRAME::ProcessPreferences )
-    EVT_MENU( ID_PREFERENCES_HOTKEY_IMPORT_CONFIG,
-              FOOTPRINT_EDIT_FRAME::ProcessPreferences )
-    EVT_MENU( ID_PREFERENCES_HOTKEY_SHOW_EDITOR,
-              FOOTPRINT_EDIT_FRAME::ProcessPreferences )
     EVT_MENU( ID_PREFERENCES_HOTKEY_SHOW_CURRENT_LIST,
               FOOTPRINT_EDIT_FRAME::ProcessPreferences )
     EVT_MENU( ID_PCB_LIB_TABLE_EDIT,
               FOOTPRINT_EDIT_FRAME::ProcessPreferences )
     EVT_MENU( wxID_PREFERENCES,
-              FOOTPRINT_EDIT_FRAME::ProcessPreferences )
-    EVT_MENU( ID_PCB_DISPLAY_OPTIONS_SETUP,
               FOOTPRINT_EDIT_FRAME::ProcessPreferences )
     EVT_MENU( ID_PREFERENCES_CONFIGURE_PATHS, FOOTPRINT_EDIT_FRAME::OnConfigurePaths )
 
@@ -159,15 +149,12 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
               FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_MENU( ID_POPUP_MODEDIT_EDIT_LAYER_ALL_EDGE,
               FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
-    EVT_MENU( ID_POPUP_MODEDIT_ENTER_EDGE_WIDTH, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
 
     // Module transformations
     EVT_MENU( ID_MODEDIT_MODULE_ROTATE, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_MENU( ID_MODEDIT_MODULE_MIRROR, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_MENU( ID_MODEDIT_MODULE_MOVE_EXACT, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
 
-    EVT_MENU( ID_PCB_DRAWINGS_WIDTHS_SETUP, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
-    EVT_MENU( ID_PCB_PAD_SETUP, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_MENU( ID_PCB_USER_GRID_SETUP, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
 
     // Menu Help
@@ -227,7 +214,6 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     wxIcon icon;
     icon.CopyFromBitmap( KiBitmap( icon_modedit_xpm ) );
     SetIcon( icon );
-    m_iconScale = -1;
 
     // Show a title (frame title + footprint name):
     updateTitle();
@@ -821,18 +807,6 @@ void FOOTPRINT_EDIT_FRAME::ProcessPreferences( wxCommandEvent& event )
     switch( id )
     {
     // Hotkey IDs
-    case ID_PREFERENCES_HOTKEY_EXPORT_CONFIG:
-        ExportHotkeyConfigToFile( g_Module_Editor_Hotkeys_Descr, "pcbnew" );
-        break;
-
-    case ID_PREFERENCES_HOTKEY_IMPORT_CONFIG:
-        ImportHotkeyConfigFromFile( g_Module_Editor_Hotkeys_Descr, "pcbnew" );
-        break;
-
-    case ID_PREFERENCES_HOTKEY_SHOW_EDITOR:
-        InstallHotkeyFrame( this, g_Pcbnew_Editor_Hotkeys_Descr, g_Module_Editor_Hotkeys_Descr );
-        break;
-
     case ID_PREFERENCES_HOTKEY_SHOW_CURRENT_LIST:
         // Display current hotkey list for the footprint editor.
         DisplayHotkeyList( this, g_Module_Editor_Hotkeys_Descr );
@@ -892,11 +866,7 @@ void FOOTPRINT_EDIT_FRAME::ProcessPreferences( wxCommandEvent& event )
         break;
 
     case wxID_PREFERENCES:
-        InvokeFPEditorPrefsDlg( this );
-        break;
-
-    case ID_PCB_DISPLAY_OPTIONS_SETUP:
-        DIALOG_MODEDIT_DISPLAY_OPTIONS::Invoke( *this );
+        ShowPreferences( g_Pcbnew_Editor_Hotkeys_Descr, g_Module_Editor_Hotkeys_Descr, wxT( "pcbnew" ) );
         break;
 
     default:
@@ -905,9 +875,20 @@ void FOOTPRINT_EDIT_FRAME::ProcessPreferences( wxCommandEvent& event )
 }
 
 
+void FOOTPRINT_EDIT_FRAME::InstallPreferences( PAGED_DIALOG* aParent )
+{
+    wxTreebook* book = aParent->GetTreebook();
+
+    book->AddPage( new PANEL_MODEDIT_SETTINGS( this, aParent ), _( "Footprint Editor" ) );
+    book->AddSubPage( new PANEL_MODEDIT_DISPLAY_OPTIONS( this, aParent ), _( "Display Options" ) );
+    book->AddSubPage( new PANEL_MODEDIT_DEFAULTS( this, aParent ), _( "Default Values" ) );
+}
+
+
 void FOOTPRINT_EDIT_FRAME::OnConfigurePaths( wxCommandEvent& aEvent )
 {
-    Pgm().ConfigurePaths( this );
+    DIALOG_CONFIGURE_PATHS dlg( this, Prj().Get3DCacheManager()->GetResolver() );
+    dlg.ShowModal();
 }
 
 
@@ -935,6 +916,7 @@ void FOOTPRINT_EDIT_FRAME::setupTools()
     m_toolManager->RegisterTool( new MODULE_EDITOR_TOOLS );
     m_toolManager->RegisterTool( new ALIGN_DISTRIBUTE_TOOL );
     m_toolManager->RegisterTool( new PICKER_TOOL );
+    m_toolManager->RegisterTool( new POSITION_RELATIVE_TOOL );
 
     m_toolManager->GetTool<PAD_TOOL>()->SetEditModules( true );
     m_toolManager->GetTool<SELECTION_TOOL>()->SetEditModules( true );
@@ -962,11 +944,16 @@ void FOOTPRINT_EDIT_FRAME::UseGalCanvas( bool aEnable )
 }
 
 
-int FOOTPRINT_EDIT_FRAME::GetIconScale()
+void FOOTPRINT_EDIT_FRAME::CommonSettingsChanged()
 {
-    int scale = 0;
-    Kiface().KifaceSettings()->Read( IconScaleEntry, &scale, 0 );
-    return scale;
+    PCB_BASE_EDIT_FRAME::CommonSettingsChanged();
+
+    ReCreateHToolbar();
+    ReCreateAuxiliaryToolbar();
+    ReCreateVToolbar();
+    ReCreateOptToolbar();
+    Layout();
+    SendSizeEvent();
 }
 
 
@@ -983,7 +970,7 @@ void FOOTPRINT_EDIT_FRAME::UpdateMsgPanel()
 
     if( item )
     {
-        item->GetMsgPanelInfo( items );
+        item->GetMsgPanelInfo( m_UserUnits, items );
         SetMsgPanel( items );
     }
     else

@@ -3,7 +3,7 @@
  *
  * Copyright (C) 1992-2013 jp.charras at wanadoo.fr
  * Copyright (C) 2013 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
- * Copyright (C) 1992-2017 KiCad Developers
+ * Copyright (C) 1992-2018 KiCad Developers
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -58,7 +58,6 @@ enum GNL_T
 class NETLIST_EXPORTER_GENERIC : public NETLIST_EXPORTER
 {
 private:
-    SCH_EDIT_FRAME*       m_frame;
     std::set< wxString >  m_libraries;    ///< Set of library nicknames.
 
     SYMBOL_LIB_TABLE*     m_libTable;
@@ -74,7 +73,6 @@ public:
                               NETLIST_OBJECT_LIST* aMasterList,
                               CONNECTION_GRAPH* aGraph = nullptr  ) :
         NETLIST_EXPORTER( aMasterList ),
-        m_frame( aFrame ),
         m_libTable( aFrame->Prj().SchSymbolLibTable() ),
         m_graph( aGraph ),
         m_use_graph( false )

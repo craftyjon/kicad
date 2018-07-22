@@ -1,8 +1,8 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Oct 17 2016)
+// C++ code generated with wxFormBuilder (version Dec 30 2017)
 // http://www.wxformbuilder.org/
 //
-// PLEASE DO "NOT" EDIT THIS FILE!
+// PLEASE DO *NOT* EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
 
 #ifndef __WX_HTML_REPORT_PANEL_BASE_H__
@@ -18,13 +18,13 @@
 #include <wx/settings.h>
 #include <wx/string.h>
 #include <wx/stattext.h>
+#include <wx/sizer.h>
 #include <wx/checkbox.h>
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/icon.h>
 #include <wx/statbmp.h>
 #include <wx/button.h>
-#include <wx/sizer.h>
 #include <wx/statbox.h>
 #include <wx/panel.h>
 
@@ -48,8 +48,8 @@ class WX_HTML_REPORT_PANEL_BASE : public wxPanel
 		wxStaticBitmap* m_errorsBadge;
 		wxCheckBox* m_checkBoxShowWarnings;
 		wxStaticBitmap* m_warningsBadge;
-		wxCheckBox* m_checkBoxShowInfos;
 		wxCheckBox* m_checkBoxShowActions;
+		wxCheckBox* m_checkBoxShowInfos;
 		wxButton* m_btnSaveReportToFile;
 		
 		// Virtual event handlers, overide them in your derived class
@@ -57,8 +57,8 @@ class WX_HTML_REPORT_PANEL_BASE : public wxPanel
 		virtual void onCheckBoxShowAll( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onCheckBoxShowErrors( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onCheckBoxShowWarnings( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onCheckBoxShowInfos( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onCheckBoxShowActions( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onCheckBoxShowInfos( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onBtnSaveToFile( wxCommandEvent& event ) { event.Skip(); }
 		
 	

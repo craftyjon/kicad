@@ -25,6 +25,7 @@
 #include "placement_tool.h"
 #include "pcb_actions.h"
 #include "selection_tool.h"
+#include "edit_tool.h"
 #include <tool/tool_manager.h>
 
 #include <pcb_edit_frame.h>
@@ -236,11 +237,14 @@ int ALIGN_DISTRIBUTE_TOOL::checkLockedStatus( const SELECTION &selection ) const
 
     if( containsLocked )
     {
-        if( IsOK( getEditFrame< PCB_EDIT_FRAME >(),
-                _( "Selection contains locked items. Do you want to continue?" ) ) )
-        {
+        KIDIALOG dlg( getEditFrame< PCB_EDIT_FRAME >(),
+                      _( "Selection contains locked items. Do you want to continue?" ),
+                      _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
+        dlg.SetOKLabel( _( "Continue" ) );
+        dlg.DoNotShowCheckbox();
+
+        if( dlg.ShowModal() == wxID_OK )
             return SELECTION_LOCK_OVERRIDE;
-        }
         else
             return SELECTION_LOCKED;
     }
@@ -252,7 +256,7 @@ int ALIGN_DISTRIBUTE_TOOL::checkLockedStatus( const SELECTION &selection ) const
 int ALIGN_DISTRIBUTE_TOOL::AlignTop( const TOOL_EVENT& aEvent )
 {
     auto frame = getEditFrame<PCB_BASE_FRAME>();
-    SELECTION& selection = m_selectionTool->RequestSelection( SELECTION_EDITABLE );
+    SELECTION& selection = m_selectionTool->RequestSelection( EnsureEditableFilter );
 
     if( selection.Size() <= 1 )
         return 0;
@@ -292,7 +296,7 @@ int ALIGN_DISTRIBUTE_TOOL::AlignTop( const TOOL_EVENT& aEvent )
 int ALIGN_DISTRIBUTE_TOOL::AlignBottom( const TOOL_EVENT& aEvent )
 {
     auto frame = getEditFrame<PCB_BASE_FRAME>();
-    SELECTION& selection = m_selectionTool->RequestSelection( SELECTION_EDITABLE );
+    SELECTION& selection = m_selectionTool->RequestSelection( EnsureEditableFilter );
 
     if( selection.Size() <= 1 )
         return 0;
@@ -347,7 +351,7 @@ int ALIGN_DISTRIBUTE_TOOL::AlignLeft( const TOOL_EVENT& aEvent )
 int ALIGN_DISTRIBUTE_TOOL::doAlignLeft()
 {
     auto frame = getEditFrame<PCB_BASE_FRAME>();
-    SELECTION& selection = m_selectionTool->RequestSelection( SELECTION_EDITABLE );
+    SELECTION& selection = m_selectionTool->RequestSelection( EnsureEditableFilter );
 
     if( selection.Size() <= 1 )
         return 0;
@@ -402,7 +406,7 @@ int ALIGN_DISTRIBUTE_TOOL::AlignRight( const TOOL_EVENT& aEvent )
 int ALIGN_DISTRIBUTE_TOOL::doAlignRight()
 {
     auto frame = getEditFrame<PCB_BASE_FRAME>();
-    SELECTION& selection = m_selectionTool->RequestSelection( SELECTION_EDITABLE );
+    SELECTION& selection = m_selectionTool->RequestSelection( EnsureEditableFilter );
 
     if( selection.Size() <= 1 )
         return 0;
@@ -442,7 +446,7 @@ int ALIGN_DISTRIBUTE_TOOL::doAlignRight()
 int ALIGN_DISTRIBUTE_TOOL::AlignCenterX( const TOOL_EVENT& aEvent )
 {
     auto frame = getEditFrame<PCB_BASE_FRAME>();
-    SELECTION& selection = m_selectionTool->RequestSelection( SELECTION_EDITABLE );
+    SELECTION& selection = m_selectionTool->RequestSelection( EnsureEditableFilter );
 
     if( selection.Size() <= 1 )
         return 0;
@@ -483,7 +487,7 @@ int ALIGN_DISTRIBUTE_TOOL::AlignCenterX( const TOOL_EVENT& aEvent )
 int ALIGN_DISTRIBUTE_TOOL::AlignCenterY( const TOOL_EVENT& aEvent )
 {
     auto frame = getEditFrame<PCB_BASE_FRAME>();
-    SELECTION& selection = m_selectionTool->RequestSelection( SELECTION_EDITABLE );
+    SELECTION& selection = m_selectionTool->RequestSelection( EnsureEditableFilter );
 
     if( selection.Size() <= 1 )
         return 0;
@@ -524,8 +528,7 @@ int ALIGN_DISTRIBUTE_TOOL::AlignCenterY( const TOOL_EVENT& aEvent )
 int ALIGN_DISTRIBUTE_TOOL::DistributeHorizontally( const TOOL_EVENT& aEvent )
 {
     auto frame = getEditFrame<PCB_BASE_FRAME>();
-    SELECTION& selection = m_selectionTool->RequestSelection(
-            SELECTION_EDITABLE | SELECTION_SANITIZE_PADS );
+    SELECTION& selection = m_selectionTool->RequestSelection( SanitizePadsEnsureEditableFilter );
 
     if( selection.Size() <= 1 )
         return 0;
@@ -611,8 +614,7 @@ void ALIGN_DISTRIBUTE_TOOL::doDistributeCentersHorizontally( ALIGNMENT_RECTS &it
 int ALIGN_DISTRIBUTE_TOOL::DistributeVertically( const TOOL_EVENT& aEvent )
 {
     auto frame = getEditFrame<PCB_BASE_FRAME>();
-    SELECTION& selection = m_selectionTool->RequestSelection(
-            SELECTION_EDITABLE | SELECTION_SANITIZE_PADS );
+    SELECTION& selection = m_selectionTool->RequestSelection( SanitizePadsEnsureEditableFilter );
 
     if( selection.Size() <= 1 )
         return 0;

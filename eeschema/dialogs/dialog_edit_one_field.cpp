@@ -30,11 +30,9 @@
 
 #include <fctsys.h>
 #include <common.h>
-#include <base_units.h>
 #include <kiway.h>
 #include <confirm.h>
 
-#include <general.h>
 #include <sch_base_frame.h>
 #include <sch_component.h>
 #include <class_libentry.h>
@@ -78,7 +76,10 @@ EDA_TEXT_VJUSTIFY_T IntToEdaTextVertJustify( int aVertJustify )
 
 DIALOG_EDIT_ONE_FIELD::DIALOG_EDIT_ONE_FIELD( SCH_BASE_FRAME* aParent, const wxString& aTitle,
                                               const EDA_TEXT* aTextItem ) :
-    DIALOG_LIB_EDIT_TEXT_BASE( aParent )
+    DIALOG_LIB_EDIT_TEXT_BASE( aParent ),
+    m_posX( aParent, m_xPosLabel, m_xPosCtrl, m_xPosUnits, true ),
+    m_posY( aParent, m_yPosLabel, m_yPosCtrl, m_yPosUnits, true ),
+    m_textSize( aParent, m_textSizeLabel, m_textSizeCtrl, m_textSizeUnits, true, 0 )
 {
     SetTitle( aTitle );
 
@@ -87,10 +88,11 @@ DIALOG_EDIT_ONE_FIELD::DIALOG_EDIT_ONE_FIELD( SCH_BASE_FRAME* aParent, const wxS
     m_isPower = false;
 
     m_text = aTextItem->GetText();
-    m_style = aTextItem->IsItalic() ? 1 : 0;
-    m_style += aTextItem->IsBold() ? 2 : 0;
+    m_isItalic = aTextItem->IsItalic();
+    m_isBold = aTextItem->IsBold();
+    m_position = aTextItem->GetTextPos();
     m_size = aTextItem->GetTextWidth();
-    m_orientation = ( aTextItem->GetTextAngle() == TEXT_ANGLE_VERT );
+    m_isVertical = ( aTextItem->GetTextAngle() == TEXT_ANGLE_VERT );
     m_verticalJustification = aTextItem->GetVertJustify() + 1;
     m_horizontalJustification = aTextItem->GetHorizJustify() + 1;
     m_isVisible = aTextItem->IsVisible();
@@ -101,31 +103,17 @@ void DIALOG_EDIT_ONE_FIELD::init()
 {
     wxString msg;
 
-    m_TextValue->SetFocus();
-    SCH_BASE_FRAME* parent = static_cast<SCH_BASE_FRAME*>( GetParent() );
-    m_TextValue->SetValidator( SCH_FIELD_VALIDATOR(
-                                    parent->IsType( FRAME_SCH_LIB_EDITOR ),
-                                    m_fieldId, &m_text ) );
+    SetInitialFocus( m_TextValue );
+    SCH_BASE_FRAME* parent = GetParent();
+    bool libedit = parent->IsType( FRAME_SCH_LIB_EDITOR );
+    m_TextValue->SetValidator( SCH_FIELD_VALIDATOR( libedit, m_fieldId, &m_text ) );
 
     // Disable options for graphic text editing which are not needed for fields.
     m_CommonConvert->Show( false );
     m_CommonUnit->Show( false );
 
     // Show the footprint selection dialog if this is the footprint field.
-    if( m_fieldId == FOOTPRINT )
-    {
-        m_TextValueSelectButton->Show();
-        m_TextValueSelectButton->Enable();
-    }
-    else
-    {
-        m_TextValueSelectButton->Hide();
-        m_TextValueSelectButton->Disable();
-    }
-
-    msg = m_TextSizeText->GetLabel() + ReturnUnitSymbol();
-    m_TextSizeText->SetLabel( msg );
-
+    m_TextValueSelectButton->Show( m_fieldId == FOOTPRINT );
 
     // Value fields of power components cannot be modified. This will grey out
     // the text box and display an explanation.
@@ -163,23 +151,19 @@ void DIALOG_EDIT_ONE_FIELD::OnTextValueSelectButtonClick( wxCommandEvent& aEvent
 }
 
 
-bool DIALOG_EDIT_ONE_FIELD::TransferDataToWindow()
+void DIALOG_EDIT_ONE_FIELD::OnSetFocusText( wxFocusEvent& event )
 {
-    m_TextValue->SetValue( m_text );
-
     if( m_fieldId == REFERENCE )
     {
         if( m_text.find_first_of( '?' ) != m_text.npos )
         {
-            m_TextValue->SetSelection( m_text.find_first_of( '?' ),
-                                       m_text.find_last_of( '?' ) + 1 );
+            m_TextValue->SetSelection( m_text.find_first_of( '?' ), m_text.find_last_of( '?' ) + 1 );
         }
         else
         {
             wxString num = m_text;
 
-            while( !num.IsEmpty() && ( !isdigit( num.Last() ) ||
-                                       !isdigit( num.GetChar( 0 ) ) ) )
+            while( !num.IsEmpty() && ( !isdigit( num.Last() ) || !isdigit( num.GetChar( 0 ) ) ) )
             {
                 if( !isdigit( num.Last() ) )
                     num.RemoveLast();
@@ -187,8 +171,7 @@ bool DIALOG_EDIT_ONE_FIELD::TransferDataToWindow()
                     num = num.Right( num.Length() - 1);
             }
 
-            m_TextValue->SetSelection( m_text.Find( num ),
-                                       m_text.Find( num ) + num.Length() );
+            m_TextValue->SetSelection( m_text.Find( num ), m_text.Find( num ) + num.Length() );
 
             if( num.IsEmpty() )
                 m_TextValue->SetSelection( -1, -1 );
@@ -198,13 +181,22 @@ bool DIALOG_EDIT_ONE_FIELD::TransferDataToWindow()
     {
         m_TextValue->SetSelection( -1, -1 );
     }
+}
 
-    m_Orient->SetValue( m_orientation );
-    m_TextSize->SetValue( StringFromValue( g_UserUnit, m_size ) );
-    m_TextHJustificationOpt->SetSelection( m_horizontalJustification );
-    m_TextVJustificationOpt->SetSelection( m_verticalJustification );
-    m_Invisible->SetValue( !m_isVisible );
-    m_TextShapeOpt->SetSelection( m_style );
+
+bool DIALOG_EDIT_ONE_FIELD::TransferDataToWindow()
+{
+    m_TextValue->SetValue( m_text );
+
+    m_posX.SetValue( m_position.x );
+    m_posY.SetValue( m_position.y );
+    m_textSize.SetValue( m_size );
+    m_orientChoice->SetSelection( m_isVertical ? 1 : 0 );
+    m_hAlignChoice->SetSelection( m_horizontalJustification );
+    m_vAlignChoice->SetSelection( m_verticalJustification );
+    m_visible->SetValue( m_isVisible );
+    m_italic->SetValue( m_isItalic );
+    m_bold->SetValue( m_isBold );
 
     return true;
 }
@@ -225,12 +217,14 @@ bool DIALOG_EDIT_ONE_FIELD::TransferDataFromWindow()
         }
     }
 
-    m_orientation = m_Orient->GetValue();
-    m_size = ValueFromString( g_UserUnit, m_TextSize->GetValue() );
-    m_horizontalJustification = m_TextHJustificationOpt->GetSelection();
-    m_verticalJustification = m_TextVJustificationOpt->GetSelection();
-    m_isVisible = !m_Invisible->GetValue();
-    m_style = m_TextShapeOpt->GetSelection();
+    m_isVertical = m_orientChoice->GetSelection() == 1;
+    m_position = wxPoint( m_posX.GetValue(), m_posY.GetValue() );
+    m_size = m_textSize.GetValue();
+    m_horizontalJustification = m_hAlignChoice->GetSelection();
+    m_verticalJustification = m_vAlignChoice->GetSelection();
+    m_isVisible = m_visible->GetValue();
+    m_isItalic = m_italic->GetValue();
+    m_isBold = m_bold->GetValue();
 
     return true;
 }
@@ -238,11 +232,12 @@ bool DIALOG_EDIT_ONE_FIELD::TransferDataFromWindow()
 
 void DIALOG_EDIT_ONE_FIELD::updateText( EDA_TEXT* aText )
 {
+    aText->SetTextPos( m_position );
     aText->SetTextSize( wxSize( m_size, m_size ) );
     aText->SetVisible( m_isVisible );
-    aText->SetTextAngle( m_orientation ? TEXT_ANGLE_VERT : TEXT_ANGLE_HORIZ );
-    aText->SetItalic( (m_style & 1) != 0 );
-    aText->SetBold( (m_style & 2) != 0 );
+    aText->SetTextAngle( m_isVertical ? TEXT_ANGLE_VERT : TEXT_ANGLE_HORIZ );
+    aText->SetItalic( m_isItalic );
+    aText->SetBold( m_isBold );
     aText->SetHorizJustify( IntToEdaTextHorizJustify( m_horizontalJustification - 1 ) );
     aText->SetVertJustify( IntToEdaTextVertJustify( m_verticalJustification - 1 ) );
 }
@@ -270,7 +265,7 @@ DIALOG_SCH_EDIT_ONE_FIELD::DIALOG_SCH_EDIT_ONE_FIELD( SCH_BASE_FRAME* aParent,
 
     const SCH_COMPONENT* component = (SCH_COMPONENT*) aField->GetParent();
 
-    wxASSERT_MSG( component != NULL && component->Type() == SCH_COMPONENT_T,
+    wxASSERT_MSG( component && component->Type() == SCH_COMPONENT_T,
                   wxT( "Invalid schematic field parent item." ) );
 
     // The library symbol may have been removed so using SCH_COMPONENT::GetPartRef() here
@@ -287,37 +282,36 @@ DIALOG_SCH_EDIT_ONE_FIELD::DIALOG_SCH_EDIT_ONE_FIELD( SCH_BASE_FRAME* aParent,
 
 void DIALOG_SCH_EDIT_ONE_FIELD::UpdateField( SCH_FIELD* aField, SCH_SHEET_PATH* aSheetPath )
 {
-    wxASSERT( aField != NULL || aField->Type() != SCH_FIELD_T );
-
     if( aField->GetId() == REFERENCE )
     {
-        wxASSERT( aSheetPath != NULL );
+        wxASSERT( aSheetPath  );
 
         SCH_COMPONENT* component = dynamic_cast< SCH_COMPONENT* >( aField->GetParent() );
 
-        wxASSERT( component != NULL );
+        wxASSERT( component  );
 
-        if( component != NULL )
+        if( component )
             component->SetRef( aSheetPath, m_text );
     }
 
-    bool modified = false;
+    bool positioningModified = false;
 
-    modified = ( modified ||
-                 ( ( aField->GetTextAngle() == TEXT_ANGLE_VERT ) != m_orientation ) );
+    if( aField->GetTextPos() != m_position )
+        positioningModified = true;
 
-    modified = ( modified ||
-                 ( ( aField->GetHorizJustify() !=
-                     IntToEdaTextHorizJustify( m_horizontalJustification - 1 ) ) ) );
+    if( ( aField->GetTextAngle() == TEXT_ANGLE_VERT ) != m_isVertical )
+        positioningModified = true;
 
-    modified = ( modified ||
-                 ( ( aField->GetVertJustify() !=
-                     IntToEdaTextVertJustify( m_verticalJustification - 1 ) ) ) );
+    if( aField->GetHorizJustify() != IntToEdaTextHorizJustify( m_horizontalJustification - 1 ) )
+        positioningModified = true;
+
+    if( aField->GetVertJustify() != IntToEdaTextVertJustify( m_verticalJustification - 1 ) )
+        positioningModified = true;
 
     aField->SetText( m_text );
     updateText( aField );
 
-    if( modified )
+    if( positioningModified )
     {
         auto component = static_cast< SCH_COMPONENT* >( aField->GetParent() );
         component->ClearFieldsAutoplaced();

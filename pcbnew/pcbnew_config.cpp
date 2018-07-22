@@ -42,23 +42,21 @@
 #include <board_design_settings.h>
 #include <plotter.h>
 #include <worksheet.h>
-#include <dialog_hotkeys_editor.h>
+#include <panel_hotkeys_editor.h>
+#include <panel_pcbnew_settings.h>
+#include <panel_pcbnew_display_options.h>
 #include <fp_lib_table.h>
 #include <worksheet_shape_builder.h>
-
 #include <class_board.h>
 #include <class_module.h>
 #include <pcbplot.h>
-#include <pcbnew.h>
 #include <pcbnew_id.h>
 #include <hotkeys.h>
 #include <footprint_viewer_frame.h>
-
 #include <invoke_pcb_dialog.h>
-#include <dialog_mask_clearance.h>
-#include <dialog_general_options.h>
 #include <wildcards_and_files_ext.h>
 #include <view/view.h>
+#include <widgets/paged_dialog.h>
 
 
 void PCB_EDIT_FRAME::Process_Config( wxCommandEvent& event )
@@ -68,28 +66,6 @@ void PCB_EDIT_FRAME::Process_Config( wxCommandEvent& event )
 
     switch( id )
     {
-    case ID_PCB_LAYERS_SETUP:
-        if( InvokeLayerSetup( this, GetBoard() ) )
-        {
-            PCB_LAYER_ID cur_layer = GetActiveLayer();
-
-            // If after showing the dialog the user has removed the active layer,
-            // then select a new active layer (front copper layer).
-            if( !GetBoard()->GetEnabledLayers()[ cur_layer ] )
-                cur_layer = F_Cu;
-
-            SetActiveLayer( cur_layer );
-            OnModify();
-            ReCreateLayerBox();
-            ReFillLayerWidget();
-
-            if( IsGalCanvasActive() )
-                static_cast<PCB_DRAW_PANEL_GAL*>( GetGalCanvas() )->SyncLayersVisibility( GetBoard() );
-
-            GetCanvas()->Refresh();
-        }
-        break;
-
     case ID_PCB_LIB_TABLE_EDIT:
         {
             bool tableChanged = false;
@@ -152,76 +128,11 @@ void PCB_EDIT_FRAME::Process_Config( wxCommandEvent& event )
 #endif
         break;
 
-    case ID_PCB_MASK_CLEARANCE:
-        {
-            DIALOG_PADS_MASK_CLEARANCE dlg( this );
-
-            if( dlg.ShowModal() == 1 && IsGalCanvasActive() )
-            {
-                for( MODULE* module = GetBoard()->m_Modules; module; module = module->Next() )
-                    GetGalCanvas()->GetView()->Update( module );
-
-                GetGalCanvas()->Refresh();
-            }
-        }
-        break;
-
     case wxID_PREFERENCES:
-        {
-            DIALOG_GENERALOPTIONS dlg( this );
-            dlg.ShowModal();
-        }
-        break;
-
-    case ID_PCB_PAD_SETUP:
-        InstallPadOptionsFrame( NULL );
-        break;
-
-    case ID_CONFIG_SAVE:
-        SaveProjectSettings( true );
-        break;
-
-    case ID_CONFIG_READ:
-        {
-            fn = GetBoard()->GetFileName();
-            fn.SetExt( ProjectFileExtension );
-
-            wxFileDialog dlg( this, _( "Load Project File" ), fn.GetPath(),
-                              fn.GetFullName(), ProjectFileWildcard(),
-                              wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_CHANGE_DIR );
-
-            if( dlg.ShowModal() == wxID_CANCEL )
-                break;
-
-            if( !wxFileExists( dlg.GetPath() ) )
-            {
-                wxString msg = wxString::Format( _(
-                        "File %s not found" ),
-                        GetChars( dlg.GetPath() )
-                        );
-                DisplayError( this, msg );
-                break;
-            }
-
-            wxString pro_file = dlg.GetPath();
-
-            Prj().ConfigLoad( Kiface().KifaceSearch(), GROUP_PCB, GetProjectFileParameters(), pro_file );
-        }
+        ShowPreferences( g_Pcbnew_Editor_Hotkeys_Descr, g_Board_Editor_Hotkeys_Descr, wxT( "pcbnew" ) );
         break;
 
     // Hotkey IDs
-    case ID_PREFERENCES_HOTKEY_EXPORT_CONFIG:
-        ExportHotkeyConfigToFile( g_Pcbnew_Editor_Hotkeys_Descr, wxT( "pcbnew" ) );
-        break;
-
-    case ID_PREFERENCES_HOTKEY_IMPORT_CONFIG:
-        ImportHotkeyConfigFromFile( g_Pcbnew_Editor_Hotkeys_Descr, wxT( "pcbnew" ) );
-        break;
-
-    case ID_PREFERENCES_HOTKEY_SHOW_EDITOR:
-        InstallHotkeyFrame( this, g_Pcbnew_Editor_Hotkeys_Descr, g_Board_Editor_Hotkeys_Descr );
-        break;
-
     case ID_PREFERENCES_HOTKEY_SHOW_CURRENT_LIST:
         // Display current hotkey list for Pcbnew.
         DisplayHotkeyList( this, g_Board_Editor_Hotkeys_Descr );
@@ -232,6 +143,15 @@ void PCB_EDIT_FRAME::Process_Config( wxCommandEvent& event )
                 wxString::Format(  "PCB_EDIT_FRAME::Process_Config received ID %d", id ) );
         break;
     }
+}
+
+
+void PCB_EDIT_FRAME::InstallPreferences( PAGED_DIALOG* aParent )
+{
+    wxTreebook* book = aParent->GetTreebook();
+
+    book->AddPage( new PANEL_PCBNEW_SETTINGS( this, aParent ), _( "Pcbnew" ) );
+    book->AddSubPage( new PANEL_PCBNEW_DISPLAY_OPTIONS( this, aParent ), _( "Display Options" ) );
 }
 
 
@@ -290,7 +210,7 @@ PARAM_CFG_ARRAY PCB_EDIT_FRAME::GetProjectFileParameters()
 
     pca.push_back( new PARAM_CFG_FILENAME( wxT( "LastNetListRead" ), &m_lastNetListRead ) );
 
-    GetBoard()->GetDesignSettings().AppendConfigs( &pca );
+    GetBoard()->GetDesignSettings().AppendConfigs( GetBoard(), &pca );
 
     return pca;
 }
@@ -302,11 +222,6 @@ PARAM_CFG_ARRAY& PCB_EDIT_FRAME::GetConfigurationSettings()
 
     if( m_configParams.empty() )
     {
-
-        // Units used in dialogs and toolbars
-        m_configParams.push_back( new PARAM_CFG_INT( true, wxT( "Units" ),
-                                                       (int*)&g_UserUnit, MILLIMETRES ) );
-
         m_configParams.push_back( new PARAM_CFG_BOOL( true, wxT( "DisplayPolarCoords" ),
                                                         &displ_opts->m_DisplayPolarCood, false ) );
         // Display options and modes:
@@ -334,21 +249,11 @@ PARAM_CFG_ARRAY& PCB_EDIT_FRAME::GetConfigurationSettings()
         m_configParams.push_back( new PARAM_CFG_INT( true, wxT( "PcbShowZonesMode" ),
                                                        &displ_opts->m_DisplayZonesMode, 0, 0, 2 ) );
 
-        // layer colors:
-
-
         // Miscellaneous:
-        m_configParams.push_back( new PARAM_CFG_INT( true, wxT( "RotationAngle" ), &m_rotationAngle,
-                                                       900, 1, 900 ) );
+        m_configParams.push_back( new PARAM_CFG_INT( true, wxT( "RotationAngle" ),
+                                                       &m_rotationAngle, 900, 1, 900 ) );
         m_configParams.push_back( new PARAM_CFG_INT( true, wxT( "MaxLnkS" ),
-                                                       &displ_opts->m_MaxLinksShowed,
-                                                       3, 0, 15 ) );
-
-//FIXMEd
-/*        m_configParams.push_back( new PARAM_CFG_BOOL( true, wxT( "TwoSegT" ),
-                                                        &g_TwoSegmentTrackBuild, true ) );
-        m_configParams.push_back( new PARAM_CFG_BOOL( true, wxT( "SegmPcb45Only" )
-                                                        , &g_Segments_45_Only, true ) );*/
+                                                       &displ_opts->m_MaxLinksShowed, 3, 0, 15 ) );
     }
 
     return m_configParams;

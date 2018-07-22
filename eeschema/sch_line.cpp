@@ -607,40 +607,39 @@ void SCH_LINE::GetConnectionPoints( std::vector< wxPoint >& aPoints ) const
 }
 
 
-wxString SCH_LINE::GetSelectMenuText() const
+wxString SCH_LINE::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
-    wxString menuText, txtfmt, orient;
+    wxString txtfmt, orient;
 
     if( m_start.x == m_end.x )
-        orient = _( "Vert." );
+        orient = _( "Vertical " );
     else if( m_start.y == m_end.y )
-        orient = _( "Horiz." );
+        orient = _( "Horizontal " );
 
     switch( m_Layer )
     {
     case LAYER_NOTES:
-        txtfmt = _( "%s Graphic Line from (%s,%s) to (%s,%s)" );
+        txtfmt = _( "%sGraphic Line from (%s, %s) to (%s, %s)" );
         break;
 
     case LAYER_WIRE:
-        txtfmt = _( "%s Wire from (%s,%s) to (%s,%s)" );
+        txtfmt = _( "%sWire from (%s, %s) to (%s, %s)" );
         break;
 
     case LAYER_BUS:
-        txtfmt = _( "%s Bus from (%s,%s) to (%s,%s)" );
+        txtfmt = _( "%sBus from (%s, %s) to (%s, %s)" );
         break;
 
     default:
-        txtfmt += _( "%s Line on Unknown Layer from (%s,%s) to (%s,%s)" );
+        txtfmt = _( "%sLine on Unknown Layer from (%s, %s) to (%s, %s)" );
     }
 
-    menuText.Printf( txtfmt, GetChars( orient ),
-                     GetChars( CoordinateToString( m_start.x ) ),
-                     GetChars( CoordinateToString( m_start.y ) ),
-                     GetChars( CoordinateToString( m_end.x ) ),
-                     GetChars( CoordinateToString( m_end.y ) ) );
-
-    return menuText;
+    return wxString::Format( txtfmt,
+                             orient,
+                             MessageTextFromValue( aUnits, m_start.x ),
+                             MessageTextFromValue( aUnits, m_start.y ),
+                             MessageTextFromValue( aUnits, m_end.x ),
+                             MessageTextFromValue( aUnits, m_end.y ) );
 }
 
 
@@ -781,7 +780,7 @@ wxPoint SCH_LINE::MidPoint()
 }
 
 
-void SCH_LINE::GetMsgPanelInfo( MSG_PANEL_ITEMS& aList )
+void SCH_LINE::GetMsgPanelInfo( EDA_UNITS_T aUnits, MSG_PANEL_ITEMS& aList )
 {
     wxString msg;
 
@@ -825,42 +824,13 @@ int SCH_EDIT_FRAME::EditLine( SCH_LINE* aLine, bool aRedraw )
     if( aLine->GetLayer() != LAYER_NOTES )
         return wxID_CANCEL;
 
-    DIALOG_EDIT_LINE_STYLE dlg( this );
-    wxString units = GetAbbreviatedUnitsLabel( g_UserUnit );
-    int old_style = aLine->GetLineStyle();
-    int old_width = aLine->GetPenSize();
-    COLOR4D old_color = aLine->GetLineColor();
+    DIALOG_EDIT_LINE_STYLE dlg( this, aLine );
 
-    dlg.SetDefaultStyle( aLine->GetDefaultStyle() );
-    dlg.SetDefaultWidth( StringFromValue( g_UserUnit, aLine->GetDefaultWidth(), false ) );
-    dlg.SetDefaultColor( aLine->GetDefaultColor() );
-
-    dlg.SetWidth( StringFromValue( g_UserUnit, old_width, false ) );
-    dlg.SetStyle( old_style );
-    dlg.SetLineWidthUnits( units );
-    dlg.SetColor( old_color, true );
-
-    dlg.Layout();
-    dlg.Fit();
-    dlg.SetMinSize( dlg.GetSize() );
     if( dlg.ShowModal() == wxID_CANCEL )
         return wxID_CANCEL;
 
-    int new_width = std::max( 1, ValueFromString( dlg.GetWidth() ) );
-    int new_style = dlg.GetStyle();
-    COLOR4D new_color = dlg.GetColor();
-
-    if( new_width != old_width || new_style != old_style || new_color != old_color )
-    {
-        SaveCopyInUndoList( (SCH_ITEM*) aLine, UR_CHANGED );
-        aLine->SetLineWidth( new_width );
-        aLine->SetLineStyle( new_style );
-        aLine->SetLineColor( new_color );
-
-        OnModify();
-        if( aRedraw )
-            m_canvas->Refresh();
-    }
+    if( aRedraw )
+        m_canvas->Refresh();
 
     return wxID_OK;
 }

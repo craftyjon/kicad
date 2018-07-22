@@ -648,7 +648,7 @@ int NETLIST_OBJECT_LIST::CountPinsInNet( unsigned aNetStart )
     return count;
 }
 
-bool WriteDiagnosticERC( const wxString& aFullFileName )
+bool WriteDiagnosticERC( EDA_UNITS_T aUnits, const wxString& aFullFileName )
 {
     wxString    msg;
 
@@ -689,7 +689,7 @@ bool WriteDiagnosticERC( const wxString& aFullFileName )
             if( marker->GetErrorLevel() == MARKER_BASE::MARKER_SEVERITY_WARNING )
                 warn_count++;
 
-            msg << marker->GetReporter().ShowReport();
+            msg << marker->GetReporter().ShowReport( aUnits );
         }
     }
 

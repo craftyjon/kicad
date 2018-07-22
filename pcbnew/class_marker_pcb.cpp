@@ -34,6 +34,7 @@
 #include <trigo.h>
 #include <msgpanel.h>
 #include <bitmaps.h>
+#include <base_units.h>
 
 #include <pcbnew.h>
 #include <class_marker_pcb.h>
@@ -46,7 +47,18 @@
 
 MARKER_PCB::MARKER_PCB( BOARD_ITEM* aParent ) :
     BOARD_ITEM( aParent, PCB_MARKER_T ),
-    MARKER_BASE(), m_item( NULL )
+    MARKER_BASE(), m_item( nullptr )
+{
+    m_Color = WHITE;
+    m_ScalingFactor = SCALING_FACTOR;
+}
+
+
+MARKER_PCB::MARKER_PCB( EDA_UNITS_T aUnits, int aErrorCode, const wxPoint& aMarkerPos,
+                        BOARD_ITEM* aItem, const wxPoint& aPos,
+                        BOARD_ITEM* bItem, const wxPoint& bPos ) :
+    BOARD_ITEM( nullptr, PCB_MARKER_T ),  // parent set during BOARD::Add()
+    MARKER_BASE( aUnits, aErrorCode, aMarkerPos, aItem, aPos, bItem, bPos ), m_item( nullptr )
 {
     m_Color = WHITE;
     m_ScalingFactor = SCALING_FACTOR;
@@ -56,17 +68,8 @@ MARKER_PCB::MARKER_PCB( BOARD_ITEM* aParent ) :
 MARKER_PCB::MARKER_PCB( int aErrorCode, const wxPoint& aMarkerPos,
                         const wxString& aText, const wxPoint& aPos,
                         const wxString& bText, const wxPoint& bPos ) :
-    BOARD_ITEM( NULL, PCB_MARKER_T ),  // parent set during BOARD::Add()
-    MARKER_BASE( aErrorCode, aMarkerPos, aText, aPos, bText, bPos ), m_item( NULL )
-{
-    m_Color = WHITE;
-    m_ScalingFactor = SCALING_FACTOR;
-}
-
-MARKER_PCB::MARKER_PCB( int aErrorCode, const wxPoint& aMarkerPos,
-                        const wxString& aText, const wxPoint& aPos ) :
-    BOARD_ITEM( NULL, PCB_MARKER_T ),  // parent set during BOARD::Add()
-    MARKER_BASE( aErrorCode, aMarkerPos, aText,  aPos ), m_item( NULL )
+    BOARD_ITEM( nullptr, PCB_MARKER_T ),  // parent set during BOARD::Add()
+    MARKER_BASE( aErrorCode, aMarkerPos, aText, aPos, bText, bPos ), m_item( nullptr )
 {
     m_Color = WHITE;
     m_ScalingFactor = SCALING_FACTOR;
@@ -90,29 +93,22 @@ bool MARKER_PCB::IsOnLayer( PCB_LAYER_ID aLayer ) const
     return IsCopperLayer( aLayer );
 }
 
-void MARKER_PCB::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
+void MARKER_PCB::GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector< MSG_PANEL_ITEM >& aList )
 {
-    const DRC_ITEM& rpt = m_drc;
+    wxString errorTxt, txtA, txtB;
 
-    aList.push_back( MSG_PANEL_ITEM( _( "Type" ), _( "Marker" ), DARKCYAN ) );
+    aList.emplace_back( MSG_PANEL_ITEM( _( "Type" ), _( "Marker" ), DARKCYAN ) );
 
-    wxString errorTxt;
+    errorTxt.Printf( _( "ErrType (%d)- %s:" ), m_drc.GetErrorCode(), m_drc.GetErrorText() );
 
-    errorTxt.Printf( _( "ErrType (%d)- %s:" ),
-            rpt.GetErrorCode(),
-            GetChars( rpt.GetErrorText() ) );
+    aList.emplace_back( MSG_PANEL_ITEM( errorTxt, wxEmptyString, RED ) );
 
-    aList.push_back( MSG_PANEL_ITEM( errorTxt, wxEmptyString, RED ) );
+    txtA.Printf( wxT( "%s: %s" ), DRC_ITEM::ShowCoord( aUnits, m_drc.GetPointA() ), m_drc.GetTextA() );
 
-    wxString txtA;
-    txtA << DRC_ITEM::ShowCoord( rpt.GetPointA() ) << wxT( ": " ) << rpt.GetTextA();
+    if( m_drc.HasSecondItem() )
+        txtB.Printf( wxT( "%s: %s" ), DRC_ITEM::ShowCoord( aUnits, m_drc.GetPointB() ), m_drc.GetTextB() );
 
-    wxString txtB;
-
-    if ( rpt.HasSecondItem() )
-        txtB << DRC_ITEM::ShowCoord( rpt.GetPointB() ) << wxT( ": " ) << rpt.GetTextB();
-
-    aList.push_back( MSG_PANEL_ITEM( txtA, txtB, DARKBROWN ) );
+    aList.emplace_back( MSG_PANEL_ITEM( txtA, txtB, DARKBROWN ) );
 }
 
 
@@ -128,12 +124,11 @@ void MARKER_PCB::Flip(const wxPoint& aCentre )
 }
 
 
-wxString MARKER_PCB::GetSelectMenuText() const
+wxString MARKER_PCB::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
-    wxString text;
-    text.Printf( _( "Marker @(%d,%d)" ), GetPos().x, GetPos().y );
-
-    return text;
+    return wxString::Format( _( "Marker @(%s, %s)" ),
+                             MessageTextFromValue( aUnits, m_Pos.x ),
+                             MessageTextFromValue( aUnits, m_Pos.y ) );
 }
 
 

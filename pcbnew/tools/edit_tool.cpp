@@ -185,77 +185,53 @@ TOOL_ACTION PCB_ACTIONS::cutToClipboard( "pcbnew.InteractiveEdit.CutToClipboard"
         _( "Cut" ), _( "Cut selected content to clipboard" ),
         cut_xpm );
 
-static wxPoint getAnchorPoint( const SELECTION &selection, const MOVE_PARAMETERS &params )
+void filterItems( GENERAL_COLLECTOR& aCollector, bool sanitizePads, bool ensureEditable )
 {
-    wxPoint anchorPoint;
-
-    if( params.origin == RELATIVE_TO_CURRENT_POSITION )
+    // Iterate from the back so we don't have to worry about removals.
+    for( int i = aCollector.GetCount() - 1; i >= 0; --i )
     {
-        return wxPoint( 0, 0 );
-    }
+        BOARD_ITEM* item = aCollector[ i ];
 
-    // set default anchor
-    VECTOR2I rp = selection.GetCenter();
-    anchorPoint = wxPoint( rp.x, rp.y );
-
-    // If the anchor is not ANCHOR_FROM_LIBRARY then the user applied an override.
-    // Also run through this block if only one item is slected because it may be a module,
-    // in which case we want something different than the center of the selection
-    if( ( params.anchor != ANCHOR_FROM_LIBRARY ) || ( selection.GetSize() == 1 ) )
-    {
-        BOARD_ITEM* topLeftItem = static_cast<BOARD_ITEM*>( selection.GetTopLeftModule() );
-
-        // no module found if the GetTopLeftModule() returns null
-        if( topLeftItem != nullptr )
+        if( sanitizePads && item->Type() == PCB_PAD_T )
         {
-            if( topLeftItem->Type() == PCB_MODULE_T )
+            MODULE* mod = static_cast<MODULE*>( item->GetParent() );
+
+            // case 1: module (or its pads) are locked
+            if( mod && ( mod->PadsLocked() || mod->IsLocked() ) )
             {
-                // Cast to module to allow access to the pads
-                MODULE* mod = static_cast<MODULE*>( topLeftItem );
+                aCollector.Remove( item );
 
-                switch( params.anchor )
-                {
-                case ANCHOR_FROM_LIBRARY:
-                    anchorPoint = mod->GetPosition();
-                    break;
-
-                case ANCHOR_TOP_LEFT_PAD:
-                    topLeftItem = mod->GetTopLeftPad();
-                    break;
-
-                case ANCHOR_CENTER_FOOTPRINT:
-                    anchorPoint = mod->GetFootprintRect().GetCenter();
-                    break;
-                }
+                if( !mod->IsLocked() && !aCollector.HasItem( mod ) )
+                    aCollector.Append( mod );
             }
 
-            if( topLeftItem->Type() == PCB_PAD_T )
-            {
-                if( static_cast<D_PAD*>( topLeftItem )->GetAttribute() == PAD_ATTRIB_SMD )
-                {
-                    // Use the top left corner of SMD pads as an anchor instead of the center
-                    anchorPoint = topLeftItem->GetBoundingBox().GetPosition();
-                }
-                else
-                {
-                    anchorPoint = topLeftItem->GetPosition();
-                }
-            }
+            // case 2: selection contains both the module and its pads - remove the pads
+            if( mod && aCollector.HasItem( mod ) )
+                aCollector.Remove( item );
         }
-        else // no module found in the selection
+        else if( ensureEditable && item->Type() == PCB_MARKER_T )
         {
-            // in a selection of non-modules
-            if( params.anchor == ANCHOR_TOP_LEFT_PAD )
-            {
-                // approach the top left pad override for non-modules by using the position of
-                // the topleft item as an anchor
-                topLeftItem = static_cast<BOARD_ITEM*>( selection.GetTopLeftItem() );
-                anchorPoint = topLeftItem->GetPosition();
-            }
+            aCollector.Remove( item );
         }
     }
+}
 
-    return anchorPoint;
+
+void SanitizePadsEnsureEditableFilter( const VECTOR2I&, GENERAL_COLLECTOR& aCollector )
+{
+    filterItems( aCollector, true, true );
+}
+
+
+void SanitizePadsFilter( const VECTOR2I&, GENERAL_COLLECTOR& aCollector )
+{
+    filterItems( aCollector, true, false );
+}
+
+
+void EnsureEditableFilter( const VECTOR2I&, GENERAL_COLLECTOR& aCollector )
+{
+    filterItems( aCollector, false, true );
 }
 
 
@@ -285,6 +261,14 @@ bool EDIT_TOOL::Init()
         DisplayError( NULL, wxT( "pcbnew.InteractiveSelection tool is not available" ) );
         return false;
     }
+
+    PCB_BASE_EDIT_FRAME* editFrame = getEditFrame<PCB_BASE_EDIT_FRAME>();
+
+    m_defaultSelectionFilter = SanitizePadsEnsureEditableFilter;
+
+    // Allow pad editing in Footprint Editor
+    if( editFrame->IsType( FRAME_PCB_MODULE_EDITOR ) )
+        m_defaultSelectionFilter = EnsureEditableFilter;
 
     auto editingModuleCondition = [ this ] ( const SELECTION& aSelection ) {
         return m_editModules;
@@ -388,7 +372,7 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
 
     // Be sure that there is at least one item that we can modify. If nothing was selected before,
     // try looking for the stuff under mouse cursor (i.e. Kicad old-style hover selection)
-    auto& selection = m_selectionTool->RequestSelection( SELECTION_DEFAULT );
+    auto& selection = m_selectionTool->RequestSelection( m_defaultSelectionFilter );
 
     if( selection.Empty() )
         return 0;
@@ -643,10 +627,9 @@ int EDIT_TOOL::Properties( const TOOL_EVENT& aEvent )
 {
     PCB_BASE_EDIT_FRAME* editFrame = getEditFrame<PCB_BASE_EDIT_FRAME>();
 
-    const auto& selection = m_selectionTool->RequestSelection(
-            SELECTION_EDITABLE | SELECTION_DELETABLE | SELECTION_FORCE_UNLOCK );
+    const auto& selection = m_selectionTool->RequestSelection( EnsureEditableFilter );
 
-    if( selection.Empty() )
+    if( m_selectionTool->CheckLock() == SELECTION_LOCKED )
         return 0;
 
     // Tracks & vias are treated in a special way:
@@ -654,13 +637,8 @@ int EDIT_TOOL::Properties( const TOOL_EVENT& aEvent )
     {
         if ( !changeTrackWidthOnClick( selection ) )
         {
-            DIALOG_TRACK_VIA_PROPERTIES dlg( editFrame, selection );
-
-            if( dlg.ShowModal() )
-            {
-                dlg.Apply( *m_commit );
-                m_commit->Push( _( "Edit track/via properties" ) );
-            }
+            DIALOG_TRACK_VIA_PROPERTIES dlg( editFrame, selection, *m_commit );
+            dlg.ShowModal();
         }
     }
     else if( selection.Size() == 1 ) // Properties are displayed when there is only one item selected
@@ -694,7 +672,7 @@ int EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
 {
     PCB_BASE_EDIT_FRAME* editFrame = getEditFrame<PCB_BASE_EDIT_FRAME>();
 
-    auto& selection = m_selectionTool->RequestSelection();
+    auto& selection = m_selectionTool->RequestSelection( m_defaultSelectionFilter );
 
     if( selection.Empty() )
         return 0;
@@ -765,7 +743,7 @@ static void mirrorPadX( D_PAD& aPad, const wxPoint& aMirrorPoint )
 
 int EDIT_TOOL::Mirror( const TOOL_EVENT& aEvent )
 {
-    auto& selection = m_selectionTool->RequestSelection();
+    auto& selection = m_selectionTool->RequestSelection( m_defaultSelectionFilter );
 
     if( m_selectionTool->CheckLock() == SELECTION_LOCKED )
         return 0;
@@ -839,7 +817,7 @@ int EDIT_TOOL::Mirror( const TOOL_EVENT& aEvent )
 
 int EDIT_TOOL::Flip( const TOOL_EVENT& aEvent )
 {
-    auto& selection = m_selectionTool->RequestSelection();
+    auto& selection = m_selectionTool->RequestSelection( m_defaultSelectionFilter );
 
     if( m_selectionTool->CheckLock() == SELECTION_LOCKED )
         return 0;
@@ -879,8 +857,8 @@ int EDIT_TOOL::Remove( const TOOL_EVENT& aEvent )
     if( routerTool && routerTool->Router() && routerTool->Router()->RoutingInProgress() )
         return 0;
 
-    // get a copy instead of reference (as we're going to clear the selectio before removing items)
-    auto selection = m_selectionTool->RequestSelection( SELECTION_DELETABLE | SELECTION_SANITIZE_PADS );
+    // get a copy instead of reference (as we're going to clear the selection before removing items)
+    auto selection = m_selectionTool->RequestSelection( m_defaultSelectionFilter );
 
     if( m_selectionTool->CheckLock() == SELECTION_LOCKED )
         return 0;
@@ -914,7 +892,7 @@ int EDIT_TOOL::Remove( const TOOL_EVENT& aEvent )
 
 int EDIT_TOOL::MoveExact( const TOOL_EVENT& aEvent )
 {
-    const auto& selection = m_selectionTool->RequestSelection();
+    const auto& selection = m_selectionTool->RequestSelection( m_defaultSelectionFilter );
 
     if( m_selectionTool->CheckLock() == SELECTION_LOCKED )
         return 0;
@@ -923,32 +901,46 @@ int EDIT_TOOL::MoveExact( const TOOL_EVENT& aEvent )
         return 0;
 
     PCB_BASE_FRAME* editFrame = getEditFrame<PCB_BASE_FRAME>();
+    wxPoint         translation;
+    double          rotation;
+    ROTATION_ANCHOR rotationAnchor = selection.Size() > 1 ? ROTATE_AROUND_SEL_CENTER
+                                                          : ROTATE_AROUND_ITEM_ANCHOR;
 
-    MOVE_PARAMETERS params;
-    params.editingFootprint = m_editModules;
-
-    DIALOG_MOVE_EXACT dialog( editFrame, params );
+    DIALOG_MOVE_EXACT dialog( editFrame, translation, rotation, rotationAnchor );
     int ret = dialog.ShowModal();
 
     if( ret == wxID_OK )
     {
         VECTOR2I rp = selection.GetCenter();
-        wxPoint rotPoint( rp.x, rp.y );
-
-        wxPoint anchorPoint = getAnchorPoint( selection, params );
-
-        wxPoint finalMoveVector = params.translation - anchorPoint;
+        wxPoint selCenter( rp.x, rp.y );
 
         // Make sure the rotation is from the right reference point
-        rotPoint += finalMoveVector;
+        selCenter += translation;
 
-        for( auto item : selection )
+        for( auto selItem : selection )
         {
+            BOARD_ITEM* item = dynamic_cast<BOARD_ITEM*>( selItem );
+
             if( !item->IsNew() )
                 m_commit->Modify( item );
 
-            static_cast<BOARD_ITEM*>( item )->Move( finalMoveVector );
-            static_cast<BOARD_ITEM*>( item )->Rotate( rotPoint, params.rotation );
+            item->Move( translation );
+
+            switch( rotationAnchor )
+            {
+            case ROTATE_AROUND_ITEM_ANCHOR:
+                item->Rotate( item->GetPosition(), rotation );
+                break;
+            case ROTATE_AROUND_SEL_CENTER:
+                item->Rotate( selCenter, rotation );
+                break;
+            case ROTATE_AROUND_USER_ORIGIN:
+                item->Rotate( editFrame->GetScreen()->m_O_Curseur, rotation );
+                break;
+            case ROTATE_AROUND_AUX_ORIGIN:
+                item->Rotate( editFrame->GetAuxOrigin(), rotation );
+                break;
+            }
 
             if( !m_dragging )
                 getView()->Update( item );
@@ -971,7 +963,7 @@ int EDIT_TOOL::Duplicate( const TOOL_EVENT& aEvent )
     bool increment = aEvent.IsAction( &PCB_ACTIONS::duplicateIncrement );
 
     // Be sure that there is at least one item that we can modify
-    const auto& selection = m_selectionTool->RequestSelection( SELECTION_DELETABLE | SELECTION_SANITIZE_PADS );
+    const auto& selection = m_selectionTool->RequestSelection( m_defaultSelectionFilter );
 
     if( selection.Empty() )
         return 0;
@@ -1116,7 +1108,7 @@ private:
 
 int EDIT_TOOL::CreateArray( const TOOL_EVENT& aEvent )
 {
-    const auto& selection = m_selectionTool->RequestSelection();
+    const auto& selection = m_selectionTool->RequestSelection( m_defaultSelectionFilter );
 
     if( selection.Empty() )
         return 0;
@@ -1144,7 +1136,7 @@ void EDIT_TOOL::FootprintFilter( const VECTOR2I&, GENERAL_COLLECTOR& aCollector 
 
 int EDIT_TOOL::ExchangeFootprints( const TOOL_EVENT& aEvent )
 {
-    const auto& selection = m_selectionTool->RequestSelection( 0, FootprintFilter );
+    const auto& selection = m_selectionTool->RequestSelection( FootprintFilter );
 
     bool updateMode = aEvent.IsAction( &PCB_ACTIONS::updateFootprints );
 
@@ -1180,7 +1172,7 @@ int EDIT_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 
     KIGFX::PREVIEW::TWO_POINT_GEOMETRY_MANAGER twoPtMgr;
 
-    KIGFX::PREVIEW::RULER_ITEM ruler( twoPtMgr );
+    KIGFX::PREVIEW::RULER_ITEM ruler( twoPtMgr, frame()->GetUserUnits() );
 
     view.Add( &ruler );
     view.SetVisible( &ruler, false );
@@ -1328,7 +1320,7 @@ bool EDIT_TOOL::updateModificationPoint( SELECTION& aSelection )
 
 int EDIT_TOOL::editFootprintInFpEditor( const TOOL_EVENT& aEvent )
 {
-    const auto& selection = m_selectionTool->RequestSelection( 0, FootprintFilter );
+    const auto& selection = m_selectionTool->RequestSelection( FootprintFilter );
 
     if( selection.Empty() )
         return 0;
@@ -1393,7 +1385,7 @@ int EDIT_TOOL::copyToClipboard( const TOOL_EVENT& aEvent )
 
     std::vector<MSG_PANEL_ITEM> msgItems = { item1 };
 
-    SELECTION& selection = m_selectionTool->RequestSelection();
+    SELECTION& selection = m_selectionTool->RequestSelection( m_defaultSelectionFilter );
 
     if( selection.Empty() )
         return 1;

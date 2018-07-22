@@ -30,7 +30,6 @@
 #include <fctsys.h>
 #include <build_version.h>
 #include <kiway_express.h>
-#include <pgm_base.h>
 #include <kiface_i.h>
 #include <kiface_ids.h>
 #include <macros.h>
@@ -41,13 +40,16 @@
 #include <netlist_reader.h>
 #include <bitmaps.h>
 #include <widgets/progress_reporter.h>
-
-#include <cvpcb_mainframe.h>
+#include <3d_cache/3d_cache.h>
+#include <dialog_configure_paths.h>
 #include <cvpcb.h>
 #include <listboxes.h>
+#include <wx/statline.h>
 #include <invoke_pcb_dialog.h>
 #include <display_footprints_frame.h>
 #include <cvpcb_id.h>
+
+#include <cvpcb_mainframe.h>
 
 wxSize const FRAME_MIN_SIZE_DU( 350, 250 );
 wxSize const FRAME_DEFAULT_SIZE_DU( 450, 300 );
@@ -173,16 +175,26 @@ CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent ) :
     // Build the bottom panel, to display 2 status texts and the buttons:
     auto bottomPanel = new wxPanel( this );
     auto panelSizer = new wxBoxSizer( wxVERTICAL );
-    wxFont statusFont = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT );
-    statusFont.SetSymbolicSize( wxFONTSIZE_SMALL );
+
+    wxFlexGridSizer* fgSizerStatus = new wxFlexGridSizer( 2, 1, 0, 0 );
+    fgSizerStatus->SetFlexibleDirection( wxBOTH );
+    fgSizerStatus->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 
     m_statusLine1 = new wxStaticText( bottomPanel, wxID_ANY, wxEmptyString );
-    m_statusLine1->SetFont( statusFont );
-    panelSizer->Add( m_statusLine1, 0, wxTOP, 4 );
+    fgSizerStatus->Add( m_statusLine1, 0, 0, 5 );
 
     m_statusLine2 = new wxStaticText( bottomPanel, wxID_ANY, wxEmptyString );
+    fgSizerStatus->Add( m_statusLine2, 0, wxBOTTOM, 3 );
+
+    panelSizer->Add( fgSizerStatus, 1, wxEXPAND|wxLEFT, 2 );
+
+    wxStaticLine* staticline1 = new wxStaticLine( bottomPanel );
+    panelSizer->Add( staticline1, 0, wxEXPAND, 5 );
+
+    wxFont statusFont = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT );
+    statusFont.SetSymbolicSize( wxFONTSIZE_SMALL );
+    m_statusLine1->SetFont( statusFont );
     m_statusLine2->SetFont( statusFont );
-    panelSizer->Add( m_statusLine2, 0, 0, 4 );
 
     // Add buttons:
     auto buttonsSizer = new wxBoxSizer( wxHORIZONTAL );
@@ -190,7 +202,7 @@ CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     m_saveAndContinue = new wxButton( bottomPanel, wxID_SAVE,
                                       _( "Apply, Save Schematic && Continue" ) );
-    buttonsSizer->Add( m_saveAndContinue, 0, wxALIGN_BOTTOM | wxBOTTOM | wxRIGHT, 10 );
+    buttonsSizer->Add( m_saveAndContinue, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 20 );
 
     auto sdbSizerOK = new wxButton( bottomPanel, wxID_OK );
     sdbSizer->AddButton( sdbSizerOK );
@@ -199,7 +211,7 @@ CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent ) :
     sdbSizer->Realize();
 
     buttonsSizer->Add( sdbSizer, 0, 0, 5 );
-    panelSizer->Add( buttonsSizer, 0, wxALIGN_RIGHT, 5 );
+    panelSizer->Add( buttonsSizer, 0, wxALIGN_RIGHT|wxALL, 5 );
 
     bottomPanel->SetSizer( panelSizer );
     bottomPanel->Fit();
@@ -213,6 +225,8 @@ CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     // Connect Events
     m_saveAndContinue->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CVPCB_MAINFRAME::OnSaveAndContinue ), NULL, this );
+    m_footprintListBox->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( CVPCB_MAINFRAME::OnFootprintRightClick ), NULL, this );
+    m_compListBox->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( CVPCB_MAINFRAME::OnComponentRightClick ), NULL, this );
 }
 
 
@@ -220,6 +234,7 @@ CVPCB_MAINFRAME::~CVPCB_MAINFRAME()
 {
     // Disconnect Events
     m_saveAndContinue->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( CVPCB_MAINFRAME::OnSaveAndContinue ), NULL, this );
+    m_footprintListBox->Disconnect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( CVPCB_MAINFRAME::OnFootprintRightClick ), NULL, this );
 
     m_auimgr.UnInit();
 }
@@ -505,6 +520,26 @@ void CVPCB_MAINFRAME::DisplayModule( wxCommandEvent& event )
 }
 
 
+void CVPCB_MAINFRAME::OnComponentRightClick( wxMouseEvent& event )
+{
+    wxMenu menu;
+
+    menu.Append( ID_CVPCB_CREATE_SCREENCMP, _( "View Footprint" ), _( "Show the assigned footprint in the footprint viewer" ) );
+
+    PopupMenu( &menu );
+}
+
+
+void CVPCB_MAINFRAME::OnFootprintRightClick( wxMouseEvent& event )
+{
+    wxMenu menu;
+
+    menu.Append( ID_CVPCB_CREATE_SCREENCMP, _( "View Footprint" ), _( "Show the current footprint in the footprint viewer" ) );
+
+    PopupMenu( &menu );
+}
+
+
 void CVPCB_MAINFRAME::OnSelectComponent( wxListEvent& event )
 {
     if( m_skipComponentSelect )
@@ -516,6 +551,8 @@ void CVPCB_MAINFRAME::OnSelectComponent( wxListEvent& event )
 
     m_footprintListBox->SetFootprints( *m_FootprintsList, libraryName, component,
                                        m_currentSearchPattern, m_filteringOptions);
+
+    m_footprintListBox->SetSelection( m_footprintListBox->GetSelection(), false );
 
     refreshAfterComponentSearch (component);
 }
@@ -543,7 +580,7 @@ void CVPCB_MAINFRAME::refreshAfterComponentSearch( COMPONENT* component )
     {
         wxString module = FROM_UTF8( component->GetFPID().Format().c_str() );
 
-        bool found = false;
+        m_footprintListBox->SetSelection( m_footprintListBox->GetSelection(), false );
 
         for( int ii = 0; ii < m_footprintListBox->GetCount(); ii++ )
         {
@@ -556,23 +593,12 @@ void CVPCB_MAINFRAME::refreshAfterComponentSearch( COMPONENT* component )
             if( module.Cmp( footprintName ) == 0 )
             {
                 m_footprintListBox->SetSelection( ii, true );
-                found = true;
                 break;
             }
         }
 
-        if( !found )
-        {
-            int ii = m_footprintListBox->GetSelection();
-
-            if ( ii >= 0 )
-                m_footprintListBox->SetSelection( ii, false );
-
-            if( GetFootprintViewerFrame() )
-            {
-                CreateScreenCmp();
-            }
-        }
+        if( GetFootprintViewerFrame() )
+            CreateScreenCmp();
     }
 
     SendMessageToEESCHEMA();
@@ -823,7 +849,7 @@ void CVPCB_MAINFRAME::CreateScreenCmp()
 
     if( !fpframe )
     {
-        fpframe = new DISPLAY_FOOTPRINTS_FRAME( &Kiway(), this );
+        fpframe = (DISPLAY_FOOTPRINTS_FRAME*) Kiway().Player( FRAME_CVPCB_DISPLAY, true, this );
         fpframe->Show( true );
     }
     else
@@ -974,7 +1000,8 @@ void CVPCB_MAINFRAME::SetStatusText( const wxString& aText, int aNumber )
 
 void CVPCB_MAINFRAME::OnConfigurePaths( wxCommandEvent& aEvent )
 {
-    Pgm().ConfigurePaths( this );
+    DIALOG_CONFIGURE_PATHS dlg( this, Prj().Get3DCacheManager()->GetResolver() );
+    dlg.ShowModal();
 }
 
 

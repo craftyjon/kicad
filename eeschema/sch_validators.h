@@ -30,8 +30,11 @@
 #ifndef _SCH_VALIDATORS_H_
 #define _SCH_VALIDATORS_H_
 
-
 #include <wx/valtext.h>
+
+
+#define FIELD_NAME  -1
+
 
 /**
  * class SCH_FILED_VALIDATOR
@@ -50,7 +53,7 @@ class SCH_FIELD_VALIDATOR : public wxTextValidator
     bool m_isLibEditor;
 
 public:
-    SCH_FIELD_VALIDATOR( bool aIsCmplibEditor, int aFieldId, wxString* aValue = NULL );
+    SCH_FIELD_VALIDATOR( bool aIsLibEditor, int aFieldId, wxString* aValue = NULL );
 
     SCH_FIELD_VALIDATOR( const SCH_FIELD_VALIDATOR& aValidator );
 

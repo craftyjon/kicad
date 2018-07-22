@@ -57,19 +57,35 @@ public:
 DIALOG_SHIM::DIALOG_SHIM( wxWindow* aParent, wxWindowID id, const wxString& title,
         const wxPoint& pos, const wxSize& size, long style, const wxString& name ) :
     wxDialog( aParent, id, title, pos, size, style, name ),
-    KIWAY_HOLDER( 0 ),
-    m_fixupsRun( false ),
-    m_qmodal_loop( 0 ),
+    KIWAY_HOLDER( nullptr ),
+    m_units( MILLIMETRES ),
+    m_firstPaintEvent( true ),
+    m_initialFocusTarget( nullptr ),
+    m_qmodal_loop( nullptr ),
     m_qmodal_showing( false ),
-    m_qmodal_parent_disabler( 0 )
+    m_qmodal_parent_disabler( nullptr )
 {
-    // pray that aParent is either a KIWAY_PLAYER or DIALOG_SHIM derivation.
-    KIWAY_HOLDER* h = dynamic_cast<KIWAY_HOLDER*>( aParent );
+    KIWAY_HOLDER* kiwayHolder = nullptr;
 
-    // wxASSERT_MSG( h, wxT( "DIALOG_SHIM's parent is NULL or not derived from KIWAY_PLAYER nor DIALOG_SHIM" ) );
+    if( aParent )
+    {
+        kiwayHolder = dynamic_cast<KIWAY_HOLDER*>( aParent );
 
-    if( h )
-        SetKiway( this, &h->Kiway() );
+        while( !kiwayHolder && aParent->GetParent() )
+        {
+            aParent = aParent->GetParent();
+            kiwayHolder = dynamic_cast<KIWAY_HOLDER*>( aParent );
+        }
+    }
+
+    if( kiwayHolder )
+    {
+        // Inherit units from parent
+        m_units = kiwayHolder->GetUserUnits();
+
+        // Set up the message bus
+        SetKiway( this, &kiwayHolder->Kiway() );
+    }
 
     Bind( wxEVT_CLOSE_WINDOW, &DIALOG_SHIM::OnCloseWindow, this );
     Bind( wxEVT_BUTTON, &DIALOG_SHIM::OnButton, this );
@@ -77,7 +93,7 @@ DIALOG_SHIM::DIALOG_SHIM( wxWindow* aParent, wxWindowID id, const wxString& titl
 #ifdef __WINDOWS__
     // On Windows, the app top windows can be brought to the foreground
     // (at least temporary) in certain circumstances,
-    // for instance when calling an external tool in Eeschema boom generation.
+    // for instance when calling an external tool in Eeschema BOM generation.
     // So set the parent KIWAY_PLAYER kicad frame (if exists) to top window
     // to avoid this annoying behavior
     KIWAY_PLAYER* parent_kiwayplayer = dynamic_cast<KIWAY_PLAYER*>( aParent );
@@ -215,38 +231,29 @@ bool DIALOG_SHIM::Enable( bool enable )
 }
 
 
-// Traverse all items in the dialog.  If selectTextInTextCtrls, do a SelectAll()
-// in each so that tab followed by typing will replace the existing value.
-// Also collects the firstTextCtrl and the item with focus (if any).
-static void recursiveDescent( wxWindowList& children, const bool selectTextInTextCtrls,
-                              wxWindow* & firstTextCtrl, wxWindow* & windowWithFocus )
+#ifdef  __WXMAC__
+// Recursive descent doing a SelectAll() in wxTextCtrls.
+// MacOS User Interface Guidelines state that when tabbing to a text control all its
+// text should be selected.  Since wxWidgets fails to implement this, we do it here.
+static void selectAllInTextCtrls( wxWindowList& children )
 {
-    for( wxWindowList::iterator it = children.begin();  it != children.end();  ++it )
+    for( wxWindow* child : children )
     {
-        wxWindow* child = *it;
-
-        if( child->HasFocus() )
-            windowWithFocus = child;
-
         wxTextCtrl* childTextCtrl = dynamic_cast<wxTextCtrl*>( child );
         if( childTextCtrl )
         {
-            if( !firstTextCtrl && childTextCtrl->IsEnabled() && childTextCtrl->IsEditable() )
-                firstTextCtrl = childTextCtrl;
+            wxTextEntry* asTextEntry = dynamic_cast<wxTextEntry*>( childTextCtrl );
 
-            if( selectTextInTextCtrls )
-            {
-                wxTextEntry* asTextEntry = dynamic_cast<wxTextEntry*>( childTextCtrl );
-                // Respect an existing selection
-                if( asTextEntry->GetStringSelection().IsEmpty() )
-                    asTextEntry->SelectAll();
-            }
+            // Respect an existing selection
+            if( asTextEntry->GetStringSelection().IsEmpty() )
+                asTextEntry->SelectAll();
         }
-
-        recursiveDescent( child->GetChildren(), selectTextInTextCtrls, firstTextCtrl,
-                          windowWithFocus );
+        else
+            selectAllInTextCtrls( child->GetChildren() );
     }
 }
+#endif
+
 
 #ifdef  __WXMAC__
 static void fixOSXCancelButtonIssue( wxWindow *aWindow )
@@ -270,37 +277,19 @@ static void fixOSXCancelButtonIssue( wxWindow *aWindow )
 
 void DIALOG_SHIM::OnPaint( wxPaintEvent &event )
 {
-    if( !m_fixupsRun )
+    if( m_firstPaintEvent )
     {
-#if DLGSHIM_SELECT_ALL_IN_TEXT_CONTROLS
-        const bool selectAllInTextCtrls = true;
-#else
-        const bool selectAllInTextCtrls = false;
-#endif
-        wxWindow* firstTextCtrl = NULL;
-        wxWindow* windowWithFocus = NULL;
-
-        recursiveDescent( GetChildren(), selectAllInTextCtrls, firstTextCtrl,
-                          windowWithFocus );
-
-#if DLGSHIM_USE_SETFOCUS
-        // While it would be nice to honour any focus already set (which was
-        // recorded in windowWithFocus), the reality is that it's currently wrong
-        // far more often than it's right.
-        // So just focus on the first text control if we have one; otherwise the
-        // focus on the dialog itself, which will at least allow esc, return, etc.
-        // to function.
-        if( firstTextCtrl )
-            firstTextCtrl->SetFocus();
-        else
-            SetFocus();
-#endif
-
-#ifdef  __WXMAC__
+#ifdef __WXMAC__
         fixOSXCancelButtonIssue( this );
+        selectAllInTextCtrls( GetChildren() );
 #endif
 
-        m_fixupsRun = true;
+        if( m_initialFocusTarget )
+            m_initialFocusTarget->SetFocus();
+        else
+            SetFocus();     // Focus the dialog itself
+
+        m_firstPaintEvent = false;
     }
 
     event.Skip();
@@ -329,231 +318,6 @@ void DIALOG_SHIM::OnPaint( wxPaintEvent &event )
     similar.  You CAN use it anywhere for any dialog.  But you MUST use it when
     you want to use KIWAY_PLAYER::ShowModal() from a dialog event.
 */
-
-
-
-/*
-/// wxEventLoopActivator but with a friend so it
-/// has access to m_evtLoopOld, and it does not SetActive() as that is
-/// done inside base class Run().
-class ELOOP_ACTIVATOR
-{
-    friend class EVENT_LOOP;
-
-public:
-    ELOOP_ACTIVATOR( WX_EVENT_LOOP* evtLoop )
-    {
-        m_evtLoopOld = wxEventLoopBase::GetActive();
-        // wxEventLoopBase::SetActive( evtLoop );
-    }
-
-    ~ELOOP_ACTIVATOR()
-    {
-        // restore the previously active event loop
-        wxEventLoopBase::SetActive( m_evtLoopOld );
-    }
-
-private:
-    WX_EVENT_LOOP* m_evtLoopOld;
-};
-*/
-
-
-class EVENT_LOOP : public WX_EVENT_LOOP
-{
-public:
-
-    EVENT_LOOP()
-    {
-        ;
-    }
-
-    ~EVENT_LOOP()
-    {
-    }
-
-#if 0   // does not work any better than inherited wxGuiEventLoop functions:
-
-    // sets the "should exit" flag and wakes up the loop so that it terminates
-    // soon
-    void ScheduleExit( int rc = 0 )
-    {
-        wxCHECK_RET( IsInsideRun(), wxT("can't call ScheduleExit() if not running") );
-
-        m_exitcode = rc;
-        m_shouldExit = true;
-
-        OnExit();
-
-        // all we have to do to exit from the loop is to (maybe) wake it up so that
-        // it can notice that Exit() had been called
-        //
-        // in particular, do *not* use here calls such as PostQuitMessage() (under
-        // MSW) which terminate the current event loop here because we're not sure
-        // that it is going to be processed by the correct event loop: it would be
-        // possible that another one is started and terminated by mistake if we do
-        // this
-        WakeUp();
-    }
-
-    int Run()
-    {
-        // event loops are not recursive, you need to create another loop!
-        //wxCHECK_MSG( !IsInsideRun(), -1, wxT("can't reenter a message loop") );
-
-        // ProcessIdle() and ProcessEvents() below may throw so the code here should
-        // be exception-safe, hence we must use local objects for all actions we
-        // should undo
-        wxEventLoopActivator activate(this);
-
-        // We might be called again, after a previous call to ScheduleExit(), so
-        // reset this flag.
-        m_shouldExit = false;
-
-        // Set this variable to true for the duration of this method.
-        setInsideRun( true );
-
-        struct SET_FALSE
-        {
-            EVENT_LOOP* m_loop;
-            SET_FALSE( EVENT_LOOP* aLoop ) : m_loop( aLoop ) {}
-            ~SET_FALSE() { m_loop->setInsideRun( false ); }
-        } t( this );
-
-        // Finally really run the loop.
-        return DoRun();
-    }
-
-    bool ProcessEvents()
-    {
-        // process pending wx events first as they correspond to low-level events
-        // which happened before, i.e. typically pending events were queued by a
-        // previous call to Dispatch() and if we didn't process them now the next
-        // call to it might enqueue them again (as happens with e.g. socket events
-        // which would be generated as long as there is input available on socket
-        // and this input is only removed from it when pending event handlers are
-        // executed)
-        if( wxTheApp )
-        {
-            wxTheApp->ProcessPendingEvents();
-
-            // One of the pending event handlers could have decided to exit the
-            // loop so check for the flag before trying to dispatch more events
-            // (which could block indefinitely if no more are coming).
-            if( m_shouldExit )
-                return false;
-        }
-
-        return Dispatch();
-    }
-
-
-    int DoRun()
-    {
-        // we must ensure that OnExit() is called even if an exception is thrown
-        // from inside ProcessEvents() but we must call it from Exit() in normal
-        // situations because it is supposed to be called synchronously,
-        // wxModalEventLoop depends on this (so we can't just use ON_BLOCK_EXIT or
-        // something similar here)
-    #if wxUSE_EXCEPTIONS
-        for( ; ; )
-        {
-            try
-            {
-    #endif // wxUSE_EXCEPTIONS
-
-                // this is the event loop itself
-                for( ; ; )
-                {
-                    // generate and process idle events for as long as we don't
-                    // have anything else to do
-                    while ( !m_shouldExit && !Pending() && ProcessIdle() )
-                        ;
-
-                    if ( m_shouldExit )
-                        break;
-
-                    // a message came or no more idle processing to do, dispatch
-                    // all the pending events and call Dispatch() to wait for the
-                    // next message
-                    if ( !ProcessEvents() )
-                    {
-                        // we got WM_QUIT
-                        break;
-                    }
-                }
-
-                // Process the remaining queued messages, both at the level of the
-                // underlying toolkit level (Pending/Dispatch()) and wx level
-                // (Has/ProcessPendingEvents()).
-                //
-                // We do run the risk of never exiting this loop if pending event
-                // handlers endlessly generate new events but they shouldn't do
-                // this in a well-behaved program and we shouldn't just discard the
-                // events we already have, they might be important.
-                for( ; ; )
-                {
-                    bool hasMoreEvents = false;
-                    if ( wxTheApp && wxTheApp->HasPendingEvents() )
-                    {
-                        wxTheApp->ProcessPendingEvents();
-                        hasMoreEvents = true;
-                    }
-
-                    if ( Pending() )
-                    {
-                        Dispatch();
-                        hasMoreEvents = true;
-                    }
-
-                    if ( !hasMoreEvents )
-                        break;
-                }
-
-    #if wxUSE_EXCEPTIONS
-                // exit the outer loop as well
-                break;
-            }
-            catch ( ... )
-            {
-                try
-                {
-                    if ( !wxTheApp || !wxTheApp->OnExceptionInMainLoop() )
-                    {
-                        OnExit();
-                        break;
-                    }
-                    //else: continue running the event loop
-                }
-                catch ( ... )
-                {
-                    // OnException() throwed, possibly rethrowing the same
-                    // exception again: very good, but we still need OnExit() to
-                    // be called
-                    OnExit();
-                    throw;
-                }
-            }
-        }
-    #endif // wxUSE_EXCEPTIONS
-
-        return m_exitcode;
-    }
-
-protected:
-    int     m_exitcode;
-
-    /* this only works if you add
-    friend class EVENT_LOOP
-    to EventLoopBase
-    */
-    void setInsideRun( bool aValue )
-    {
-        m_isInsideRun = aValue;
-    }
-#endif
-};
-
 
 int DIALOG_SHIM::ShowQuasiModal()
 {
@@ -597,7 +361,7 @@ int DIALOG_SHIM::ShowQuasiModal()
 
     m_qmodal_showing = true;
 
-    EVENT_LOOP event_loop;
+    WX_EVENT_LOOP event_loop;
 
     m_qmodal_loop = &event_loop;
 

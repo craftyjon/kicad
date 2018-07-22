@@ -1077,16 +1077,6 @@ void PCB_PARSER::parseSetup()
             NeedRIGHT();
             break;
 
-        case T_segment_width:
-            designSettings.m_DrawSegmentWidth = parseBoardUnits( T_segment_width );
-            NeedRIGHT();
-            break;
-
-        case T_edge_width:
-            designSettings.m_EdgeSegmentWidth = parseBoardUnits( T_edge_width );
-            NeedRIGHT();
-            break;
-
         case T_via_size:
             defaultNetClass->SetViaDiameter( parseBoardUnits( T_via_size ) );
             NeedRIGHT();
@@ -1146,30 +1136,45 @@ void PCB_PARSER::parseSetup()
             NeedRIGHT();
             break;
 
-        case T_pcb_text_width:
-            designSettings.m_PcbTextWidth = parseBoardUnits( T_pcb_text_width );
+        // 6.0 TODO: change these names, or leave them?
+        // 6.0 TODO: add LAYER_CLASS_OTHERS read/write
+        // 6.0 TODO: add m_TextItalic read/write
+        // 6.0 TODO: add m_TextUpright read/write
+
+        case T_segment_width:
+            designSettings.m_LineThickness[ LAYER_CLASS_COPPER ] = parseBoardUnits( T_segment_width );
             NeedRIGHT();
             break;
 
-        case T_pcb_text_size:
-            designSettings.m_PcbTextSize.x = parseBoardUnits( "pcb text width" );
-            designSettings.m_PcbTextSize.y = parseBoardUnits( "pcb text height" );
+        case T_edge_width:
+            designSettings.m_LineThickness[ LAYER_CLASS_EDGES ] = parseBoardUnits( T_edge_width );
             NeedRIGHT();
             break;
 
         case T_mod_edge_width:
-            designSettings.m_ModuleSegmentWidth = parseBoardUnits( T_mod_edge_width );
+            designSettings.m_LineThickness[ LAYER_CLASS_SILK ] = parseBoardUnits( T_mod_edge_width );
             NeedRIGHT();
             break;
 
-        case T_mod_text_size:
-            designSettings.m_ModuleTextSize.x = parseBoardUnits( "module text width" );
-            designSettings.m_ModuleTextSize.y = parseBoardUnits( "module text height" );
+        case T_pcb_text_width:
+            designSettings.m_TextThickness[ LAYER_CLASS_COPPER ] = parseBoardUnits( T_pcb_text_width );
             NeedRIGHT();
             break;
 
         case T_mod_text_width:
-            designSettings.m_ModuleTextWidth = parseBoardUnits( T_mod_text_width );
+            designSettings.m_TextThickness[ LAYER_CLASS_SILK ] = parseBoardUnits( T_mod_text_width );
+            NeedRIGHT();
+            break;
+
+        case T_pcb_text_size:
+            designSettings.m_TextSize[ LAYER_CLASS_COPPER ].x = parseBoardUnits( "pcb text width" );
+            designSettings.m_TextSize[ LAYER_CLASS_COPPER ].y = parseBoardUnits( "pcb text height" );
+            NeedRIGHT();
+            break;
+
+        case T_mod_text_size:
+            designSettings.m_TextSize[ LAYER_CLASS_SILK ].x = parseBoardUnits( "module text width" );
+            designSettings.m_TextSize[ LAYER_CLASS_SILK ].y = parseBoardUnits( "module text height" );
             NeedRIGHT();
             break;
 
@@ -1644,12 +1649,19 @@ DIMENSION* PCB_PARSER::parseDIMENSION()
         case T_gr_text:
         {
             TEXTE_PCB* text = parseTEXTE_PCB();
+
             // This copy  (using the copy constructor) rebuild the text timestamp,
             // that is not what we want.
             dimension->Text() = *text;
             // reinitialises the text time stamp to the right value (the dimension time stamp)
             dimension->Text().SetTimeStamp( dimension->GetTimeStamp() );
             dimension->SetPosition( text->GetTextPos() );
+
+            EDA_UNITS_T units = INCHES;
+            bool useMils = false;
+            FetchUnitsFromString( text->GetText(), units, useMils );
+            dimension->SetUnits( units, useMils );
+
             delete text;
             break;
         }
@@ -2079,7 +2091,7 @@ TEXTE_MODULE* PCB_PARSER::parseTEXTE_MODULE()
 
     if( CurTok() == T_unlocked )
     {
-        text->SetUnlocked( true );
+        text->SetKeepUpright( false );
         NextTok();
     }
 

@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 1992-2016 Jean-Pierre Charras <jp.charras at wanadoo.fr>
- * Copyright (C) 1992-2016 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -537,43 +537,11 @@ bool EXCELLON_IMAGE::Execute_Drill_Command( char*& text )
         switch( *text )
         {
             case 'X':
+                ReadXYCoord( text, true );
+                break;
+
             case 'Y':
-                // Decode the coordinate format
-                if( !m_format_known )
-                {
-                    int nbdigits = 0;
-                    int integer = m_GerbMetric ? fmtIntegerMM : fmtIntegerInch;
-                    int mantissa;
-                    char* read = text + 1;
-
-                    while( IsNumber( *read ) )
-                    {
-                        if( *read == '.' )
-                        {
-                            integer = nbdigits;
-                            read++;
-                            continue;
-                        }
-
-                        if( ( *read >= '0' ) && ( *read <='9' ) )
-                            nbdigits++;
-
-                        read++;
-                    }
-
-                    mantissa = nbdigits - integer;
-
-                    // Enforce minimum mantissa of 3 for metric
-                    if( m_GerbMetric && mantissa < 3 )
-                        mantissa = 3;
-
-                    m_FmtScale.x = m_FmtScale.y = mantissa;
-                    m_FmtLen.x = m_FmtLen.y = integer + mantissa;
-
-                    m_format_known = true;
-                }
-
-                ReadXYCoord( text );
+                ReadXYCoord( text, true );
                 break;
 
             case 'G':  // G85 is found here for oval holes
@@ -692,7 +660,7 @@ bool EXCELLON_IMAGE::Execute_EXCELLON_G_Command( char*& text )
     switch( id )
     {
     case DRILL_G_ZERO_SET:
-        ReadXYCoord( text );
+        ReadXYCoord( text, true );
         m_Offset = m_CurrentPos;
         break;
 

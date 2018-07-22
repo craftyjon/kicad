@@ -780,7 +780,7 @@ int PCBNEW_CONTROL::SwitchUnits( const TOOL_EVENT& aEvent )
     // TODO should not it be refactored to pcb_frame member function?
     wxCommandEvent evt( wxEVT_COMMAND_MENU_SELECTED );
 
-    if( g_UserUnit == INCHES )
+    if( m_frame->GetUserUnits() == INCHES )
         evt.SetId( ID_TB_OPTIONS_SELECT_UNIT_MM );
     else
         evt.SetId( ID_TB_OPTIONS_SELECT_UNIT_INCH );
@@ -797,10 +797,8 @@ static bool deleteItem( TOOL_MANAGER* aToolMgr, const VECTOR2D& aPosition )
     wxCHECK( selectionTool, false );
 
     aToolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
-    aToolMgr->RunAction( PCB_ACTIONS::selectionCursor, true );
-    selectionTool->SanitizeSelection();
 
-    const SELECTION& selection = selectionTool->GetSelection();
+    const SELECTION& selection = selectionTool->RequestSelection( SanitizePadsFilter );
 
     if( selection.Empty() )
         return true;

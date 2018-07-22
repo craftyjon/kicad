@@ -54,11 +54,9 @@ BEGIN_EVENT_TABLE( KICAD_MANAGER_FRAME, EDA_BASE_FRAME )
     EVT_MENU( ID_TO_TEXT_EDITOR, KICAD_MANAGER_FRAME::OnOpenTextEditor )
     EVT_MENU( ID_BROWSE_AN_SELECT_FILE, KICAD_MANAGER_FRAME::OnOpenFileInTextEditor )
     EVT_MENU( ID_PREFERENCES_CONFIGURE_PATHS, KICAD_MANAGER_FRAME::OnConfigurePaths )
-    EVT_MENU( ID_SELECT_PREFERED_EDITOR, EDA_BASE_FRAME::OnSelectPreferredEditor )
-    EVT_MENU( ID_SELECT_DEFAULT_PDF_BROWSER, KICAD_MANAGER_FRAME::OnSelectDefaultPdfBrowser )
-    EVT_MENU( ID_SELECT_PREFERED_PDF_BROWSER, KICAD_MANAGER_FRAME::OnSelectPreferredPdfBrowser )
-    EVT_MENU( ID_SELECT_PREFERED_PDF_BROWSER_NAME,
-              KICAD_MANAGER_FRAME::OnSelectPreferredPdfBrowser )
+    EVT_MENU( ID_EDIT_SYMBOL_LIBRARY_TABLE, KICAD_MANAGER_FRAME::OnEditSymLibTable )
+    EVT_MENU( ID_EDIT_FOOTPRINT_LIBRARY_TABLE, KICAD_MANAGER_FRAME::OnEditFpLibTable )
+    EVT_MENU( wxID_PREFERENCES, KICAD_MANAGER_FRAME::OnPreferences )
     EVT_MENU( ID_SAVE_AND_ZIP_FILES, KICAD_MANAGER_FRAME::OnArchiveFiles )
     EVT_MENU( ID_READ_ZIP_ARCHIVE, KICAD_MANAGER_FRAME::OnUnarchiveFiles )
     EVT_MENU( ID_PROJECT_TREE_REFRESH, KICAD_MANAGER_FRAME::OnRefresh )
@@ -74,9 +72,8 @@ BEGIN_EVENT_TABLE( KICAD_MANAGER_FRAME, EDA_BASE_FRAME )
 
     EVT_MENU_RANGE( wxID_FILE1, wxID_FILE9, KICAD_MANAGER_FRAME::OnFileHistory )
 
-    // Hotkey management (show list, edit ...) events
-    EVT_MENU_RANGE( ID_PREFERENCES_HOTKEY_START, ID_PREFERENCES_HOTKEY_END,
-                    KICAD_MANAGER_FRAME::Process_Config )
+    // Show hotkeys
+    EVT_MENU( ID_PREFERENCES_HOTKEY_SHOW_CURRENT_LIST, KICAD_MANAGER_FRAME::OnShowHotkeys )
 
 
     // Special functions
@@ -107,12 +104,6 @@ BEGIN_EVENT_TABLE( KICAD_MANAGER_FRAME, EDA_BASE_FRAME )
     EVT_BUTTON( ID_TO_PL_EDITOR, KICAD_MANAGER_FRAME::OnRunPageLayoutEditor )
     EVT_MENU( ID_TO_PL_EDITOR, KICAD_MANAGER_FRAME::OnRunPageLayoutEditor )
 
-    EVT_MENU_RANGE( ID_KICAD_SELECT_ICONS_OPTIONS, ID_KICAD_SELECT_ICON_OPTIONS_END,
-                    KICAD_MANAGER_FRAME::OnChangeIconsOptions )
-
-    EVT_UPDATE_UI( ID_SELECT_DEFAULT_PDF_BROWSER, KICAD_MANAGER_FRAME::OnUpdateDefaultPdfBrowser )
-    EVT_UPDATE_UI( ID_SELECT_PREFERED_PDF_BROWSER,
-                   KICAD_MANAGER_FRAME::OnUpdatePreferredPdfBrowser )
     EVT_UPDATE_UI_RANGE( ID_TO_SCH, ID_TO_PCB_FP_EDITOR,
                          KICAD_MANAGER_FRAME::OnUpdateRequiresProject )
 
@@ -334,64 +325,32 @@ void KICAD_MANAGER_FRAME::ReCreateMenuBar()
     // Path configuration edit dialog.
     AddMenuItem( preferencesMenu,
                  ID_PREFERENCES_CONFIGURE_PATHS,
-                 _( "Configure Pa&ths..." ),
+                 _( "&Configure Paths..." ),
                  _( "Edit path configuration environment variables" ),
                  KiBitmap( path_xpm ) );
 
-    // Text editor
     AddMenuItem( preferencesMenu,
-                 ID_SELECT_PREFERED_EDITOR,
-                 _( "&Set Text Editor..." ),
-                 _( "Set your preferred text editor" ),
-                 KiBitmap( editor_xpm ) );
+                 ID_EDIT_SYMBOL_LIBRARY_TABLE,
+                 _( "Manage &Symbol Libraries..." ),
+                 _( "Edit the global and project symbol library tables" ),
+                 KiBitmap( library_table_xpm ) );
 
-    // PDF Viewer submenu:System browser or user defined checkbox
-    wxMenu* SubMenuPdfBrowserChoice = new wxMenu;
+    AddMenuItem( preferencesMenu,
+                 ID_EDIT_FOOTPRINT_LIBRARY_TABLE,
+                 _( "Manage &Footprint Libraries..." ),
+                 _( "Configure footprint library table" ),
+                 KiBitmap( library_table_xpm ) );
 
-    // Default
-    AddMenuItem( SubMenuPdfBrowserChoice, ID_SELECT_DEFAULT_PDF_BROWSER,
-                  _( "System &Default PDF Viewer" ),
-                  _( "Use system default PDF viewer" ),
-                   KiBitmap( datasheet_xpm ),
-                  wxITEM_CHECK );
-    SubMenuPdfBrowserChoice->Check( ID_SELECT_DEFAULT_PDF_BROWSER,
-                                    Pgm().UseSystemPdfBrowser() );
-
-    // Favourite
-    AddMenuItem( SubMenuPdfBrowserChoice, ID_SELECT_PREFERED_PDF_BROWSER,
-                  _( "&Favorite PDF Viewer" ),
-                  _( "Use favorite PDF viewer" ),
-                   KiBitmap( datasheet_xpm ),
-                  wxITEM_CHECK );
-    SubMenuPdfBrowserChoice->Check( ID_SELECT_PREFERED_PDF_BROWSER,
-                                    !Pgm().UseSystemPdfBrowser() );
-
-    SubMenuPdfBrowserChoice->AppendSeparator();
-    // Append PDF Viewer submenu to preferences
-    AddMenuItem( SubMenuPdfBrowserChoice,
-                 ID_SELECT_PREFERED_PDF_BROWSER_NAME,
-                 _( "Set &PDF Viewer..." ),
-                 _( "Set favorite PDF viewer" ),
-                 KiBitmap( datasheet_xpm ) );
-
-    // PDF viewer submenu
-    AddMenuItem( preferencesMenu, SubMenuPdfBrowserChoice, -1,
-                 _( "&PDF Viewer" ),
-                 _( "PDF viewer preferences" ),
-                 KiBitmap( datasheet_xpm ) );
-
-    preferencesMenu->AppendSeparator();
-
-    // Icons options submenu
-    AddMenuIconsOptions( preferencesMenu );
+    AddMenuItem( preferencesMenu,
+                 wxID_PREFERENCES,
+                 _( "&Preferences..." ),
+                 _( "Show preferences for all open tools" ),
+                 KiBitmap( preference_xpm ) );
 
     preferencesMenu->AppendSeparator();
 
     // Language submenu
     Pgm().AddMenuLanguageList( preferencesMenu );
-    // Hotkey submenu
-    AddHotkeyConfigMenu( preferencesMenu );
-
 
     // Menu Tools:
     wxMenu* toolsMenu = new wxMenu;
@@ -464,10 +423,7 @@ void KICAD_MANAGER_FRAME::ReCreateMenuBar()
     helpMenu->AppendSeparator();
 
     // About
-    AddMenuItem( helpMenu, wxID_ABOUT,
-                 _( "&About KiCad" ),
-                 _( "About KiCad" ),
-                 KiBitmap( about_xpm ) );
+    AddMenuItem( helpMenu, wxID_ABOUT, _( "&About KiCad" ), KiBitmap( about_xpm ) );
 
     // Create the menubar and append all submenus
     menuBar->Append( fileMenu, _( "&File" ) );

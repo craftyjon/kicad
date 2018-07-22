@@ -86,8 +86,7 @@ bool SCH_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
         AddMenusForBlock( PopMenu, this );
         PopMenu->AppendSeparator();
 
-        // If we have a block containing only one main element
-        // we append its edition submenu
+        // If we have a block containing only one main element we append its edit submenu
         if( item != NULL )
         {
             switch( item->Type() )
@@ -280,6 +279,8 @@ bool SCH_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
                 AddMenuItem( PopMenu, ID_POPUP_END_LINE, _( "End Drawing" ),
                              KiBitmap( checked_ok_xpm ) );
 
+            AddMenuItem( PopMenu, ID_SCH_EDIT_ITEM, _( "Edit..." ),
+                         KiBitmap( edit_xpm ) );
             AddMenuItem( PopMenu, ID_POPUP_SCH_DELETE, _( "Delete Drawing" ),
                          KiBitmap( delete_xpm ) );
             break;

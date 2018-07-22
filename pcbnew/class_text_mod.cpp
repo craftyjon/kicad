@@ -56,7 +56,7 @@ TEXTE_MODULE::TEXTE_MODULE( MODULE* parent, TEXT_TYPE text_type ) :
     MODULE* module = static_cast<MODULE*>( m_Parent );
 
     m_Type = text_type;
-    m_unlocked = false;
+    m_keepUpright = true;
 
     // Set text thickness to a default value
     SetThickness( Millimeter2iu( 0.15 ) );
@@ -121,7 +121,7 @@ bool TEXTE_MODULE::TextHitTest( const EDA_RECT& aRect, bool aContains, int aAccu
 
 void TEXTE_MODULE::Rotate( const wxPoint& aRotCentre, double aAngle )
 {
-    // Used in footprint edition
+    // Used in footprint editing
     // Note also in module editor, m_Pos0 = m_Pos
 
     wxPoint pt = GetTextPos();
@@ -341,11 +341,7 @@ double TEXTE_MODULE::GetDrawRotation() const
     if( module )
         rotation += module->GetOrientation();
 
-    if( m_unlocked )
-    {
-        NORMALIZE_ANGLE_POS( rotation );
-    }
-    else
+    if( m_keepUpright )
     {
         // Keep angle between -90 .. 90 deg. Otherwise the text is not easy to read
         while( rotation > 900 )
@@ -354,13 +350,17 @@ double TEXTE_MODULE::GetDrawRotation() const
         while( rotation < -900 )
             rotation += 1800;
     }
+    else
+    {
+        NORMALIZE_ANGLE_POS( rotation );
+    }
 
     return rotation;
 }
 
 
 // see class_text_mod.h
-void TEXTE_MODULE::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
+void TEXTE_MODULE::GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector< MSG_PANEL_ITEM >& aList )
 {
     MODULE* module = (MODULE*) m_Parent;
 
@@ -403,39 +403,36 @@ void TEXTE_MODULE::GetMsgPanelInfo( std::vector< MSG_PANEL_ITEM >& aList )
     msg.Printf( wxT( "%.1f" ), GetTextAngleDegrees() );
     aList.push_back( MSG_PANEL_ITEM( _( "Angle" ), msg, DARKGREEN ) );
 
-    msg = ::CoordinateToString( GetThickness() );
+    msg = MessageTextFromValue( aUnits, GetThickness(), true );
     aList.push_back( MSG_PANEL_ITEM( _( "Thickness" ), msg, DARKGREEN ) );
 
-    msg = ::CoordinateToString( GetTextWidth() );
+    msg = MessageTextFromValue( aUnits, GetTextWidth(), true );
     aList.push_back( MSG_PANEL_ITEM( _( "Width" ), msg, RED ) );
 
-    msg = ::CoordinateToString( GetTextHeight() );
+    msg = MessageTextFromValue( aUnits, GetTextHeight(), true );
     aList.push_back( MSG_PANEL_ITEM( _( "Height" ), msg, RED ) );
 }
 
 
-wxString TEXTE_MODULE::GetSelectMenuText() const
+wxString TEXTE_MODULE::GetSelectMenuText( EDA_UNITS_T aUnits ) const
 {
-    wxString text;
-    const wxChar *reference = GetChars( static_cast<MODULE*>( GetParent() )->GetReference() );
-
     switch( m_Type )
     {
     case TEXT_is_REFERENCE:
-        text.Printf( _( "Reference %s" ), reference );
-        break;
+        return wxString::Format( _( "Reference %s" ),
+                                 static_cast<MODULE*>( GetParent() )->GetReference() );
 
     case TEXT_is_VALUE:
-        text.Printf( _( "Value %s of %s" ), GetChars( GetShownText() ), reference );
-        break;
+        return wxString::Format( _( "Value %s of %s" ),
+                                 GetShownText(),
+                                 static_cast<MODULE*>( GetParent() )->GetReference() );
 
     default:    // wrap this one in quotes:
-        text.Printf( _( "Text \"%s\" on %s of %s" ), GetChars( ShortenedShownText() ),
-                     GetChars( GetLayerName() ), reference );
-        break;
+        return wxString::Format( _( "Text \"%s\" of %s on %s" ),
+                                 ShortenedShownText(),
+                                 static_cast<MODULE*>( GetParent() )->GetReference(),
+                                 GetLayerName() );
     }
-
-    return text;
 }
 
 

@@ -327,11 +327,11 @@ void SCH_CONNECTION::AppendDebugInfoToMsgPanel( MSG_PANEL_ITEMS& aList ) const
 
     if( auto driver = Driver() )
     {
-        msg.Printf( "%s at %p", driver->GetSelectMenuText(), driver );
+        msg.Printf( "%s at %p", driver->GetSelectMenuText( MILLIMETRES ), driver );
         aList.push_back( MSG_PANEL_ITEM( _( "Connection Source" ), msg, RED ) );
     }
 
-    msg.Printf( "%s at %p", Parent()->GetSelectMenuText(), Parent() );
+    msg.Printf( "%s at %p", Parent()->GetSelectMenuText( MILLIMETRES ), Parent() );
     aList.push_back( MSG_PANEL_ITEM( _( "Attached To" ), msg, RED ) );
 }
 

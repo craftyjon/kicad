@@ -139,7 +139,7 @@ BOARD_ITEM* FOOTPRINT_EDIT_FRAME::ModeditLocateAndDisplay( int aHotKeyCode )
         {
             item = (*m_Collector)[ii];
 
-            wxString    text = item->GetSelectMenuText();
+            wxString    text = item->GetSelectMenuText( GetUserUnits() );
             BITMAP_DEF  xpm  = item->GetMenuImage();
 
             AddMenuItem( &itemMenu,
@@ -221,7 +221,6 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
     case ID_POPUP_MODEDIT_EDIT_BODY_ITEM:
     case ID_POPUP_MODEDIT_EDIT_WIDTH_ALL_EDGE:
     case ID_POPUP_MODEDIT_EDIT_LAYER_ALL_EDGE:
-    case ID_POPUP_MODEDIT_ENTER_EDGE_WIDTH:
     case ID_POPUP_PCB_DELETE_EDGE:
     case ID_POPUP_PCB_DELETE_TEXTMODULE:
     case ID_POPUP_PCB_DELETE_PAD:
@@ -299,7 +298,12 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         {
             if( GetScreen()->IsModify() && !GetBoard()->IsEmpty() )
             {
-                if( !IsOK( this, _( "Current Footprint will be lost and this operation cannot be undone. Continue ?" ) ) )
+                KIDIALOG dlg( this, _( "The current footprint contains unsaved changes."  ),
+                              _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
+                dlg.SetOKLabel( _( "Discard Changes" ) );
+                dlg.DoNotShowCheckbox();
+
+                if( dlg.ShowModal() == wxID_CANCEL )
                     break;
             }
 
@@ -525,7 +529,12 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
         if( GetScreen()->IsModify() && !GetBoard()->IsEmpty() )
         {
-            if( !IsOK( this, _( "Current Footprint will be lost and this operation cannot be undone. Continue ?" ) ) )
+            KIDIALOG dlg( this, _( "The current footprint contains unsaved changes."  ),
+                          _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
+            dlg.SetOKLabel( _( "Discard Changes" ) );
+            dlg.DoNotShowCheckbox();
+
+            if( dlg.ShowModal() == wxID_CANCEL )
                 break;
         }
 
@@ -665,7 +674,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
     case ID_POPUP_PCB_GLOBAL_IMPORT_PAD_SETTINGS:
         SaveCopyInUndoList( GetBoard()->m_Modules, UR_CHANGED );
         // Calls the global change dialog:
-        DlgGlobalChange_PadSettings( (D_PAD*) GetScreen()->GetCurItem() );
+        PushPadProperties((D_PAD*) GetScreen()->GetCurItem());
         m_canvas->MoveCursorToCrossHair();
         break;
 
@@ -675,8 +684,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_POPUP_PCB_EDIT_TEXTMODULE:
-        InstallTextModOptionsFrame( static_cast<TEXTE_MODULE*>( GetScreen()->GetCurItem() ), &dc );
-        m_canvas->MoveCursorToCrossHair();
+        InstallTextOptionsFrame( GetScreen()->GetCurItem(), &dc );
         break;
 
     case ID_POPUP_PCB_MOVE_TEXTMODULE_REQUEST:
@@ -711,28 +719,8 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         }
         break;
 
-    case ID_POPUP_MODEDIT_ENTER_EDGE_WIDTH:
-        {
-            EDGE_MODULE* edge = NULL;
-
-            if( GetScreen()->GetCurItem()
-              && ( GetScreen()->GetCurItem()->Type() == PCB_MODULE_EDGE_T ) )
-            {
-                edge = (EDGE_MODULE*) GetScreen()->GetCurItem();
-            }
-
-            Enter_Edge_Width( edge );
-            m_canvas->MoveCursorToCrossHair();
-
-            if( edge )
-                m_canvas->Refresh();
-        }
-        break;
-
     case  ID_POPUP_MODEDIT_EDIT_BODY_ITEM :
-        m_canvas->MoveCursorToCrossHair();
-        InstallFootprintBodyItemPropertiesDlg( (EDGE_MODULE*) GetScreen()->GetCurItem() );
-        m_canvas->Refresh();
+        InstallGraphicItemPropertiesDialog( GetScreen()->GetCurItem(), nullptr );
         break;
 
     case ID_POPUP_MODEDIT_EDIT_WIDTH_ALL_EDGE:
@@ -760,24 +748,6 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         SaveCopyInUndoList( GetBoard()->m_Modules, UR_CHANGED );
         Transform( (MODULE*) GetScreen()->GetCurItem(), id );
         m_canvas->Refresh();
-        break;
-
-    case ID_PCB_DRAWINGS_WIDTHS_SETUP:
-        InstallOptionsFrame( pos );
-        break;
-
-    case ID_PCB_PAD_SETUP:
-        {
-            BOARD_ITEM* item = GetCurItem();
-
-            if( item )
-            {
-                if( item->Type() != PCB_PAD_T )
-                    item = NULL;
-            }
-
-            InstallPadOptionsFrame( (D_PAD*) item );
-        }
         break;
 
     case ID_PCB_USER_GRID_SETUP:
@@ -845,11 +815,11 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
 void FOOTPRINT_EDIT_FRAME::moveExact()
 {
-    MOVE_PARAMETERS params;
-    params.allowOverride = false;
-    params.editingFootprint = true;
+    wxPoint         translation;
+    double          rotation;
+    ROTATION_ANCHOR rotationAnchor = ROTATE_AROUND_ITEM_ANCHOR;
 
-    DIALOG_MOVE_EXACT dialog( this, params );
+    DIALOG_MOVE_EXACT dialog( this, translation, rotation, rotationAnchor );
     int ret = dialog.ShowModal();
 
     if( ret == wxID_OK )
@@ -858,17 +828,22 @@ void FOOTPRINT_EDIT_FRAME::moveExact()
 
         BOARD_ITEM* item = GetScreen()->GetCurItem();
 
-        wxPoint anchorPoint = item->GetPosition();
+        item->Move( translation );
 
-        if( params.origin == RELATIVE_TO_CURRENT_POSITION )
+        switch( rotationAnchor )
         {
-            anchorPoint = wxPoint( 0, 0 );
+        case ROTATE_AROUND_ITEM_ANCHOR:
+            item->Rotate( item->GetPosition(), rotation );
+            break;
+        case ROTATE_AROUND_USER_ORIGIN:
+            item->Rotate( GetScreen()->m_O_Curseur, rotation );
+            break;
+        default:
+            wxFAIL_MSG( "Rotation choice shouldn't have been available in this context." );
         }
 
-        wxPoint finalMoveVector = params.translation - anchorPoint;
 
-        item->Move( finalMoveVector );
-        item->Rotate( item->GetPosition(), params.rotation );
+        item->Rotate( item->GetPosition(), rotation );
         m_canvas->Refresh();
     }
 
@@ -898,15 +873,25 @@ void FOOTPRINT_EDIT_FRAME::Transform( MODULE* module, int transform )
 
     case ID_MODEDIT_MODULE_MOVE_EXACT:
     {
-        MOVE_PARAMETERS params;
+        wxPoint         translation;
+        double          rotation;
+        ROTATION_ANCHOR rotationAnchor = ROTATE_AROUND_ITEM_ANCHOR;
 
-        DIALOG_MOVE_EXACT dialog( this, params );
-        int ret = dialog.ShowModal();
+        DIALOG_MOVE_EXACT dialog( this, translation, rotation, rotationAnchor );
 
-        if( ret == wxID_OK )
+        if( dialog.ShowModal() == wxID_OK )
         {
-            MoveMarkedItemsExactly( module, wxPoint( 0, 0 ),
-                    params.translation, params.rotation, true );
+            switch( rotationAnchor )
+            {
+            case ROTATE_AROUND_ITEM_ANCHOR:
+                MoveMarkedItemsExactly( module, module->GetPosition() + translation, translation, rotation, true );
+                break;
+            case ROTATE_AROUND_USER_ORIGIN:
+                MoveMarkedItemsExactly( module, GetScreen()->m_O_Curseur, translation, rotation, true );
+                break;
+            default:
+                wxFAIL_MSG( "Rotation choice shouldn't have been available in this context." );
+            }
         }
 
         break;

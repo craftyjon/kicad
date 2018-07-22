@@ -43,8 +43,6 @@ set( EESCHEMA_DLGS
     dialogs/dialog_edit_line_style.cpp
     dialogs/dialog_edit_line_style_base.cpp
     dialogs/dialog_edit_one_field.cpp
-    dialogs/dialog_eeschema_options.cpp
-    dialogs/dialog_eeschema_options_base.cpp
     dialogs/dialog_erc.cpp
     dialogs/dialog_erc_base.cpp
     dialogs/dialog_global_sym_lib_table_config.cpp
@@ -59,8 +57,6 @@ set( EESCHEMA_DLGS
     dialogs/dialog_lib_edit_text_base.cpp
     dialogs/dialog_lib_new_component.cpp
     dialogs/dialog_lib_new_component_base.cpp
-    dialogs/dialog_libedit_options.cpp
-    dialogs/dialog_libedit_options_base.cpp
     dialogs/dialog_migrate_buses.cpp
     dialogs/dialog_migrate_buses_base.cpp
     dialogs/dialog_netlist.cpp
@@ -77,12 +73,20 @@ set( EESCHEMA_DLGS
     dialogs/dialog_sch_sheet_props_base.cpp
     dialogs/dialog_schematic_find.cpp
     dialogs/dialog_schematic_find_base.cpp
-    dialogs/dialog_sym_lib_table.cpp
-    dialogs/dialog_sym_lib_table_base.cpp
     dialogs/dialog_symbol_remap.cpp
     dialogs/dialog_symbol_remap_base.cpp
     dialogs/dialog_update_fields.cpp
     dialogs/dialog_update_fields_base.cpp
+    dialogs/panel_eeschema_template_fieldnames.cpp
+    dialogs/panel_eeschema_template_fieldnames_base.cpp
+    dialogs/panel_eeschema_display_options.cpp
+    dialogs/panel_eeschema_display_options_base.cpp
+    dialogs/panel_eeschema_settings.cpp
+    dialogs/panel_eeschema_settings_base.cpp
+    dialogs/panel_libedit_settings.cpp
+    dialogs/panel_libedit_settings_base.cpp
+    dialogs/panel_sym_lib_table.cpp
+    dialogs/panel_sym_lib_table_base.cpp
     )
 
 set( EESCHEMA_WIDGETS
@@ -126,6 +130,7 @@ set( EESCHEMA_SRCS
     eeschema_config.cpp
     erc.cpp
     events_called_functions_for_edit.cpp
+    fields_grid_table.cpp
     files-io.cpp
     find.cpp
     generate_alias_info.cpp

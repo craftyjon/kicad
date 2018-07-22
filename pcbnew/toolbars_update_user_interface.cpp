@@ -54,28 +54,6 @@ void PCB_EDIT_FRAME::OnUpdateSelectTrackWidth( wxUpdateUIEvent& aEvent )
         if( m_SelTrackWidthBox->GetSelection() != (int) GetDesignSettings().GetTrackWidthIndex() )
             m_SelTrackWidthBox->SetSelection( GetDesignSettings().GetTrackWidthIndex() );
     }
-    else
-    {
-        bool check = ( ( ( ID_POPUP_PCB_SELECT_WIDTH1 +
-                           (int) GetDesignSettings().GetTrackWidthIndex() ) == aEvent.GetId() ) &&
-                               !GetDesignSettings().m_UseConnectedTrackWidth &&
-                               !GetDesignSettings().UseCustomTrackViaSize() );
-
-        aEvent.Check( check );
-    }
-}
-
-
-void PCB_EDIT_FRAME::OnUpdateSelectAutoTrackWidth( wxUpdateUIEvent& aEvent )
-{
-    aEvent.Check( GetDesignSettings().m_UseConnectedTrackWidth &&
-            !GetDesignSettings().UseCustomTrackViaSize() );
-}
-
-
-void PCB_EDIT_FRAME::OnUpdateSelectCustomTrackWidth( wxUpdateUIEvent& aEvent )
-{
-    aEvent.Check( GetDesignSettings().UseCustomTrackViaSize() );
 }
 
 
@@ -85,15 +63,6 @@ void PCB_EDIT_FRAME::OnUpdateSelectViaSize( wxUpdateUIEvent& aEvent )
     {
         if( m_SelViaSizeBox->GetSelection() != (int) GetDesignSettings().GetViaSizeIndex() )
             m_SelViaSizeBox->SetSelection( GetDesignSettings().GetViaSizeIndex() );
-    }
-    else
-    {
-        bool check = ( ( ( ID_POPUP_PCB_SELECT_VIASIZE1 +
-                           (int) GetDesignSettings().GetViaSizeIndex() ) == aEvent.GetId() ) &&
-                       !GetDesignSettings().m_UseConnectedTrackWidth &&
-                       !GetDesignSettings().UseCustomTrackViaSize() );
-
-        aEvent.Check( check );
     }
 }
 
@@ -206,17 +175,6 @@ void PCB_EDIT_FRAME::OnUpdateMuWaveToolbar( wxUpdateUIEvent& aEvent )
 }
 
 
-void PCB_EDIT_FRAME::OnUpdateAutoPlaceTracksMode( wxUpdateUIEvent& aEvent )
-{
-    //Nothing to do.
-}
-
-
-void PCB_EDIT_FRAME::OnUpdateAutoPlaceModulesMode( wxUpdateUIEvent& aEvent )
-{
-    //Nothing to do.
-}
-
 void PCB_EDIT_FRAME::SyncMenusAndToolbars( wxEvent& aEvent )
 {
     auto displOpts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
@@ -247,7 +205,7 @@ void PCB_EDIT_FRAME::SyncMenusAndToolbars( wxEvent& aEvent )
     m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SELECT_UNIT_MM, false );
     m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SELECT_UNIT_INCH, false );
 
-    if( g_UserUnit == INCHES )
+    if( GetUserUnits() == INCHES )
     {
         menuBar->FindItem( ID_TB_OPTIONS_SELECT_UNIT_INCH )->Check( true );
         m_optionsToolBar->ToggleTool( ID_TB_OPTIONS_SELECT_UNIT_INCH, true );

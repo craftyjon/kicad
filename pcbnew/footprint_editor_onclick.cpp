@@ -319,7 +319,7 @@ bool FOOTPRINT_EDIT_FRAME::OnRightClick( const wxPoint& MousePos, wxMenu* PopMen
             AddMenuItem( PopMenu, ID_POPUP_PCB_COPY_PAD_SETTINGS,
                          _( "Copy Pad Properties" ), KiBitmap( copy_pad_settings_xpm ) );
             AddMenuItem( PopMenu, ID_POPUP_PCB_APPLY_PAD_SETTINGS,
-                         _( "Apply Pad Properties" ), KiBitmap( apply_pad_settings_xpm ) );
+                         _( "Paste Pad Properties" ), KiBitmap( apply_pad_settings_xpm ) );
             msg = AddHotkeyName( _("Delete Pad" ), g_Module_Editor_Hotkeys_Descr, HK_DELETE );
             AddMenuItem( PopMenu, ID_POPUP_PCB_DELETE_PAD, msg, KiBitmap( delete_pad_xpm ) );
 
@@ -470,15 +470,6 @@ bool FOOTPRINT_EDIT_FRAME::OnRightClick( const wxPoint& MousePos, wxMenu* PopMen
         PopMenu->AppendSeparator();
     }
 
-    if( ( GetToolId() == ID_MODEDIT_LINE_TOOL ) ||
-        ( GetToolId() == ID_MODEDIT_CIRCLE_TOOL ) ||
-        ( GetToolId() == ID_MODEDIT_ARC_TOOL ) )
-    {
-        AddMenuItem( PopMenu, ID_POPUP_MODEDIT_ENTER_EDGE_WIDTH, _("Set Line Width..." ),
-                     KiBitmap( width_segment_xpm ) );
-        PopMenu->AppendSeparator();
-    }
-
     return true;
 }
 
@@ -543,14 +534,11 @@ void FOOTPRINT_EDIT_FRAME::OnEditItemRequest( wxDC* aDC, BOARD_ITEM* aItem )
         break;
 
     case PCB_MODULE_TEXT_T:
-        InstallTextModOptionsFrame( static_cast<TEXTE_MODULE*>( aItem ), aDC );
-        m_canvas->MoveCursorToCrossHair();
+        InstallTextOptionsFrame( aItem, aDC );
         break;
 
     case PCB_MODULE_EDGE_T :
-        m_canvas->MoveCursorToCrossHair();
-        InstallFootprintBodyItemPropertiesDlg( static_cast<EDGE_MODULE*>( aItem ) );
-        m_canvas->Refresh();
+        InstallGraphicItemPropertiesDialog( aItem, nullptr );
         break;
 
     default:

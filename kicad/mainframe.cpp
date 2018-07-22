@@ -30,7 +30,7 @@
 
 
 #include <draw_frame.h>
-#include <dialog_hotkeys_editor.h>
+#include <panel_hotkeys_editor.h>
 #include <gestfich.h>
 #include <kiway.h>
 #include <kiway_player.h>
@@ -38,7 +38,8 @@
 #include <bitmaps.h>
 #include <executable_names.h>
 #include <build_version.h>
-
+#include <dialog_configure_paths.h>
+#include <dialog_edit_library_tables.h>
 #include "pgm_kicad.h"
 #include "tree_project_frame.h"
 
@@ -50,7 +51,8 @@
 KICAD_MANAGER_FRAME::KICAD_MANAGER_FRAME( wxWindow* parent,
         const wxString& title, const wxPoint&  pos, const wxSize&   size ) :
     EDA_BASE_FRAME( parent, KICAD_MAIN_FRAME_T, title, pos, size,
-                    KICAD_DEFAULT_DRAWFRAME_STYLE, KICAD_MANAGER_FRAME_NAME )
+                    KICAD_DEFAULT_DRAWFRAME_STYLE, KICAD_MANAGER_FRAME_NAME ),
+    KIWAY_HOLDER( &::Kiway )
 {
     m_active_project = false;
     m_leftWinWidth = 60;
@@ -215,7 +217,7 @@ void KICAD_MANAGER_FRAME::OnSize( wxSizeEvent& event )
 
 void KICAD_MANAGER_FRAME::OnCloseWindow( wxCloseEvent& Event )
 {
-    if( Kiway.PlayersClose( false ) )
+    if( Kiway().PlayersClose( false ) )
     {
         int px, py;
 
@@ -295,7 +297,7 @@ void KICAD_MANAGER_FRAME::Execute( wxWindow* frame, const wxString& execFile,
 
 void KICAD_MANAGER_FRAME::RunEeschema( const wxString& aProjectSchematicFileName )
 {
-    KIWAY_PLAYER* frame = Kiway.Player( FRAME_SCH, false );
+    KIWAY_PLAYER* frame = Kiway().Player( FRAME_SCH, false );
 
     // Please: note: DIALOG_EDIT_LIBENTRY_FIELDS_IN_LIB::initBuffers() calls
     // Kiway.Player( FRAME_SCH, true )
@@ -309,7 +311,7 @@ void KICAD_MANAGER_FRAME::RunEeschema( const wxString& aProjectSchematicFileName
     {
         try
         {
-            frame = Kiway.Player( FRAME_SCH, true );
+            frame = Kiway().Player( FRAME_SCH, true );
         }
         catch( const IO_ERROR& err )
         {
@@ -350,13 +352,13 @@ void KICAD_MANAGER_FRAME::OnRunEeschema( wxCommandEvent& event )
 
 void KICAD_MANAGER_FRAME::OnRunSchLibEditor( wxCommandEvent& event )
 {
-    KIWAY_PLAYER* frame = Kiway.Player( FRAME_SCH_LIB_EDITOR, false );
+    KIWAY_PLAYER* frame = Kiway().Player( FRAME_SCH_LIB_EDITOR, false );
 
     if( !frame )
     {
         try
         {
-            frame = Kiway.Player( FRAME_SCH_LIB_EDITOR, true );
+            frame = Kiway().Player( FRAME_SCH_LIB_EDITOR, true );
         }
         catch( const IO_ERROR& err )
         {
@@ -382,7 +384,7 @@ void KICAD_MANAGER_FRAME::RunPcbNew( const wxString& aProjectBoardFileName )
 
     try
     {
-        frame = Kiway.Player( FRAME_PCB, true );
+        frame = Kiway().Player( FRAME_PCB, true );
     }
     catch( const IO_ERROR& err )
     {
@@ -422,13 +424,13 @@ void KICAD_MANAGER_FRAME::OnRunPcbNew( wxCommandEvent& event )
 
 void KICAD_MANAGER_FRAME::OnRunPcbFpEditor( wxCommandEvent& event )
 {
-    KIWAY_PLAYER* frame = Kiway.Player( FRAME_PCB_MODULE_EDITOR, false );
+    KIWAY_PLAYER* frame = Kiway().Player( FRAME_PCB_MODULE_EDITOR, false );
 
     if( !frame )
     {
         try
         {
-            frame = Kiway.Player( FRAME_PCB_MODULE_EDITOR, true );
+            frame = Kiway().Player( FRAME_PCB_MODULE_EDITOR, true );
         }
         catch( const IO_ERROR& err )
         {
@@ -445,13 +447,6 @@ void KICAD_MANAGER_FRAME::OnRunPcbFpEditor( wxCommandEvent& event )
         frame->Iconize( false );
 
     frame->Raise();
-}
-
-
-void KICAD_MANAGER_FRAME::OnChangeIconsOptions( wxCommandEvent& event )
-{
-    EDA_BASE_FRAME::OnChangeIconsOptions( event );
-    Kiway.ShowChangedIcons();
 }
 
 
@@ -522,7 +517,7 @@ void KICAD_MANAGER_FRAME::OnRefresh( wxCommandEvent& event )
 void KICAD_MANAGER_FRAME::language_change( wxCommandEvent& event )
 {
     int id = event.GetId();
-    Kiway.SetLanguage( id );
+    Kiway().SetLanguage( id );
 }
 
 
@@ -554,39 +549,62 @@ void KICAD_MANAGER_FRAME::PrintPrjInfo()
 }
 
 
-void KICAD_MANAGER_FRAME::Process_Config( wxCommandEvent& event )
+void KICAD_MANAGER_FRAME::OnShowHotkeys( wxCommandEvent& event )
 {
-    int        id = event.GetId();
-    wxFileName fn;
-
-    switch( id )
-    {
-    // Hotkey IDs
-    case ID_PREFERENCES_HOTKEY_SHOW_EDITOR:
-        InstallHotkeyFrame( this, m_manager_Hokeys_Descr );
-        break;
-
-    case ID_PREFERENCES_HOTKEY_EXPORT_CONFIG:
-        ExportHotkeyConfigToFile( m_manager_Hokeys_Descr, wxT( "kicad" ) );
-        break;
-
-    case ID_PREFERENCES_HOTKEY_IMPORT_CONFIG:
-        ImportHotkeyConfigFromFile( m_manager_Hokeys_Descr, wxT( "kicad" ) );
-        break;
-
-    case ID_PREFERENCES_HOTKEY_SHOW_CURRENT_LIST:
-        // Display current hotkey list for LibEdit.
-        DisplayHotkeyList( this, m_manager_Hokeys_Descr );
-        break;
-
-    default:
-        wxFAIL_MSG( wxT( "KICAD_MANAGER_FRAME::Process_Config error" ) );
-        break;
-    }
+    DisplayHotkeyList( this, m_manager_Hokeys_Descr );
 }
 
 
 void KICAD_MANAGER_FRAME::OnConfigurePaths( wxCommandEvent& aEvent )
 {
-    Pgm().ConfigurePaths( this );
+    DIALOG_CONFIGURE_PATHS dlg( this, nullptr );
+    dlg.ShowModal();
+}
+
+
+void KICAD_MANAGER_FRAME::OnEditSymLibTable( wxCommandEvent& aEvent )
+{
+    auto frame = Kiway().Player( FRAME_SCH, false );
+    bool alreadyRunning = frame != nullptr;
+
+    if( !frame )
+        frame = Kiway().Player( FRAME_SCH, true );
+
+    if( frame )
+    {
+        DIALOG_EDIT_LIBRARY_TABLES dlg( this, _( "Symbol Libraries" ) );
+        frame->InstallLibraryTablesPanel( &dlg );
+
+        dlg.ShowModal();
+
+        if( !alreadyRunning )
+            frame->Destroy();
+    }
+}
+
+
+void KICAD_MANAGER_FRAME::OnEditFpLibTable( wxCommandEvent& aEvent )
+{
+    auto frame = Kiway().Player( FRAME_PCB, false );
+    bool alreadyRunning = frame != nullptr;
+
+    if( !frame )
+        frame = Kiway().Player( FRAME_PCB, true );
+
+    if( frame )
+    {
+        DIALOG_EDIT_LIBRARY_TABLES dlg( this, _( "Footprint Libraries" ) );
+        frame->InstallLibraryTablesPanel( &dlg );
+
+        dlg.ShowModal();
+
+        if( !alreadyRunning )
+            frame->Destroy();
+    }
+}
+
+
+void KICAD_MANAGER_FRAME::OnPreferences( wxCommandEvent& aEvent )
+{
+    ShowPreferences( m_manager_Hokeys_Descr, m_manager_Hokeys_Descr, wxT( "kicad" ) );
 }

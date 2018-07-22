@@ -228,7 +228,7 @@ void PCB_EDIT_FRAME::Files_io_from_id( int id )
 {
     wxString   msg;
 
-    // If an edition is in progress, stop it.
+    // If an edit is in progress, stop it.
     // For something else than save, get rid of current tool.
     if( id == ID_SAVE_BOARD )
         m_canvas->EndMouseCapture( -1, m_canvas->GetDefaultCursor() );
@@ -527,6 +527,22 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
                                  ioe.What() );
             return false;
         }
+
+        // 6.0 TODO: some settings didn't make it into the board file in 5.1 so as not to
+        // change the file format.  For 5.1 we must copy them across from the config-initialized
+        // board.
+        BOARD_DESIGN_SETTINGS& bds = loadedBoard->m_designSettings;
+        BOARD_DESIGN_SETTINGS& configBds = GetBoard()->GetDesignSettings();
+
+        bds.m_RequireCourtyards                 = configBds.m_RequireCourtyards;
+        bds.m_ProhibitOverlappingCourtyards     = configBds.m_ProhibitOverlappingCourtyards;
+        bds.m_HoleToHoleMin                     = configBds.m_HoleToHoleMin;
+        bds.m_LineThickness[LAYER_CLASS_OTHERS] = configBds.m_LineThickness[LAYER_CLASS_OTHERS];
+        bds.m_TextSize[LAYER_CLASS_OTHERS]      = configBds.m_TextSize[LAYER_CLASS_OTHERS];
+        bds.m_TextThickness[LAYER_CLASS_OTHERS] = configBds.m_TextThickness[LAYER_CLASS_OTHERS];
+        std::copy( configBds.m_TextItalic,  configBds.m_TextItalic + 4,  bds.m_TextItalic );
+        std::copy( configBds.m_TextUpright, configBds.m_TextUpright + 4, bds.m_TextUpright );
+        bds.m_DiffPairDimensionsList            = configBds.m_DiffPairDimensionsList;
 
         SetBoard( loadedBoard );
 
