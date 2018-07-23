@@ -1,6 +1,6 @@
 include_directories(
     "${CMAKE_SOURCE_DIR}/include"
-    "${CMAKE_SOURCE_DIR}/lib_dxf"
+    "${CMAKE_SOURCE_DIR}/dxflib_qcad"
     "${CMAKE_SOURCE_DIR}/utils/idftools"
     ${OPENGL_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
@@ -39,7 +39,8 @@ if( APPLE )
         RUNTIME_OUTPUT_DIRECTORY ${OSX_BUNDLE_BUILD_BIN_DIR}
         )
 else()
-    install( TARGETS idfcyl idfrect dxf2idf idf2vrml
+    install( TARGETS idfcyl idfrect idf2vrml
+        dxf2idf
         DESTINATION ${KICAD_BIN}
         COMPONENT binary )
 endif()

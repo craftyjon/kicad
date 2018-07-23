@@ -1,8 +1,8 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2004 Jean-Pierre Charras, jaen-pierre.charras@gipsa-lab.inpg.com
- * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2018 Jean-Pierre Charras jp.charras at wanadoo.fr
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -193,6 +193,16 @@ public:
     {
         m_BezierPoints = aPoints;
     }
+
+    /** Rebuild the m_BezierPoints vertex list that approximate the Bezier curve
+     * by a list of segments
+     * Has meaning only for S_CURVE DRAW_SEGMENT shape
+     * @param aMinSegLen is the min length of segments approximating the shape.
+     * the last segment can be shorter
+     * This param avoid having too many very short segment in list.
+     * a good value is m_Width/2 to m_Width
+     */
+    void RebuildBezierToSegmentsPointsList( int aMinSegLen );
 
     void SetPolyPoints( const std::vector<wxPoint>& aPoints );
 
