@@ -101,7 +101,7 @@ wxString LIB_ALIAS::GetLibNickname() const
     if( shared )
         return shared->GetLibraryName();
 
-    return wxString( _( "none" ) );
+    return wxEmptyString;
 }
 
 
@@ -145,7 +145,11 @@ wxString LIB_ALIAS::GetUnitReference( int aUnit )
 
 wxString LIB_ALIAS::GetSearchText()
 {
-    wxString text = GetKeyWords() + wxT( "        " ) + GetDescription();
+    // Matches are scored by offset from front of string, so inclusion of this spacer
+    // discounts matches found after it.
+    static const wxString discount( wxT( "        " ) );
+
+    wxString text = GetKeyWords() + discount + GetDescription();
 
     // If a footprint is defined for the part, add it to the serach string
     if( shared )
@@ -153,7 +157,7 @@ wxString LIB_ALIAS::GetSearchText()
         wxString footprint = shared->GetFootprintField().GetText();
 
         if( !footprint.IsEmpty() )
-            text += wxT( "        " ) + footprint;
+            text += discount + footprint;
     }
 
     return text;
@@ -195,6 +199,7 @@ LIB_PART::LIB_PART( const wxString& aName, PART_LIB* aLibrary ) :
 
     // Add the MANDATORY_FIELDS in RAM only.  These are assumed to be present
     // when the field editors are invoked.
+    m_drawings[LIB_FIELD_T].reserve( 4 );
     m_drawings[LIB_FIELD_T].push_back( new LIB_FIELD( this, VALUE ) );
     m_drawings[LIB_FIELD_T].push_back( new LIB_FIELD( this, REFERENCE ) );
     m_drawings[LIB_FIELD_T].push_back( new LIB_FIELD( this, FOOTPRINT ) );
@@ -263,7 +268,7 @@ const wxString LIB_PART::GetLibraryName()
     if( m_library )
         return m_library->GetName();
 
-    return wxString( _( "none" ) );
+    return m_libId.GetLibNickname();
 }
 
 

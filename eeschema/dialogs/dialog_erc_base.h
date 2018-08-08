@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Aug  7 2018)
+// C++ code generated with wxFormBuilder (version May 29 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -26,11 +26,11 @@ class ERC_HTML_LISTFRAME;
 #include <wx/checkbox.h>
 #include <wx/statbox.h>
 #include <wx/html/htmlwin.h>
+#include <wx/button.h>
+#include <wx/panel.h>
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/icon.h>
-#include <wx/button.h>
-#include <wx/panel.h>
 #include <wx/notebook.h>
 #include <wx/dialog.h>
 
@@ -76,9 +76,11 @@ class DIALOG_ERC_BASE : public DIALOG_SHIM
 		wxCheckBox* m_cbCheckBusDriverConflicts;
 		
 		// Virtual event handlers, overide them in your derived class
+		virtual void OnCloseErcDialog( wxCloseEvent& event ) { event.Skip(); }
 		virtual void OnLeftClickMarkersList( wxHtmlLinkEvent& event ) { event.Skip(); }
 		virtual void OnLeftDblClickMarkersList( wxMouseEvent& event ) { event.Skip(); }
 		virtual void OnEraseDrcMarkersClick( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnButtonCloseClick( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnErcCmpClick( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnResetMatrixClick( wxCommandEvent& event ) { event.Skip(); }
 		

@@ -23,12 +23,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-
-/**
- * @file footprint_info.cpp
- */
-
-
 /*
  * Functions to read footprint libraries and fill m_footprints by available footprints names
  * and their documentation (comments and keywords)
@@ -142,13 +136,20 @@ static FOOTPRINT_LIST* get_instance_from_id( KIWAY& aKiway, int aId )
 
 FOOTPRINT_LIST* FOOTPRINT_LIST::GetInstance( KIWAY& aKiway )
 {
-    return get_instance_from_id( aKiway, KIFACE_FOOTPRINT_LIST );
+    FOOTPRINT_LIST* footprintInfo = get_instance_from_id( aKiway, KIFACE_FOOTPRINT_LIST );
+
+    if( !footprintInfo->GetCount() )
+    {
+        wxTextFile footprintInfoCache( aKiway.Prj().GetProjectPath() + "fp-info-cache" );
+        footprintInfo->ReadCacheFromFile( &footprintInfoCache );
+    }
+
+    return footprintInfo;
 }
 
 
 FOOTPRINT_ASYNC_LOADER::FOOTPRINT_ASYNC_LOADER() : m_list( nullptr )
 {
-    m_started = false;
     m_total_libs = 0;
 }
 
@@ -169,8 +170,6 @@ void FOOTPRINT_ASYNC_LOADER::SetList( FOOTPRINT_LIST* aList )
 void FOOTPRINT_ASYNC_LOADER::Start(
         FP_LIB_TABLE* aTable, wxString const* aNickname, unsigned aNThreads )
 {
-    m_started = true;
-
     // Capture the FP_LIB_TABLE into m_last_table. Formatting it as a string instead of storing the
     // raw data avoids having to pull in the FP-specific parts.
     STRING_FORMATTER sof;
@@ -201,18 +200,4 @@ void FOOTPRINT_ASYNC_LOADER::Abort()
         m_list->StopWorkers();
         m_list = nullptr;
     }
-}
-
-
-void FOOTPRINT_ASYNC_LOADER::SetCompletionCallback( std::function<void()> aCallback )
-{
-    m_completion_cb = std::move(aCallback);
-}
-
-
-bool FOOTPRINT_ASYNC_LOADER::IsSameTable( FP_LIB_TABLE* aOther )
-{
-    STRING_FORMATTER sof;
-    aOther->Format( &sof, 0 );
-    return m_last_table == sof.GetString();
 }

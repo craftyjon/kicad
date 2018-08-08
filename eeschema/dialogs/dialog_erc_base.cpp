@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Aug  7 2018)
+// C++ code generated with wxFormBuilder (version May 29 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -119,7 +119,7 @@ DIALOG_ERC_BASE::DIALOG_ERC_BASE( wxWindow* parent, wxWindowID id, const wxStrin
 	m_PanelERC->SetSizer( bercSizer );
 	m_PanelERC->Layout();
 	bercSizer->Fit( m_PanelERC );
-	m_NoteBook->AddPage( m_PanelERC, _("ERC"), false );
+	m_NoteBook->AddPage( m_PanelERC, _("ERC"), true );
 	m_PanelERCOptions = new wxPanel( m_NoteBook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* m_panelMatrixSizer;
 	m_panelMatrixSizer = new wxBoxSizer( wxVERTICAL );
@@ -174,7 +174,7 @@ DIALOG_ERC_BASE::DIALOG_ERC_BASE( wxWindow* parent, wxWindowID id, const wxStrin
 	m_PanelERCOptions->SetSizer( m_panelMatrixSizer );
 	m_PanelERCOptions->Layout();
 	m_panelMatrixSizer->Fit( m_PanelERCOptions );
-	m_NoteBook->AddPage( m_PanelERCOptions, _("Options"), true );
+	m_NoteBook->AddPage( m_PanelERCOptions, _("Options"), false );
 	
 	bSizer1->Add( m_NoteBook, 1, wxEXPAND | wxALL, 5 );
 	
@@ -183,9 +183,11 @@ DIALOG_ERC_BASE::DIALOG_ERC_BASE( wxWindow* parent, wxWindowID id, const wxStrin
 	this->Layout();
 	
 	// Connect Events
+	this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( DIALOG_ERC_BASE::OnCloseErcDialog ) );
 	m_MarkersList->Connect( wxEVT_COMMAND_HTML_LINK_CLICKED, wxHtmlLinkEventHandler( DIALOG_ERC_BASE::OnLeftClickMarkersList ), NULL, this );
 	m_MarkersList->Connect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( DIALOG_ERC_BASE::OnLeftDblClickMarkersList ), NULL, this );
 	m_buttondelmarkers->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnEraseDrcMarkersClick ), NULL, this );
+	m_sdbSizer1Cancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnButtonCloseClick ), NULL, this );
 	m_sdbSizer1OK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnErcCmpClick ), NULL, this );
 	m_ResetOptButton->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnResetMatrixClick ), NULL, this );
 }
@@ -193,9 +195,11 @@ DIALOG_ERC_BASE::DIALOG_ERC_BASE( wxWindow* parent, wxWindowID id, const wxStrin
 DIALOG_ERC_BASE::~DIALOG_ERC_BASE()
 {
 	// Disconnect Events
+	this->Disconnect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( DIALOG_ERC_BASE::OnCloseErcDialog ) );
 	m_MarkersList->Disconnect( wxEVT_COMMAND_HTML_LINK_CLICKED, wxHtmlLinkEventHandler( DIALOG_ERC_BASE::OnLeftClickMarkersList ), NULL, this );
 	m_MarkersList->Disconnect( wxEVT_LEFT_DCLICK, wxMouseEventHandler( DIALOG_ERC_BASE::OnLeftDblClickMarkersList ), NULL, this );
 	m_buttondelmarkers->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnEraseDrcMarkersClick ), NULL, this );
+	m_sdbSizer1Cancel->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnButtonCloseClick ), NULL, this );
 	m_sdbSizer1OK->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnErcCmpClick ), NULL, this );
 	m_ResetOptButton->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_ERC_BASE::OnResetMatrixClick ), NULL, this );
 	

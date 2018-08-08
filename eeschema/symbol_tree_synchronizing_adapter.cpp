@@ -48,7 +48,7 @@ bool SYMBOL_TREE_SYNCHRONIZING_ADAPTER::IsContainer( const wxDataViewItem& aItem
 }
 
 
-#define PROGRESS_INTERVAL_MILLIS 66
+#define PROGRESS_INTERVAL_MILLIS 120
 
 void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::Sync( bool aForce, std::function<void(int, int, const wxString&)> aProgressCallback )
 {
@@ -102,9 +102,10 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::Sync( bool aForce, std::function<void(in
 
             auto& lib_node = m_tree.AddLib( libName, library->GetDescr() );
             updateLibrary( lib_node );
-            m_tree.AssignIntrinsicRanks();
         }
     }
+
+    m_tree.AssignIntrinsicRanks();
 }
 
 

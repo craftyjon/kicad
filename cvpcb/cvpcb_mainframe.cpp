@@ -151,8 +151,8 @@ CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent ) :
     EDA_PANEINFO horiz;
     horiz.HorizontalToolbarPane();
 
-    EDA_PANEINFO info;
-    info.InfoToolbarPane();
+    EDA_PANEINFO layers;
+    layers.LayersToolbarPane();
 
     if( m_mainToolBar )
         m_auimgr.AddPane( m_mainToolBar,
@@ -160,17 +160,20 @@ CVPCB_MAINFRAME::CVPCB_MAINFRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     if( m_compListBox )
         m_auimgr.AddPane( m_compListBox,
-                          wxAuiPaneInfo( horiz ).Name( wxT( "m_compListBox" ) ).CentrePane() );
+                          wxAuiPaneInfo( layers ).Name( wxT( "m_compListBox" ) )
+                          .Caption( _( "Symbol : Footprint Assignments" ) ).Center() );
 
     if( m_libListBox)
         m_auimgr.AddPane( m_libListBox,
-                          wxAuiPaneInfo( info ).Name( wxT( "m_libListBox" ) ).
-                          Left().BestSize( (int) ( m_FrameSize.x * 0.20 ), m_FrameSize.y ) );
+                          wxAuiPaneInfo( layers ).Name( wxT( "m_libListBox" ) )
+                          .Caption( _( "Footprint Libraries" ) )
+                          .Left().BestSize( (int) ( m_FrameSize.x * 0.20 ), m_FrameSize.y ) );
 
     if( m_footprintListBox )
         m_auimgr.AddPane( m_footprintListBox,
-                          wxAuiPaneInfo( info ).Name( wxT( "m_footprintListBox" ) ).
-                          Right().BestSize( (int) ( m_FrameSize.x * 0.30 ), m_FrameSize.y ) );
+                          wxAuiPaneInfo( layers ).Name( wxT( "m_footprintListBox" ) )
+                          .Caption( _( "Filtered Footprints" ) )
+                          .Right().BestSize( (int) ( m_FrameSize.x * 0.30 ), m_FrameSize.y ) );
 
     // Build the bottom panel, to display 2 status texts and the buttons:
     auto bottomPanel = new wxPanel( this );
@@ -452,63 +455,12 @@ bool CVPCB_MAINFRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, i
 
 void CVPCB_MAINFRAME::OnEditFootprintLibraryTable( wxCommandEvent& aEvent )
 {
-    FP_LIB_TABLE* globalTable;
-    bool          tableChanged = false;
-    KIFACE*       kiface = Kiway().KiFACE( KIWAY::FACE_PCB );
+    KIFACE* kiface = Kiway().KiFACE( KIWAY::FACE_PCB );
+    kiface->CreateWindow( this, DIALOG_PCB_LIBRARY_TABLE, &Kiway() );
 
-    if( kiface )
-        globalTable = (FP_LIB_TABLE*) kiface->IfaceOrAddress( KIFACE_GLOBAL_FOOTPRINT_TABLE );
-    else
-        globalTable = &GFootprintTable; // Shouldn't happen now that Cvpcb is integrated
-
-    int r = InvokePcbLibTableEditor( this, globalTable, Prj().PcbFootprintLibs( Kiway() ) );
-
-    if( r & 1 )
-    {
-        wxString fileName = FP_LIB_TABLE::GetGlobalTableFileName();
-
-        try
-        {
-            globalTable->Save( fileName );
-            tableChanged = true;
-        }
-        catch( const IO_ERROR& ioe )
-        {
-            wxString msg = wxString::Format(
-                    _( "Error occurred saving the global footprint library table:\n\"%s\"\n%s" ),
-                    GetChars( fileName ),
-                    GetChars( ioe.What() )
-                    );
-            wxMessageBox( msg, _( "File Save Error" ), wxOK | wxICON_ERROR );
-        }
-    }
-
-    if( r & 2 )
-    {
-        wxString fileName = Prj().FootprintLibTblName();
-
-        try
-        {
-            Prj().PcbFootprintLibs( Kiway() )->Save( fileName );
-            tableChanged = true;
-        }
-        catch( const IO_ERROR& ioe )
-        {
-            wxString msg = wxString::Format(
-                    _( "Error occurred saving the project footprint library table:\n\"%s\"\n%s" ),
-                    GetChars( fileName ),
-                    GetChars( ioe.What() )
-                    );
-            wxMessageBox( msg, _( "File Save Error" ), wxOK | wxICON_ERROR );
-        }
-    }
-
-    if( tableChanged )
-    {
-        wxBusyCursor dummy;
-        BuildLIBRARY_LISTBOX();
-        m_FootprintsList->ReadFootprintFiles( Prj().PcbFootprintLibs( Kiway() ) );
-    }
+    wxBusyCursor dummy;
+    BuildLIBRARY_LISTBOX();
+    m_FootprintsList->ReadFootprintFiles( Prj().PcbFootprintLibs( Kiway() ) );
 }
 
 
