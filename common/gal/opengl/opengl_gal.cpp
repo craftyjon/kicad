@@ -32,6 +32,7 @@
 #include <gl_context_mgr.h>
 #include <geometry/shape_poly_set.h>
 #include <text_utils.h>
+#include <bitmap_base.h>
 
 #include <macros.h>
 
@@ -63,6 +64,101 @@ GLuint OPENGL_GAL::fontTexture = 0;
 bool OPENGL_GAL::isBitmapFontLoaded = false;
 SHADER* OPENGL_GAL::shader = NULL;
 
+namespace KIGFX {
+class GL_BITMAP_CACHE
+{
+public:
+    GL_BITMAP_CACHE()
+    {
+    }
+
+    ~GL_BITMAP_CACHE();
+
+    GLuint RequestBitmap( const BITMAP_BASE* aBitmap );
+
+private:
+
+    struct CACHED_BITMAP
+    {
+        GLuint id;
+        int w, h;
+    };
+
+    GLuint cacheBitmap( const BITMAP_BASE* aBitmap );
+
+    std::map<const BITMAP_BASE*, CACHED_BITMAP> m_bitmaps;
+};
+
+};
+
+GL_BITMAP_CACHE::~GL_BITMAP_CACHE()
+{
+    for ( auto b = m_bitmaps.begin(); b != m_bitmaps.end(); ++b )
+    {
+        glDeleteTextures( 1, &b->second.id );
+    }
+}
+
+GLuint GL_BITMAP_CACHE::RequestBitmap( const BITMAP_BASE* aBitmap )
+{
+    auto it = m_bitmaps.find( aBitmap) ;
+
+    if ( it != m_bitmaps.end() )
+    {
+        return it->second.id;
+    }
+    else
+    {
+        return cacheBitmap( aBitmap );
+    }
+}
+
+
+GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
+{
+    CACHED_BITMAP bmp;
+
+    bmp.w = aBitmap->GetSizePixels().x;
+    bmp.h = aBitmap->GetSizePixels().y;
+
+    // There are draw issues (incorrect rendering) with some w values.
+    // It happens when the w value is not a multiple of 4
+    // so we use only a sub image with a modified width
+    bmp.w -= bmp.w % 4;
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+
+    uint8_t *buf = new uint8_t [ bmp.w * bmp.h * 3];
+    auto imgData = const_cast<BITMAP_BASE*>( aBitmap )->GetImageData();
+
+    for( int y = 0; y < bmp.h; y++ )
+    {
+        for( int x = 0; x < bmp.w; x++ )
+        {
+            uint8_t *p = buf + ( bmp.w * y + x ) * 3;
+
+            p[0] = imgData->GetRed( x, y );
+            p[1] = imgData->GetGreen( x, y );
+            p[2] = imgData->GetBlue( x, y );
+        }
+    }
+
+    glBindTexture( GL_TEXTURE_2D, textureID );
+
+    glTexImage2D( GL_TEXTURE_2D, 0,GL_RGB, bmp.w, bmp.h, 0, GL_RGB, GL_UNSIGNED_BYTE, buf );
+
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+
+    delete [] buf;
+
+    bmp.id = textureID;
+
+    m_bitmaps[ aBitmap ] = bmp;
+
+    return textureID;
+}
 
 OPENGL_GAL::OPENGL_GAL( GAL_DISPLAY_OPTIONS& aDisplayOptions, wxWindow* aParent,
                         wxEvtHandler* aMouseListener, wxEvtHandler* aPaintListener,
@@ -101,6 +197,8 @@ OPENGL_GAL::OPENGL_GAL( GAL_DISPLAY_OPTIONS& aDisplayOptions, wxWindow* aParent,
     }
 
     ++instanceCounter;
+
+    bitmapCache.reset( new GL_BITMAP_CACHE );
 
     compositor = new OPENGL_COMPOSITOR;
     compositor->SetAntialiasingMode( options.gl_antialiasing_mode );
@@ -899,6 +997,55 @@ void OPENGL_GAL::DrawCurve( const VECTOR2D& aStartPoint, const VECTOR2D& aContro
 }
 
 
+void OPENGL_GAL::DrawBitmap( const BITMAP_BASE& aBitmap )
+{
+    int ppi = aBitmap.GetPPI();
+    double worldIU_per_mm = 1.0 / ( worldUnitLength / 2.54 )/ 1000;
+    double pix_size_iu = worldIU_per_mm * ( 25.4 / ppi );
+
+    double w = aBitmap.GetSizePixels().x * pix_size_iu;
+    double h = aBitmap.GetSizePixels().y * pix_size_iu;
+
+    auto xform = currentManager->GetTransformation();
+
+    glm::vec4 v0 = xform * glm::vec4( -w/2, -h/2, 0.0, 0.0 );
+    glm::vec4 v1 = xform * glm::vec4( w/2, h/2, 0.0, 0.0 );
+    glm::vec4 trans = xform[3];
+
+    auto id = bitmapCache->RequestBitmap( &aBitmap );
+
+    auto oldTarget = GetTarget();
+
+    glPushMatrix();
+    glTranslated( trans.x, trans.y, trans.z );
+
+    SetTarget( TARGET_NONCACHED );
+    glEnable(GL_TEXTURE_2D);
+    glActiveTexture( GL_TEXTURE0 );
+    glBindTexture( GL_TEXTURE_2D, id );
+
+    glBegin( GL_QUADS );
+    glColor4f(1.0, 1.0, 1.0, 1.0);
+    glTexCoord2f(0.0, 0.0);
+    glVertex3f( v0.x, v0.y, layerDepth );
+    glColor4f(1.0, 1.0, 1.0, 1.0);
+    glTexCoord2f(1.0, 0.0);
+    glVertex3f( v1.x, v0.y, layerDepth );
+    glColor4f(1.0, 1.0, 1.0, 1.0);
+    glTexCoord2f(1.0, 1.0);
+    glVertex3f( v1.x, v1.y, layerDepth );
+    glColor4f(1.0, 1.0, 1.0, 1.0);
+    glTexCoord2f(0.0, 1.0);
+    glVertex3f( v0.x, v1.y, layerDepth );
+    glEnd();
+
+    SetTarget( oldTarget );
+    glBindTexture( GL_TEXTURE_2D, 0 );
+
+    glPopMatrix();
+}
+
+
 void OPENGL_GAL::BitmapText( const wxString& aText, const VECTOR2D& aPosition,
                              double aRotationAngle )
 {
@@ -1313,6 +1460,8 @@ void OPENGL_GAL::DeleteGroup( int aGroupNumber )
 
 void OPENGL_GAL::ClearCache()
 {
+    bitmapCache.reset( new GL_BITMAP_CACHE );
+
     groups.clear();
 
     if( isInitialized )
@@ -1707,8 +1856,10 @@ std::pair<VECTOR2D, float> OPENGL_GAL::computeBitmapTextSize( const UTF8& aText 
         unsigned int c = *chIt;
 
         const FONT_GLYPH_TYPE* glyph = LookupGlyph( c );
+        // Debug: show not coded char in the atlas
+        wxASSERT_MSG( glyph, wxString::Format( "missing char in font: code 0x%x <%c>", c, c ) );
 
-        if( !glyph ||                  // Not coded in font
+        if( !glyph || // Not coded in font
             c == '-' || c == '_' )     // Strange size of these 2 chars
         {
             glyph = defaultGlyph;

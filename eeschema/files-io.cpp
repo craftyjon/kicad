@@ -74,8 +74,7 @@ bool SCH_EDIT_FRAME::SaveEEFile( SCH_SCREEN* aScreen, bool aSaveUnderNewName,
 
     if( aSaveUnderNewName )
     {
-        wxFileDialog dlg( this, _( "Schematic Files" ),
-                          wxPathOnly( Prj().GetProjectFullName() ),
+        wxFileDialog dlg( this, _( "Schematic Files" ), wxPathOnly( Prj().GetProjectFullName() ),
                           schematicFileName.GetFullName(), SchematicFileWildcard(),
                           wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
 
@@ -204,15 +203,12 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
     wxString    fullFileName( aFileSet[0] );
 
     // We insist on caller sending us an absolute path, if it does not, we say it's a bug.
-    wxASSERT_MSG( wxFileName( fullFileName ).IsAbsolute(),
-        wxT( "bug in single_top.cpp or project manager." ) );
+    wxASSERT_MSG( wxFileName( fullFileName ).IsAbsolute(), wxT( "Path is not absolute!" ) );
 
     if( !LockFile( fullFileName ) )
     {
-        wxString msg = wxString::Format( _(
-                "Schematic file \"%s\" is already open." ),
-                GetChars( fullFileName )
-                );
+        wxString msg = wxString::Format( _( "Schematic file \"%s\" is already open." ),
+                                         fullFileName );
         DisplayError( this, msg );
         return false;
     }
@@ -229,10 +225,8 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
     if( is_new && !( aCtl & KICTL_CREATE ) )
     {
         // notify user that fullFileName does not exist, ask if user wants to create it.
-        wxString ask = wxString::Format( _(
-                "Schematic \"%s\" does not exist.  Do you wish to create it?" ),
-                GetChars( fullFileName )
-                );
+        wxString ask = wxString::Format( _( "Schematic \"%s\" does not exist.  Do you wish to create it?" ),
+                                         fullFileName );
         if( !IsOK( this, ask ) )
             return false;
     }
@@ -401,7 +395,6 @@ bool SCH_EDIT_FRAME::AppendSchematic()
 {
     wxString    msg;
     wxString    fullFileName;
-
     SCH_SCREEN* screen = GetScreen();
 
     if( !screen )
@@ -413,9 +406,8 @@ bool SCH_EDIT_FRAME::AppendSchematic()
     // open file chooser dialog
     wxString path = wxPathOnly( Prj().GetProjectFullName() );
 
-    wxFileDialog dlg( this, _( "Append Schematic" ), path,
-                      wxEmptyString, SchematicFileWildcard(),
-                      wxFD_OPEN | wxFD_FILE_MUST_EXIST );
+    wxFileDialog dlg( this, _( "Append Schematic" ), path, wxEmptyString,
+                      SchematicFileWildcard(), wxFD_OPEN | wxFD_FILE_MUST_EXIST );
 
     if( dlg.ShowModal() == wxID_CANCEL )
         return false;
@@ -553,7 +545,6 @@ bool SCH_EDIT_FRAME::AppendSchematic()
                     // Don't expand environment variable because KIPRJMOD will not be correct
                     // for a different project.
                     wxString uri = table.GetFullURI( libName, false );
-
                     wxFileName newLib;
 
                     if( uri.Contains( "${KIPRJMOD}" ) )
@@ -586,15 +577,10 @@ bool SCH_EDIT_FRAME::AppendSchematic()
 
                     // Rename the imported symbol library if it already exists.
                     while( Prj().SchSymbolLibTable()->HasLibrary( newLibName ) )
-                    {
                         newLibName = wxString::Format( "%s%d", libName, libNameCnt );
-                    }
 
-                    SYMBOL_LIB_TABLE_ROW* newRow = new SYMBOL_LIB_TABLE_ROW( newLibName,
-                                                                             uri,
-                                                                             row->GetType(),
-                                                                             row->GetOptions(),
-                                                                             row->GetDescr() );
+                    auto newRow = new SYMBOL_LIB_TABLE_ROW( newLibName, uri, row->GetType(),
+                                                            row->GetOptions(), row->GetDescr() );
                     Prj().SchSymbolLibTable()->InsertRow( newRow );
 
                     if( libName != newLibName )
@@ -670,7 +656,7 @@ void SCH_EDIT_FRAME::OnAppendProject( wxCommandEvent& event )
                           "Do you want to save the current document before proceeding?" );
 
         if( IsOK( this, msg ) )
-            OnSaveProject( event );
+            SaveProject();
     }
 
     AppendSchematic();
@@ -686,9 +672,8 @@ void SCH_EDIT_FRAME::OnImportProject( wxCommandEvent& aEvent )
     bool setProject = Prj().GetProjectFullName().IsEmpty();
     wxString path = wxPathOnly( Prj().GetProjectFullName() );
 
-    wxFileDialog dlg( this, _( "Import Schematic" ), path,
-                      wxEmptyString, EagleSchematicFileWildcard(),
-                      wxFD_OPEN | wxFD_FILE_MUST_EXIST );
+    wxFileDialog dlg( this, _( "Import Schematic" ), path, wxEmptyString,
+                      EagleSchematicFileWildcard(), wxFD_OPEN | wxFD_FILE_MUST_EXIST );
 
     if( dlg.ShowModal() == wxID_CANCEL )
         return;
@@ -707,28 +692,34 @@ void SCH_EDIT_FRAME::OnImportProject( wxCommandEvent& aEvent )
 
 void SCH_EDIT_FRAME::OnSaveProject( wxCommandEvent& aEvent )
 {
+    SaveProject();
+}
+
+bool SCH_EDIT_FRAME::SaveProject()
+{
     SCH_SCREEN* screen;
     SCH_SCREENS screenList;
+    bool success = true;
 
     // I want to see it in the debugger, show me the string!  Can't do that with wxFileName.
     wxString    fileName = Prj().AbsolutePath( g_RootSheet->GetFileName() );
-
     wxFileName  fn = fileName;
 
     if( !fn.IsDirWritable() )
     {
         wxString msg = wxString::Format( _( "Directory \"%s\" is not writable." ), fn.GetPath() );
-
         DisplayError( this, msg );
-        return;
+        return false;
     }
 
     for( screen = screenList.GetFirst(); screen; screen = screenList.GetNext() )
-        SaveEEFile( screen );
+        success &= SaveEEFile( screen );
 
     CreateArchiveLibraryCacheFile();
 
     UpdateTitle();
+
+    return success;
 }
 
 
@@ -779,7 +770,6 @@ bool SCH_EDIT_FRAME::doAutoSave()
 
 bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
 {
-    wxString fullFileName( aFileName );
     wxString projectpath;
     wxFileName newfilename;
     SCH_SHEET_LIST sheetList( g_RootSheet );
@@ -788,13 +778,13 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
     {
         case SCH_IO_MGR::SCH_EAGLE:
             // We insist on caller sending us an absolute path, if it does not, we say it's a bug.
-            wxASSERT_MSG( wxFileName( fullFileName ).IsAbsolute(),
+            wxASSERT_MSG( wxFileName( aFileName ).IsAbsolute(),
                     wxT( "Import eagle schematic caller didn't send full filename" ) );
 
-            if( !LockFile( fullFileName ) )
+            if( !LockFile( aFileName ) )
             {
                 wxString msg = wxString::Format( _( "Schematic file \"%s\" is already open." ),
-                        GetChars( fullFileName ) );
+                                                 aFileName );
                 DisplayError( this, msg );
                 return false;
             }
@@ -804,7 +794,7 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
                 delete g_RootSheet;
                 g_RootSheet = nullptr;
                 SCH_PLUGIN::SCH_PLUGIN_RELEASER pi( SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_EAGLE ) );
-                g_RootSheet = pi->Load( fullFileName, &Kiway() );
+                g_RootSheet = pi->Load( aFileName, &Kiway() );
 
 
                 // Eagle sheets do not use a worksheet frame by default, so set it to an empty one
@@ -836,7 +826,7 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
                 GetScreen()->SetModify();
                 SaveProjectSettings( false );
 
-                UpdateFileHistory( fullFileName );
+                UpdateFileHistory( aFileName );
                 SCH_SCREENS schematic;
                 schematic.UpdateSymbolLinks();      // Update all symbol library links for all sheets.
 
@@ -861,7 +851,8 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
 
                         if( !fpField->GetText().IsEmpty() )
                         {
-                            LIB_ID fpId( fpField->GetText() );
+                            LIB_ID fpId;
+                            fpId.Parse( fpField->GetText(), LIB_ID::ID_SCH, true );
                             fpId.SetLibNickname( newfilename.GetName() );
                             fpField->SetText( fpId.Format() );
                         }
@@ -876,7 +867,6 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
                         }
                     }
                 }
-
 
                 GetScreen()->ClearUndoORRedoList( GetScreen()->m_UndoList, 1 );
                 // Only perform the dangling end test on root sheet.
@@ -896,11 +886,10 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
                 Zoom_Automatique( false );
 
                 wxString msg;
-                msg.Printf( _( "Error loading schematic file \"%s\".\n%s" ),
-                            fullFileName, ioe.What() );
+                msg.Printf( _( "Error loading schematic \"%s\".\n%s" ), aFileName, ioe.What() );
                 DisplayError( this, msg );
 
-                msg.Printf( _( "Failed to load \"%s\"" ), fullFileName );
+                msg.Printf( _( "Failed to load \"%s\"" ), aFileName );
                 AppendMsgPanel( wxEmptyString, msg, CYAN );
 
                 return false;
@@ -911,8 +900,6 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
         default:
             return false;
     }
-
-    return false;
 }
 
 
@@ -925,25 +912,15 @@ bool SCH_EDIT_FRAME::AskToSaveChanges()
     {
         if( screen->IsModify() )
         {
-            int response = YesNoCancelDialog( m_parent, _(
-                "The current schematic has been modified.  Do you wish to save the changes?" ),
-                wxEmptyString,
-                _( "Save and Load" ),
-                _( "Load Without Saving" )
-                );
+            wxString msg = _( "The current schematic has been modified.  Save changes?" );
 
-            if( response == wxID_CANCEL )
+            switch( UnsavedChangesDialog( this, msg ) )
             {
-                return false;
+            default:
+            case wxID_CANCEL: return false;
+            case wxID_NO:     return true;
+            case wxID_YES:    return SaveProject();
             }
-            else if( response == wxID_YES )
-            {
-                wxCommandEvent dummy;
-                OnSaveProject( dummy );
-            }
-            // else wxID_NO, so do not save
-
-            break;
         }
     }
 

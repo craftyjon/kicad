@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Dec 30 2017)
+// C++ code generated with wxFormBuilder (version Aug  2 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -21,7 +21,7 @@ DIALOG_EDIT_LIBENTRY_FIELDS_IN_LIB_BASE::DIALOG_EDIT_LIBENTRY_FIELDS_IN_LIB_BASE
 	wxBoxSizer* bSizerFieldsSetup;
 	bSizerFieldsSetup = new wxBoxSizer( wxVERTICAL );
 	
-	m_grid = new WX_GRID( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxRAISED_BORDER );
+	m_grid = new WX_GRID( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SIMPLE );
 	
 	// Grid
 	m_grid->CreateGrid( 4, 11 );
@@ -74,23 +74,23 @@ DIALOG_EDIT_LIBENTRY_FIELDS_IN_LIB_BASE::DIALOG_EDIT_LIBENTRY_FIELDS_IN_LIB_BASE
 	wxBoxSizer* bButtonSize;
 	bButtonSize = new wxBoxSizer( wxHORIZONTAL );
 	
-	m_bpAdd = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW );
-	m_bpAdd->SetMinSize( wxSize( 29,29 ) );
+	m_bpAdd = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+	m_bpAdd->SetMinSize( wxSize( 30,29 ) );
 	
 	bButtonSize->Add( m_bpAdd, 0, wxRIGHT, 5 );
 	
-	m_bpDelete = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW );
-	m_bpDelete->SetMinSize( wxSize( 29,29 ) );
+	m_bpDelete = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+	m_bpDelete->SetMinSize( wxSize( 30,29 ) );
 	
 	bButtonSize->Add( m_bpDelete, 0, wxRIGHT, 10 );
 	
-	m_bpMoveUp = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW );
-	m_bpMoveUp->SetMinSize( wxSize( 29,29 ) );
+	m_bpMoveUp = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+	m_bpMoveUp->SetMinSize( wxSize( 30,29 ) );
 	
 	bButtonSize->Add( m_bpMoveUp, 0, wxLEFT, 10 );
 	
-	m_bpMoveDown = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW );
-	m_bpMoveDown->SetMinSize( wxSize( 29,29 ) );
+	m_bpMoveDown = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+	m_bpMoveDown->SetMinSize( wxSize( 30,29 ) );
 	
 	bButtonSize->Add( m_bpMoveDown, 0, wxRIGHT|wxLEFT, 5 );
 	
@@ -113,7 +113,7 @@ DIALOG_EDIT_LIBENTRY_FIELDS_IN_LIB_BASE::DIALOG_EDIT_LIBENTRY_FIELDS_IN_LIB_BASE
 	bSizerButtons->Add( 0, 0, 1, wxEXPAND, 5 );
 	
 	m_spiceFieldsButton = new wxButton( this, wxID_ANY, _("   Edit Spice Model...   "), wxDefaultPosition, wxDefaultSize, 0 );
-	bSizerButtons->Add( m_spiceFieldsButton, 0, wxEXPAND|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+	bSizerButtons->Add( m_spiceFieldsButton, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 	
 	
 	bSizerButtons->Add( 0, 0, 0, wxEXPAND|wxRIGHT|wxLEFT, 5 );
@@ -125,7 +125,7 @@ DIALOG_EDIT_LIBENTRY_FIELDS_IN_LIB_BASE::DIALOG_EDIT_LIBENTRY_FIELDS_IN_LIB_BASE
 	stdDialogButtonSizer->AddButton( stdDialogButtonSizerCancel );
 	stdDialogButtonSizer->Realize();
 	
-	bSizerButtons->Add( stdDialogButtonSizer, 0, wxEXPAND|wxALL, 6 );
+	bSizerButtons->Add( stdDialogButtonSizer, 0, wxALL|wxALIGN_CENTER_VERTICAL, 6 );
 	
 	
 	mainSizer->Add( bSizerButtons, 0, wxEXPAND, 5 );

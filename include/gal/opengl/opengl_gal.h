@@ -53,6 +53,7 @@ struct bitmap_glyph;
 namespace KIGFX
 {
 class SHADER;
+class GL_BITMAP_CACHE;
 
 /**
  * @brief Class OpenGL_GAL is the OpenGL implementation of the Graphics Abstraction Layer.
@@ -148,6 +149,9 @@ public:
     /// @copydoc GAL::DrawCurve()
     virtual void DrawCurve( const VECTOR2D& startPoint, const VECTOR2D& controlPointA,
                             const VECTOR2D& controlPointB, const VECTOR2D& endPoint ) override;
+
+    /// @copydoc GAL::DrawBitmap()
+    virtual void DrawBitmap( const BITMAP_BASE& aBitmap ) override;
 
     /// @copydoc GAL::BitmapText()
     virtual void BitmapText( const wxString& aText, const VECTOR2D& aPosition,
@@ -322,6 +326,8 @@ private:
     bool                    isInitialized;              ///< Basic initialization flag, has to be done
                                                         ///< when the window is visible
     bool                    isGrouping;                 ///< Was a group started?
+
+    std::unique_ptr<GL_BITMAP_CACHE>         bitmapCache;
 
     ///< Update handler for OpenGL settings
     bool updatedGalDisplayOptions( const GAL_DISPLAY_OPTIONS& aOptions ) override;

@@ -79,8 +79,12 @@ void ARRAY_CREATOR::Invoke()
             }
             else
             {
-                // PCB items keep the same numbering
                 new_item = getBoard()->Duplicate( item );
+
+                // Incrementing the reference number won't always be correct, but leaving
+                // it the same is always incorrect.
+                if( new_item->Type() == PCB_MODULE_T )
+                    static_cast<MODULE*>( new_item )->IncrementReference( ptN );
 
                 // @TODO: we should merge zones. This is a bit tricky, because
                 // the undo command needs saving old area, if it is merged.
@@ -99,12 +103,13 @@ void ARRAY_CREATOR::Invoke()
             // implicit numbering by incrementing the items during creation
             if( new_item && array_opts->NumberingStartIsSpecified() )
             {
-                // Renumber pads. Only new pad number renumbering has meaning,
-                // in the footprint editor.
+                // Renumber non-aperture pads.
                 if( new_item->Type() == PCB_PAD_T )
                 {
-                    const wxString padName = array_opts->GetItemNumber( ptN );
-                    static_cast<D_PAD*>( new_item )->SetName( padName );
+                    D_PAD* pad = static_cast<D_PAD*>( new_item );
+
+                    if( !pad->IsAperturePad() )
+                        pad->SetName( array_opts->GetItemNumber( ptN ) );
                 }
             }
         }

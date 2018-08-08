@@ -112,27 +112,41 @@ std::unique_ptr<ZONE_CONTAINER> ZONE_CREATE_HELPER::createZoneFromExisting(
 
 void ZONE_CREATE_HELPER::performZoneCutout( ZONE_CONTAINER& aZone, ZONE_CONTAINER& aCutout )
 {
+    BOARD_COMMIT commit( &m_tool );
     BOARD* board = m_tool.getModel<BOARD>();
-    int curr_hole = aZone.Outline()->NewHole( 0 );
+    std::vector<ZONE_CONTAINER*> newZones;
 
-    // Copy cutout corners into existing zone, in the new hole
-    for( int ii = 0; ii < aCutout.GetNumCorners(); ii++ )
+    SHAPE_POLY_SET originalOutline( *aZone.Outline() );
+    originalOutline.BooleanSubtract( *aCutout.Outline(), SHAPE_POLY_SET::PM_FAST );
+
+    for( int i = 0; i < originalOutline.OutlineCount(); i++ )
     {
-        aZone.Outline()->Append( aCutout.GetCornerPosition( ii ), 0, curr_hole );
+        auto newZoneOutline = new SHAPE_POLY_SET;
+        newZoneOutline->AddOutline( originalOutline.Outline( i ) );
+
+        for (int j = 0; j < originalOutline.HoleCount(i) ; j++ )
+        {
+            newZoneOutline->AddHole( originalOutline.CHole(i, j), i );
+        }
+
+        auto newZone = new ZONE_CONTAINER( aZone );
+        newZone->SetOutline( newZoneOutline );
+        newZone->SetLocalFlags( 1 );
+        newZone->Hatch();
+        newZones.push_back( newZone );
+        commit.Add( newZone );
     }
 
-    // Be sure the current corner list is closed
-    aZone.Outline()->Hole( 0, curr_hole ).SetClosed( true );
+    commit.Remove( &aZone );
+    commit.Push( _( "Add a zone cutout" ) );
 
-    // Combine holes and simplify the new outline:
-    board->OnAreaPolygonModified( nullptr, &aZone );
+    ZONE_FILLER filler( board );
+    filler.Fill( newZones );
 
-    // Re-fill if needed
-    if( aZone.IsFilled() )
-    {
-        ZONE_FILLER filler( board );
-        filler.Fill( { &aZone } );
-    }
+    auto toolMgr = m_tool.GetManager();
+
+    toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
+    toolMgr->RunAction( PCB_ACTIONS::selectItem, true, newZones[0] );
 }
 
 
@@ -141,20 +155,18 @@ void ZONE_CREATE_HELPER::commitZone( std::unique_ptr<ZONE_CONTAINER> aZone )
     auto& frame = *m_tool.getEditFrame<PCB_EDIT_FRAME>();
     auto board = m_tool.getModel<BOARD>();
 
-    BOARD_COMMIT bCommit( &m_tool );
-
     switch ( m_params.m_mode )
     {
         case DRAWING_TOOL::ZONE_MODE::CUTOUT:
                 // For cutouts, subtract from the source
-            bCommit.Modify( m_params.m_sourceZone );
             performZoneCutout( *m_params.m_sourceZone, *aZone );
-            bCommit.Push( _( "Add a zone cutout" ) );
-            m_params.m_sourceZone->Hatch();
             break;
 
         case DRAWING_TOOL::ZONE_MODE::ADD:
         case DRAWING_TOOL::ZONE_MODE::SIMILAR:
+        {
+            BOARD_COMMIT bCommit( &m_tool );
+
             aZone->Hatch();
 
             if( !m_params.m_keepout )
@@ -166,9 +178,11 @@ void ZONE_CREATE_HELPER::commitZone( std::unique_ptr<ZONE_CONTAINER> aZone )
             bCommit.Add( aZone.release() );
             bCommit.Push( _( "Add a zone" ) );
             break;
+        }
 
         case DRAWING_TOOL::ZONE_MODE::GRAPHIC_POLYGON:
         {
+            BOARD_COMMIT bCommit( &m_tool );
             BOARD_ITEM_CONTAINER* parent = frame.GetModel();
             auto poly = m_tool.m_editModules ? new EDGE_MODULE( (MODULE *) parent ) : new DRAWSEGMENT();
 
@@ -203,7 +217,7 @@ bool ZONE_CREATE_HELPER::OnFirstPoint( POLYGON_GEOM_MANAGER& aMgr )
             const auto& settings = *m_parentView.GetPainter()->GetSettings();
             COLOR4D color = settings.GetColor( nullptr, m_zone->GetLayer() );
 
-            m_previewItem.SetStrokeColor( color );
+            m_previewItem.SetStrokeColor( COLOR4D::WHITE );
             m_previewItem.SetFillColor( color.WithAlpha( 0.2 ) );
 
             m_parentView.SetVisible( &m_previewItem, true );

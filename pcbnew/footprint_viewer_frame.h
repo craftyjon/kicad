@@ -48,7 +48,8 @@ class FOOTPRINT_VIEWER_FRAME : public PCB_BASE_FRAME
     friend struct PCB::IFACE;       // constructor called from here only
 
 protected:
-    FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrameType );
+    FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrameType,
+                            EDA_DRAW_PANEL_GAL::GAL_TYPE aBackend );
 
 
 public:
@@ -78,7 +79,7 @@ public:
      * @param aFootprint an optional FPID string to initialize the viewer with and to
      *                   return a selected footprint through.
      */
-    bool ShowModal( wxString* aFootprint, wxWindow* aResultantFocusWindow ) override;
+    bool ShowModal( wxString* aFootprint, wxWindow* aParent ) override;
 
 private:
 
@@ -146,8 +147,6 @@ private:
      * that can be changed by the schematic editor or the library editor.
      */
     virtual void OnActivate( wxActivateEvent& event ) override;
-
-    void SelectCurrentLibrary( wxCommandEvent& event );
 
     /**
      * Function SelectCurrentFootprint

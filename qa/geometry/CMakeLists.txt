@@ -1,8 +1,6 @@
-#
 # This program source code file is part of KiCad, a free EDA CAD application.
 #
-# Copyright (C) 2017 CERN
-# @author Alejandro García Montoro <alejandro.garciamontoro@gmail.com>
+# Copyright (C) 2018 KiCad Developers, see CHANGELOG.TXT for contributors.
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -24,33 +22,28 @@
 find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 find_package( wxWidgets 3.0.0 COMPONENTS gl aui adv html core net base xml stc REQUIRED )
 
+
 add_definitions(-DBOOST_TEST_DYN_LINK)
 
-add_executable(qa_geometry
+add_executable( qa_geometry
     test_module.cpp
-    test_chamfer_fillet.cpp
-    test_collision.cpp
-    test_iterator.cpp
-    test_segment.cpp
+    test_fillet.cpp
 )
 
 include_directories(
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/polygon
-    ${CMAKE_SOURCE_DIR}/common/geometry
     ${Boost_INCLUDE_DIR}
 )
 
-target_link_libraries(qa_geometry
-    polygon
+target_link_libraries( qa_geometry
     common
     polygon
-    bitmaps
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
     ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
     ${wxWidgets_LIBRARIES}
 )
 
-add_dependencies( qa_geometry pcbnew )
+add_test( NAME geometry
+    COMMAND qa_geometry
+)

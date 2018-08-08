@@ -255,7 +255,7 @@ void PCB_EDIT_FRAME::ReCreateHToolbar()
     ADD_TOOL( ID_SAVE_BOARD, save_xpm, _( "Save board" ) );
 
     KiScaledSeparator( m_mainToolBar, this );
-    ADD_TOOL( ID_BOARD_SETUP_DIALOG, preference_xpm, _( "Board setup" ) );
+    ADD_TOOL( ID_BOARD_SETUP_DIALOG, options_board_xpm, _( "Board setup" ) );
 
     KiScaledSeparator( m_mainToolBar, this );
     ADD_TOOL( ID_SHEET_SET, sheetset_xpm, _( "Page settings for paper size and texts" ) );
@@ -291,7 +291,7 @@ void PCB_EDIT_FRAME::ReCreateHToolbar()
 
     KiScaledSeparator( m_mainToolBar, this );
     ADD_TOOL( ID_GET_NETLIST, netlist_xpm, _( "Read netlist" ) );
-    ADD_TOOL( ID_UPDATE_PCB_FROM_SCH, import_brd_file_xpm, _( "Update PCB from schematic" ) );
+    ADD_TOOL( ID_UPDATE_PCB_FROM_SCH, update_pcb_from_sch_xpm, _( "Update PCB from schematic" ) );
     ADD_TOOL( ID_DRC_CONTROL, erc_xpm, _( "Perform design rules check" ) );
 
     KiScaledSeparator( m_mainToolBar, this );

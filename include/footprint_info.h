@@ -37,13 +37,11 @@
 #include <ki_mutex.h>
 #include <kicad_string.h>
 #include <sync_queue.h>
+#include <lib_tree_item.h>
 
 #include <atomic>
 #include <functional>
 #include <memory>
-
-
-#define USE_FPI_LAZY 0 // 1:yes lazy,  0:no early
 
 
 class FP_LIB_TABLE;
@@ -62,7 +60,7 @@ class KIWAY;
  * This is a virtual class; its implementation lives in pcbnew/footprint_info_impl.cpp.
  * To get instances of these classes, see FOOTPRINT_LIST::GetInstance().
  */
-class APIEXPORT FOOTPRINT_INFO
+class APIEXPORT FOOTPRINT_INFO : public LIB_TREE_ITEM
 {
     friend bool operator<( const FOOTPRINT_INFO& item1, const FOOTPRINT_INFO& item2 );
 
@@ -79,21 +77,36 @@ public:
         return m_fpname;
     }
 
-    const wxString& GetNickname() const
+    wxString GetLibNickname() const override
     {
         return m_nickname;
     }
 
-    const wxString& GetDoc()
+    const wxString& GetName() const override
+    {
+        return m_fpname;
+    }
+
+    LIB_ID GetLibId() const override
+    {
+        return LIB_ID( m_nickname, m_fpname );
+    }
+
+    wxString GetDescription() override
     {
         ensure_loaded();
         return m_doc;
     }
 
-    const wxString& GetKeywords()
+    wxString GetKeywords()
     {
         ensure_loaded();
         return m_keywords;
+    }
+
+    wxString GetSearchText() override
+    {
+        return GetKeywords() + wxT( "        " ) + GetDescription();
     }
 
     unsigned GetPadCount()
@@ -132,7 +145,7 @@ protected:
     }
 
     /// lazily load stuff not filled in by constructor.  This may throw IO_ERRORS.
-    virtual void load() = 0;
+    virtual void load() { };
 
     FOOTPRINT_LIST* m_owner; ///< provides access to FP_LIB_TABLE
 
@@ -180,9 +193,6 @@ protected:
     FPILIST m_list;
     ERRLIST m_errors; ///< some can be PARSE_ERRORs also
 
-    MUTEX m_list_lock;
-
-
 public:
     FOOTPRINT_LIST() : m_lib_table( 0 )
     {
@@ -191,6 +201,9 @@ public:
     virtual ~FOOTPRINT_LIST()
     {
     }
+
+    virtual void WriteCacheToFile( wxTextFile* aFile ) { };
+    virtual void ReadCacheFromFile( wxTextFile* aFile ) { };
 
     /**
      * @return the number of items stored in list
@@ -207,11 +220,14 @@ public:
     }
 
     /**
-     * Get info for a module by name.
-     * @param aFootprintName = the footprint name inside the FOOTPRINT_INFO of interest.
-     * @return FOOTPRINT_INF* - the item stored in list if found
+     * Get info for a module by id.
      */
-    FOOTPRINT_INFO* GetModuleInfo( const wxString& aFootprintName );
+    FOOTPRINT_INFO* GetModuleInfo( const wxString& aFootprintId );
+
+    /**
+     * Get info for a module by libNickname/footprintName
+     */
+    FOOTPRINT_INFO* GetModuleInfo( const wxString& aLibNickname, const wxString& aFootprintName );
 
     /**
      * Get info for a module by index.
@@ -222,12 +238,6 @@ public:
     {
         return *m_list[aIdx];
     }
-
-    /**
-     * Add aItem to list
-     * @param aItem = item to add
-     */
-    void AddItem( FOOTPRINT_INFO* aItem );
 
     unsigned GetErrorCount() const
     {

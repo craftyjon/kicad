@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Dec 30 2017)
+// C++ code generated with wxFormBuilder (version Aug  2 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -19,10 +19,10 @@ class WX_GRID;
 #include <wx/font.h>
 #include <wx/grid.h>
 #include <wx/gdicmn.h>
+#include <wx/bmpbuttn.h>
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/icon.h>
-#include <wx/bmpbuttn.h>
 #include <wx/button.h>
 #include <wx/sizer.h>
 #include <wx/statbox.h>
@@ -44,7 +44,7 @@ class PANEL_SETUP_NETCLASSES_BASE : public wxPanel
 		WX_GRID* m_netclassGrid;
 		wxBitmapButton* m_addButton;
 		wxBitmapButton* m_removeButton;
-		wxStaticText* m_staticText6;
+		wxStaticText* m_ncfilterLabel;
 		wxChoice* m_netClassFilter;
 		wxStaticText* m_filterLabel;
 		wxTextCtrl* m_netNameFilter;

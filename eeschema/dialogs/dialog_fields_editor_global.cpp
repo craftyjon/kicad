@@ -301,11 +301,16 @@ public:
         if( aCol == REFERENCE || aCol == QUANTITY_COLUMN )
             return;             // Can't modify references or quantity
 
+        wxString value( aValue );
+        value.Replace( "\r", "\\r" );
+        value.Replace( "\n", "\\n" );
+        value.Replace( "\t", "\\t" );
+
         DATA_MODEL_ROW& rowGroup = m_rows[ aRow ];
         wxString fieldName = m_fieldNames[ aCol ];
 
         for( const auto& ref : rowGroup.m_Refs )
-            m_dataStore[ ref.GetComp()->GetTimeStamp() ][ fieldName ] = aValue;
+            m_dataStore[ ref.GetComp()->GetTimeStamp() ][ fieldName ] = value;
 
         m_edited = true;
     }
@@ -580,8 +585,10 @@ public:
                 if( !destField && !srcValue.IsEmpty() )
                     destField = comp->AddField( SCH_FIELD( wxPoint( 0, 0 ), -1, comp, srcName ) );
 
-                if( destField )
+                if( destField && !srcValue.IsEmpty() )
                     destField->SetText( srcValue );
+                else
+                    comp->RemoveField( srcName );
             }
         }
 
@@ -955,10 +962,7 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::OnSizeFieldList( wxSizeEvent& event )
 void DIALOG_FIELDS_EDITOR_GLOBAL::OnSaveAndContinue( wxCommandEvent& aEvent )
 {
     if( TransferDataFromWindow() )
-    {
-        wxCommandEvent dummyEvent;
-        m_parent->OnSaveProject( dummyEvent );
-    }
+        m_parent->SaveProject();
 }
 
 
@@ -975,7 +979,7 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::OnClose( wxCloseEvent& event )
 
     if( m_dataModel->IsEdited() )
     {
-        switch( DisplayExitDialog( this, wxEmptyString ) )
+        switch( UnsavedChangesDialog( this, wxEmptyString ) )
         {
         case wxID_CANCEL:
             event.Veto();

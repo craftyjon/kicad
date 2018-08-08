@@ -268,7 +268,7 @@ class CN_ITEM : public INTRUSIVE_LIST<CN_ITEM>
 private:
     BOARD_CONNECTED_ITEM* m_parent;
 
-    using CONNECTED_ITEMS = std::vector<CN_ITEM*>;
+    using CONNECTED_ITEMS = std::set<CN_ITEM*>;
 
     ///> list of items physically connected (touching)
     CONNECTED_ITEMS m_connected;
@@ -288,6 +288,9 @@ protected:
     ///> dirty flag, used to identify recently added item not yet scanned into the connectivity search
     bool m_dirty;
 
+    ///> layer range over which the item exists
+    LAYER_RANGE m_layers;
+
     ///> bounding box for the item
     BOX2I m_bbox;
 
@@ -302,6 +305,7 @@ public:
         m_valid = true;
         m_dirty = true;
         m_anchors.reserve( 2 );
+        m_layers = LAYER_RANGE( 0, PCB_LAYER_ID_COUNT );
     }
 
     virtual ~CN_ITEM() {};
@@ -336,7 +340,58 @@ public:
         return m_dirty;
     }
 
-    const BOX2I BBox()
+    /**
+     * Function SetLayers()
+     *
+     * Sets the layers spanned by the item to aLayers.
+     */
+    void SetLayers( const LAYER_RANGE& aLayers )
+    {
+        m_layers = aLayers;
+    }
+
+    /**
+     * Function SetLayer()
+     *
+     * Sets the layers spanned by the item to a single layer aLayer.
+     */
+    void SetLayer( int aLayer )
+    {
+        m_layers = LAYER_RANGE( aLayer, aLayer );
+    }
+
+    /**
+     * Function Layers()
+     *
+     * Returns the contiguous set of layers spanned by the item.
+     */
+    const LAYER_RANGE& Layers() const
+    {
+        return m_layers;
+    }
+
+    /**
+     * Function Layer()
+     *
+     * Returns the item's layer, for single-layered items only.
+     */
+    virtual int Layer() const
+    {
+        return Layers().Start();
+    }
+
+    /**
+     * Function LayersOverlap()
+     *
+     * Returns true if the set of layers spanned by aOther overlaps our
+     * layers.
+     */
+    bool LayersOverlap( const CN_ITEM* aOther ) const
+    {
+        return Layers().Overlaps( aOther->Layers() );
+    }
+
+    const BOX2I& BBox()
     {
         if( m_dirty )
         {
@@ -376,33 +431,15 @@ public:
         return m_canChangeNet;
     }
 
+    bool isConnected( CN_ITEM* aItem ) const
+    {
+        return ( m_connected.find( aItem ) != m_connected.end() );
+    }
+
     static void Connect( CN_ITEM* a, CN_ITEM* b )
     {
-        bool foundA = false, foundB = false;
-
-        for( auto item : a->m_connected )
-        {
-            if( item == b )
-            {
-                foundA = true;
-                break;
-            }
-        }
-
-        for( auto item : b->m_connected )
-        {
-            if( item == a )
-            {
-                foundB = true;
-                break;
-            }
-        }
-
-        if( !foundA )
-            a->m_connected.push_back( b );
-
-        if( !foundB )
-            b->m_connected.push_back( a );
+        a->m_connected.insert( b );
+        b->m_connected.insert( a );
     }
 
     void RemoveInvalidRefs();
@@ -415,6 +452,53 @@ public:
 
 typedef std::shared_ptr<CN_ITEM> CN_ITEM_PTR;
 
+class CN_ZONE : public CN_ITEM
+{
+public:
+    CN_ZONE( ZONE_CONTAINER* aParent, bool aCanChangeNet, int aSubpolyIndex ) :
+        CN_ITEM( aParent, aCanChangeNet ),
+        m_subpolyIndex( aSubpolyIndex )
+    {
+        SHAPE_LINE_CHAIN outline = aParent->GetFilledPolysList().COutline( aSubpolyIndex );
+
+        outline.SetClosed( true );
+        outline.Simplify();
+
+        m_cachedPoly.reset( new POLY_GRID_PARTITION( outline, 16 ) );
+    }
+
+    int SubpolyIndex() const
+    {
+        return m_subpolyIndex;
+    }
+
+    bool ContainsAnchor( const CN_ANCHOR_PTR anchor ) const
+    {
+        return ContainsPoint( anchor->Pos() );
+    }
+
+    bool ContainsPoint( const VECTOR2I p ) const
+    {
+        auto zone = static_cast<ZONE_CONTAINER*> ( Parent() );
+        return m_cachedPoly->ContainsPoint( p, zone->GetMinThickness() );
+    }
+
+    const BOX2I& BBox()
+    {
+        if( m_dirty )
+            m_bbox = m_cachedPoly->BBox();
+
+        return m_bbox;
+    }
+
+    virtual int             AnchorCount() const override;
+    virtual const VECTOR2I  GetAnchor( int n ) const override;
+
+private:
+    std::vector<VECTOR2I> m_testOutlinePoints;
+    std::unique_ptr<POLY_GRID_PARTITION> m_cachedPoly;
+    int m_subpolyIndex;
+};
 
 class CN_LIST
 {
@@ -498,8 +582,32 @@ public:
 
     CN_ITEM* Add( D_PAD* pad )
     {
-        auto item = new CN_ITEM( pad, false, 2 );
+        auto item = new CN_ITEM( pad, false, 1 );
         item->AddAnchor( pad->ShapePos() );
+        item->SetLayers( LAYER_RANGE( F_Cu, B_Cu ) );
+
+        switch( pad->GetAttribute() )
+        {
+        case PAD_ATTRIB_SMD:
+        case PAD_ATTRIB_HOLE_NOT_PLATED:
+        case PAD_ATTRIB_CONN:
+        {
+            LSET lmsk = pad->GetLayerSet();
+
+            for( int i = 0; i <= MAX_CU_LAYERS; i++ )
+            {
+                if( lmsk[i] )
+                {
+                    item->SetLayer( i );
+                    break;
+                }
+            }
+            break;
+        }
+        default:
+            break;
+        }
+
         addItemtoTree( item );
         m_items.push_back( item );
         SetDirty();
@@ -512,6 +620,7 @@ public:
         m_items.push_back( item );
         item->AddAnchor( track->GetStart() );
         item->AddAnchor( track->GetEnd() );
+        item->SetLayer( track->GetLayer() );
         addItemtoTree( item );
         SetDirty();
         return item;
@@ -519,70 +628,15 @@ public:
 
     CN_ITEM* Add( VIA* via )
     {
-        auto item = new CN_ITEM( via, true );
+        auto item = new CN_ITEM( via, true, 1 );
 
         m_items.push_back( item );
         item->AddAnchor( via->GetStart() );
+        item->SetLayers( LAYER_RANGE( F_Cu, B_Cu ) );
         addItemtoTree( item );
         SetDirty();
         return item;
     }
-};
-
-
-class CN_ZONE : public CN_ITEM
-{
-public:
-    CN_ZONE( ZONE_CONTAINER* aParent, bool aCanChangeNet, int aSubpolyIndex ) :
-        CN_ITEM( aParent, aCanChangeNet ),
-        m_subpolyIndex( aSubpolyIndex )
-    {
-        SHAPE_LINE_CHAIN outline = aParent->GetFilledPolysList().COutline( aSubpolyIndex );
-
-        outline.SetClosed( true );
-        outline.Simplify();
-
-        m_cachedPoly.reset( new POLY_GRID_PARTITION( outline, 16 ) );
-    }
-
-    int SubpolyIndex() const
-    {
-        return m_subpolyIndex;
-    }
-
-    bool ContainsAnchor( const CN_ANCHOR_PTR anchor ) const
-    {
-        return ContainsPoint( anchor->Pos() );
-    }
-
-    bool ContainsPoint( const VECTOR2I p ) const
-    {
-        auto zone = static_cast<ZONE_CONTAINER*> ( Parent() );
-        return m_cachedPoly->ContainsPoint( p, zone->GetMinThickness() );
-    }
-
-    const BOX2I& BBox()
-    {
-        if( m_dirty )
-            m_bbox = m_cachedPoly->BBox();
-
-        return m_bbox;
-    }
-
-    virtual int             AnchorCount() const override;
-    virtual const VECTOR2I  GetAnchor( int n ) const override;
-
-private:
-    std::vector<VECTOR2I> m_testOutlinePoints;
-    std::unique_ptr<POLY_GRID_PARTITION> m_cachedPoly;
-    int m_subpolyIndex;
-};
-
-
-class CN_ZONE_LIST : public CN_LIST
-{
-public:
-    CN_ZONE_LIST() {}
 
     const std::vector<CN_ITEM*> Add( ZONE_CONTAINER* zone )
     {
@@ -599,6 +653,7 @@ public:
                 zitem->AddAnchor( outline.CPoint( k ) );
 
             m_items.push_back( zitem );
+            zitem->SetLayer( zone->GetLayer() );
             addItemtoTree( zitem );
             rv.push_back( zitem );
             SetDirty();
@@ -606,33 +661,12 @@ public:
 
         return rv;
     }
-
-    template <class T>
-    void FindNearbyZones( BOX2I aBBox, T aFunc, bool aDirtyOnly = false );
 };
-
-
-template <class T>
-void CN_ZONE_LIST::FindNearbyZones( BOX2I aBBox, T aFunc, bool aDirtyOnly )
-{
-    for( auto item : m_items )
-    {
-        auto zone = static_cast<CN_ZONE*>( item );
-
-        if( aBBox.Intersects( zone->BBox() ) )
-        {
-            if( !aDirtyOnly || zone->Dirty() )
-            {
-                aFunc( zone );
-            }
-        }
-    }
-}
 
 template <class T>
 void CN_LIST::FindNearby( CN_ITEM *aItem, T aFunc )
 {
-    m_index.Query( aItem->BBox(), aFunc );
+    m_index.Query( aItem->BBox(), aItem->Layers(), aFunc );
 }
 
 class CN_CONNECTIVITY_ALGO
@@ -681,7 +715,6 @@ public:
 
     std::mutex m_listLock;
     CN_LIST m_itemList;
-    CN_ZONE_LIST m_zoneList;
 
     using ITEM_MAP_PAIR = std::pair <const BOARD_CONNECTED_ITEM*, ITEM_MAP_ENTRY>;
 

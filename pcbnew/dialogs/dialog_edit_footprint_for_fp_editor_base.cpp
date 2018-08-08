@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Dec 30 2017)
+// C++ code generated with wxFormBuilder (version Aug  2 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -26,7 +26,7 @@ DIALOG_FOOTPRINT_FP_EDITOR_BASE::DIALOG_FOOTPRINT_FP_EDITOR_BASE( wxWindow* pare
 	wxStaticBoxSizer* sbSizerTexts;
 	sbSizerTexts = new wxStaticBoxSizer( new wxStaticBox( m_PanelGeneral, wxID_ANY, wxEmptyString ), wxVERTICAL );
 	
-	m_itemsGrid = new WX_GRID( sbSizerTexts->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxSize( -1,-1 ), wxRAISED_BORDER );
+	m_itemsGrid = new WX_GRID( sbSizerTexts->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxSize( -1,-1 ), wxBORDER_SIMPLE );
 	
 	// Grid
 	m_itemsGrid->CreateGrid( 2, 11 );
@@ -36,13 +36,13 @@ DIALOG_FOOTPRINT_FP_EDITOR_BASE::DIALOG_FOOTPRINT_FP_EDITOR_BASE( wxWindow* pare
 	m_itemsGrid->SetMargins( 0, 0 );
 	
 	// Columns
-	m_itemsGrid->SetColSize( 0, 120 );
-	m_itemsGrid->SetColSize( 1, 48 );
+	m_itemsGrid->SetColSize( 0, 116 );
+	m_itemsGrid->SetColSize( 1, 53 );
 	m_itemsGrid->SetColSize( 2, 96 );
 	m_itemsGrid->SetColSize( 3, 96 );
 	m_itemsGrid->SetColSize( 4, 96 );
-	m_itemsGrid->SetColSize( 5, 48 );
-	m_itemsGrid->SetColSize( 6, 112 );
+	m_itemsGrid->SetColSize( 5, 53 );
+	m_itemsGrid->SetColSize( 6, 106 );
 	m_itemsGrid->SetColSize( 7, 80 );
 	m_itemsGrid->SetColSize( 8, 48 );
 	m_itemsGrid->SetColSize( 9, 96 );
@@ -81,14 +81,10 @@ DIALOG_FOOTPRINT_FP_EDITOR_BASE::DIALOG_FOOTPRINT_FP_EDITOR_BASE( wxWindow* pare
 	wxBoxSizer* bButtonSize;
 	bButtonSize = new wxBoxSizer( wxHORIZONTAL );
 	
-	m_bpAdd = new wxBitmapButton( sbSizerTexts->GetStaticBox(), wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW );
-	m_bpAdd->SetMinSize( wxSize( 29,29 ) );
-	
+	m_bpAdd = new wxBitmapButton( sbSizerTexts->GetStaticBox(), wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
 	bButtonSize->Add( m_bpAdd, 0, 0, 5 );
 	
-	m_bpDelete = new wxBitmapButton( sbSizerTexts->GetStaticBox(), wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW );
-	m_bpDelete->SetMinSize( wxSize( 29,29 ) );
-	
+	m_bpDelete = new wxBitmapButton( sbSizerTexts->GetStaticBox(), wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
 	bButtonSize->Add( m_bpDelete, 0, wxRIGHT|wxLEFT, 5 );
 	
 	
@@ -199,7 +195,7 @@ DIALOG_FOOTPRINT_FP_EDITOR_BASE::DIALOG_FOOTPRINT_FP_EDITOR_BASE( wxWindow* pare
 	m_PanelGeneral->SetSizer( m_PanelPropertiesBoxSizer );
 	m_PanelGeneral->Layout();
 	m_PanelPropertiesBoxSizer->Fit( m_PanelGeneral );
-	m_NoteBook->AddPage( m_PanelGeneral, _("General"), true );
+	m_NoteBook->AddPage( m_PanelGeneral, _("General"), false );
 	m_PanelClearances = new wxPanel( m_NoteBook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* bSizerPanelClearances;
 	bSizerPanelClearances = new wxBoxSizer( wxVERTICAL );
@@ -322,7 +318,7 @@ DIALOG_FOOTPRINT_FP_EDITOR_BASE::DIALOG_FOOTPRINT_FP_EDITOR_BASE( wxWindow* pare
 	wxStaticBoxSizer* sbSizer3;
 	sbSizer3 = new wxStaticBoxSizer( new wxStaticBox( m_Panel3D, wxID_ANY, wxEmptyString ), wxVERTICAL );
 	
-	m_modelsGrid = new wxGrid( sbSizer3->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+	m_modelsGrid = new wxGrid( sbSizer3->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SIMPLE );
 	
 	// Grid
 	m_modelsGrid->CreateGrid( 3, 2 );
@@ -332,8 +328,8 @@ DIALOG_FOOTPRINT_FP_EDITOR_BASE::DIALOG_FOOTPRINT_FP_EDITOR_BASE( wxWindow* pare
 	m_modelsGrid->SetMargins( 0, 0 );
 	
 	// Columns
-	m_modelsGrid->SetColSize( 0, 662 );
-	m_modelsGrid->SetColSize( 1, 53 );
+	m_modelsGrid->SetColSize( 0, 650 );
+	m_modelsGrid->SetColSize( 1, 65 );
 	m_modelsGrid->EnableDragColMove( false );
 	m_modelsGrid->EnableDragColSize( false );
 	m_modelsGrid->SetColLabelSize( 22 );
@@ -355,26 +351,26 @@ DIALOG_FOOTPRINT_FP_EDITOR_BASE::DIALOG_FOOTPRINT_FP_EDITOR_BASE( wxWindow* pare
 	wxBoxSizer* bSizer3DButtons;
 	bSizer3DButtons = new wxBoxSizer( wxHORIZONTAL );
 	
-	m_buttonAdd = new wxBitmapButton( sbSizer3->GetStaticBox(), wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( 29,29 ), wxBU_AUTODRAW );
-	bSizer3DButtons->Add( m_buttonAdd, 0, wxTOP, 5 );
+	m_button3DShapeAdd = new wxBitmapButton( sbSizer3->GetStaticBox(), wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1,-1 ), 0 );
+	bSizer3DButtons->Add( m_button3DShapeAdd, 0, wxTOP|wxBOTTOM, 5 );
 	
-	m_buttonBrowse = new wxBitmapButton( sbSizer3->GetStaticBox(), wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( 29,29 ), wxBU_AUTODRAW );
-	bSizer3DButtons->Add( m_buttonBrowse, 0, wxALL, 5 );
+	m_button3DShapeBrowse = new wxBitmapButton( sbSizer3->GetStaticBox(), wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1,-1 ), 0 );
+	bSizer3DButtons->Add( m_button3DShapeBrowse, 0, wxALL, 5 );
 	
 	
 	bSizer3DButtons->Add( 0, 0, 0, wxEXPAND|wxRIGHT|wxLEFT, 5 );
 	
-	m_buttonRemove = new wxBitmapButton( sbSizer3->GetStaticBox(), wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( 29,29 ), wxBU_AUTODRAW );
-	bSizer3DButtons->Add( m_buttonRemove, 0, wxTOP, 5 );
+	m_button3DShapeRemove = new wxBitmapButton( sbSizer3->GetStaticBox(), wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1,-1 ), 0 );
+	bSizer3DButtons->Add( m_button3DShapeRemove, 0, wxTOP|wxBOTTOM, 5 );
 	
 	
 	bSizer3DButtons->Add( 0, 0, 1, wxEXPAND, 5 );
 	
-	m_button8 = new wxButton( sbSizer3->GetStaticBox(), wxID_ANY, _("Configure Paths..."), wxDefaultPosition, wxDefaultSize, 0 );
-	bSizer3DButtons->Add( m_button8, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
+	m_buttonConfig3DPaths = new wxButton( sbSizer3->GetStaticBox(), wxID_ANY, _("Configure Paths..."), wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer3DButtons->Add( m_buttonConfig3DPaths, 0, wxALL, 5 );
 	
 	
-	sbSizer3->Add( bSizer3DButtons, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
+	sbSizer3->Add( bSizer3DButtons, 0, wxEXPAND, 5 );
 	
 	
 	bSizerMain3D->Add( sbSizer3, 5, wxEXPAND|wxRIGHT|wxLEFT, 5 );
@@ -388,7 +384,7 @@ DIALOG_FOOTPRINT_FP_EDITOR_BASE::DIALOG_FOOTPRINT_FP_EDITOR_BASE( wxWindow* pare
 	m_Panel3D->SetSizer( bSizerMain3D );
 	m_Panel3D->Layout();
 	bSizerMain3D->Fit( m_Panel3D );
-	m_NoteBook->AddPage( m_Panel3D, _("3D Settings"), false );
+	m_NoteBook->AddPage( m_Panel3D, _("3D Settings"), true );
 	
 	m_GeneralBoxSizer->Add( m_NoteBook, 1, wxEXPAND|wxRIGHT|wxLEFT, 5 );
 	
@@ -420,10 +416,10 @@ DIALOG_FOOTPRINT_FP_EDITOR_BASE::DIALOG_FOOTPRINT_FP_EDITOR_BASE( wxWindow* pare
 	m_bpDelete->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnDeleteField ), NULL, this );
 	m_modelsGrid->Connect( wxEVT_GRID_CELL_CHANGED, wxGridEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::On3DModelCellChanged ), NULL, this );
 	m_modelsGrid->Connect( wxEVT_GRID_SELECT_CELL, wxGridEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::On3DModelSelected ), NULL, this );
-	m_buttonAdd->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnAdd3DRow ), NULL, this );
-	m_buttonBrowse->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnAdd3DModel ), NULL, this );
-	m_buttonRemove->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnRemove3DModel ), NULL, this );
-	m_button8->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::Cfg3DPath ), NULL, this );
+	m_button3DShapeAdd->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnAdd3DRow ), NULL, this );
+	m_button3DShapeBrowse->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnAdd3DModel ), NULL, this );
+	m_button3DShapeRemove->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnRemove3DModel ), NULL, this );
+	m_buttonConfig3DPaths->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::Cfg3DPath ), NULL, this );
 }
 
 DIALOG_FOOTPRINT_FP_EDITOR_BASE::~DIALOG_FOOTPRINT_FP_EDITOR_BASE()
@@ -436,9 +432,9 @@ DIALOG_FOOTPRINT_FP_EDITOR_BASE::~DIALOG_FOOTPRINT_FP_EDITOR_BASE()
 	m_bpDelete->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnDeleteField ), NULL, this );
 	m_modelsGrid->Disconnect( wxEVT_GRID_CELL_CHANGED, wxGridEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::On3DModelCellChanged ), NULL, this );
 	m_modelsGrid->Disconnect( wxEVT_GRID_SELECT_CELL, wxGridEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::On3DModelSelected ), NULL, this );
-	m_buttonAdd->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnAdd3DRow ), NULL, this );
-	m_buttonBrowse->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnAdd3DModel ), NULL, this );
-	m_buttonRemove->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnRemove3DModel ), NULL, this );
-	m_button8->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::Cfg3DPath ), NULL, this );
+	m_button3DShapeAdd->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnAdd3DRow ), NULL, this );
+	m_button3DShapeBrowse->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnAdd3DModel ), NULL, this );
+	m_button3DShapeRemove->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::OnRemove3DModel ), NULL, this );
+	m_buttonConfig3DPaths->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_FOOTPRINT_FP_EDITOR_BASE::Cfg3DPath ), NULL, this );
 	
 }

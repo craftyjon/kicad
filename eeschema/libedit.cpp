@@ -46,31 +46,22 @@
 #include <sch_edit_frame.h>
 #include <symbol_lib_table.h>
 #include <lib_manager.h>
-#include <cmp_tree_pane.h>
-#include <component_tree.h>
+#include <symbol_tree_pane.h>
+#include <widgets/lib_tree.h>
 
 #include <dialog_choose_component.h>
-#include <cmp_tree_model_adapter.h>
+#include <symbol_tree_model_adapter.h>
 
 #include <dialogs/dialog_lib_new_component.h>
-
+#include <dialog_helpers.h>
 
 void LIB_EDIT_FRAME::DisplayLibInfos()
 {
     wxString lib = GetCurLib();
-    wxString title = _( "Symbol Library Editor - " );
+    wxString title = _( "Symbol Library Editor" );
 
-    if( !lib.empty() && Prj().SchSymbolLibTable()->HasLibrary( lib ) )
-    {
-        wxString fileName = Prj().SchSymbolLibTable()->GetFullURI( lib );
-
-        title += lib + " (" + fileName + ")";
-
-        if( wxFileName::FileExists( fileName ) && !wxFileName::IsFileWritable( fileName ) )
-            title += " " + _( "[Read Only]" );
-    }
-    else
-        title += _( "no library selected" );
+    if( GetCurPart() )
+        title += wxT( " \u2014 " ) + GetCurPart()->GetLibId().Format();
 
     SetTitle( title );
 }
@@ -239,40 +230,10 @@ void LIB_EDIT_FRAME::RedrawActiveWindow( wxDC* DC, bool EraseBg )
 }
 
 
-void LIB_EDIT_FRAME::OnSaveLibrary( wxCommandEvent& event )
-{
-    saveLibrary( getTargetLib(), event.GetId() == ID_LIBEDIT_SAVE_LIBRARY_AS );
-    m_treePane->Refresh();
-}
-
-
-void LIB_EDIT_FRAME::OnSaveAllLibraries( wxCommandEvent& event )
+void LIB_EDIT_FRAME::OnSaveAll( wxCommandEvent& event )
 {
     saveAllLibraries( false );
     m_treePane->Refresh();
-}
-
-
-void LIB_EDIT_FRAME::OnRevertLibrary( wxCommandEvent& aEvent )
-{
-    wxString libName = getTargetLib();
-    wxString curLib = GetCurLib();
-    bool currentLib = ( libName == curLib || curLib.IsEmpty() );
-
-    // Save the current part name/unit to reload after revert
-    wxString alias = m_aliasName;
-    int unit = m_unit;
-
-    if( !IsOK( this, _( "The revert operation cannot be undone!\n\nRevert changes?" ) ) )
-        return;
-
-    if( currentLib )
-        emptyScreen();
-
-    m_libMgr->RevertLibrary( libName );
-
-    if( currentLib && m_libMgr->PartExists( alias, libName ) )
-        loadPart( alias, libName, unit );
 }
 
 
@@ -358,19 +319,142 @@ void LIB_EDIT_FRAME::OnCreateNewPart( wxCommandEvent& event )
 void LIB_EDIT_FRAME::OnEditPart( wxCommandEvent& aEvent )
 {
     int unit = 0;
-    LIB_ID partId = m_treePane->GetCmpTree()->GetSelectedLibId( &unit );
+    LIB_ID partId = m_treePane->GetLibTree()->GetSelectedLibId( &unit );
     loadPart( partId.GetLibItemName(), partId.GetLibNickname(), unit );
 }
 
 
-void LIB_EDIT_FRAME::OnSavePart( wxCommandEvent& aEvent )
+void LIB_EDIT_FRAME::OnSave( wxCommandEvent& aEvent )
 {
     LIB_ID libId = getTargetLibId();
+    const wxString& libName = libId.GetLibNickname();
+    const wxString& partName = libId.GetLibItemName();
 
-    if( m_libMgr->FlushPart( libId.GetLibItemName(), libId.GetLibNickname() ) )
-        m_libMgr->ClearPartModified( libId.GetLibItemName(), libId.GetLibNickname() );
+    if( partName.IsEmpty() )
+    {
+        saveLibrary( libName, false );
+    }
+    else
+    {
+        // Save Part
+        if( m_libMgr->FlushPart( partName,libName ) )
+            m_libMgr->ClearPartModified( partName, libName );
+    }
 
     m_treePane->Refresh();
+}
+
+
+void LIB_EDIT_FRAME::OnSaveAs( wxCommandEvent& aEvent )
+{
+    LIB_ID libId = getTargetLibId();
+    const wxString& libName = libId.GetLibNickname();
+    const wxString& partName = libId.GetLibItemName();
+
+    if( partName.IsEmpty() )
+        saveLibrary( libName, true );
+    else
+        savePartAs();
+
+    m_treePane->Refresh();
+}
+
+
+void LIB_EDIT_FRAME::savePartAs()
+{
+    LIB_ID old_lib_id = getTargetLibId();
+    wxString old_name = old_lib_id.GetLibItemName();
+    wxString old_lib = old_lib_id.GetLibNickname();
+    LIB_PART* part = m_libMgr->GetBufferedPart( old_name, old_lib );
+
+    if( part )
+    {
+        SYMBOL_LIB_TABLE* tbl = Prj().SchSymbolLibTable();
+        wxArrayString headers;
+        std::vector< wxArrayString > itemsToDisplay;
+        std::vector< wxString > libNicknames = tbl->GetLogicalLibs();
+
+        headers.Add( _( "Nickname" ) );
+        headers.Add( _( "Description" ) );
+
+        for( const auto& name : libNicknames )
+        {
+            wxArrayString item;
+            item.Add( name );
+            item.Add( tbl->GetDescription( name ) );
+            itemsToDisplay.push_back( item );
+        }
+
+        EDA_LIST_DIALOG dlg( this, _( "Save Symbol As" ), headers, itemsToDisplay, old_lib,
+                             nullptr, nullptr, /* sort */ false, /* show headers */ false );
+        dlg.SetListLabel( _( "Save in library:" ) );
+        dlg.SetOKLabel( _( "Save" ) );
+
+        wxBoxSizer* bNameSizer = new wxBoxSizer( wxHORIZONTAL );
+
+        wxStaticText* label = new wxStaticText( &dlg, wxID_ANY, _( "Name:" ),
+                                                wxDefaultPosition, wxDefaultSize, 0 );
+        bNameSizer->Add( label, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
+
+        wxTextCtrl* nameTextCtrl = new wxTextCtrl( &dlg, wxID_ANY, old_name,
+                                                   wxDefaultPosition, wxDefaultSize, 0 );
+        bNameSizer->Add( nameTextCtrl, 1, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+
+        wxSizer* mainSizer = dlg.GetSizer();
+        mainSizer->Prepend( bNameSizer, 0, wxEXPAND|wxTOP|wxLEFT|wxRIGHT, 5 );
+
+        // Move nameTextCtrl to the head of the tab-order
+        if( dlg.GetChildren().DeleteObject( nameTextCtrl ) )
+            dlg.GetChildren().Insert( nameTextCtrl );
+
+        dlg.SetInitialFocus( nameTextCtrl );
+
+        dlg.Layout();
+        mainSizer->Fit( &dlg );
+
+        if( dlg.ShowModal() != wxID_OK )
+            return;                   // canceled by user
+
+        wxString new_lib = dlg.GetTextSelection();
+
+        if( new_lib.IsEmpty() )
+        {
+            DisplayError( NULL, _( "No library specified.  Symbol could not be saved." ) );
+            return;
+        }
+
+        wxString new_name = nameTextCtrl->GetValue();
+        new_name.Trim( true );
+        new_name.Trim( false );
+        new_name.Replace( " ", "_" );
+
+        if( new_name.IsEmpty() )
+        {
+            DisplayError( NULL, _( "No symbol name specified.  Symbol could not be saved." ) );
+            return;
+        }
+
+        // Test if there is a component with this name already.
+        if( m_libMgr->PartExists( new_name, new_lib ) )
+        {
+            wxString msg = wxString::Format( _( "Symbol \"%s\" already exists in library \"%s\"" ),
+                                             new_name, new_lib );
+            DisplayError( this, msg );
+            return;
+        }
+
+        LIB_PART new_part( *part );
+        new_part.SetName( new_name );
+
+        fixDuplicateAliases( &new_part, new_lib );
+        m_libMgr->UpdatePart( &new_part, new_lib );
+        m_treePane->GetLibTree()->SelectLibId( LIB_ID( new_lib, new_part.GetName() ) );
+
+        if( isCurrentPart( old_lib_id ) )
+            loadPart( new_name, new_lib, m_unit );
+
+        m_libMgr->RemovePart( old_name, old_lib );
+    }
 }
 
 
@@ -393,46 +477,16 @@ void LIB_EDIT_FRAME::OnRemovePart( wxCommandEvent& aEvent )
 }
 
 
-void LIB_EDIT_FRAME::OnCopyCutPart( wxCommandEvent& aEvent )
+void LIB_EDIT_FRAME::OnDuplicatePart( wxCommandEvent& aEvent )
 {
     int unit = 0;
-    auto cmpTree = m_treePane->GetCmpTree();
-    LIB_ID partId = cmpTree->GetSelectedLibId( &unit );
-    LIB_PART* part = m_libMgr->GetBufferedPart( partId.GetLibItemName(), partId.GetLibNickname() );
-
-    if( !part )
-        return;
-
-    LIB_ID libId = getTargetLibId();
-    m_copiedPart.reset( new LIB_PART( *part ) );
-
-    if( aEvent.GetId() == ID_LIBEDIT_CUT_PART )
-    {
-        if( isCurrentPart( libId ) )
-            emptyScreen();
-
-        m_libMgr->RemovePart( libId.GetLibItemName(), libId.GetLibNickname() );
-    }
-}
-
-
-void LIB_EDIT_FRAME::OnPasteDuplicatePart( wxCommandEvent& aEvent )
-{
-    int unit = 0;
-    LIB_ID libId = m_treePane->GetCmpTree()->GetSelectedLibId( &unit );
+    LIB_ID libId = m_treePane->GetLibTree()->GetSelectedLibId( &unit );
     wxString lib = libId.GetLibNickname();
 
     if( !m_libMgr->LibraryExists( lib ) )
         return;
 
-    LIB_PART* srcPart = nullptr;
-
-    if( aEvent.GetId() == ID_LIBEDIT_DUPLICATE_PART )
-        srcPart = m_libMgr->GetBufferedPart( libId.GetLibItemName(), lib );
-    else if( aEvent.GetId() == ID_LIBEDIT_PASTE_PART )
-        srcPart = m_copiedPart.get();
-    else
-        wxFAIL;
+    LIB_PART* srcPart = m_libMgr->GetBufferedPart( libId.GetLibItemName(), lib );
 
     if( !srcPart )
         return;
@@ -440,7 +494,7 @@ void LIB_EDIT_FRAME::OnPasteDuplicatePart( wxCommandEvent& aEvent )
     LIB_PART newPart( *srcPart );
     fixDuplicateAliases( &newPart, lib );
     m_libMgr->UpdatePart( &newPart, lib );
-    m_treePane->GetCmpTree()->SelectLibId( LIB_ID( lib, newPart.GetName() ) );
+    m_treePane->GetLibTree()->SelectLibId( LIB_ID( lib, newPart.GetName() ) );
 }
 
 
@@ -456,7 +510,10 @@ void LIB_EDIT_FRAME::fixDuplicateAliases( LIB_PART* aPart, const wxString& aLibr
 
         while( m_libMgr->PartExists( newName, aLibrary ) )
         {
-            newName = wxString::Format( "%s_%d", alias->GetName(), sfx );
+            if( sfx == 0 )
+                newName = wxString::Format( "%s_copy", alias->GetName() );
+            else
+                newName = wxString::Format( "%s_copy%d", alias->GetName(), sfx );
             ++sfx;
         }
 
@@ -468,22 +525,38 @@ void LIB_EDIT_FRAME::fixDuplicateAliases( LIB_PART* aPart, const wxString& aLibr
 }
 
 
-void LIB_EDIT_FRAME::OnRevertPart( wxCommandEvent& aEvent )
+void LIB_EDIT_FRAME::OnRevert( wxCommandEvent& aEvent )
 {
     LIB_ID libId = getTargetLibId();
+    const wxString& libName = libId.GetLibNickname();
+    const wxString& partName = libId.GetLibItemName();
+
+    if( !IsOK( this, _( "The revert operation cannot be undone!\n\nRevert changes?" ) ) )
+        return;
+
     bool currentPart = isCurrentPart( libId );
+    wxString alias = m_aliasName;
     int unit = m_unit;
 
     if( currentPart )
         emptyScreen();
 
-    libId = m_libMgr->RevertPart( libId.GetLibItemName(), libId.GetLibNickname() );
+    if( partName.IsEmpty() )
+    {
+        m_libMgr->RevertLibrary( libName );
+    }
+    else
+    {
+        libId = m_libMgr->RevertPart( libId.GetLibItemName(), libId.GetLibNickname() );
 
-    m_treePane->GetCmpTree()->SelectLibId( libId );
-    m_libMgr->ClearPartModified( libId.GetLibItemName(), libId.GetLibNickname() );
+        m_treePane->GetLibTree()->SelectLibId( libId );
+        m_libMgr->ClearPartModified( libId.GetLibItemName(), libId.GetLibNickname() );
+    }
 
-    if( currentPart && m_libMgr->PartExists( libId.GetLibItemName(), libId.GetLibNickname() ) )
-        loadPart( libId.GetLibItemName(), libId.GetLibNickname(), unit );
+    if( currentPart && m_libMgr->PartExists( alias, libName ) )
+        loadPart( alias, libName, unit );
+
+    m_treePane->Refresh();
 }
 
 
@@ -601,60 +674,44 @@ bool LIB_EDIT_FRAME::saveLibrary( const wxString& aLibrary, bool aNewFile )
 }
 
 
-bool LIB_EDIT_FRAME::saveAllLibraries( bool aClosing )
+bool LIB_EDIT_FRAME::saveAllLibraries( bool aRequireConfirmation )
 {
-    wxArrayString unsavedLibraries;
-    // There are two stages: first try to save libraries to the original files.
-    // In case of problems, ask the user to save them in a new location.
-    bool firstRun = true;
-    bool allSaved = false;
+    bool doSave = true;
+    int dirtyCount = 0;
+    bool applyToAll = false;
 
-    while( !allSaved )
+    for( const auto& libNickname : m_libMgr->GetLibraryNames() )
     {
-        allSaved = true;
-        unsavedLibraries.Empty();
+        if( m_libMgr->IsLibraryModified( libNickname ) )
+            dirtyCount++;
+    }
 
-        for( const auto& lib : m_libMgr->GetLibraryNames() )
+    for( const auto& libNickname : m_libMgr->GetLibraryNames() )
+    {
+        if( m_libMgr->IsLibraryModified( libNickname ) )
         {
-            if( m_libMgr->IsLibraryModified( lib ) )
-                unsavedLibraries.Add( lib );
+            if( aRequireConfirmation && !applyToAll )
+            {
+                wxString msg = wxString::Format( _( "Save changes to \"%s\" before closing?" ),
+                                                 libNickname );
+
+                switch( UnsavedChangesDialog( this, msg, dirtyCount > 1 ? &applyToAll : nullptr ) )
+                {
+                case wxID_YES: doSave = true;  break;
+                case wxID_NO:  doSave = false; break;
+                default:
+                case wxID_CANCEL: return false;
+                }
+            }
+
+            if( doSave )
+            {
+                // If saving under existing name fails then do a Save As..., and if that
+                // fails then cancel close action.
+                if( !saveLibrary( libNickname, false ) && !saveLibrary( libNickname, true ) )
+                    return false;
+            }
         }
-
-        if( unsavedLibraries.IsEmpty() )
-            break;
-
-        wxArrayInt libIdxs;
-
-        // Show a list of unsaved libraries when:
-        // - library editor is closed
-        // - there are multiple libraries modified
-        // - another library is opened
-        // - an error occurred when saving a library
-        if( aClosing || unsavedLibraries.Count() > 1
-                || GetCurLib() != unsavedLibraries[0] || !firstRun )
-        {
-            bool accepted;
-
-            std::tie( accepted, libIdxs ) = SelectMultipleOptions( this, _( "Save Libraries" ),
-                    firstRun ? _( "Select libraries to save" )
-                            : _( "Some libraries could not be saved to their original files.\n\n"
-                                "Do you want to save them to a new file?" ),
-                    unsavedLibraries, true );
-
-            if( !accepted )
-                return false;       // dialog has been cancelled
-        }
-
-        else if( unsavedLibraries.Count() == 1 || GetCurLib() == unsavedLibraries[0] )
-        {
-            // Save just current library, no questions asked
-            libIdxs.push_back( 0 );
-        }
-
-        for( auto libIndex : libIdxs )
-            allSaved &= saveLibrary( unsavedLibraries[libIndex], !firstRun );
-
-        firstRun = false;
     }
 
     return true;

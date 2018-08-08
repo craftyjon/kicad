@@ -5,7 +5,7 @@
 /*
  * This program source code file is part of KICAD, a free EDA CAD application.
  *
- * Copyright (C) 2011 jean-pierre.charras
+ * Copyright (C) 2018 jean-pierre.charras
  * Copyright (C) 2011-2018 Kicad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
@@ -29,6 +29,7 @@
 #include <fctsys.h>
 #include <gr_basic.h>
 #include <common.h>
+#include <confirm.h>
 #include <bitmap_base.h>
 
 #include <dialog_image_editor.h>
@@ -44,13 +45,8 @@ DIALOG_IMAGE_EDITOR::DIALOG_IMAGE_EDITOR( wxWindow* aParent, BITMAP_BASE* aItem 
     msg.Printf( wxT( "%f" ), m_workingImage->GetScale() );
     m_textCtrlScale->SetValue( msg );
 
-    GetSizer()->SetSizeHints( this );
-    Layout();
-    Fit();
-    SetMinSize( GetBestSize() );
-
-    Centre();
-    SetFocus();
+    FinishDialogSettings();
+    m_sdbSizerOK->SetDefault();
 }
 
 
@@ -124,53 +120,54 @@ void DIALOG_IMAGE_EDITOR::OnHalfSize( wxCommandEvent& event )
 
 /* Test params values correctness
  * Currently scale value must give an actual image
- * > MIN_SIZE pixels and < MAX_SIZE pixels
+ * > MIN_SIZE pixels (mandatory to be able to see the image)
+ * and < MAX_SIZE pixels (if bigger, a confirmation will be asked)
+ * Note: The image definition is 300ppi in drawing routines.
  */
 bool DIALOG_IMAGE_EDITOR::CheckValues()
 {
-    #define MIN_SIZE 16
-    #define MAX_SIZE 6000
+    #define MIN_SIZE 32     // Min size in pixels after scaling
+    #define MAX_SIZE 6000   // Max size in pixels after scaling
     double tmp;
     wxString msg = m_textCtrlScale->GetValue();
 
     // Test number correctness
-    if( ! msg.ToDouble( &tmp ) )
+    if( !msg.ToDouble( &tmp ) || tmp < 0.0 )
     {
         wxMessageBox( _("Incorrect scale number" ) );
         return false;
     }
 
-    // Test value  correctness
+    // Test value correctness
     wxSize psize = m_workingImage->GetSizePixels();
+    int size_min = (int)std::min( (psize.x * tmp), (psize.y * tmp) );
 
-    if( (psize.x * tmp) < MIN_SIZE ||  (psize.y * tmp) < MIN_SIZE )
+    if( size_min < MIN_SIZE )   // if the size is too small, the image will be hard to locate
     {
-        wxMessageBox( _("Scale is too small for this image" ) );
+        wxMessageBox( wxString::Format(
+                   _("This scale gives a too small image size (%.2f mm or %.1f mil)" ),
+                   25.4 / 300 * size_min, 1000.0/300.0 * size_min ) );
         return false;
     }
 
-    if( (psize.x * tmp) > MAX_SIZE ||  (psize.y * tmp) > MAX_SIZE )
+    int size_max = (int)std::max( (psize.x * tmp), (psize.y * tmp) );
+
+    if( size_max > MAX_SIZE )
     {
-        wxMessageBox( _("Scale is too large for this image" ) );
-        return false;
+        // the actual size is 25.4/300 * size_max in mm
+        if( !IsOK( this, wxString::Format(
+                   _("This scale gives a very large image size (%.1f mm or %.2f in). Are you sure?" ),
+                   25.4 / 300 * size_max, size_max /300.0 ) ) )
+            return false;
     }
 
     return true;
 }
 
 
-void DIALOG_IMAGE_EDITOR::OnOK_Button( wxCommandEvent& aEvent )
+bool DIALOG_IMAGE_EDITOR::TransferDataFromWindow()
 {
-    if( CheckValues() )
-        EndModal( wxID_OK );
-
-    return;
-}
-
-
-void DIALOG_IMAGE_EDITOR::OnCancel_Button( wxCommandEvent& aEvent )
-{
-    EndModal( wxID_CANCEL );
+    return CheckValues();
 }
 
 

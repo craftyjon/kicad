@@ -186,9 +186,7 @@ set( BMAPS_MID
     component_select_unit
     component_select_alternate_shape
     config
-    copycomponent
     copy
-    copy_library
     copy_pad_settings
     copper_layers_setup
     cursor_shape
@@ -229,7 +227,6 @@ set( BMAPS_MID
     drc
     duplicate
     edges_sketch
-    edit_component
     edit_comp_footprint
     edit_comp_ref
     edit_comp_value
@@ -255,6 +252,7 @@ set( BMAPS_MID
     export_step
     export
     fabrication
+    field_properties
     file_footprint
     fill_zone
     find
@@ -297,7 +295,6 @@ set( BMAPS_MID
     import3d
     image
     import_brd_file
-    import_cmp_from_lib
     import_document
     import_footprint_names
     import_hierarchical_label
@@ -313,8 +310,7 @@ set( BMAPS_MID
     label2glabel
     label2text
     label
-    lang_catalan
-    lang_chinese
+    lang_ca
     lang_bg
     lang_cs
     lang_def
@@ -335,6 +331,7 @@ set( BMAPS_MID
     lang_sk
     lang_sl
     lang_lt
+    lang_zh
     language
     layers_manager
     leave_sheet
@@ -420,6 +417,7 @@ set( BMAPS_MID
     options_all_tracks
     options_all_vias
     options_arc
+    options_board
     options_circle
     options_generic
     options_module
@@ -509,8 +507,6 @@ set( BMAPS_MID
     save_as
     save_gerber
     save_library
-    save_part
-    save_part_in_mem
     save_project
     save_setup
     save
@@ -567,6 +563,7 @@ set( BMAPS_MID
     up
     update_fields
     update_module_board
+    update_pcb_from_sch
     use_3D_copper_thickness
     via
     via_buried

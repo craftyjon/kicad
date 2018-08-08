@@ -125,7 +125,9 @@ void GERBER_LAYER_WIDGET::ReFillRender()
     {
         if( renderRows[row].color != COLOR4D::UNSPECIFIED )       // does this row show a color?
             renderRows[row].color = myframe->GetVisibleElementColor( renderRows[row].id );
-        renderRows[row].state = myframe->IsElementVisible( renderRows[row].id );
+
+        if( renderRows[row].id )    // if not the separator
+            renderRows[row].state = myframe->IsElementVisible( renderRows[row].id );
     }
 
     AppendRenderRows( renderRows, DIM(renderRows) );
@@ -255,6 +257,7 @@ void GERBER_LAYER_WIDGET::ReFill()
                         wxEmptyString, visible, true ) );
     }
 
+    UpdateLayouts();
     Thaw();
 }
 

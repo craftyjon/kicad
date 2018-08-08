@@ -126,16 +126,6 @@ public:
     MODULE* LoadFootprint( const LIB_ID& aFootprintId );
 
     /**
-     * Check to see if a footprint is available
-     * Note that this is more strict than LoadFootprint as it also checks to see that
-     * the footprint's library is enabled in the fpTable.
-     *
-     * @param aFootprintId
-     * @return true if \a aFootprintId is available and can be loaded
-     */
-    bool CheckFootprint( const LIB_ID& aFootprintId );
-
-    /**
      * Function GetBoardBoundingBox
      * calculates the bounding box containing all board items (or board edge segments).
      * @param aBoardEdgesOnly is true if we are interested in board edge segments only.
@@ -454,13 +444,12 @@ public:
                               FP_LIB_TABLE*   aTable );
 
     /**
-     * Function LoadModuleFromLibrary
+     * Function SelectFootprintFromLibTree
      * opens a dialog to select a footprint.
      *
-     * @param aLibrary = the library name to use, or empty string to search all libraries
      * @param aUseFootprintViewer = true to allow selection by the footprint viewer
      */
-    MODULE* LoadModuleFromLibrary( const wxString& aLibrary, bool aUseFootprintViewer = true );
+    MODULE* SelectFootprintFromLibTree( bool aUseFootprintViewer = true );
 
     /**
      * Adds the given module to the board.

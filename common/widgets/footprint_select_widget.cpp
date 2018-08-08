@@ -55,7 +55,7 @@ FOOTPRINT_SELECT_WIDGET::FOOTPRINT_SELECT_WIDGET( wxWindow* aParent,
     m_zero_filter = true;
     m_sizer = new wxBoxSizer( wxVERTICAL );
     m_fp_sel_ctrl = new FOOTPRINT_CHOICE( this, wxID_ANY );
-    m_sizer->Add( m_fp_sel_ctrl, 1, wxEXPAND | wxALL, 5 );
+    m_sizer->Add( m_fp_sel_ctrl, 1, wxEXPAND, 5 );
 
     SetSizer( m_sizer );
     Layout();
@@ -242,7 +242,7 @@ bool FOOTPRINT_SELECT_WIDGET::UpdateList()
     {
         for( auto& fpinfo : m_fp_filter )
         {
-            wxString display_name( fpinfo.GetNickname() + ":" + fpinfo.GetFootprintName() );
+            wxString display_name( fpinfo.GetLibNickname() + ":" + fpinfo.GetFootprintName() );
 
             m_fp_sel_ctrl->Append( display_name, new wxStringClientData( display_name ) );
             ++n_items;

@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Dec 30 2017)
+// C++ code generated with wxFormBuilder (version Aug  2 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -23,7 +23,7 @@ PANEL_SETUP_NETCLASSES_BASE::PANEL_SETUP_NETCLASSES_BASE( wxWindow* parent, wxWi
 	sbSizerUpper = new wxStaticBoxSizer( new wxStaticBox( this, wxID_ANY, _("Net Classes") ), wxVERTICAL );
 	
 	sbSizerUpper->SetMinSize( wxSize( -1,220 ) ); 
-	m_netclassGrid = new WX_GRID( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL|wxRAISED_BORDER|wxTAB_TRAVERSAL|wxVSCROLL );
+	m_netclassGrid = new WX_GRID( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SIMPLE|wxHSCROLL|wxTAB_TRAVERSAL|wxVSCROLL );
 	
 	// Grid
 	m_netclassGrid->CreateGrid( 1, 9 );
@@ -73,13 +73,13 @@ PANEL_SETUP_NETCLASSES_BASE::PANEL_SETUP_NETCLASSES_BASE( wxWindow* parent, wxWi
 	wxBoxSizer* buttonBoxSizer;
 	buttonBoxSizer = new wxBoxSizer( wxHORIZONTAL );
 	
-	m_addButton = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1,-1 ), wxBU_AUTODRAW );
-	m_addButton->SetMinSize( wxSize( 29,29 ) );
+	m_addButton = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1,-1 ), 0 );
+	m_addButton->SetMinSize( wxSize( 30,29 ) );
 	
 	buttonBoxSizer->Add( m_addButton, 0, wxRIGHT, 5 );
 	
-	m_removeButton = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1,-1 ), wxBU_AUTODRAW );
-	m_removeButton->SetMinSize( wxSize( 29,29 ) );
+	m_removeButton = new wxBitmapButton( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1,-1 ), 0 );
+	m_removeButton->SetMinSize( wxSize( 30,29 ) );
 	
 	buttonBoxSizer->Add( m_removeButton, 0, 0, 10 );
 	
@@ -101,11 +101,11 @@ PANEL_SETUP_NETCLASSES_BASE::PANEL_SETUP_NETCLASSES_BASE( wxWindow* parent, wxWi
 	wxBoxSizer* bSizer9;
 	bSizer9 = new wxBoxSizer( wxHORIZONTAL );
 	
-	m_staticText6 = new wxStaticText( sbFilters->GetStaticBox(), wxID_ANY, _("Net class filter:"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_staticText6->Wrap( -1 );
-	m_staticText6->SetMinSize( wxSize( 120,-1 ) );
+	m_ncfilterLabel = new wxStaticText( sbFilters->GetStaticBox(), wxID_ANY, _("Net class filter:"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_ncfilterLabel->Wrap( -1 );
+	m_ncfilterLabel->SetMinSize( wxSize( 120,-1 ) );
 	
-	bSizer9->Add( m_staticText6, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
+	bSizer9->Add( m_ncfilterLabel, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 5 );
 	
 	wxArrayString m_netClassFilterChoices;
 	m_netClassFilter = new wxChoice( sbFilters->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, m_netClassFilterChoices, 0 );
@@ -125,7 +125,7 @@ PANEL_SETUP_NETCLASSES_BASE::PANEL_SETUP_NETCLASSES_BASE( wxWindow* parent, wxWi
 	bSizer10->Add( m_filterLabel, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 	
 	m_netNameFilter = new wxTextCtrl( sbFilters->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
-	bSizer10->Add( m_netNameFilter, 1, wxEXPAND|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+	bSizer10->Add( m_netNameFilter, 1, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 	
 	
 	sbFilters->Add( bSizer10, 0, wxEXPAND, 5 );
@@ -192,7 +192,7 @@ PANEL_SETUP_NETCLASSES_BASE::PANEL_SETUP_NETCLASSES_BASE( wxWindow* parent, wxWi
 	wxBoxSizer* bRight;
 	bRight = new wxBoxSizer( wxVERTICAL );
 	
-	m_membershipGrid = new WX_GRID( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxRAISED_BORDER );
+	m_membershipGrid = new WX_GRID( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SIMPLE );
 	
 	// Grid
 	m_membershipGrid->CreateGrid( 0, 2 );

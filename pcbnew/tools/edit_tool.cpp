@@ -447,14 +447,22 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
                     if( lockFlags == SELECTION_LOCKED )
                         break;
 
-                    // Save items, so changes can be undone
-                    for( auto item : selection )
+                    // When editing modules, all items have the same parent
+                    if( EditingModules() )
                     {
-                        // Don't double move footprint pads, fields, etc.
-                        if( item->GetParent() && item->GetParent()->IsSelected() )
-                            continue;
+                        m_commit->Modify( selection.Front() );
+                    }
+                    else
+                    {
+                        // Save items, so changes can be undone
+                        for( auto item : selection )
+                        {
+                            // Don't double move footprint pads, fields, etc.
+                            if( item->GetParent() && item->GetParent()->IsSelected() )
+                                continue;
 
-                        m_commit->Modify( item );
+                            m_commit->Modify( item );
+                        }
                     }
 
                     m_cursor = controls->GetCursorPosition();
@@ -683,9 +691,15 @@ int EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
     updateModificationPoint( selection );
     const int rotateAngle = TOOL_EVT_UTILS::GetEventRotationAngle( *editFrame, aEvent );
 
+    // When editing modules, all items have the same parent
+    if( EditingModules() )
+    {
+        m_commit->Modify( selection.Front() );
+    }
+
     for( auto item : selection )
     {
-        if( !item->IsNew() )
+        if( !item->IsNew() && !EditingModules() )
             m_commit->Modify( item );
 
         static_cast<BOARD_ITEM*>( item )->Rotate( selection.GetReferencePoint(), rotateAngle );
@@ -755,6 +769,12 @@ int EDIT_TOOL::Mirror( const TOOL_EVENT& aEvent )
     auto refPoint = selection.GetReferencePoint();
     wxPoint mirrorPoint( refPoint.x, refPoint.y );
 
+    // When editing modules, all items have the same parent
+    if( EditingModules() )
+    {
+        m_commit->Modify( selection.Front() );
+    }
+
     for( auto item : selection )
     {
         // only modify items we can mirror
@@ -764,7 +784,7 @@ int EDIT_TOOL::Mirror( const TOOL_EVENT& aEvent )
         case PCB_MODULE_TEXT_T:
         case PCB_PAD_T:
             // Only create undo entry for items on the board
-            if( !item->IsNew() )
+            if( !item->IsNew() && !EditingModules() )
                 m_commit->Modify( item );
 
             break;
@@ -828,9 +848,15 @@ int EDIT_TOOL::Flip( const TOOL_EVENT& aEvent )
     updateModificationPoint( selection );
     auto modPoint = selection.GetReferencePoint();
 
+    // When editing modules, all items have the same parent
+    if( EditingModules() )
+    {
+        m_commit->Modify( selection.Front() );
+    }
+
     for( auto item : selection )
     {
-        if( !item->IsNew() )
+        if( !item->IsNew() && !EditingModules() )
             m_commit->Modify( item );
 
         static_cast<BOARD_ITEM*>( item )->Flip( modPoint );
@@ -917,11 +943,17 @@ int EDIT_TOOL::MoveExact( const TOOL_EVENT& aEvent )
         // Make sure the rotation is from the right reference point
         selCenter += translation;
 
+        // When editing modules, all items have the same parent
+        if( EditingModules() )
+        {
+            m_commit->Modify( selection.Front() );
+        }
+
         for( auto selItem : selection )
         {
             BOARD_ITEM* item = dynamic_cast<BOARD_ITEM*>( selItem );
 
-            if( !item->IsNew() )
+            if( !item->IsNew() && !EditingModules() )
                 m_commit->Modify( item );
 
             item->Move( translation );
@@ -1201,7 +1233,7 @@ int EDIT_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 
         const VECTOR2I cursorPos = controls.GetCursorPosition();
 
-        if( evt->IsCancel() || evt->IsActivate() )
+        if( evt->IsCancel() || TOOL_EVT_UTILS::IsCancelInteractive( *evt ) || evt->IsActivate() )
         {
             break;
         }
@@ -1238,8 +1270,6 @@ int EDIT_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 
             controls.SetAutoPan( false );
             controls.CaptureCursor( false );
-
-            view.SetVisible( &ruler, false );
         }
 
         // move or drag when origin set updates rules
@@ -1255,7 +1285,7 @@ int EDIT_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 
         else if( evt->IsAction( &PCB_ACTIONS::switchUnits ) )
         {
-            ruler.UpdateUserUnits( frame()->GetUserUnits() );
+            ruler.SwitchUnits();
 
             view.SetVisible( &ruler, true );
             view.Update( &ruler, KIGFX::GEOMETRY );
@@ -1263,7 +1293,7 @@ int EDIT_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 
         else if( evt->IsClick( BUT_RIGHT ) )
         {
-            GetManager()->PassEvent();
+            m_menu.ShowContextMenu();
         }
     }
 

@@ -201,6 +201,10 @@ PANEL_SYM_LIB_TABLE::PANEL_SYM_LIB_TABLE( DIALOG_EDIT_LIBRARY_TABLES* aParent,
 
     // select the last selected page
     m_auinotebook->SetSelection( m_pageNdx );
+    m_cur_grid = ( m_pageNdx == 0 ) ? m_global_grid : m_project_grid;
+
+    // for ALT+A handling, we want the initial focus to be on the first selected grid.
+    m_parent->SetInitialFocus( m_cur_grid );
 
     // Gives a selection for each grid, mainly for delete lib button.
     // Without that, we do not see what lib will be deleted
@@ -222,28 +226,6 @@ PANEL_SYM_LIB_TABLE::~PANEL_SYM_LIB_TABLE()
     // Any additional event handlers should be popped before the window is deleted.
     m_global_grid->PopEventHandler( true );
     m_project_grid->PopEventHandler( true );
-}
-
-
-bool PANEL_SYM_LIB_TABLE::Show( bool aShow )
-{
-    if( aShow )
-    {
-        m_cur_grid = ( m_pageNdx == 0 ) ? m_global_grid : m_project_grid;
-
-        // for ALT+A handling, we want the initial focus to be on the first selected grid.
-        m_parent->SetInitialFocus( m_cur_grid );
-    }
-    else
-    {
-        // Save page index for next invocation
-        // We must do this on Show( false ) because when the first grid is hidden it
-        // gives focus to the next one (which is then hidden), but the result is that
-        // we save the wrong grid if we do it after this.
-        m_pageNdx = (unsigned) std::max( 0, m_auinotebook->GetSelection() );
-    }
-
-    return wxPanel::Show( aShow );
 }
 
 
@@ -334,7 +316,8 @@ bool PANEL_SYM_LIB_TABLE::verifyTables()
 
 void PANEL_SYM_LIB_TABLE::pageChangedHandler( wxAuiNotebookEvent& event )
 {
-    m_cur_grid = ( m_auinotebook->GetSelection() == 0 ) ? m_global_grid : m_project_grid;
+    m_pageNdx = (unsigned) std::max( 0, m_auinotebook->GetSelection() );
+    m_cur_grid = m_pageNdx == 0 ? m_global_grid : m_project_grid;
 }
 
 
@@ -354,7 +337,10 @@ void PANEL_SYM_LIB_TABLE::browseLibrariesHandler( wxCommandEvent& event )
     m_lastBrowseDir = dlg.GetDirectory();
 
     const ENV_VAR_MAP& envVars = Pgm().GetLocalEnvVariables();
-    bool skipRemainingDuplicates = false;
+    bool addDuplicates = false;
+    bool applyToAll = false;
+    wxString warning = _( "Warning: Duplicate Nickname" );
+    wxString msg = _( "A library nicknamed \"%s\" already exists." );
     wxArrayString files;
     dlg.GetFilenames( files );
 
@@ -363,29 +349,21 @@ void PANEL_SYM_LIB_TABLE::browseLibrariesHandler( wxCommandEvent& event )
         wxString filePath = dlg.GetDirectory() + wxFileName::GetPathSeparator() + file;
         wxFileName fn( filePath );
         wxString nickname = LIB_ID::FixIllegalChars( fn.GetName(), LIB_ID::ID_SCH );
+        bool doAdd = true;
 
         if( cur_model()->ContainsNickname( nickname ) )
         {
-            if( skipRemainingDuplicates )
-                continue;
-
-            int ret = YesNoCancelDialog( this,
-                    _( "Warning: Duplicate Nickname" ),
-                    wxString::Format( _( "A library nicknamed \"%s\" already exists." ), nickname ),
-                    _( "Skip" ),
-                    _( "Skip All Remaining Duplicates" ),
-                    _( "Add Anyway" ) );
-
-            if( ret == wxID_YES )
-                continue;
-            else if ( ret == wxID_NO )
+            if( !applyToAll )
             {
-                skipRemainingDuplicates = true;
-                continue;
+                int ret = YesOrCancelDialog( this, warning, wxString::Format( msg, nickname ),
+                                             _( "Skip" ), _( "Add Anyway" ), &applyToAll );
+                addDuplicates = (ret == wxID_CANCEL );
             }
+
+            doAdd = addDuplicates;
         }
 
-        if( m_cur_grid->AppendRows( 1 ) )
+        if( doAdd && m_cur_grid->AppendRows( 1 ) )
         {
             int last_row = m_cur_grid->GetNumberRows() - 1;
 

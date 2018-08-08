@@ -429,7 +429,7 @@ MODULE* DISPLAY_FOOTPRINTS_FRAME::Get_Module( const wxString& aFootprintName )
     {
         LIB_ID fpid;
 
-        if( fpid.Parse( aFootprintName ) >= 0 )
+        if( fpid.Parse( aFootprintName, LIB_ID::ID_PCB ) >= 0 )
         {
             DisplayInfoMessage( this, wxString::Format( _( "Footprint ID \"%s\" is not valid." ),
                                                         GetChars( aFootprintName ) ) );
@@ -496,7 +496,7 @@ void DISPLAY_FOOTPRINTS_FRAME::InitDisplay()
         GetBoard()->m_Modules.PushBack( module );
 
     if( module_info )
-        SetStatusText( wxString::Format( _( "Lib: %s" ), module_info->GetNickname() ), 0 );
+        SetStatusText( wxString::Format( _( "Lib: %s" ), module_info->GetLibNickname() ), 0 );
     else
         SetStatusText( wxEmptyString, 0 );
 

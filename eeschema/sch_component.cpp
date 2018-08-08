@@ -980,6 +980,19 @@ SCH_FIELD* SCH_COMPONENT::AddField( const SCH_FIELD& aField )
 }
 
 
+void SCH_COMPONENT::RemoveField( const wxString& aFieldName )
+{
+    for( unsigned i = MANDATORY_FIELDS; i < m_Fields.size(); ++i )
+    {
+        if( aFieldName == m_Fields[i].GetName( false ) )
+        {
+            m_Fields.erase( m_Fields.begin() + i );
+            return;
+        }
+    }
+}
+
+
 SCH_FIELD* SCH_COMPONENT::FindField( const wxString& aFieldName, bool aIncludeDefaultFields )
 {
     unsigned start = aIncludeDefaultFields ? 0 : MANDATORY_FIELDS;
@@ -1455,7 +1468,7 @@ void SCH_COMPONENT::GetMsgPanelInfo( EDA_UNITS_T aUnits, MSG_PANEL_ITEMS& aList 
                 aList.push_back( MSG_PANEL_ITEM( _( "Alias of" ), part->GetName(), BROWN ) );
 
             if( alias->GetLib() && alias->GetLib()->IsCache() )
-                aList.push_back( MSG_PANEL_ITEM( _( "Library" ), alias->GetLibraryName(), RED ) );
+                aList.push_back( MSG_PANEL_ITEM( _( "Library" ), alias->GetLibNickname(), RED ) );
             else if( !m_lib_id.GetLibNickname().empty() )
                 aList.push_back( MSG_PANEL_ITEM( _( "Library" ), m_lib_id.GetLibNickname(),
                                                  BROWN ) );

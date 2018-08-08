@@ -308,10 +308,10 @@ bool PCB_EDITOR_CONTROL::Init()
         toolMenu.AddSubMenu( lockMenu );
 
         menu.AddMenu( zoneMenu.get(), false,
-                SELECTION_CONDITIONS::OnlyType( PCB_ZONE_AREA_T ) );
+                      SELECTION_CONDITIONS::OnlyType( PCB_ZONE_AREA_T ), 200 );
 
         menu.AddMenu( lockMenu.get(), false,
-                SELECTION_CONDITIONS::OnlyTypes( GENERAL_COLLECTOR::LockableItems ) );
+                      SELECTION_CONDITIONS::OnlyTypes( GENERAL_COLLECTOR::LockableItems ), 200 );
     }
 
     DRAWING_TOOL* drawingTool = m_toolMgr->GetTool<DRAWING_TOOL>();
@@ -333,7 +333,7 @@ bool PCB_EDITOR_CONTROL::Init()
             };
         };
 
-        menu.AddMenu( zoneMenu.get(), false, toolActiveFunctor( DRAWING_TOOL::MODE::ZONE ) );
+        menu.AddMenu( zoneMenu.get(), false, toolActiveFunctor( DRAWING_TOOL::MODE::ZONE ), 200 );
     }
 
     m_ratsnestTimer.SetOwner( this );
@@ -467,7 +467,7 @@ int PCB_EDITOR_CONTROL::PlaceModule( const TOOL_EVENT& aEvent )
             if( !module )
             {
                 // Pick the module to be placed
-                module = m_frame->LoadModuleFromLibrary( wxEmptyString );
+                module = m_frame->SelectFootprintFromLibTree();
 
                 if( module == NULL )
                     continue;

@@ -91,10 +91,10 @@ class FP_CACHE_ITEM
 public:
     FP_CACHE_ITEM( MODULE* aModule, const wxFileName& aFileName );
 
-    wxString    GetName() const { return m_file_name.GetDirs().Last(); }
-    wxFileName  GetFileName() const { return m_file_name; }
+    const wxString&   GetName() const { return m_file_name.GetDirs().Last(); }
+    const wxFileName& GetFileName() const { return m_file_name; }
 
-    MODULE*     GetModule() const { return m_module.get(); }
+    const MODULE*     GetModule() const { return m_module.get(); }
 };
 
 
@@ -112,9 +112,10 @@ typedef MODULE_MAP::const_iterator                  MODULE_CITER;
 
 class FP_CACHE
 {
-    PCB_IO*         m_owner;        /// Plugin object that owns the cache.
-    wxFileName      m_lib_path;     /// The path of the library.
-    MODULE_MAP      m_modules;      /// Map of footprint file name per MODULE*.
+    PCB_IO*         m_owner;            // Plugin object that owns the cache.
+    wxFileName      m_lib_path;         // The path of the library.
+    wxString        m_lib_raw_path;     // For quick comparisons.
+    MODULE_MAP      m_modules;          // Map of footprint file name per MODULE*.
 
     bool            m_cache_dirty;      // Stored separately because it's expensive to check
                                         // m_cache_timestamp against all the files.
@@ -124,7 +125,7 @@ class FP_CACHE
 public:
     FP_CACHE( PCB_IO* aOwner, const wxString& aLibraryPath );
 
-    wxString    GetPath() const { return m_lib_path.GetPath(); }
+    wxString    GetPath() const { return m_lib_raw_path; }
     bool        IsWritable() const { return m_lib_path.IsOk() && m_lib_path.IsDirWritable(); }
     bool        Exists() const { return m_lib_path.IsOk() && m_lib_path.DirExists(); }
     MODULE_MAP& GetModules() { return m_modules; }
@@ -151,7 +152,7 @@ public:
      * parent directory).
      * Timestamps should not be considered ordered.  They either match or they don't.
      */
-    long long GetTimestamp();
+    static long long GetTimestamp( const wxString& aLibPath );
 
     /**
      * Function IsModified
@@ -178,6 +179,7 @@ public:
 FP_CACHE::FP_CACHE( PCB_IO* aOwner, const wxString& aLibraryPath )
 {
     m_owner = aOwner;
+    m_lib_raw_path = aLibraryPath;
     m_lib_path.SetPath( aLibraryPath );
     m_cache_timestamp = 0;
     m_cache_dirty = true;
@@ -191,13 +193,13 @@ void FP_CACHE::Save( MODULE* aModule )
     if( !m_lib_path.DirExists() && !m_lib_path.Mkdir() )
     {
         THROW_IO_ERROR( wxString::Format( _( "Cannot create footprint library path \"%s\"" ),
-                                          m_lib_path.GetPath().GetData() ) );
+                                          m_lib_raw_path ) );
     }
 
     if( !m_lib_path.IsDirWritable() )
     {
         THROW_IO_ERROR( wxString::Format( _( "Footprint library path \"%s\" is read only" ),
-                                          GetChars( m_lib_path.GetPath() ) ) );
+                                          m_lib_raw_path ) );
     }
 
     for( MODULE_ITER it = m_modules.begin();  it != m_modules.end();  ++it )
@@ -255,54 +257,49 @@ void FP_CACHE::Save( MODULE* aModule )
 
 void FP_CACHE::Load()
 {
-    wxDir dir( m_lib_path.GetPath() );
+    m_cache_dirty = false;
+    m_cache_timestamp = 0;
+
+    WX_DIR dir( m_lib_raw_path );
 
     if( !dir.IsOpened() )
     {
-        m_cache_timestamp = 0;
-        m_cache_dirty = false;
-
-        wxString msg = wxString::Format(
-                _( "Footprint library path \"%s\" does not exist" ),
-                GetChars( m_lib_path.GetPath() )
-                );
-
+        wxString msg = wxString::Format( _( "Footprint library path \"%s\" does not exist" ),
+                                         m_lib_raw_path );
         THROW_IO_ERROR( msg );
-    }
-    else
-    {
-        m_cache_timestamp = m_lib_path.GetModificationTime().GetValue().GetValue();
-        m_cache_dirty = false;
     }
 
     wxString fpFileName;
     wxString wildcard = wxT( "*." ) + KiCadFootprintFileExtension;
 
-    if( dir.GetFirst( &fpFileName, wildcard, wxDIR_FILES ) )
+    // wxFileName construction is egregiously slow.  Construct it once and just swap out
+    // the filename.
+    WX_FILENAME fn( m_lib_raw_path, wxT( "dummy." ) + KiCadFootprintFileExtension );
+
+    if( dir.GetFirst( &fpFileName, wildcard ) )
     {
         wxString cacheError;
 
         do
         {
-            // prepend the libpath into fullPath
-            wxFileName fullPath( m_lib_path.GetPath(), fpFileName );
+            fn.SetFullName( fpFileName );
 
             // Queue I/O errors so only files that fail to parse don't get loaded.
             try
             {
-                FILE_LINE_READER    reader( fullPath.GetFullPath() );
+                FILE_LINE_READER    reader( fn.GetFullPath() );
 
                 m_owner->m_parser->SetLineReader( &reader );
 
                 MODULE*     footprint = (MODULE*) m_owner->m_parser->Parse();
 
                 // The footprint name is the file name without the extension.
-                wxString    fpName = fullPath.GetName();
+                wxString    fpName = fn.GetName();
 
-                footprint->SetFPID( LIB_ID( fpName ) );
-                m_modules.insert( fpName, new FP_CACHE_ITEM( footprint, fullPath ) );
+                footprint->SetFPID( LIB_ID( wxEmptyString, fpName ) );
+                m_modules.insert( fpName, new FP_CACHE_ITEM( footprint, fn ) );
 
-                m_cache_timestamp += fullPath.GetModificationTime().GetValue().GetValue();
+                m_cache_timestamp += fn.GetTimestamp();
             }
             catch( const IO_ERROR& ioe )
             {
@@ -325,11 +322,9 @@ void FP_CACHE::Remove( const wxString& aFootprintName )
 
     if( it == m_modules.end() )
     {
-        wxString msg = wxString::Format(
-                _( "library \"%s\" has no footprint \"%s\" to delete" ),
-                GetChars( m_lib_path.GetPath() ),
-                GetChars( aFootprintName )
-                );
+        wxString msg = wxString::Format( _( "library \"%s\" has no footprint \"%s\" to delete" ),
+                                         m_lib_raw_path,
+                                         aFootprintName );
         THROW_IO_ERROR( msg );
     }
 
@@ -342,47 +337,42 @@ void FP_CACHE::Remove( const wxString& aFootprintName )
 
 bool FP_CACHE::IsPath( const wxString& aPath ) const
 {
-    // Converts path separators to native path separators
-    wxFileName newPath;
-    newPath.AssignDir( aPath );
-
-    return m_lib_path == newPath;
+    return aPath == m_lib_raw_path;
 }
 
 
 bool FP_CACHE::IsModified()
 {
-    if( m_cache_dirty )
-        return true;
-    else
-        return GetTimestamp() != m_cache_timestamp;
+    m_cache_dirty = m_cache_dirty || GetTimestamp( m_lib_path.GetFullPath() ) != m_cache_timestamp;
+
+    return m_cache_dirty;
 }
 
 
-long long FP_CACHE::GetTimestamp()
+long long FP_CACHE::GetTimestamp( const wxString& aLibPath )
 {
-    // Avoid expensive GetModificationTime checks if we already know we're dirty
-    if( m_cache_dirty )
-        return wxDateTime::Now().GetValue().GetValue();
-
     long long files_timestamp = 0;
 
-    if( m_lib_path.DirExists() )
-    {
-        files_timestamp = m_lib_path.GetModificationTime().GetValue().GetValue();
+    // wxFileName construction is egregiously slow.  Construct it once and just
+    // swap out the filename for each file.
+    WX_FILENAME fn( aLibPath, wxT( "dummy." ) + KiCadFootprintFileExtension );
 
-        for( MODULE_CITER it = m_modules.begin();  it != m_modules.end();  ++it )
+    WX_DIR dir( aLibPath );
+
+    if( dir.IsOpened() )
+    {
+        wxString fpFileName;
+        wxString wildcard = wxT( "*." ) + KiCadFootprintFileExtension;
+
+        if( dir.GetFirst( &fpFileName, wildcard ) )
         {
-            wxFileName moduleFile = it->second->GetFileName();
-            if( moduleFile.FileExists() )
-                files_timestamp += moduleFile.GetModificationTime().GetValue().GetValue();
+            do
+            {
+                fn.SetFullName( fpFileName );
+                files_timestamp += fn.GetTimestamp();
+            } while( dir.GetNext( &fpFileName ) );
         }
     }
-
-    // If the new timestamp doesn't match the cache timestamp, then save ourselves the
-    // expensive calls next time
-    if( m_cache_timestamp != files_timestamp )
-        m_cache_dirty = true;
 
     return files_timestamp;
 }
@@ -2013,10 +2003,10 @@ void PCB_IO::FootprintEnumerate( wxArrayString&    aFootprintNames,
 }
 
 
-MODULE* PCB_IO::doLoadFootprint( const wxString& aLibraryPath,
-                                 const wxString& aFootprintName,
-                                 const PROPERTIES* aProperties,
-                                 bool checkModified )
+const MODULE* PCB_IO::getFootprint( const wxString& aLibraryPath,
+                                    const wxString& aFootprintName,
+                                    const PROPERTIES* aProperties,
+                                    bool checkModified )
 {
     LOCALE_IO   toggle;     // toggles on, then off, the C locale.
 
@@ -2040,23 +2030,23 @@ MODULE* PCB_IO::doLoadFootprint( const wxString& aLibraryPath,
         return NULL;
     }
 
-    // copy constructor to clone the already loaded MODULE
-    return new MODULE( *it->second->GetModule() );
+    return it->second->GetModule();
 }
 
 
-MODULE* PCB_IO::LoadEnumeratedFootprint( const wxString& aLibraryPath,
-                                         const wxString& aFootprintName,
-                                         const PROPERTIES* aProperties )
+const MODULE* PCB_IO::GetEnumeratedFootprint( const wxString& aLibraryPath,
+                                              const wxString& aFootprintName,
+                                              const PROPERTIES* aProperties )
 {
-    return doLoadFootprint( aLibraryPath, aFootprintName, aProperties, false );
+    return getFootprint( aLibraryPath, aFootprintName, aProperties, false );
 }
 
 
 MODULE* PCB_IO::FootprintLoad( const wxString& aLibraryPath, const wxString& aFootprintName,
                                const PROPERTIES* aProperties )
 {
-    return doLoadFootprint( aLibraryPath, aFootprintName, aProperties, true );
+    const MODULE* footprint = getFootprint( aLibraryPath, aFootprintName, aProperties, true );
+    return footprint ? new MODULE( *footprint ) : nullptr;
 }
 
 
@@ -2078,12 +2068,10 @@ void PCB_IO::FootprintSave( const wxString& aLibraryPath, const MODULE* aFootpri
         if( !m_cache->Exists() )
         {
             const wxString msg = wxString::Format( _( "Library \"%s\" does not exist.\n"
-                                                "Would you like to create it?"),
-                    GetChars( aLibraryPath ) );
-            const wxString title = wxString::Format( _( "Create new library \"%s\"?"),
-                    GetChars( aLibraryPath ) );
+                                                   "Would you like to create it?"),
+                                                   GetChars( aLibraryPath ) );
 
-            if( wxMessageBox( msg, title, wxYES_NO | wxICON_QUESTION ) != wxYES )
+            if( wxMessageBox( msg, _( "Library Not Found"), wxYES_NO | wxICON_QUESTION ) != wxYES )
                 return;
 
             // Save throws its own IO_ERROR on failure, so no need to recreate here
@@ -2091,12 +2079,9 @@ void PCB_IO::FootprintSave( const wxString& aLibraryPath, const MODULE* aFootpri
         }
         else
         {
-            wxString msg = wxString::Format( _( "Library \"%s\" is read only" ),
-                GetChars( aLibraryPath ) );
+            wxString msg = wxString::Format( _( "Library \"%s\" is read only" ), aLibraryPath );
             THROW_IO_ERROR( msg );
         }
-
-
     }
 
     wxString footprintName = aFootprint->GetFPID().GetLibItemName();
@@ -2107,16 +2092,32 @@ void PCB_IO::FootprintSave( const wxString& aLibraryPath, const MODULE* aFootpri
     wxFileName fn( aLibraryPath, aFootprint->GetFPID().GetLibItemName(),
                    KiCadFootprintFileExtension );
 
+#ifndef __WINDOWS__
+    // Write through symlinks, don't replace them
+    if( fn.Exists( wxFILE_EXISTS_SYMLINK ) )
+    {
+        char buffer[ PATH_MAX + 1 ];
+        ssize_t pathLen = readlink( TO_UTF8( fn.GetFullPath() ), buffer, PATH_MAX );
+
+        if( pathLen > 0 )
+        {
+            buffer[ pathLen ] = '\0';
+            fn.Assign( fn.GetPath() + wxT( "/" ) + wxString::FromUTF8( buffer ) );
+            fn.Normalize();
+        }
+    }
+#endif
+
     if( !fn.IsOk() )
     {
         THROW_IO_ERROR( wxString::Format( _( "Footprint file name \"%s\" is not valid." ),
-                                          GetChars( fn.GetFullPath() ) ) );
+                                          fn.GetFullPath() ) );
     }
 
     if( fn.FileExists() && !fn.IsFileWritable() )
     {
-        THROW_IO_ERROR( wxString::Format( _( "user does not have write permission to delete file \"%s\" " ),
-                                          GetChars( fn.GetFullPath() ) ) );
+        THROW_IO_ERROR( wxString::Format( _( "No write permissions to delete file \"%s\" " ),
+                                          fn.GetFullPath() ) );
     }
 
     MODULE_CITER it = mods.find( footprintName );
@@ -2170,11 +2171,7 @@ void PCB_IO::FootprintDelete( const wxString& aLibraryPath, const wxString& aFoo
 
 long long PCB_IO::GetLibraryTimestamp( const wxString& aLibraryPath ) const
 {
-    // If we have no cache, return a number which won't match any stored timestamps
-    if( !m_cache || !m_cache->IsPath( aLibraryPath ) )
-        return wxDateTime::Now().GetValue().GetValue();
-
-    return m_cache->GetTimestamp();
+    return FP_CACHE::GetTimestamp( aLibraryPath );
 }
 
 

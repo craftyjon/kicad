@@ -29,6 +29,7 @@
 
 #include <worksheet_viewitem.h>
 #include <worksheet_shape_builder.h>
+#include <worksheet_dataitem.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <painter.h>
 #include <layers_id_colors_and_visibility.h>
@@ -119,6 +120,7 @@ void WORKSHEET_VIEWITEM::ViewDraw( int aLayer, VIEW* aView ) const
             break;
 
         case WS_DRAW_ITEM_BASE::wsg_bitmap:
+            draw( static_cast<const WS_DRAW_ITEM_BITMAP*>( item ), gal );
             break;
         }
 
@@ -199,11 +201,22 @@ void WORKSHEET_VIEWITEM::draw( const WS_DRAW_ITEM_TEXT* aItem, GAL* aGal ) const
 }
 
 
+void WORKSHEET_VIEWITEM::draw( const WS_DRAW_ITEM_BITMAP* aItem, GAL* aGal ) const
+{
+    aGal->Save();
+    VECTOR2D position = aItem->GetPosition();
+    aGal->Translate( position );
+    WORKSHEET_DATAITEM_BITMAP* parent = static_cast<WORKSHEET_DATAITEM_BITMAP*>( aItem->GetParent() );
+    aGal->DrawBitmap( *parent->m_ImageBitmap );
+    aGal->Restore();
+}
+
+
 void WORKSHEET_VIEWITEM::drawBorder( GAL* aGal ) const
 {
     VECTOR2D origin = VECTOR2D( 0.0, 0.0 );
-    VECTOR2D end = VECTOR2D( m_pageInfo->GetWidthMils() * 25400,
-                             m_pageInfo->GetHeightMils() * 25400 );
+    VECTOR2D end = VECTOR2D( m_pageInfo->GetWidthMils() * m_mils2IUscalefactor,
+                             m_pageInfo->GetHeightMils() * m_mils2IUscalefactor );
 
     aGal->SetIsStroke( true );
     // Use a gray color for the border color

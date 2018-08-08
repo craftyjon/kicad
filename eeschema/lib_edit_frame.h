@@ -45,7 +45,7 @@ class LIB_PART;
 class LIB_ALIAS;
 class LIB_FIELD;
 class DIALOG_LIB_EDIT_TEXT;
-class CMP_TREE_PANE;
+class SYMBOL_TREE_PANE;
 class LIB_ID;
 class LIB_MANAGER;
 
@@ -55,13 +55,13 @@ class LIB_MANAGER;
  */
 class LIB_EDIT_FRAME : public SCH_BASE_FRAME
 {
-    LIB_PART*       m_my_part;              ///< a part I own, it is not in any library, but a copy could be.
-    LIB_PART*       m_tempCopyComponent;    ///< temp copy of a part during edit, I own it here.
-    LIB_COLLECTOR   m_collectedItems;       ///< Used for hit testing.
-    wxComboBox*     m_partSelectBox;        ///< a Box to select a part to edit (if any)
-    wxComboBox*     m_aliasSelectBox;       ///< a box to select the alias to edit (if any)
-    CMP_TREE_PANE*  m_treePane;             ///< component search tree widget
-    LIB_MANAGER*    m_libMgr;               ///< manager taking care of temporary modificatoins
+    LIB_PART*          m_my_part;              ///< a part I own, it is not in any library, but a copy could be.
+    LIB_PART*          m_tempCopyComponent;    ///< temp copy of a part during edit, I own it here.
+    LIB_COLLECTOR      m_collectedItems;       ///< Used for hit testing.
+    wxComboBox*        m_partSelectBox;        ///< a Box to select a part to edit (if any)
+    wxComboBox*        m_aliasSelectBox;       ///< a box to select the alias to edit (if any)
+    SYMBOL_TREE_PANE*  m_treePane;             ///< component search tree widget
+    LIB_MANAGER*       m_libMgr;               ///< manager taking care of temporary modificatoins
 
     /** Convert of the item currently being drawn. */
     bool m_drawSpecificConvert;
@@ -246,24 +246,6 @@ public:
     }
 
     /**
-     * The command event handler to save the changes to the current library.
-     *
-     * A backup file of the current library is saved with the .bak extension before the
-     * changes made to the library are saved.
-     */
-    void OnSaveLibrary( wxCommandEvent& event );
-
-    /**
-     * Saves all changes in modified libraries.
-     */
-    void OnSaveAllLibraries( wxCommandEvent& event );
-
-    /**
-     * Reverts unsaved changes in a library.
-     */
-    void OnRevertLibrary( wxCommandEvent& aEvent );
-
-    /**
      * Creates a new part in the selected library.
      */
     void OnCreateNewPart( wxCommandEvent& aEvent );
@@ -288,23 +270,31 @@ public:
     void OnExportPart( wxCommandEvent& event );
 
     /**
-     * Saves a single part in the selected library. The library file is updated without including
-     * the remaining unsaved changes.
+     * Saves the selected part or library.
      */
-    void OnSavePart( wxCommandEvent& aEvent );
+    void OnSave( wxCommandEvent& aEvent );
+
+    /**
+     * Saves the selected part or library to a new name and/or location.
+     */
+    void OnSaveAs( wxCommandEvent& aEvent );
+
+    /**
+     * Saves all modified parts and libraries.
+     */
+    void OnSaveAll( wxCommandEvent& aEvent );
 
     /**
      * Reverts unsaved changes in a part, restoring to the last saved state.
      */
-    void OnRevertPart( wxCommandEvent& aEvent );
+    void OnRevert( wxCommandEvent& aEvent );
 
     /**
      * Removes a part from the working copy of a library.
      */
     void OnRemovePart( wxCommandEvent& aEvent );
 
-    void OnCopyCutPart( wxCommandEvent& aEvent );
-    void OnPasteDuplicatePart( wxCommandEvent& aEvent );
+    void OnDuplicatePart( wxCommandEvent& aEvent );
 
     void OnSelectAlias( wxCommandEvent& event );
     void OnSelectPart( wxCommandEvent& event );
@@ -335,14 +325,12 @@ public:
     void OnUpdatePaste( wxUpdateUIEvent& event );
     void OnUpdateSelectTool( wxUpdateUIEvent& aEvent );
     void OnUpdateEditingPart( wxUpdateUIEvent& event );
-    void OnUpdatePartModified( wxUpdateUIEvent& aEvent );
-    void OnUpdateLibModified( wxUpdateUIEvent& aEvent );
-    void OnUpdateClipboardNotEmpty( wxUpdateUIEvent& aEvent );
+    void OnUpdateHavePart( wxUpdateUIEvent& aEvent );
+    void OnUpdateSave( wxUpdateUIEvent& aEvent );
+    void OnUpdateSaveAs( wxUpdateUIEvent& aEvent );
+    void OnUpdateRevert( wxUpdateUIEvent& aEvent );
     void OnUpdateUndo( wxUpdateUIEvent& event );
     void OnUpdateRedo( wxUpdateUIEvent& event );
-    void OnUpdateSaveLib( wxUpdateUIEvent& event );
-    void OnUpdateSaveLibAs( wxUpdateUIEvent& event );
-    void OnUpdateSaveAll( wxUpdateUIEvent& event );
     void OnUpdateViewDoc( wxUpdateUIEvent& event );
     void OnUpdateSyncPinEdit( wxUpdateUIEvent& event );
     void OnUpdatePinTable( wxUpdateUIEvent& event );
@@ -484,6 +472,8 @@ public:
 
 private:
     void loadPart( const wxString& aLibrary, const wxString& aPart, int Unit );
+
+    void savePartAs();
 
     /**
      * Saves the changes to the current library.
@@ -748,15 +738,12 @@ private:
 
     /* Returns true when the operation has succeded (all requested libraries have been saved or
      * none was selected and confirmed by OK).
-     * @param aClosing when true, then the list of unsaved libraries is always shown.
+     * @param aRequireConfirmation when true, the user must be asked to confirm.
      */
-    bool saveAllLibraries( bool aClosing );
+    bool saveAllLibraries( bool aRequireConfirmation );
 
     ///> Creates or adds an existing library to the symbol library table.
     bool addLibraryFile( bool aCreateNew );
-
-    ///> Displays a file browser dialog to select a library file.
-    wxFileName getLibraryFileName( bool aExisting );
 
     ///> Stores the currently modified part in the library manager buffer.
     void storeCurrentPart();
@@ -785,9 +772,6 @@ private:
 
     ///> Clipboard buffer storing LIB_ITEMs
     BLOCK_SELECTOR m_clipboard;
-
-    // Copy/cut/paste buffer to move parts between libraries
-    std::unique_ptr<LIB_PART> m_copiedPart;
 
     DECLARE_EVENT_TABLE()
 };

@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Dec 30 2017)
+// C++ code generated with wxFormBuilder (version Jun 18 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -188,6 +188,7 @@ class DIALOG_PAD_PROPERTIES_BASE : public DIALOG_SHIM
 		
 		// Virtual event handlers, overide them in your derived class
 		virtual void OnInitDialog( wxInitDialogEvent& event ) { event.Skip(); }
+		virtual void OnUpdateUI( wxUpdateUIEvent& event ) { event.Skip(); }
 		virtual void OnValuesChanged( wxCommandEvent& event ) { event.Skip(); }
 		virtual void PadTypeSelected( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnPadShapeSelection( wxCommandEvent& event ) { event.Skip(); }

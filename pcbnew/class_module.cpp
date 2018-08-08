@@ -1298,7 +1298,7 @@ BOARD_ITEM* MODULE::Duplicate( const BOARD_ITEM* aItem,
         break;
     }
 
-    if( aIncrementPadNumbers && new_pad )
+    if( aIncrementPadNumbers && new_pad && !new_pad->IsAperturePad() )
     {
         new_pad->IncrementPadName( true, true );
     }
@@ -1343,6 +1343,14 @@ wxString MODULE::GetReferencePrefix() const
     prefix = prefix.Mid( 0, strIndex );
 
     return prefix;
+}
+
+
+void MODULE::IncrementReference( int aDelta )
+{
+    SetReference( wxString::Format( wxT( "%s%i" ),
+                                    GetReferencePrefix(),
+                                    getTrailingInt( GetReference() ) + aDelta ) );
 }
 
 

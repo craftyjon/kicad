@@ -181,6 +181,16 @@ protected:
     void CommonSettingsChanged() override;
 
     /**
+     * Function LibraryFileBrowser
+      * @param doOpen if true runs an Open Library browser, otherwise New Library
+      * @param aFilename for New may contain a default name; in both cases return the chosen
+      *                  filename.
+      * @return true for OK; false for Cancel.
+      */
+    bool LibraryFileBrowser( bool doOpen, wxFileName& aFilename,
+                             const wxString& wildcard, const wxString& ext );
+
+    /**
      * Function GeneralControlKeyMovement
      * Handle the common part of GeneralControl dedicated to global
      * cursor keys (i.e. cursor movement by keyboard)
@@ -200,11 +210,6 @@ protected:
      * @return true if an item edit or a block operation is in progress.
      */
     bool isBusy() const;
-
-    /**
-     * Returns the canvas type stored in the application settings.
-     */
-    EDA_DRAW_PANEL_GAL::GAL_TYPE loadCanvasTypeSetting() const;
 
     /**
      * Stores the canvas type in the application settings.
@@ -861,6 +866,11 @@ public:
      * @param aData = a pointer on an auxiliary data (not always used, NULL if not used)
      */
     virtual void PrintPage( wxDC* aDC, LSET aPrintMask, bool aPrintMirrorMode, void* aData = NULL );
+
+    /**
+     * Returns the canvas type stored in the application settings.
+     */
+    static EDA_DRAW_PANEL_GAL::GAL_TYPE LoadCanvasTypeSetting();
 
     /**
      * Function UseGalCanvas

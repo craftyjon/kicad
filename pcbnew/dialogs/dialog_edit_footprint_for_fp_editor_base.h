@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Dec 30 2017)
+// C++ code generated with wxFormBuilder (version Aug  2 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -21,10 +21,10 @@ class WX_GRID;
 #include <wx/font.h>
 #include <wx/grid.h>
 #include <wx/gdicmn.h>
+#include <wx/bmpbuttn.h>
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/icon.h>
-#include <wx/bmpbuttn.h>
 #include <wx/button.h>
 #include <wx/sizer.h>
 #include <wx/statbox.h>
@@ -88,10 +88,10 @@ class DIALOG_FOOTPRINT_FP_EDITOR_BASE : public DIALOG_SHIM
 		wxPanel* m_Panel3D;
 		wxBoxSizer* bSizerMain3D;
 		wxGrid* m_modelsGrid;
-		wxBitmapButton* m_buttonAdd;
-		wxBitmapButton* m_buttonBrowse;
-		wxBitmapButton* m_buttonRemove;
-		wxButton* m_button8;
+		wxBitmapButton* m_button3DShapeAdd;
+		wxBitmapButton* m_button3DShapeBrowse;
+		wxBitmapButton* m_button3DShapeRemove;
+		wxButton* m_buttonConfig3DPaths;
 		wxBoxSizer* bLowerSizer3D;
 		wxStdDialogButtonSizer* m_sdbSizerStdButtons;
 		wxButton* m_sdbSizerStdButtonsOK;

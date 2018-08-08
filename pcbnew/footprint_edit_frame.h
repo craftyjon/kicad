@@ -29,10 +29,13 @@
 #include <pcb_base_edit_frame.h>
 #include <io_mgr.h>
 #include <config_params.h>
+#include <fp_tree_synchronizing_adapter.h>
 
 class PCB_LAYER_WIDGET;
 class FP_LIB_TABLE;
 class EDGE_MODULE;
+class FOOTPRINT_TREE_PANE;
+class LIB_MANAGER;
 
 namespace PCB { struct IFACE; }     // A KIFACE_I coded in pcbnew.c
 
@@ -40,6 +43,9 @@ namespace PCB { struct IFACE; }     // A KIFACE_I coded in pcbnew.c
 class FOOTPRINT_EDIT_FRAME : public PCB_BASE_EDIT_FRAME
 {
     friend struct PCB::IFACE;
+
+    FOOTPRINT_TREE_PANE*        m_treePane;
+    LIB_TREE_MODEL_ADAPTER::PTR m_adapter;
 
 public:
 
@@ -132,13 +138,13 @@ public:
     void OnConfigurePaths( wxCommandEvent& aEvent );
 
     /**
-     * Function OnSaveLibraryAs
-     * saves the current library to a new name and/or library type.
+     * Function SaveLibraryAs
+     * saves a library to a new name and/or library type.
      *
      * @note Saving as a new library type requires the plug-in to support saving libraries
      * @see PLUGIN::FootprintSave and PLUGIN::FootprintLibCreate
      */
-    void OnSaveLibraryAs( wxCommandEvent& aEvent );
+    bool SaveLibraryAs( const wxString& aLibraryPath );
 
     ///> @copydoc EDA_DRAW_FRAME::GetHotKeyDescription()
     EDA_HOTKEY* GetHotKeyDescription( int aCommand ) const override;
@@ -182,12 +188,13 @@ public:
     void OnUpdateVerticalToolbar( wxUpdateUIEvent& aEvent );
 
     void OnUpdateOptionsToolbar( wxUpdateUIEvent& aEvent );
-    void OnUpdateLibSelected( wxUpdateUIEvent& aEvent );
     void OnUpdateModuleSelected( wxUpdateUIEvent& aEvent );
+    void OnUpdateModuleTargeted( wxUpdateUIEvent& aEvent );
+    void OnUpdateSave( wxUpdateUIEvent& aEvent );
+    void OnUpdateSaveAs( wxUpdateUIEvent& aEvent );
     void OnUpdateLoadModuleFromBoard( wxUpdateUIEvent& aEvent );
     void OnUpdateInsertModuleInBoard( wxUpdateUIEvent& aEvent );
     void OnUpdateReplaceModuleInBoard( wxUpdateUIEvent& aEvent );
-    void OnUpdateSelectCurrentLib( wxUpdateUIEvent& aEvent );
 
     ///> @copydoc PCB_BASE_EDIT_FRAME::OnEditItemRequest()
     void OnEditItemRequest( wxDC* aDC, BOARD_ITEM* aItem ) override;
@@ -199,13 +206,18 @@ public:
     void LoadModuleFromBoard( wxCommandEvent& event );
 
     /**
-     * Function SaveFootprintInLibrary
+     * Returns the adapter object that provides the stored data.
+     */
+    LIB_TREE_MODEL_ADAPTER::PTR& GetLibTreeAdapter() { return m_adapter; }
+
+    /**
+     * Function SaveFootprint
      * Save in an existing library a given footprint
-     * @param activeLibrary = default library if the footprint has none
      * @param aModule = the given footprint
      * @return : true if OK, false if abort
      */
-    bool SaveFootprintInLibrary( wxString activeLibrary, MODULE* aModule );
+    bool SaveFootprint( MODULE* aModule );
+    bool SaveFootprintAs( MODULE* aModule );
 
     /**
      * Virtual Function OnModify()
@@ -269,8 +281,11 @@ public:
 
     BOARD_ITEM* ModeditLocateAndDisplay( int aHotKeyCode = 0 );
 
-    /// Return the current library nickname.
-    const wxString GetCurrentLib() const;
+    /// Return the LIB_ID of the part selected in the footprint or the part being edited.
+    LIB_ID getTargetLibId() const;
+
+    /// Return the LIB_ID of the part being edited.
+    LIB_ID GetCurrentLibId() const;
 
     void RemoveStruct( EDA_ITEM* Item );
 
@@ -304,15 +319,6 @@ public:
      */
      MODULE* Import_Module( const wxString& aName = wxT("") );
 
-
-    /**
-     * Function SaveCurrentModule
-     * saves the module which is currently being edited into aLibPath or into the
-     * currently selected library if aLibPath is NULL.
-     * @return bool - true if successfully saved, else false because abort or error.
-     */
-    bool SaveCurrentModule( const wxString* aLibPath = NULL );
-
     /**
      * Function Load_Module_From_BOARD
      * load in Modedit a footprint from the main board
@@ -327,7 +333,7 @@ public:
      * @return a pointer to a module if this module is selected or NULL otherwise
      * @param aPcb = the board from modules can be loaded
      */
-    MODULE* SelectFootprint( BOARD* aPcb );
+    MODULE* SelectFootprintFromBoard( BOARD* aPcb );
 
     // functions to edit footprint edges
 
@@ -388,10 +394,10 @@ public:
     void PushPadProperties( D_PAD* aPad );
 
     /**
-     * Function DeleteModuleFromCurrentLibrary
-     * prompts user for footprint name, then deletes it from current library.
+     * Function DeleteModuleFromLibrary
+     * deletes the given module from its library.
      */
-    bool DeleteModuleFromCurrentLibrary();
+    bool DeleteModuleFromLibrary( MODULE* aModule );
 
     /**
      * Function IsElementVisible
@@ -462,6 +468,13 @@ public:
      */
     void InstallPreferences( PAGED_DIALOG* aParent ) override;
 
+    void ReFillLayerWidget();
+
+    /**
+     * Update visible items after a language change.
+     */
+    void ShowChangedLanguage() override;
+
     /**
      * Called after the preferences dialog is run.
      */
@@ -481,12 +494,25 @@ public:
 protected:
 
     /// protected so only friend PCB::IFACE::CreateWindow() can act as sole factory.
-    FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent );
+    FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent, EDA_DRAW_PANEL_GAL::GAL_TYPE aBackend );
 
     PCB_LAYER_WIDGET* m_Layers;     ///< the layer manager
 
     /// List of footprint editor configuration parameters.
     PARAM_CFG_ARRAY   m_configParams;
+
+    /**
+     * Make sure the footprint info list is loaded (with a progress dialog) and then initialize
+     * the footprint library tree.
+     */
+    void initLibraryTree();
+
+    /**
+     * Synchronize the footprint library tree to the current state of the footprint library
+     * table.
+     * @param aProgress
+     */
+    void syncLibraryTree( bool aProgress );
 
     /**
      * Function UpdateTitle
@@ -496,9 +522,6 @@ protected:
 
     /// Reloads displayed items and sets view.
     void updateView();
-
-    /// The libPath is not publicly visible, grab it from the FP_LIB_TABLE if we must.
-    const wxString getLibPath();
 
     void restoreLastFootprint();
     void retainLastFootprint();

@@ -1,8 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2017 CERN
- * @author Alejandro García Montoro <alejandro.garciamontoro@gmail.com>
+ * Copyright (C) 2018 KiCad Developers, see CHANGELOG.TXT for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,6 +26,7 @@
  */
 
 #define BOOST_TEST_MAIN
-#define BOOST_TEST_MODULE "CPolyLine -> SHAPE_POLY_SET refactor module"
+#define BOOST_TEST_MODULE "Geometry module tests"
+
 
 #include <boost/test/unit_test.hpp>
