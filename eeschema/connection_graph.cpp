@@ -763,13 +763,13 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                         if( !is_member_of_bus )
                         {
-                            std::cout << test_name << " is not a member of the attached bus " << bus_item->Connection( sheet )->Name() << std::endl;
+                            // std::cout << test_name << " is not a member of the attached bus " << bus_item->Connection( sheet )->Name() << std::endl;
                             break;
                         }
 
                         auto bus_connection = bus_item->Connection( sheet );
 
-                        std::cout << test_name << " updating per attached bus " << bus_item->Connection( sheet )->Name() << std::endl;
+                        // std::cout << test_name << " updating per attached bus " << bus_item->Connection( sheet )->Name() << std::endl;
 
                         // Now we need to find the appropriate parent connection
                         // to clone.  If there isn't a net on the parent sheet
@@ -867,6 +867,30 @@ std::vector<CONNECTION_SUBGRAPH*> CONNECTION_GRAPH::GetBusesNeedingMigration()
     }
 
     return ret;
+}
+
+
+bool CONNECTION_GRAPH::UsesNewBusFeatures() const
+{
+    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
+    {
+        auto subgraph = *it;
+
+
+        if( !subgraph->m_driver )
+            continue;
+
+        auto sheet = subgraph->m_sheet;
+        auto connection = subgraph->m_driver->Connection( sheet );
+
+        if( !connection->IsBus() )
+            continue;
+
+        if( connection->Type() == CONNECTION_BUS_GROUP )
+            return true;
+    }
+
+    return false;
 }
 
 

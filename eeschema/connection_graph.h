@@ -169,6 +169,15 @@ public:
     std::vector<CONNECTION_SUBGRAPH*> GetBusesNeedingMigration();
 
     /**
+     * Returns true if the graph makes use of any of the new bus features
+     *
+     * For quality control during rollout of new bus features:
+     * - Aliases
+     * - Bus groups
+     */
+    bool UsesNewBusFeatures() const;
+
+    /**
      * Runs electrical rule checks on the connectivity graph.
      *
      * Precondition: graph is up-to-date
