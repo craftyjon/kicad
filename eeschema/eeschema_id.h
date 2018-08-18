@@ -42,10 +42,10 @@
 
 /**
  * The maximum number of units per package.
- * Increase this number if that ever becomes a problem, but remember
- * the popup menu to select a given unit could be not easy to use.
+ * While counts approaching 100 start to make the unit-selection popup menu
+ * difficult to use, the limit is currently 'ZZ' (26 * 26).
  */
-#define MAX_UNIT_COUNT_PER_PACKAGE 64
+#define MAX_UNIT_COUNT_PER_PACKAGE 676
 
 
 /**
@@ -235,7 +235,6 @@ enum id_eeschema_frm
     ID_LIBEDIT_VIEW_DOC,
     ID_LIBEDIT_CHECK_PART,
     ID_LIBEDIT_GET_FRAME_EDIT_PART,
-    ID_LIBEDIT_GET_FRAME_EDIT_FIELDS,
 
     ID_LIBEDIT_SELECT_PART_NUMBER,
     ID_LIBEDIT_SELECT_ALIAS,

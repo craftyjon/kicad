@@ -524,28 +524,23 @@ void EDA_DRAW_FRAME::OnSelectZoom( wxCommandEvent& event )
     if( id < 0 || !( id < (int)m_zoomSelectBox->GetCount() ) )
         return;
 
-    if( id == 0 )                      // Auto zoom (Fit in Page)
+    if( IsGalCanvasActive() )
+    {
+        m_toolManager->RunAction( "common.Control.zoomPreset", true, id );
+        UpdateStatusBar();
+        m_galCanvas->Refresh();
+    }
+    else if( id == 0 )                      // Auto zoom (Fit in Page)
     {
         Zoom_Automatique( true );
+        m_canvas->Refresh();
     }
     else
     {
         double selectedZoom = GetScreen()->m_ZoomList[id-1];
 
-        if( GetScreen()->GetZoom() == selectedZoom )
-            return;
-
-        GetScreen()->SetZoom( selectedZoom );
-        RedrawScreen( GetScrollCenterPosition(), false );
-    }
-
-    // Notify GAL
-    TOOL_MANAGER* mgr = GetToolManager();
-
-    if( mgr && IsGalCanvasActive() )
-    {
-        mgr->RunAction( "common.Control.zoomPreset", true, id );
-        UpdateStatusBar();
+        if( GetScreen()->SetZoom( selectedZoom ) )
+            RedrawScreen( GetScrollCenterPosition(), false );
     }
 }
 
@@ -1237,8 +1232,8 @@ void EDA_DRAW_FRAME::UseGalCanvas( bool aEnable )
     GetGalCanvas()->SetEvtHandlerEnabled( aEnable );
 
     // Switch panes
-    m_auimgr.GetPane( wxT( "DrawFrame" ) ).Show( !aEnable );
-    m_auimgr.GetPane( wxT( "DrawFrameGal" ) ).Show( aEnable );
+    m_auimgr.GetPane( "DrawFrame" ).Show( !aEnable );
+    m_auimgr.GetPane( "DrawFrameGal" ).Show( aEnable );
     m_auimgr.Update();
 
     // Reset current tool on switch();

@@ -2519,6 +2519,8 @@ void SCH_LEGACY_PLUGIN_CACHE::loadDocs()
                 break;
 
             text = FROM_UTF8( line + 2 );
+            // Remove spaces at eol, and eol chars:
+            text = text.Trim();
 
             switch( line[0] )
             {
@@ -2537,7 +2539,11 @@ void SCH_LEGACY_PLUGIN_CACHE::loadDocs()
                     alias->SetDocFileName( text );
                 break;
 
+            case 0:
+            case '\n':
+            case '\r':
             case '#':
+                // Empty line or commment
                 break;
 
             default:

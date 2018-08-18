@@ -98,9 +98,13 @@ bool FOOTPRINT_EDIT_FRAME::Clear_Pcb( bool aQuery )
 
     if( aQuery && GetScreen()->IsModify() && !GetBoard()->IsEmpty() )
     {
-        if( !IsOK( this,
-                   _( "Current Footprint will be lost and this operation cannot be undone. Continue ?" ) ) )
+        wxSafeYield( this, true );      // Allow frame to come to front before showing warning.
+
+        if( !HandleUnsavedChanges( this, _( "The current footprint has been modified.  Save changes?" ),
+                                   [&]()->bool { return SaveFootprint( GetBoard()->m_Modules ); } ) )
+        {
             return false;
+        }
     }
 
     // Clear undo and redo lists because we want a full deletion

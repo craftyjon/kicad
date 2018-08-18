@@ -40,6 +40,7 @@
 #include <fp_lib_table.h>
 #include <bitmaps.h>
 #include <gal/graphics_abstraction_layer.h>
+#include <eda_dockart.h>
 
 #include <class_board.h>
 #include <class_module.h>
@@ -169,9 +170,9 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_MENU( ID_MENU_PCB_SHOW_3D_FRAME, FOOTPRINT_EDIT_FRAME::Show3D_Frame )
 
     // Switching canvases
-    EVT_MENU( ID_MENU_CANVAS_LEGACY, PCB_BASE_FRAME::OnSwitchCanvas )
-    EVT_MENU( ID_MENU_CANVAS_CAIRO, PCB_BASE_FRAME::OnSwitchCanvas )
-    EVT_MENU( ID_MENU_CANVAS_OPENGL, PCB_BASE_FRAME::OnSwitchCanvas )
+    EVT_MENU( ID_MENU_CANVAS_LEGACY, FOOTPRINT_EDIT_FRAME::OnSwitchCanvas )
+    EVT_MENU( ID_MENU_CANVAS_CAIRO, FOOTPRINT_EDIT_FRAME::OnSwitchCanvas )
+    EVT_MENU( ID_MENU_CANVAS_OPENGL, FOOTPRINT_EDIT_FRAME::OnSwitchCanvas )
 
     // UI update events.
     EVT_UPDATE_UI( ID_MODEDIT_EXPORT_PART, FOOTPRINT_EDIT_FRAME::OnUpdateModuleTargeted )
@@ -287,54 +288,25 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent,
         m_canvas->SetEnableBlockCommands( true );
 
     m_auimgr.SetManagedWindow( this );
+    m_auimgr.SetArtProvider( new EDA_DOCKART( this ) );
 
-    EDA_PANEINFO horiz;
-    horiz.HorizontalToolbarPane();
+    // Horizontal items; layers 4 - 6
+    m_auimgr.AddPane( m_mainToolBar, EDA_PANE().HToolbar().Name( "MainToolbar" ).Top().Layer(6) );
+    m_auimgr.AddPane( m_auxiliaryToolBar, EDA_PANE().HToolbar().Name( "AuxToolbar" ).Top().Layer(4) );
+    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" ).Bottom().Layer(6) );
 
-    EDA_PANEINFO vert;
-    vert.VerticalToolbarPane();
+    // Vertical items; layers 1 - 3
+    m_auimgr.AddPane( m_optionsToolBar, EDA_PANE().VToolbar().Name( "OptToolbar" ).Left().Layer(3) );
+    m_auimgr.AddPane( m_treePane, EDA_PANE().Palette().Name( "Footprints" ).Left().Layer(1)
+                      .Caption( _( "Libraries" ) ).MinSize( 250, 400 ) );
 
-    EDA_PANEINFO mesg_pane;
-    mesg_pane.MessageToolbarPane();
+    m_auimgr.AddPane( m_drawToolBar, EDA_PANE().VToolbar().Name( "ToolsToolbar" ).Right().Layer(1) );
+    m_auimgr.AddPane( m_Layers, EDA_PANE().Palette().Name( "LayersManager" ).Right().Layer(3)
+                      .Caption( _( "Layers Manager" ) ).PaneBorder( false )
+                      .MinSize( 80, -1 ).BestSize( m_Layers->GetBestSize() ) );
 
-    // Create a wxAuiPaneInfo for the Layers Manager, not derived from the template.
-    // LAYER_WIDGET is floatable, but initially docked at far right
-    EDA_PANEINFO   lyrs;
-    lyrs.LayersToolbarPane();
-    lyrs.MinSize( m_Layers->GetBestSize() );    // updated in ReFillLayerWidget
-    lyrs.BestSize( m_Layers->GetBestSize() );
-    lyrs.Caption( _( "Visibles" ) );
-
-    m_auimgr.AddPane( m_mainToolBar,
-                      wxAuiPaneInfo( horiz ).Name( "m_mainToolBar" ).Top(). Row( 0 ) );
-
-    m_auimgr.AddPane( m_auxiliaryToolBar,
-                      wxAuiPaneInfo( horiz ).Name( "m_auxiliaryToolBar" ).Top().Row( 1 ) );
-
-    // The main right vertical toolbar
-    m_auimgr.AddPane( m_drawToolBar,
-                      wxAuiPaneInfo( vert ).Name( "m_VToolBar" ).Right().Layer(1) );
-
-    // Add the layer manager ( most right side of pcbframe )
-    m_auimgr.AddPane( m_Layers, lyrs.Name( "m_LayersManagerToolBar" ).Right().Layer( 2 ) );
-    // Layers manager is visible
-    m_auimgr.GetPane( "m_LayersManagerToolBar" ).Show( true );
-
-    // The left vertical toolbar (fast acces to display options)
-    m_auimgr.AddPane( m_optionsToolBar,
-                      wxAuiPaneInfo( vert ).Name( "m_optionsToolBar" ). Left().Layer(1) );
-
-    m_auimgr.AddPane( m_canvas,
-                      wxAuiPaneInfo().Name( "DrawFrame" ).CentrePane() );
-    m_auimgr.AddPane( (wxWindow*) GetGalCanvas(),
-                      wxAuiPaneInfo().Name( "DrawFrameGal" ).CentrePane().Hide() );
-
-    m_auimgr.AddPane( m_messagePanel,
-                      wxAuiPaneInfo( mesg_pane ).Name( "MsgPanel" ).Bottom().Layer(10) );
-
-    m_auimgr.AddPane( m_treePane,
-                      wxAuiPaneInfo().Name( "FootprintTree" ).Caption( _( "Libraries" ) ).Left()
-                      .Row( 1 ).Resizable().MinSize( 250, 400 ).Dock().CloseButton( false ) );
+    m_auimgr.AddPane( m_canvas, EDA_PANE().Canvas().Name( "DrawFrame" ).Center() );
+    m_auimgr.AddPane( GetGalCanvas(), EDA_PANE().Canvas().Name( "DrawFrameGal" ).Center().Hide() );
 
     // Create the manager and dispatcher & route draw panel events to the dispatcher
     setupTools();
@@ -359,6 +331,18 @@ FOOTPRINT_EDIT_FRAME::~FOOTPRINT_EDIT_FRAME()
     delete m_Layers;
 }
 
+
+
+void FOOTPRINT_EDIT_FRAME::OnSwitchCanvas( wxCommandEvent& aEvent )
+{
+    // switches currently used canvas (default / Cairo / OpenGL).
+    PCB_BASE_FRAME::OnSwitchCanvas( aEvent );
+
+    // The base class method *does not reinit* the layers manager.
+    // We must upate the layer widget to match board visibility states,
+    // both layers and render columns, and and some settings dependent on the canvas.
+    UpdateUserInterface();
+}
 
 BOARD_ITEM_CONTAINER* FOOTPRINT_EDIT_FRAME::GetModel() const
 {
@@ -510,21 +494,9 @@ void FOOTPRINT_EDIT_FRAME::OnCloseWindow( wxCloseEvent& Event )
 {
     if( GetScreen()->IsModify() && GetBoard()->m_Modules )
     {
-        switch( UnsavedChangesDialog( this, _( "Save changes to footprint before closing?" ) ) )
+        if( !HandleUnsavedChanges( this, _( "Save changes to footprint before closing?" ),
+                                   [&]()->bool { return SaveFootprint( GetBoard()->m_Modules ); } ) )
         {
-        default:
-        case wxID_NO:
-            break;
-
-        case wxID_YES:
-            if( !SaveFootprint( GetBoard()->m_Modules ) )
-            {
-                Event.Veto();
-                return;
-            }
-            break;
-
-        case wxID_CANCEL:
             Event.Veto();
             return;
         }
@@ -673,7 +645,10 @@ void FOOTPRINT_EDIT_FRAME::OnUpdateReplaceModuleInBoard( wxUpdateUIEvent& aEvent
 
 void FOOTPRINT_EDIT_FRAME::ReFillLayerWidget()
 {
+
+    m_Layers->Freeze();
     m_Layers->ReFill();
+    m_Layers->Thaw();
 
     wxAuiPaneInfo& lyrs = m_auimgr.GetPane( m_Layers );
 
@@ -695,26 +670,25 @@ void FOOTPRINT_EDIT_FRAME::ShowChangedLanguage()
     // call my base class
     PCB_BASE_EDIT_FRAME::ShowChangedLanguage();
 
+    // We have 2 panes to update.
+    // For some obscure reason, the AUI manager hides the first modified pane.
+    // So force show panes
+    wxAuiPaneInfo& tree_pane_info = m_auimgr.GetPane( m_treePane );
+    bool tree_shown = tree_pane_info.IsShown();
+    tree_pane_info.Caption( _( "Libraries" ) );
+
+    wxAuiPaneInfo& lm_pane_info = m_auimgr.GetPane( m_Layers );
+    bool lm_shown = lm_pane_info.IsShown();
+    lm_pane_info.Caption( _( "Layers Manager" ) );
+
     // update the layer manager
-    m_Layers->Freeze();
-
-    wxAuiPaneInfo& pane_info = m_auimgr.GetPane( m_Layers );
-    pane_info.Caption( _( "Visibles" ) );
-    pane_info = m_auimgr.GetPane( m_treePane );
-    pane_info.Caption( _( "Footprint Libraries" ) );
-    m_auimgr.Update();
-
     m_Layers->SetLayersManagerTabsText();
-    ReFillLayerWidget();
-    m_Layers->ReFillRender();
+    UpdateUserInterface();
 
-    // upate the layer widget to match board visibility states.
-    m_Layers->SyncLayerVisibilities();
-    static_cast<PCB_DRAW_PANEL_GAL*>( GetGalCanvas() )->SyncLayersVisibility( m_Pcb );
-    m_Layers->SelectLayer( GetActiveLayer() );
-    m_Layers->OnLayerSelected();
-
-    m_Layers->Thaw();
+    // Now restore the visibility:
+    lm_pane_info.Show( lm_shown );
+    tree_pane_info.Show( tree_shown );
+    m_auimgr.Update();
 }
 
 
@@ -797,6 +771,26 @@ void FOOTPRINT_EDIT_FRAME::updateTitle()
     }
 
     SetTitle( title );
+}
+
+
+void FOOTPRINT_EDIT_FRAME::UpdateUserInterface()
+{
+    // Update the layer manager and other widgets from the board setup
+    // (layer and items visibility, colors ...)
+
+    // Update the layer manager
+    m_Layers->Freeze();
+    ReFillLayerWidget();
+    m_Layers->ReFillRender();
+
+    // update the layer widget to match board visibility states.
+    m_Layers->SyncLayerVisibilities();
+    static_cast<PCB_DRAW_PANEL_GAL*>( GetGalCanvas() )->SyncLayersVisibility( m_Pcb );
+    m_Layers->SelectLayer( GetActiveLayer() );
+    m_Layers->OnLayerSelected();
+
+    m_Layers->Thaw();
 }
 
 
@@ -997,6 +991,9 @@ void FOOTPRINT_EDIT_FRAME::UseGalCanvas( bool aEnable )
     }
 
     ReCreateMenuBar();
+
+    // Ensure the m_Layers settings are using the canvas type:
+    UpdateUserInterface();
 }
 
 

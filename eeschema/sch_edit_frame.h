@@ -151,7 +151,6 @@ private:
     wxSize                  m_printDialogSize;
     bool                    m_printMonochrome;     ///< Print monochrome instead of grey scale.
     bool                    m_printSheetReference;
-    DIALOG_ANNOTATE*        m_annotateDialog;
     DIALOG_SCH_FIND*        m_dlgFindReplace;
     wxPoint                 m_findDialogPosition;
     wxSize                  m_findDialogSize;
@@ -209,8 +208,6 @@ private:
     static wxPoint  m_lastSheetPinPosition;         ///< Last sheet pin position.
 
 protected:
-    TEMPLATES             m_TemplateFieldNames;
-
     /**
      * Initializing accessor for the pin text size
      */
@@ -352,25 +349,7 @@ public:
      */
     int AddTemplateFieldName( const TEMPLATE_FIELDNAME& aFieldName )
     {
-        return m_TemplateFieldNames.AddTemplateFieldName( aFieldName );
-    }
-
-
-    /**
-     * Return a template field names list for read only access.
-     */
-    const TEMPLATE_FIELDNAMES& GetTemplateFieldNames()
-    {
-        return m_TemplateFieldNames.GetTemplateFieldNames();
-    }
-
-
-    /**
-     * Return the field names template for read only access.
-     */
-    const TEMPLATES& GetTemplates()
-    {
-        return m_TemplateFieldNames;
+        return m_templateFieldNames.AddTemplateFieldName( aFieldName );
     }
 
     /**
@@ -378,7 +357,7 @@ public:
      */
     void DeleteAllTemplateFieldNames()
     {
-        m_TemplateFieldNames.DeleteAllTemplateFieldNames();
+        m_templateFieldNames.DeleteAllTemplateFieldNames();
     }
 
     /**

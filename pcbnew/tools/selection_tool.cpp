@@ -665,6 +665,8 @@ bool SELECTION_TOOL::selectMultiple()
         }
     }
 
+    getViewControls()->SetAutoPan( false );
+
     // Stop drawing the selection box
     view->Remove( &area );
     m_multiple = false;         // Multiple selection mode is inactive
@@ -1493,8 +1495,8 @@ BOARD_ITEM* SELECTION_TOOL::pickSmallestComponent( GENERAL_COLLECTOR* aCollector
     {
         MODULE* module = (MODULE*) ( *aCollector )[i];
 
-        int lx = module->GetBoundingBox().GetWidth();
-        int ly = module->GetBoundingBox().GetHeight();
+        int lx = module->GetFootprintRect().GetWidth();
+        int ly = module->GetFootprintRect().GetHeight();
 
         int lmin = std::min( lx, ly );
 

@@ -2,9 +2,9 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2012-2015 Miguel Angel Ajo Pelayo <miguelangel@nbee.es>
- * Copyright (C) 2012-2017 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 2012-2018 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008-2015 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 2004-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2004-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,7 +30,9 @@
 
 #include <fctsys.h>
 #include <kiface_i.h>
+#include <gal/graphics_abstraction_layer.h>
 #include <class_drawpanel.h>
+#include <pcb_draw_panel_gal.h>
 #include <pcb_edit_frame.h>
 #include <pcbnew.h>
 #include <3d_viewer/eda_3d_viewer.h>
@@ -38,6 +40,7 @@
 #include <macros.h>
 #include <bitmaps.h>
 #include <grid_tricks.h>
+#include <eda_dockart.h>
 
 #include <class_board.h>
 #include <class_module.h>
@@ -49,10 +52,18 @@
 #include <wx/grid.h>
 #include <wx/tokenzr.h>
 #include <wx/numformatter.h>
+#include <wx/statline.h>
 
 #include <hotkeys.h>
 #include <wildcards_and_files_ext.h>
 #include <base_units.h>
+
+#include <tool/tool_manager.h>
+#include <tool/tool_dispatcher.h>
+#include <tool/common_tools.h>
+#include "tools/selection_tool.h"
+#include "tools/pcbnew_control.h"
+#include "tools/pcb_actions.h"
 
 
 BEGIN_EVENT_TABLE( FOOTPRINT_WIZARD_FRAME, EDA_DRAW_FRAME )
@@ -113,7 +124,7 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway,
                           : KICAD_DEFAULT_DRAWFRAME_STYLE | wxSTAY_ON_TOP,
                 FOOTPRINT_WIZARD_FRAME_NAME )
 {
-    wxASSERT( aFrameType == FRAME_PCB_FOOTPRINT_WIZARD_MODAL );
+    wxASSERT( aFrameType == FRAME_PCB_FOOTPRINT_WIZARD );
 
     // This frame is always show modal:
     SetModal( true );
@@ -141,8 +152,23 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway,
 
     // Set some display options here, because the FOOTPRINT_WIZARD_FRAME
     // does not have a config menu to do that:
+
+    // the footprint wizard frame has no config menu. so use some settings
+    // from the caller, or force some options:
+    PCB_BASE_FRAME* caller = dynamic_cast<PCB_BASE_FRAME*>( aParent );
+
+    if( caller )
+    {
+        SetUserUnits( caller->GetUserUnits() );
+    }
+
     auto disp_opts = (PCB_DISPLAY_OPTIONS*)GetDisplayOptions();
-    disp_opts->m_DisplayPadIsol = false;
+    // In viewer, the default net clearance is not known (it depends on the actual board).
+    // So we do not show the default clearance, by setting it to 0
+    // The footprint or pad specific clearance will be shown
+    GetBoard()->GetDesignSettings().GetDefault()->SetClearance(0);
+
+    disp_opts->m_DisplayPadIsol = true;
     disp_opts->m_DisplayPadNum = true;
     GetBoard()->SetElementVisibility( LAYER_NO_CONNECTS, false );
 
@@ -150,14 +176,23 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway,
 
     ReCreateHToolbar();
     ReCreateVToolbar();
-    SetActiveLayer( F_Cu );
+
+    // Create GAL canvas
+    EDA_DRAW_PANEL_GAL::GAL_TYPE backend = EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO;
+    //EDA_DRAW_PANEL_GAL::GAL_TYPE backend = EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
+    PCB_DRAW_PANEL_GAL* gal_drawPanel = new PCB_DRAW_PANEL_GAL( this, -1, wxPoint( 0, 0 ), m_FrameSize,
+                                                            GetGalDisplayOptions(), backend );
+    SetGalCanvas( gal_drawPanel );
 
     // Create the parameters panel
     m_parametersPanel = new wxPanel( this, wxID_ANY );
 
     m_pageList = new wxListBox( m_parametersPanel, ID_FOOTPRINT_WIZARD_PAGE_LIST,
-                                wxDefaultPosition, wxDefaultSize,
-                                0, NULL, wxLB_HSCROLL );
+                                wxDefaultPosition, wxDefaultSize, 0, NULL,
+                                wxLB_HSCROLL | wxNO_BORDER );
+
+    auto divider = new wxStaticLine( m_parametersPanel, wxID_ANY,
+                                     wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL );
 
     m_parameterGrid = new wxGrid( m_parametersPanel, ID_FOOTPRINT_WIZARD_PARAMETER_LIST );
     initParameterGrid();
@@ -166,56 +201,60 @@ FOOTPRINT_WIZARD_FRAME::FOOTPRINT_WIZARD_FRAME( KIWAY* aKiway,
     ReCreatePageList();
 
     wxBoxSizer* parametersSizer = new wxBoxSizer( wxHORIZONTAL );
-    parametersSizer->Add( m_pageList, 0, wxEXPAND|wxALL, 5 );
-    parametersSizer->Add( m_parameterGrid, 1, wxEXPAND|wxALL, 5 );
+    parametersSizer->Add( m_pageList, 0, wxEXPAND, 5 );
+    parametersSizer->Add( divider, 0, wxEXPAND, 5 );
+    parametersSizer->Add( m_parameterGrid, 1, wxEXPAND, 5 );
     m_parametersPanel->SetSizer( parametersSizer );
     m_parametersPanel->Layout();
 
     // Create the build message box
     m_buildMessageBox = new wxTextCtrl( this, wxID_ANY, wxEmptyString,
                                         wxDefaultPosition, wxDefaultSize,
-                                        wxTE_MULTILINE|wxTE_READONLY );
+                                        wxTE_MULTILINE | wxTE_READONLY | wxNO_BORDER );
 
     DisplayWizardInfos();
 
     m_auimgr.SetManagedWindow( this );
+    m_auimgr.SetArtProvider( new EDA_DOCKART( this ) );
 
-    EDA_PANEINFO horiztb;
-    horiztb.HorizontalToolbarPane();
+    m_auimgr.AddPane( m_mainToolBar, EDA_PANE().HToolbar().Name( "MainToolbar" ).Top().Layer(6) );
+    m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" ).Bottom().Layer(6) );
 
-    EDA_PANEINFO    info;
-    info.InfoToolbarPane();
+    m_auimgr.AddPane( m_parametersPanel, EDA_PANE().Palette().Name( "Params" ).Left().Position(0)
+                      .Caption( _( "Parameters" ) ).MinSize( 360, 180 ) );
+    m_auimgr.AddPane( m_buildMessageBox, EDA_PANE().Palette().Name( "Output" ).Left().Position(1)
+                      .CaptionVisible( false ).MinSize( 360, -1 ) );
 
-    EDA_PANEINFO    mesg;
-    mesg.MessageToolbarPane();
+    m_auimgr.AddPane( m_canvas, EDA_PANE().Canvas().Name( "DrawFrame" ).Center() );
 
-    // Manage main toolbal
-    m_auimgr.AddPane( m_mainToolBar, wxAuiPaneInfo( horiztb ).
-                      Name( wxT ("m_mainToolBar" ) ).Top().Row( 0 ) );
+    m_auimgr.AddPane( (wxWindow*) GetGalCanvas(),
+                      wxAuiPaneInfo().Name( "DrawFrameGal" ).CentrePane().Hide() );
 
-    // Manage the parameters panel
-    EDA_PANEINFO parametersPaneInfo;
-    parametersPaneInfo.InfoToolbarPane().Name( wxT( "m_parametersPanel" ) ).Left().Position( 0 );
-    m_auimgr.AddPane( m_parametersPanel, wxAuiPaneInfo( parametersPaneInfo ) );
+    // Create the manager and dispatcher & route draw panel events to the dispatcher
+    m_toolManager = new TOOL_MANAGER;
+    m_toolManager->SetEnvironment( GetBoard(), gal_drawPanel->GetView(),
+                                   gal_drawPanel->GetViewControls(), this );
+    m_actions = new PCB_ACTIONS();
+    m_toolDispatcher = new TOOL_DISPATCHER( m_toolManager, m_actions );
+    gal_drawPanel->SetEventDispatcher( m_toolDispatcher );
 
-    // Manage the build message box
-    EDA_PANEINFO buildMessageBoxInfo;
-    buildMessageBoxInfo.InfoToolbarPane().Name( wxT( "m_buildMessageBox" ) ).Left().Position( 1 );
-    m_auimgr.AddPane( m_buildMessageBox, wxAuiPaneInfo( buildMessageBoxInfo ) );
+    m_toolManager->RegisterTool( new PCBNEW_CONTROL );
+    m_toolManager->RegisterTool( new SELECTION_TOOL );  // for std context menus (zoom & grid)
+    m_toolManager->RegisterTool( new COMMON_TOOLS );
+    m_toolManager->InitTools();
 
-    // Manage the draw panel
-    m_auimgr.AddPane( m_canvas,
-                      wxAuiPaneInfo().Name( wxT( "DrawFrame" ) ).CentrePane() );
+    // Run the control tool, it is supposed to be always active
+    m_toolManager->InvokeTool( "pcbnew.InteractiveSelection" );
 
-    // Manage the message panel
-    m_auimgr.AddPane( m_messagePanel,
-                      wxAuiPaneInfo( mesg ).Name( wxT( "MsgPanel" ) ).Bottom().Layer(1) );
+    auto& galOpts = GetGalDisplayOptions();
+    galOpts.m_fullscreenCursor = true;
+    galOpts.m_forceDisplayCursor = true;
+    galOpts.m_axesEnabled = true;
 
-    // Give a min size to the parameters
-    m_auimgr.GetPane( m_parametersPanel ).MinSize( wxSize( 360, 180 ) );
+    UseGalCanvas( backend != EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE );
+    updateView();
 
-    m_auimgr.LoadPerspective( m_auiPerspective );
-
+    SetActiveLayer( F_Cu );
     // Now Drawpanel is sized, we can use BestZoom to show the component (if any)
 #ifdef USE_WX_GRAPHICS_CONTEXT
     GetScreen()->SetScalingFactor( BestZoom() );
@@ -237,10 +276,23 @@ FOOTPRINT_WIZARD_FRAME::~FOOTPRINT_WIZARD_FRAME()
     // Delete the GRID_TRICKS.
     m_parameterGrid->PopEventHandler( true );
 
+    if( IsGalCanvasActive() )
+    {
+        GetGalCanvas()->StopDrawing();
+        // Be sure any event cannot be fired after frame deletion:
+        GetGalCanvas()->SetEvtHandlerEnabled( false );
+    }
+
+    // Be sure a active tool (if exists) is desactivated:
+    if( m_toolManager )
+        m_toolManager->DeactivateTool();
+
     EDA_3D_VIEWER* draw3DFrame = Get3DViewerFrame();
 
     if( draw3DFrame )
         draw3DFrame->Destroy();
+
+    // Now this frame can be deleted
 }
 
 
@@ -291,6 +343,36 @@ void FOOTPRINT_WIZARD_FRAME::OnSetRelativeOffset( wxCommandEvent& event )
 {
     GetScreen()->m_O_Curseur = GetCrossHairPosition();
     UpdateStatusBar();
+}
+
+
+void FOOTPRINT_WIZARD_FRAME::updateView()
+{
+    if( IsGalCanvasActive() )
+    {
+        auto dp = static_cast<PCB_DRAW_PANEL_GAL*>( GetGalCanvas() );
+        dp->UseColorScheme( &Settings().Colors() );
+        dp->DisplayBoard( GetBoard() );
+        m_toolManager->ResetTools( TOOL_BASE::MODEL_RELOAD );
+        m_toolManager->RunAction( ACTIONS::zoomFitScreen, true );
+        UpdateMsgPanel();
+    }
+}
+
+
+void FOOTPRINT_WIZARD_FRAME::UpdateMsgPanel()
+{
+    BOARD_ITEM* footprint = GetBoard()->m_Modules;
+
+    if( footprint )
+    {
+        MSG_PANEL_ITEMS items;
+
+        footprint->GetMsgPanelInfo( m_UserUnits, items );
+        SetMsgPanel( items );
+    }
+    else
+        ClearMsgPanel();
 }
 
 

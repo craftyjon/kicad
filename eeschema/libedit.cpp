@@ -81,17 +81,34 @@ void LIB_EDIT_FRAME::SelectActiveLibrary( const wxString& aLibrary )
 }
 
 
+bool LIB_EDIT_FRAME::saveCurrentPart()
+{
+    if( GetCurPart() )
+    {
+        LIB_ID libId = GetCurPart()->GetLibId();
+        const wxString& libName = libId.GetLibNickname();
+        const wxString& partName = libId.GetLibItemName();
+
+        if( m_libMgr->FlushPart( partName, libName ) )
+        {
+            m_libMgr->ClearPartModified( partName, libName );
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 bool LIB_EDIT_FRAME::LoadComponentAndSelectLib( const LIB_ID& aLibId )
 {
-    if( GetScreen()->IsModify() )
+    if( GetScreen()->IsModify() && GetCurPart() )
     {
-        KIDIALOG dlg( this, _( "The current symbol contains unsaved changes."  ),
-                      _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
-        dlg.SetOKLabel( _( "Discard Changes" ) );
-        dlg.DoNotShowCheckbox();
-
-        if( dlg.ShowModal() == wxID_CANCEL )
+        if( !HandleUnsavedChanges( this, _( "The current symbol has been modified.  Save changes?" ),
+                                   [&]()->bool { return saveCurrentPart(); } ) )
+        {
             return false;
+        }
     }
 
     SelectActiveLibrary( aLibId.GetLibNickname() );
@@ -154,9 +171,7 @@ bool LIB_EDIT_FRAME::LoadOneLibraryPartAux( LIB_ALIAS* aEntry, const wxString& a
         return false;
     }
 
-    m_aliasName = aEntry->GetName();
-
-    LIB_PART* lib_part = m_libMgr->GetBufferedPart( m_aliasName, aLibrary );
+    LIB_PART* lib_part = m_libMgr->GetBufferedPart( aEntry->GetName(), aLibrary );
     wxASSERT( lib_part );
     SetScreen( m_libMgr->GetScreen( lib_part->GetName(), aLibrary ) );
     SetCurPart( new LIB_PART( *lib_part ) );
@@ -168,7 +183,6 @@ bool LIB_EDIT_FRAME::LoadOneLibraryPartAux( LIB_ALIAS* aEntry, const wxString& a
 
     Zoom_Automatique( false );
     DisplayLibInfos();
-    UpdateAliasSelectList();
     UpdatePartSelectList();
 
     // Display the document information based on the entry selected just in
@@ -277,7 +291,6 @@ void LIB_EDIT_FRAME::OnCreateNewPart( wxCommandEvent& event )
     }
 
     LIB_PART new_part( name );      // do not create part on the heap, it will be buffered soon
-    m_aliasName = name;
     new_part.GetReferenceField().SetText( dlg.GetReference() );
     new_part.SetUnitCount( dlg.GetUnitCount() );
 
@@ -337,7 +350,7 @@ void LIB_EDIT_FRAME::OnSave( wxCommandEvent& aEvent )
     else
     {
         // Save Part
-        if( m_libMgr->FlushPart( partName,libName ) )
+        if( m_libMgr->FlushPart( partName, libName ) )
             m_libMgr->ClearPartModified( partName, libName );
     }
 
@@ -535,7 +548,6 @@ void LIB_EDIT_FRAME::OnRevert( wxCommandEvent& aEvent )
         return;
 
     bool currentPart = isCurrentPart( libId );
-    wxString alias = m_aliasName;
     int unit = m_unit;
 
     if( currentPart )
@@ -553,8 +565,8 @@ void LIB_EDIT_FRAME::OnRevert( wxCommandEvent& aEvent )
         m_libMgr->ClearPartModified( libId.GetLibItemName(), libId.GetLibNickname() );
     }
 
-    if( currentPart && m_libMgr->PartExists( alias, libName ) )
-        loadPart( alias, libName, unit );
+    if( currentPart && m_libMgr->PartExists( partName, libName ) )
+        loadPart( partName, libName, unit );
 
     m_treePane->Refresh();
 }
@@ -576,7 +588,6 @@ void LIB_EDIT_FRAME::loadPart( const wxString& aAlias, const wxString& aLibrary,
 
     m_lastDrawItem = nullptr;
     SetDrawItem( NULL );
-    m_aliasName = aAlias;
     m_unit = ( aUnit <= part->GetUnitCount() ? aUnit : 1 );
 
     // Optimize default edit options for this symbol
@@ -666,7 +677,6 @@ bool LIB_EDIT_FRAME::saveLibrary( const wxString& aLibrary, bool aNewFile )
     wxString msg1;
     msg1.Printf( _( "Symbol library documentation file \"%s\" saved" ), docFileName.GetFullPath() );
     AppendMsgPanel( msg, msg1, BLUE );
-    UpdateAliasSelectList();
     UpdatePartSelectList();
     refreshSchematic();
 
@@ -720,28 +730,17 @@ bool LIB_EDIT_FRAME::saveAllLibraries( bool aRequireConfirmation )
 
 void LIB_EDIT_FRAME::DisplayCmpDoc()
 {
-    LIB_ALIAS*      alias;
-    LIB_PART*       part = GetCurPart();
+    LIB_PART* part = GetCurPart();
 
     ClearMsgPanel();
 
     if( !part )
         return;
 
+    LIB_ALIAS* alias = part->GetAlias( part->GetName() );
     wxString msg = part->GetName();
 
     AppendMsgPanel( _( "Name" ), msg, BLUE, 8 );
-
-    if( m_aliasName == part->GetName() )
-        msg = _( "None" );
-    else
-        msg = m_aliasName;
-
-    alias = part->GetAlias( m_aliasName );
-
-    wxCHECK_RET( alias != NULL, "Alias not found in symbol." );
-
-    AppendMsgPanel( _( "Alias" ), msg, RED, 8 );
 
     static wxChar UnitLetter[] = wxT( "?ABCDEFGHIJKLMNOPQRSTUVWXYZ" );
     msg = UnitLetter[m_unit];
