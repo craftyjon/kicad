@@ -737,6 +737,11 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                 if( auto bus_item = entry->m_connected_bus_item )
                 {
+                    // It may have changed sheet and so not have a connection
+                    // for this sheet yet
+                    if( !bus_item->Connection( sheet ) )
+                        bus_item->InitializeConnection( sheet );
+
                     // std::cout << "connection " << connection->Sheet().PathHumanReadable() << std::endl;
                     // std::cout << "bus item " << bus_item->Connection( sheet )->Sheet().PathHumanReadable() << std::endl;
                     if( bus_item->Connection( sheet )->Sheet() != connection->Sheet() )
