@@ -668,39 +668,53 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             if( item->Type() == SCH_SHEET_PIN_T )
             {
                 auto sp = static_cast<SCH_SHEET_PIN*>( item );
+                auto sp_name = sp->GetText();
                 auto subsheet = sheet;
                 subsheet.push_back( sp->GetParent() );
 
                 for( auto candidate : m_subgraphs )
                 {
-                    if( candidate->m_sheet == subsheet &&
-                        candidate->m_driver &&
-                        candidate->m_driver->Connection( subsheet )->IsSubsetOf( connection ) )
+                    if( candidate->m_sheet == subsheet && candidate->m_driver )
                     {
-                        auto target = candidate->m_driver->Connection( subsheet );
-                        target->SetSheet( connection->Sheet() );
+                        auto driver = candidate->m_driver;
 
-                        if( connection->IsBus() )
+                        if( connection->IsNet() &&
+                            ( driver->Type() == SCH_HIERARCHICAL_LABEL_T ) &&
+                            ( static_cast<SCH_HIERLABEL*>( driver )->GetText() == sp_name ) )
                         {
-                            target->SetBusCode( connection->BusCode() );
-                        }
-                        else
-                        {
+                            auto target = candidate->m_driver->Connection( subsheet );
+                            target->SetSheet( connection->Sheet() );
                             target->SetNetCode( connection->NetCode() );
+
+                            for( auto sub_item : candidate->m_items )
+                            {
+                                auto item_conn = sub_item->Connection( candidate->m_sheet );
+
+                                if( item_conn->IsBus() )
+                                    continue;
+
+                                if( sub_item != candidate->m_driver )
+                                    item_conn->Clone( *target );
+                            }
                         }
 
-                        for( auto sub_item : candidate->m_items )
+                        if( connection->IsBus() &&
+                            driver->Connection( subsheet )->IsSubsetOf( connection ) )
                         {
-                            auto item_conn = sub_item->Connection( candidate->m_sheet );
+                            auto target = candidate->m_driver->Connection( subsheet );
+                            target->SetSheet( connection->Sheet() );
+                            target->SetBusCode( connection->BusCode() );
 
-                            if( ( connection->IsBus() && item_conn->IsNet() ) ||
-                                ( connection->IsNet() && item_conn->IsBus() ) )
+                            for( auto sub_item : candidate->m_items )
                             {
-                                continue;
-                            }
+                                auto item_conn = sub_item->Connection( candidate->m_sheet );
 
-                            if( sub_item != candidate->m_driver )
-                                item_conn->Clone( *target );
+                                if( item_conn->IsNet() )
+                                    continue;
+
+                                if( sub_item != candidate->m_driver )
+                                    item_conn->Clone( *target );
+                            }
                         }
                     }
                 }
@@ -737,7 +751,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                 if( auto bus_item = entry->m_connected_bus_item )
                 {
-                    // It may have changed sheet and so not have a connection
+                    // Driver may have changed sheet and so not have a connection
                     // for this sheet yet
                     if( !bus_item->Connection( sheet ) )
                         bus_item->InitializeConnection( sheet );
