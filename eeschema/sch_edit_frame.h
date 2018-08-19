@@ -502,10 +502,12 @@ public:
      * @param aPoint Point at which to break the segment
      * @param aAppend Add the changes to the previous undo state
      * @param aNewSegment Pointer to the newly created segment (if given and created)
+     * @param aScreen is the screen to examine, or nullptr to examine the current screen
      * @return True if any wires or buses were broken.
      */
-    bool BreakSegment( SCH_LINE* aSegment, const wxPoint& aPoint, bool aAppend = false,
-            SCH_LINE** aNewSegment = NULL );
+    bool BreakSegment( SCH_LINE* aSegment, const wxPoint& aPoint,
+                       bool aAppend = false, SCH_LINE** aNewSegment = NULL,
+                       SCH_SCREEN* aScreen = nullptr );
 
     /**
      * Checks every wire and bus for a intersection at \a aPoint and break into two segments
@@ -513,18 +515,22 @@ public:
      *
      * @param aPoint Test this point for an intersection.
      * @param aAppend Add the changes to the previous undo state
+     * @param aScreen is the screen to examine, or nullptr to examine the current screen
      * @return True if any wires or buses were broken.
      */
-    bool BreakSegments( const wxPoint& aPoint, bool aAppend = false );
+    bool BreakSegments( const wxPoint& aPoint, bool aAppend = false,
+                        SCH_SCREEN* aScreen = nullptr );
 
     /**
      * Tests all junctions and bus entries in the schematic for intersections with wires and
      * buses and breaks any intersections into multiple segments.
      *
      * @param aAppend Add the changes to the previous undo state
+     * @param aScreen is the screen to examine, or nullptr to examine the current screen
      * @return True if any wires or buses were broken.
      */
-    bool BreakSegmentsOnJunctions( bool aApped = false );
+    bool BreakSegmentsOnJunctions( bool aApped = false,
+                                   SCH_SCREEN* aScreen = nullptr );
 
     /**
      * Send a message to Pcbnew via a socket connection.
@@ -1023,9 +1029,10 @@ private:
      * deleting identical objects superimposed on top of each other.
      *
      * @param aAppend The changes to the schematic should be appended to the previous undo
+     * @param aScreen is the screen to examine, or nullptr to examine the current screen
      * @return True if any schematic clean up was performed.
      */
-    bool SchematicCleanUp( bool aAppend = false );
+    bool SchematicCleanUp( bool aAppend = false, SCH_SCREEN* aScreen = nullptr );
 
     /**
      * If any single wire passes through _both points_, remove the portion between the two points,

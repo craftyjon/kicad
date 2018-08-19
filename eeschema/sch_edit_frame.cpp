@@ -1508,6 +1508,9 @@ void SCH_EDIT_FRAME::RecalculateConnections( SCH_SHEET_LIST aSheetList )
 {
     for( const auto& sheet : aSheetList )
     {
+        // Ensure schematic graph is accurate
+        SchematicCleanUp( true, sheet.LastScreen() );
+
         std::vector<SCH_ITEM*> items;
 
         for( auto item = sheet.LastScreen()->GetDrawItems();
