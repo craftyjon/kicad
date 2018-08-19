@@ -285,15 +285,11 @@ void SCH_EDIT_FRAME::DisplayCurrentSheet()
         SetCrossHairPosition( GetScrollCenterPosition() );
         m_canvas->MoveCursorToCrossHair();
 
-        // Ensure the schematic is fully segmented on first display
-        BreakSegmentsOnJunctions();
-        SchematicCleanUp( true );
-        screen->ClearUndoORRedoList( screen->m_UndoList, 1 );
-
-        screen->TestDanglingEnds();
-
         // TODO(JE) should be able to just recalculate the current sheet path
+        // RecalculateConnections() handles cleanup and dangling ends tests
         RecalculateConnections();
+
+        screen->ClearUndoORRedoList( screen->m_UndoList, 1 );
     }
     else
     {
