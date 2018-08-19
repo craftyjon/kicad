@@ -59,8 +59,8 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
 
         switch( item->Type() )
         {
-        case SCH_LABEL_T:               item_priority = 2; break;
-        case SCH_SHEET_PIN_T:           item_priority = 3; break;
+        case SCH_SHEET_PIN_T:           item_priority = 2; break;
+        case SCH_LABEL_T:               item_priority = 3; break;
         case SCH_HIERARCHICAL_LABEL_T:  item_priority = 4; break;
         case SCH_PIN_CONNECTION_T:
         {
