@@ -101,7 +101,7 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
             }
 
             // Yes this is slow, but it's a temporary debugging thing.
-            for( auto kid = old_nets->GetChildren(); kid && !different; kid = kid->GetNext() )
+            for( auto kid = old_nets->GetChildren(); kid; kid = kid->GetNext() )
             {
                 for( auto attr = kid->GetAttributes(); attr; attr = attr->GetNext() )
                 {
