@@ -238,6 +238,13 @@ public:
     bool IsSubsetOf( SCH_CONNECTION* aOther ) const;
 
     /**
+     * Returns true if this connection is a member of bus connection aOther
+     *
+     * Will always return false if aOther is not a bus connection
+     */
+    bool IsMemberOfBus( SCH_CONNECTION* aOther ) const;
+
+    /**
      * Parses a bus vector (e.g. A[7..0]) into name, begin, and end.
      * Ensures that begin and end are positive and that end > begin.
      *

@@ -452,3 +452,18 @@ bool SCH_CONNECTION::IsSubsetOf( SCH_CONNECTION* aOther ) const
 
     return ( !subset.empty() );
 }
+
+
+bool SCH_CONNECTION::IsMemberOfBus( SCH_CONNECTION* aOther ) const
+{
+    if( !aOther->IsBus() )
+        return false;
+
+    auto me = Name( true );
+
+    for( auto m : aOther->Members() )
+        if( m->Name( true ) == me )
+            return true;
+
+    return false;
+}
