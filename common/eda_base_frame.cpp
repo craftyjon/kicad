@@ -243,13 +243,9 @@ void EDA_BASE_FRAME::ShowChangedLanguage()
 
 void EDA_BASE_FRAME::CommonSettingsChanged()
 {
-    int autosaveInterval;
-    Pgm().CommonSettings()->Read( AUTOSAVE_INTERVAL_KEY, &autosaveInterval );
-    SetAutoSaveInterval( autosaveInterval );
-
     if( GetMenuBar() )
     {
-        // For icons in menus & icon scaling
+        // For icons in menus, icon scaling & hotkeys
         ReCreateMenuBar();
         GetMenuBar()->Refresh();
     }
@@ -422,10 +418,7 @@ wxString EDA_BASE_FRAME::GetFileFromHistory( int cmdId, const wxString& type,
             return fn;
         else
         {
-            wxString msg = wxString::Format(
-                        _( "File \"%s\" was not found." ),
-                        GetChars( fn ) );
-
+            wxString msg = wxString::Format( _( "File \"%s\" was not found." ), fn );
             wxMessageBox( msg );
 
             fileHistory->RemoveFileFromHistory( i );
@@ -534,7 +527,13 @@ bool EDA_BASE_FRAME::ShowPreferences( EDA_HOTKEY_CONFIG* aHotkeys, EDA_HOTKEY_CO
             frame->InstallPreferences( &dlg );
     }
 
-    return( dlg.ShowModal() != wxID_CANCEL );
+    if( dlg.ShowModal() == wxID_OK )
+    {
+        dlg.Kiway().CommonSettingsChanged();
+        return true;
+    }
+
+    return false;
 }
 
 

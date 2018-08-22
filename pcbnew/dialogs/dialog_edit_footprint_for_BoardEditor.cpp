@@ -97,12 +97,6 @@ DIALOG_FOOTPRINT_BOARD_EDITOR::DIALOG_FOOTPRINT_BOARD_EDITOR( PCB_EDIT_FRAME* aP
     m_config->Read( FootprintTextShownColumnsKey, &shownColumns, wxT( "0 1 2 3 4 5 6" ) );
     m_itemsGrid->ShowHideColumns( shownColumns );
 
-#ifdef __WXOSX_MAC__
-    // Knock the margins off on Mac
-    m_sizerAP->GetItem( m_sizerAllow90 )->SetFlag( wxEXPAND );
-    m_sizerAP->GetItem( m_sizerAllow180 )->SetFlag( wxEXPAND );
-#endif
-
     // Set up the 3D models grid
     wxGridCellAttr* attr = new wxGridCellAttr;
     attr->SetRenderer( new wxGridCellBoolRenderer() );
@@ -128,8 +122,6 @@ DIALOG_FOOTPRINT_BOARD_EDITOR::DIALOG_FOOTPRINT_BOARD_EDITOR( PCB_EDIT_FRAME* aP
     m_allow180Label->SetFont( infoFont );
     m_libraryIDLabel->SetFont( infoFont );
     m_staticLibraryID->SetFont( infoFont );
-    m_sheetPathLabel->SetFont( infoFont );
-    m_staticSheetPath->SetFont( infoFont );
     m_staticTextInfoValNeg->SetFont( infoFont );
     m_staticTextInfoValPos->SetFont( infoFont );
     m_staticTextInfoCopper->SetFont( infoFont );
@@ -279,7 +271,7 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::TransferDataToWindow()
                              && !m_Orient270->GetValue() && !m_Orient180->GetValue() );
     m_OrientValidator.TransferToWindow();
 
-    m_LayerCtrl->SetSelection( (m_footprint->GetLayer() == B_Cu) ? 1 : 0 );
+    m_BoardSideCtrl->SetSelection( (m_footprint->GetLayer() == B_Cu) ? 1 : 0 );
 
     if( m_footprint->IsLocked() )
         m_AutoPlaceCtrl->SetSelection( 2 );
@@ -373,9 +365,8 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::TransferDataToWindow()
 
     select3DModel( 0 );   // will clamp idx within bounds
 
-    // Show the footprint's ID and schematic reference.
+    // Show the footprint's ID.
     m_staticLibraryID->SetLabel( m_footprint->GetFPID().Format() );
-    m_staticSheetPath->SetLabel( m_footprint->GetPath() );
 
     Layout();
     adjustGridColumns( m_itemsGrid->GetRect().GetWidth());
@@ -424,6 +415,7 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::On3DModelCellChanged( wxGridEvent& aEvent )
             m_delayedFocusGrid = m_modelsGrid;
             m_delayedFocusRow = aEvent.GetRow();
             m_delayedFocusColumn = aEvent.GetCol();
+            aEvent.Veto();
         }
 
         // if the user has specified an alias in the name then prepend ':'
@@ -450,6 +442,8 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::On3DModelCellChanged( wxGridEvent& aEvent )
 
 void DIALOG_FOOTPRINT_BOARD_EDITOR::OnRemove3DModel( wxCommandEvent&  )
 {
+    m_modelsGrid->CommitPendingChanges( true /* quiet mode */ );
+
     int idx = m_modelsGrid->GetGridCursorRow();
 
     if( idx >= 0 )
@@ -465,6 +459,9 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::OnRemove3DModel( wxCommandEvent&  )
 
 void DIALOG_FOOTPRINT_BOARD_EDITOR::OnAdd3DModel( wxCommandEvent&  )
 {
+    if( !m_modelsGrid->CommitPendingChanges() )
+        return;
+
     PROJECT& prj = Prj();
     MODULE_3D_SETTINGS model;
 
@@ -525,6 +522,9 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::OnAdd3DModel( wxCommandEvent&  )
 
 void DIALOG_FOOTPRINT_BOARD_EDITOR::OnAdd3DRow( wxCommandEvent&  )
 {
+    if( !m_modelsGrid->CommitPendingChanges() )
+        return;
+
     MODULE_3D_SETTINGS model;
 
     model.m_Preview = true;
@@ -545,8 +545,8 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::OnAdd3DRow( wxCommandEvent&  )
 
 bool DIALOG_FOOTPRINT_BOARD_EDITOR::Validate()
 {
-    // Commit any pending in-place edits and close the editor
-    m_itemsGrid->DisableCellEditControl();
+    if( !m_itemsGrid->CommitPendingChanges() )
+        return false;
 
     if( !DIALOG_SHIM::Validate() )
         return false;
@@ -683,7 +683,7 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::TransferDataFromWindow()
 
     // Set component side, that also have effect on the fields positions on board
     bool change_layer = false;
-    if( m_LayerCtrl->GetSelection() == 0 )     // layer req = COMPONENT
+    if( m_BoardSideCtrl->GetSelection() == 0 )     // layer req = COMPONENT
     {
         if( m_footprint->GetLayer() == B_Cu )
             change_layer = true;
@@ -718,6 +718,9 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::TransferDataFromWindow()
 
 void DIALOG_FOOTPRINT_BOARD_EDITOR::OnAddField( wxCommandEvent&  )
 {
+    if( !m_itemsGrid->CommitPendingChanges() )
+        return;
+
     const BOARD_DESIGN_SETTINGS& dsnSettings = m_frame->GetDesignSettings();
     TEXTE_MODULE textMod( m_footprint );
 
@@ -749,29 +752,28 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::OnAddField( wxCommandEvent&  )
 
 void DIALOG_FOOTPRINT_BOARD_EDITOR::OnDeleteField( wxCommandEvent&  )
 {
-    int rowCount = m_itemsGrid->GetNumberRows();
+    m_itemsGrid->CommitPendingChanges( true /* quiet mode */ );
+
     int curRow   = m_itemsGrid->GetGridCursorRow();
 
-    if( curRow < 0 || curRow >= (int) m_texts->size() )
+    if( curRow < 0 )
         return;
-
-    if( curRow < 2 )
+    else if( curRow < 2 )
     {
         DisplayError( nullptr, _( "Reference and value are mandatory." ) );
         return;
     }
 
-    auto start = m_texts->begin() + curRow;
-    m_texts->erase( start, start + 1 );
+    m_texts->erase( m_texts->begin() + curRow );
 
     // notify the grid
     wxGridTableMessage msg( m_texts, wxGRIDTABLE_NOTIFY_ROWS_DELETED, curRow, 1 );
     m_itemsGrid->ProcessTableMessage( msg );
 
-    if( curRow == rowCount - 1 )
+    if( m_itemsGrid->GetNumberRows() > 0 )
     {
-        m_itemsGrid->MakeCellVisible( curRow-1, m_itemsGrid->GetGridCursorCol() );
-        m_itemsGrid->SetGridCursor( curRow-1, m_itemsGrid->GetGridCursorCol() );
+        m_itemsGrid->MakeCellVisible( std::max( 0, curRow-1 ), m_itemsGrid->GetGridCursorCol() );
+        m_itemsGrid->SetGridCursor( std::max( 0, curRow-1 ), m_itemsGrid->GetGridCursorCol() );
     }
 }
 
