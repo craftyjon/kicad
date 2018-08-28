@@ -643,96 +643,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
     // Collapse net codes between hierarchical sheets
 
-// #ifdef USE_OPENMP
-//     #pragma omp parallel for schedule(dynamic)
-// #endif
-    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
-    {
-        auto subgraph = *it;
-
-        if( !subgraph->m_dirty )
-            continue;
-
-        subgraph->m_dirty = false;
-
-        auto sheet = subgraph->m_sheet;
-        auto connection = subgraph->m_driver->Connection( sheet );
-
-        for( auto item : subgraph->m_items )
-        {
-            /**
-             * We want to investigate connections to sheet pins to see if they
-             * connect to a valid subgraph on the subsheet to merge with
-             */
-
-            if( item->Type() == SCH_SHEET_PIN_T )
-            {
-                auto sp = static_cast<SCH_SHEET_PIN*>( item );
-                auto sp_name = sp->GetText();
-                auto subsheet = sheet;
-                subsheet.push_back( sp->GetParent() );
-
-                for( auto candidate : m_subgraphs )
-                {
-                    if( candidate->m_sheet == subsheet && candidate->m_driver )
-                    {
-                        auto driver = candidate->m_driver;
-
-                        if( connection->IsNet() &&
-                            ( driver->Type() == SCH_HIERARCHICAL_LABEL_T ) &&
-                            ( static_cast<SCH_HIERLABEL*>( driver )->GetText() == sp_name ) )
-                        {
-                            auto target = candidate->m_driver->Connection( subsheet );
-                            target->SetSheet( connection->Sheet() );
-                            target->SetNetCode( connection->NetCode() );
-
-                            for( auto sub_item : candidate->m_items )
-                            {
-                                auto item_conn = sub_item->Connection( candidate->m_sheet );
-
-                                if( item_conn->IsBus() )
-                                    continue;
-
-                                if( sub_item != candidate->m_driver )
-                                    item_conn->Clone( *target );
-                            }
-                        }
-#if 0
-                        if( connection->IsBus() &&
-                            ( ( driver->Type() == SCH_HIERARCHICAL_LABEL_T ) &&
-                              ( static_cast<SCH_HIERLABEL*>( driver )->GetText() == sp_name ) ) )
-                        {
-                            auto target = candidate->m_driver->Connection( subsheet );
-                            target->SetSheet( connection->Sheet() );
-                            target->SetBusCode( connection->BusCode() );
-
-                            for( auto sub_item : candidate->m_items )
-                            {
-                                auto item_conn = sub_item->Connection( candidate->m_sheet );
-
-                                if( item_conn->IsNet() )
-                                    continue;
-
-                                if( sub_item != candidate->m_driver )
-                                    item_conn->Clone( *target );
-                            }
-                        }
-#endif
-                    }
-                }
-            }
-        }
-    }
-
-    // Because buses on subsheets may have been updated in the previous loop,
-    // we now need to look for all bus entries that are attached to buses and
-    // update the approprate net subgraphs to match the buses they are attached
-    // to.  This unfortunately "special cases" local labels on subsheets that
-    // happen to be attached by bus entries to buses from a parent sheet.
-
-    // TODO(JE) This loop can be collapsed into the above once the logic is solid
-
-
     /**
      * [JE] Temporary notes to self on what's going on here
      *
@@ -764,6 +674,9 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
     // Build cache of subgraphs per-sheet pointing from buses to bus member nets
     // TODO(JE) where should this actually go / is this most efficient?
+#ifdef USE_OPENMP
+    #pragma omp parallel for schedule(dynamic)
+#endif
     for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
     {
         auto subgraph = *it;
@@ -774,16 +687,37 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         auto sheet = subgraph->m_sheet;
         auto connection = subgraph->m_driver->Connection( sheet );
 
-        if( !connection->IsBus() )
+        auto candidate_subgraphs( m_subgraphs );
+        auto connections_to_check( connection->Members() );
+
+        bool contains_hier_labels = false;
+
+        for( auto item : subgraph->m_drivers )
+        {
+            if( item->Type() == SCH_HIERARCHICAL_LABEL_T )
+            {
+                contains_hier_labels = true;
+                break;
+            }
+        }
+
+        // We only want to set up the neighbor map for connections with parents
+        // TODO(JE) is this true? It's an efficiency boost, but maybe it's best
+        // to just unconditonally link together all subgraphs?
+        if( !contains_hier_labels )
             continue;
 
-        auto candidate_subgraphs( m_subgraphs );
+        // For plain nets, just link based on the driver
+        if( !connection->IsBus() )
+        {
+            connections_to_check.push_back( std::make_shared<SCH_CONNECTION>( *connection ) );
+        }
 
-        for( auto member : connection->Members() )
+        for( auto member : connections_to_check )
         {
             for( auto candidate : candidate_subgraphs )
             {
-                if( candidate->m_sheet != sheet || !candidate->m_driver )
+                if( candidate->m_sheet != sheet || !candidate->m_driver || candidate == subgraph )
                     continue;
 
                 auto candidate_connection = candidate->m_driver->Connection( sheet );
@@ -793,9 +727,10 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                 if( candidate_connection->Name( false ) == member->Name( false ) )
                 {
-                    subgraph->m_bus_member_map[ member ].push_back( candidate );
+                    // std::cout << member->Name() << ": adding link from SG" <<
+                    //     subgraph->m_code << " to " << candidate->m_code << std::endl;
+                    subgraph->m_neighbor_map[ member ].push_back( candidate );
                 }
-
             }
         }
     }
@@ -818,8 +753,10 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
     */
 
-#if 1
     // TODO(JE) Just for testing purposes; this can be folded up later
+#ifdef USE_OPENMP
+    #pragma omp parallel for schedule(dynamic)
+#endif
     for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
     {
         auto subgraph = *it;
@@ -835,15 +772,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         if( !subgraph->m_driver || !subgraph->m_dirty )
             continue;
 
-
         auto sheet = subgraph->m_sheet;
-        auto connection = subgraph->m_driver->Connection( sheet );
-
-        if( !connection->IsBus() )
-        {
-            subgraph->m_dirty = false;
-            continue;
-        }
+        auto connection = std::make_shared<SCH_CONNECTION>( *subgraph->m_driver->Connection( sheet ) );
 
         /**
          * Is this bus in the highest level of hierarchy? That is, does it
@@ -866,8 +796,6 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         if( contains_hier_labels )
             continue;
 
-        subgraph->m_dirty = false;
-
         // On the top level sheet, copy the neighbors onto the bus members
         // because the members won't have net codes yet.  Then recurse into the
         // child sheets and propagate those net codes down.
@@ -876,39 +804,39 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         // then reverse this operation so we overwrite the net codes generated
         // for the neighbors earlier rather than pulling them in?
 
-        for( auto& kv : subgraph->m_bus_member_map )
+        if( connection->IsBus() )
         {
-            auto member = kv.first;
-
-            int candidate_net_code = 0;
-
-            for( auto neighbor : kv.second )
+            for( auto& kv : subgraph->m_neighbor_map )
             {
-                auto neighbor_conn = neighbor->m_driver->Connection( sheet );
+                auto member = kv.first;
 
-                try
+                int candidate_net_code = 0;
+
+                for( auto neighbor : kv.second )
                 {
-                    int c = m_net_name_to_code_map.at( neighbor_conn->Name() );
+                    auto neighbor_conn = neighbor->m_driver->Connection( sheet );
 
-                    if( candidate_net_code == 0 )
-                        candidate_net_code = c;
-                    else
-                        std::cout << "More than one net code for a neighbor!" << neighbor_conn->Name() << std::endl;
-                }
-                catch( const std::out_of_range& oor )
-                {
-                    std::cout << "No net code found for " << neighbor_conn->Name() << std::endl;
-                }
+                    try
+                    {
+                        int c = m_net_name_to_code_map.at( neighbor_conn->Name() );
 
-                member->SetNetCode( candidate_net_code );
+                        if( candidate_net_code == 0 )
+                            candidate_net_code = c;
+                        else
+                            std::cout << "More than one net code for a neighbor!" << neighbor_conn->Name() << std::endl;
+                    }
+                    catch( const std::out_of_range& oor )
+                    {
+                        std::cout << "No net code found for " << neighbor_conn->Name() << std::endl;
+                    }
+
+                    member->SetNetCode( candidate_net_code );
+                }
             }
         }
 
         // Now go to each subsheet and broadcast the new net codes
         // TODO(JE) add actual recursion
-
-        // TODO(JE) This can be generalized to apply to nets in addition to buses
-        // but for now let's just focus on getting buses right.
 
         /**
          * The general plan:
@@ -933,6 +861,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         {
             if( item->Type() == SCH_SHEET_PIN_T )
             {
+                subgraph->m_dirty = false;
+
                 auto sp = static_cast<SCH_SHEET_PIN*>( item );
                 auto sp_name = sp->GetText();
                 auto subsheet = sheet;
@@ -940,6 +870,9 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                 for( auto candidate : m_subgraphs )
                 {
+                    if( !candidate->m_dirty )
+                        continue;
+
                     if( candidate->m_sheet == subsheet && candidate->m_driver )
                     {
                         auto driver = candidate->m_driver;
@@ -952,14 +885,14 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                             candidate->m_dirty = false;
 
-                            bool match_name = driver->Connection( subsheet )->Type() == CONNECTION_BUS_GROUP;
+                            auto type = driver->Connection( subsheet )->Type();
 
-                            for( auto& kv : candidate->m_bus_member_map )
+                            for( auto& kv : candidate->m_neighbor_map )
                             {
                                 auto member = kv.first;
                                 std::shared_ptr<SCH_CONNECTION> top_level_conn;
 
-                                if( match_name )
+                                if( type == CONNECTION_BUS_GROUP )
                                 {
                                     // Bus group: match parent by name
                                     for( auto parent_member : connection->Members() )
@@ -970,7 +903,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                                         }
                                     }
                                 }
-                                else
+                                else if( type == CONNECTION_BUS )
                                 {
                                     // Bus vector: match parent by index
                                     for( auto parent_member : connection->Members() )
@@ -981,12 +914,10 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                                         }
                                     }
                                 }
-
-                                // std::cout << "Looking at subsheet bus member " << member->Name() << std::endl;
-                                // if( top_level_conn )
-                                //     std::cout << "Top level connection is " << top_level_conn->Name() << std::endl;
-                                // else
-                                //     std::cout << "No top level connection found!" << std::endl;
+                                else
+                                {
+                                    top_level_conn = connection;
+                                }
 
                                 wxASSERT( top_level_conn );
 
@@ -998,7 +929,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                                         wxASSERT( c );
 
-                                        c->Clone( *top_level_conn );
+                                        c->SetSheet( top_level_conn->Sheet() );
+                                        c->SetNetCode( top_level_conn->NetCode() );
                                     }
                                 }
                             }
@@ -1008,124 +940,8 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             }
         }
 
+        subgraph->m_dirty = false;
     }
-
-    // quality control check.  we should throw an ERC error here.
-    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
-    {
-        auto subgraph = *it;
-
-        if( subgraph->m_dirty )
-        {
-            std::cout << "subgraph is still dirty after bus propagation!" << std::endl;
-            //wxASSERT(false);
-        }
-    }
-#endif
-
-
-#if 0
-    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
-    {
-        auto subgraph = *it;
-
-        if( !subgraph->m_driver )
-            continue;
-
-        auto sheet = subgraph->m_sheet;
-        auto connection = subgraph->m_driver->Connection( sheet );
-
-        if( connection->IsBus() )
-            continue;
-
-        for( auto item : subgraph->m_items )
-        {
-            if( item->Type() == SCH_BUS_WIRE_ENTRY_T )
-            {
-                auto entry = static_cast<SCH_BUS_WIRE_ENTRY*>( item );
-
-                if( auto bus_item = entry->m_connected_bus_item )
-                {
-                    // Driver may have changed sheet and so not have a connection
-                    // for this sheet yet
-                    if( !bus_item->Connection( sheet ) )
-                        bus_item->InitializeConnection( sheet );
-
-                    // std::cout << "connection " << connection->Sheet().PathHumanReadable() << std::endl;
-                    // std::cout << "bus item " << bus_item->Connection( sheet )->Sheet().PathHumanReadable() << std::endl;
-                    if( bus_item->Connection( sheet )->Sheet() != connection->Sheet() )
-                    {
-                        // Only propagate when the item under test is actually
-                        // a member of the bus it is touching
-
-                        bool is_member_of_bus = false;
-                        auto test_name = connection->Name( true );
-
-                        for( auto member : bus_item->Connection( sheet )->Members() )
-                        {
-                            if( member->Type() == CONNECTION_BUS )
-                            {
-                                for( const auto& sub_member : member->Members() )
-                                    if( sub_member->Name( true ) == test_name )
-                                        is_member_of_bus = true;
-                            }
-                            else if( member->Name( true ) == test_name )
-                            {
-                                is_member_of_bus = true;
-                            }
-                        }
-
-                        if( !is_member_of_bus )
-                        {
-                            // std::cout << test_name << " is not a member of the attached bus " << bus_item->Connection( sheet )->Name() << std::endl;
-                            break;
-                        }
-
-                        auto bus_connection = bus_item->Connection( sheet );
-
-                        // std::cout << test_name << " updating per attached bus " << bus_item->Connection( sheet )->Name() << std::endl;
-
-                        // Now we need to find the appropriate parent connection
-                        // to clone.  If there isn't a net on the parent sheet
-                        // matching the target sub-sheet subgraph, we won't do
-                        // anything (and the subgraph net will keep the sheet
-                        // path it had originally).
-
-
-                        // **** ALERT! Test code below that is definitely wrong.  ****
-
-                        // TODO(JE) this won't work with more than one level of
-                        // hierarchy.  We need to walk up the hierarchy and find
-                        // out what the highest sheet path is that contains the
-                        // net in question.  We then will back-propagate that net's
-                        // connection to all of the child sheets
-
-                        try
-                        {
-                            // can we get the code for it on the top level?
-                            connection->SetSheet( bus_connection->Sheet() );
-                            int code = m_net_name_to_code_map.at( connection->Name() );
-
-                            std::cout << "Updating items for " << connection->Name() << " with code " << code<< std::endl;
-
-                            for( auto sub_item : subgraph->m_items )
-                            {
-                                sub_item->Connection( sheet )->SetSheet( connection->Sheet() );
-                                sub_item->Connection( sheet )->SetNetCode( code );
-                            }
-                        }
-                        catch( const std::out_of_range& oor )
-                        {
-                            std::cout << "No net code found for " << connection->Name() << std::endl;
-                        }
-
-                        break;
-                    }
-                }
-            }
-        }
-    }
-#endif
 
     m_net_code_to_subgraphs_map.clear();
 
@@ -1133,6 +949,13 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
     {
         if( !subgraph->m_driver )
             continue;
+
+        // TODO(JE) ERC error?
+        if( subgraph->m_dirty )
+        {
+            std::cout << "subgraph is still dirty after bus propagation!" << std::endl;
+            //wxASSERT(false);
+        }
 
         int code = subgraph->m_driver->Connection( subgraph->m_sheet )->NetCode();
         m_net_code_to_subgraphs_map[ code ].push_back( subgraph );
