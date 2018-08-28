@@ -86,6 +86,19 @@ public:
 
     // Needed for m_UserUnits for now; maybe refactor later
     SCH_EDIT_FRAME* m_frame;
+
+    /**
+     * For subgraphs driven by bus connections, this map stores pointers to
+     * other subgraphs on the same sheet as this one which should be connected
+     * to each bus member.
+     *
+     * For example, if this subgraph is part of the bus D[7..0] and there is
+     * another subgraph on this sheet with connection D7, this map will include
+     * a pointer to that subgraph under the key D7 (where the key comes from
+     * the m_members list of the SCH_CONNECTION that drives this subgraph)
+     */
+    std::unordered_map< std::shared_ptr<SCH_CONNECTION>,
+                        std::vector<CONNECTION_SUBGRAPH*> > m_bus_member_map;
 };
 
 

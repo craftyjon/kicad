@@ -643,9 +643,9 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
     // Collapse net codes between hierarchical sheets
 
-#ifdef USE_OPENMP
-    #pragma omp parallel for schedule(dynamic)
-#endif
+// #ifdef USE_OPENMP
+//     #pragma omp parallel for schedule(dynamic)
+// #endif
     for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
     {
         auto subgraph = *it;
@@ -697,9 +697,10 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                                     item_conn->Clone( *target );
                             }
                         }
-
+#if 0
                         if( connection->IsBus() &&
-                            driver->Connection( subsheet )->IsSubsetOf( connection ) )
+                            ( ( driver->Type() == SCH_HIERARCHICAL_LABEL_T ) &&
+                              ( static_cast<SCH_HIERLABEL*>( driver )->GetText() == sp_name ) ) )
                         {
                             auto target = candidate->m_driver->Connection( subsheet );
                             target->SetSheet( connection->Sheet() );
@@ -716,6 +717,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                                     item_conn->Clone( *target );
                             }
                         }
+#endif
                     }
                 }
             }
@@ -729,7 +731,300 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
     // happen to be attached by bus entries to buses from a parent sheet.
 
     // TODO(JE) This loop can be collapsed into the above once the logic is solid
+
+
+    /**
+     * [JE] Temporary notes to self on what's going on here
+     *
+     * Each bus subgraph needs to be able to quickly lookup all net subgraphs that
+     * are bus members on the same sheet (maybe this should be cached earlier).
+     * There can be more than one net subgraph for each bus member!  They don't
+     * necessarily connect via bus entry symbols!
+     *
+     * For example on motherboard, the bus ECD[0..7] should know that member 0 is
+     * called ECD0 and point to that subgraph if it exists (only ECD[0..3]
+     * actually exist on that sheet)
+     *
+     * Then we do a recursive search to all sheet pin connections on the bus.
+     * On subsheets, we first identify target nets based on what they would be
+     * called in isolation (i.e. without the parent sheet renaming the bus).
+     * We then can rename all the target nets and the target bus.
+     *
+     * For example on the motherboard, in LIMB sheet, we have D[0..7] and nets
+     * D0, D1, etc which *aren't physically connected to each other by bus
+     * entries*.  The earlier pass should successfully link the bus to the nets
+     * so we can iterate over the nets by bus member ID and rename them.
+     *
+     * For bus groups the logic is similar, except we match between sheets
+     * according to the name of the bus member rather than the vector index.
+     *
+     *
+     */
+
+
+    // Build cache of subgraphs per-sheet pointing from buses to bus member nets
+    // TODO(JE) where should this actually go / is this most efficient?
+    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
+    {
+        auto subgraph = *it;
+
+        if( !subgraph->m_driver )
+            continue;
+
+        auto sheet = subgraph->m_sheet;
+        auto connection = subgraph->m_driver->Connection( sheet );
+
+        if( !connection->IsBus() )
+            continue;
+
+        auto candidate_subgraphs( m_subgraphs );
+
+        for( auto member : connection->Members() )
+        {
+            for( auto candidate : candidate_subgraphs )
+            {
+                if( candidate->m_sheet != sheet || !candidate->m_driver )
+                    continue;
+
+                auto candidate_connection = candidate->m_driver->Connection( sheet );
+
+                if( !candidate_connection->IsNet() )
+                    continue;
+
+                if( candidate_connection->Name( false ) == member->Name( false ) )
+                {
+                    subgraph->m_bus_member_map[ member ].push_back( candidate );
+                }
+
+            }
+        }
+    }
+
+    /*
+
+    Next question: how do we keep track of bus member netcodes so that we can
+    propagate them down?
+
+    (a) we could start at the root sheet, propagate all buses down as far as
+        they go, and then do a breadth-first descent into all subsheets to repeat
+        the process.  This would require adding some easy way of accessing
+        subgraphs by sheet
+
+    (b) we could start with any subgraph, and assume that if it has only hier
+        sheet pin connections then it is the top level and propagate down, or
+        if it has hier label connections then it is not a top level and we should
+        not propagate it.  This doesn't require any new data organization for
+        subgraphs, but would it work 100% of the time?
+
+    */
+
 #if 1
+    // TODO(JE) Just for testing purposes; this can be folded up later
+    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
+    {
+        auto subgraph = *it;
+
+        if( subgraph->m_driver )
+            subgraph->m_dirty = true;
+    }
+
+    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
+    {
+        auto subgraph = *it;
+
+        if( !subgraph->m_driver || !subgraph->m_dirty )
+            continue;
+
+
+        auto sheet = subgraph->m_sheet;
+        auto connection = subgraph->m_driver->Connection( sheet );
+
+        if( !connection->IsBus() )
+        {
+            subgraph->m_dirty = false;
+            continue;
+        }
+
+        /**
+         * Is this bus in the highest level of hierarchy? That is, does it
+         * contain no hierarchical ports to parent sheets?  If so, we process it
+         * here.  If not, we continue, since the bus will be reached from one in
+         * a higher level sheet.
+         */
+
+        bool contains_hier_labels = false;
+
+        for( auto item : subgraph->m_drivers )
+        {
+            if( item->Type() == SCH_HIERARCHICAL_LABEL_T )
+            {
+                contains_hier_labels = true;
+                break;
+            }
+        }
+
+        if( contains_hier_labels )
+            continue;
+
+        subgraph->m_dirty = false;
+
+        // On the top level sheet, copy the neighbors onto the bus members
+        // because the members won't have net codes yet.  Then recurse into the
+        // child sheets and propagate those net codes down.
+
+        // TODO(JE) should we assign bus member net codes in the bus first, and
+        // then reverse this operation so we overwrite the net codes generated
+        // for the neighbors earlier rather than pulling them in?
+
+        for( auto& kv : subgraph->m_bus_member_map )
+        {
+            auto member = kv.first;
+
+            int candidate_net_code = 0;
+
+            for( auto neighbor : kv.second )
+            {
+                auto neighbor_conn = neighbor->m_driver->Connection( sheet );
+
+                try
+                {
+                    int c = m_net_name_to_code_map.at( neighbor_conn->Name() );
+
+                    if( candidate_net_code == 0 )
+                        candidate_net_code = c;
+                    else
+                        std::cout << "More than one net code for a neighbor!" << neighbor_conn->Name() << std::endl;
+                }
+                catch( const std::out_of_range& oor )
+                {
+                    std::cout << "No net code found for " << neighbor_conn->Name() << std::endl;
+                }
+
+                member->SetNetCode( candidate_net_code );
+            }
+        }
+
+        // Now go to each subsheet and broadcast the new net codes
+        // TODO(JE) add actual recursion
+
+        // TODO(JE) This can be generalized to apply to nets in addition to buses
+        // but for now let's just focus on getting buses right.
+
+        /**
+         * The general plan:
+         *
+         * Find subsheet subgraphs that match this one (because the driver is a
+         * heirarchical label with the same name as a sheet pin on this one).
+         *
+         * Iterate over the bus members of the subsheet subgraph:
+         *
+         *     1)  Find the matching bus member of the top level subgraph.
+         *         For bus groups this is just a name match (minus path).
+         *         For bus vectors the names *don't have to match*, just
+         *         the vector index!
+         *
+         *     2)  Clone the connection of the top level subgraph onto all
+         *         the neighbor subgraphs.
+         *
+         *     3)  Recurse down onto any subsheets connected to the SSSG.
+         */
+
+        for( auto item : subgraph->m_items )
+        {
+            if( item->Type() == SCH_SHEET_PIN_T )
+            {
+                auto sp = static_cast<SCH_SHEET_PIN*>( item );
+                auto sp_name = sp->GetText();
+                auto subsheet = sheet;
+                subsheet.push_back( sp->GetParent() );
+
+                for( auto candidate : m_subgraphs )
+                {
+                    if( candidate->m_sheet == subsheet && candidate->m_driver )
+                    {
+                        auto driver = candidate->m_driver;
+
+                        if( ( driver->Type() == SCH_HIERARCHICAL_LABEL_T ) &&
+                            ( static_cast<SCH_HIERLABEL*>( driver )->GetText() == sp_name ) )
+                        {
+                            // We found a subgraph that is a subsheet child of
+                            // our top-level subgraph, so let's mark it
+
+                            candidate->m_dirty = false;
+
+                            bool match_name = driver->Connection( subsheet )->Type() == CONNECTION_BUS_GROUP;
+
+                            for( auto& kv : candidate->m_bus_member_map )
+                            {
+                                auto member = kv.first;
+                                std::shared_ptr<SCH_CONNECTION> top_level_conn;
+
+                                if( match_name )
+                                {
+                                    // Bus group: match parent by name
+                                    for( auto parent_member : connection->Members() )
+                                    {
+                                        if( parent_member->Name() == member->Name() )
+                                        {
+                                            top_level_conn = parent_member;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    // Bus vector: match parent by index
+                                    for( auto parent_member : connection->Members() )
+                                    {
+                                        if( parent_member->VectorIndex() == member->VectorIndex() )
+                                        {
+                                            top_level_conn = parent_member;
+                                        }
+                                    }
+                                }
+
+                                // std::cout << "Looking at subsheet bus member " << member->Name() << std::endl;
+                                // if( top_level_conn )
+                                //     std::cout << "Top level connection is " << top_level_conn->Name() << std::endl;
+                                // else
+                                //     std::cout << "No top level connection found!" << std::endl;
+
+                                wxASSERT( top_level_conn );
+
+                                for( auto neighbor : kv.second )
+                                {
+                                    for( auto n_item : neighbor->m_items )
+                                    {
+                                        auto c = n_item->Connection( subsheet );
+
+                                        wxASSERT( c );
+
+                                        c->Clone( *top_level_conn );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    // quality control check.  we should throw an ERC error here.
+    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
+    {
+        auto subgraph = *it;
+
+        if( subgraph->m_dirty )
+        {
+            std::cout << "subgraph is still dirty after bus propagation!" << std::endl;
+            //wxASSERT(false);
+        }
+    }
+#endif
+
+
+#if 0
     for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
     {
         auto subgraph = *it;
