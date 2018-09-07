@@ -746,6 +746,23 @@ void SCH_SCREEN::ClearAnnotation( SCH_SHEET_PATH* aSheetPath )
 }
 
 
+void SCH_SCREEN::EnsureAlternateReferencesExist()
+{
+    if( GetClientSheetPathsCount() <= 1 )   // No need for alternate reference
+        return;
+
+    for( SCH_ITEM* item = m_drawList.begin(); item; item = item->Next() )
+    {
+        if( item->Type() != SCH_COMPONENT_T )
+            continue;
+
+        // Add (when not existing) all sheet path entries
+        for( unsigned int ii = 0; ii < m_clientSheetPathList.GetCount(); ii++ )
+            ((SCH_COMPONENT*)item)->AddSheetPathReferenceEntryIfMissing( m_clientSheetPathList[ii] );
+    }
+}
+
+
 void SCH_SCREEN::GetHierarchicalItems( EDA_ITEMS& aItems )
 {
     SCH_ITEM* item = m_drawList.begin();
@@ -917,7 +934,8 @@ int SCH_SCREEN::UpdatePickList()
     for( SCH_ITEM* item = m_drawList.begin(); item; item = item->Next() )
     {
         // An item is picked if its bounding box intersects the reference area.
-        if( item->HitTest( area ) )
+        if( item->HitTest( area ) &&
+                ( !m_BlockLocate.IsDragging() || item->IsType( SCH_COLLECTOR::DraggableItems ) ) )
         {
             picker.SetItem( item );
             m_BlockLocate.PushItem( picker );
@@ -1401,6 +1419,47 @@ void SCH_SCREENS::ClearAnnotation()
         m_screens[i]->ClearAnnotation( NULL );
 }
 
+
+void SCH_SCREENS::ClearAnnotationOfNewSheetPaths( SCH_SHEET_LIST& aInitialSheetPathList )
+{
+    // Clear the annotation for the components inside new sheetpaths
+    // not already in aInitialSheetList
+    SCH_SCREENS screensList( g_RootSheet );     // The list of screens, shared by sheet paths
+    screensList.BuildClientSheetPathList();     // build the shared by sheet paths, by screen
+
+    // Search for new sheet paths, not existing in aInitialSheetPathList
+    // and existing in sheetpathList
+    SCH_SHEET_LIST sheetpathList( g_RootSheet );
+
+    for( SCH_SHEET_PATH& sheetpath: sheetpathList )
+    {
+        bool path_exists = false;
+
+        for( const SCH_SHEET_PATH& existing_sheetpath: aInitialSheetPathList )
+        {
+            if( existing_sheetpath.Path() == sheetpath.Path() )
+            {
+                path_exists = true;
+                break;
+            }
+        }
+
+        if( !path_exists )
+        {
+            // A new sheet path is found: clear the annotation corresponding to this new path:
+            SCH_SCREEN* curr_screen = sheetpath.LastScreen();
+
+            // Clear annotation and create the AR for this path, if not exists,
+            // when the screen is shared by sheet paths.
+            // Otherwise ClearAnnotation do nothing, because the F1 field is used as
+            // reference default value and takes the latest displayed value
+            curr_screen->EnsureAlternateReferencesExist();
+            curr_screen->ClearAnnotation( &sheetpath );
+        }
+    }
+}
+
+
 int SCH_SCREENS::ReplaceDuplicateTimeStamps()
 {
     EDA_ITEMS items;
@@ -1611,4 +1670,29 @@ int SCH_SCREENS::ChangeSymbolLibNickname( const wxString& aFrom, const wxString&
     }
 
     return cnt;
+}
+
+
+
+void SCH_SCREENS::BuildClientSheetPathList()
+{
+    SCH_SHEET_LIST sheetList( g_RootSheet );
+
+    for( SCH_SCREEN* curr_screen = GetFirst(); curr_screen; curr_screen = GetNext() )
+        curr_screen->GetClientSheetPaths().Clear();
+
+    for( SCH_SHEET_PATH& sheetpath: sheetList )
+    {
+        SCH_SCREEN* used_screen = sheetpath.LastScreen();
+
+        // SEarch for the used_screen in list and add this unique sheet path:
+        for( SCH_SCREEN* curr_screen = GetFirst(); curr_screen; curr_screen = GetNext() )
+        {
+            if( used_screen == curr_screen )
+            {
+                curr_screen->GetClientSheetPaths().Add( sheetpath.Path() );
+                break;
+            }
+        }
+    }
 }

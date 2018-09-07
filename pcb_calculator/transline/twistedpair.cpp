@@ -33,7 +33,7 @@
 
 TWISTEDPAIR::TWISTEDPAIR() : TRANSLINE()
 {
-    m_name = "TwistedPair";
+    m_Name = "TwistedPair";
 
     // Initialize these variables mainly to avoid warnings from a static analyzer
     din = 0.0;                 // Inner diameter of conductor
@@ -52,15 +52,15 @@ TWISTEDPAIR::TWISTEDPAIR() : TRANSLINE()
 // -------------------------------------------------------------------
 void TWISTEDPAIR::getProperties()
 {
-    f    = getProperty( FREQUENCY_PRM );
+    m_freq = getProperty( FREQUENCY_PRM );
     din  = getProperty( PHYS_DIAM_IN_PRM );
     dout = getProperty( PHYS_DIAM_OUT_PRM );
     len  = getProperty( PHYS_LEN_PRM );
 
     er     = getProperty( EPSILONR_PRM );
-    murC   = getProperty( MURC_PRM );
-    tand   = getProperty( TAND_PRM );
-    sigma  = 1.0 / getProperty( RHO_PRM );
+    m_murC   = getProperty( MURC_PRM );
+    m_tand   = getProperty( TAND_PRM );
+    m_sigma = 1.0 / getProperty( RHO_PRM );
     twists = getProperty( TWISTEDPAIR_TWIST_PRM );
     er_env = getProperty( TWISTEDPAIR_EPSILONR_ENV_PRM );
     Z0     = getProperty( Z0_PRM );
@@ -71,18 +71,18 @@ void TWISTEDPAIR::getProperties()
 // -------------------------------------------------------------------
 void TWISTEDPAIR::calc()
 {
-    skindepth = skin_depth();
+    m_skindepth = skin_depth();
 
     double tw = atan( twists * M_PI * dout ); // pitch angle
     er_eff = er_env + (0.25 + 0.0007 * tw * tw) * (er - er_env);
 
     Z0 = ZF0 / M_PI / sqrt( er_eff ) * acosh( dout / din );
 
-    atten_cond = 10.0 / log( 10.0 ) * len / skindepth / sigma / M_PI / Z0 / (din - skindepth);
+    atten_cond = 10.0 / log( 10.0 ) * len / m_skindepth / m_sigma / M_PI / Z0 / (din - m_skindepth);
 
-    atten_dielectric = 20.0 / log( 10.0 ) * len * M_PI / C0* f* sqrt( er_eff ) * tand;
+    atten_dielectric = 20.0 / log( 10.0 ) * len * M_PI / C0* m_freq * sqrt( er_eff ) * m_tand;
 
-    ang_l = 2.0* M_PI* len* sqrt( er_eff ) * f / C0; // in radians
+    ang_l = 2.0* M_PI* len* sqrt( er_eff ) * m_freq / C0; // in radians
 }
 
 
@@ -96,7 +96,7 @@ void TWISTEDPAIR::show_results()
     setResult( 1, atten_cond, "dB" );
     setResult( 2, atten_dielectric, "dB" );
 
-    setResult( 3, skindepth / UNIT_MICRON, "µm" );
+    setResult( 3, m_skindepth / UNIT_MICRON, "µm" );
 }
 
 
@@ -174,7 +174,7 @@ void TWISTEDPAIR::synthesize()
     setProperty( PHYS_DIAM_OUT_PRM, dout );
     /* calculate physical length */
     ang_l = getProperty( ANG_L_PRM );
-    len   = C0 / f / sqrt( er_eff ) * ang_l / 2.0 / M_PI; /* in m */
+    len   = C0 / m_freq / sqrt( er_eff ) * ang_l / 2.0 / M_PI; /* in m */
     setProperty( PHYS_LEN_PRM, len );
 
     /* compute parameters */

@@ -1,8 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2010-2014 Jean-Pierre Charras, jean-pierre.charras at wanadoo.fr
- * Copyright (C) 1992-2014 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2017 Kicad Developers, see change_log.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,33 +21,32 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#ifndef _DIALOG_FREEROUTE_EXCHANGE_H_
-#define _DIALOG_FREEROUTE_EXCHANGE_H_
+#ifndef TOOLS_AUTOPLACE_TOOL_H
+#define TOOLS_AUTOPLACE_TOOL_H
 
-#include <dialog_freeroute_exchange_base.h>
+#include <tools/pcb_tool.h>
 
-class DIALOG_FREEROUTE : public DIALOG_FREEROUTE_BASE
+
+/**
+ * Class AUTOPLACE_TOOL
+ *
+ * Tool responsible for automagic placement of components.
+ */
+class AUTOPLACE_TOOL : public PCB_TOOL
 {
-private:
-    PCB_EDIT_FRAME* m_Parent;
-    bool m_freeRouterFound;
-
-private:
-    // Virtual event handlers
-    void OnExportButtonClick( wxCommandEvent& event ) override;
-    void OnLaunchButtonClick( wxCommandEvent& event ) override;
-    void OnImportButtonClick( wxCommandEvent& event ) override;
-    void OnHelpButtonClick( wxCommandEvent& event ) override;
-
-    void init ( );
-    const wxString createDSN_File();
-
 public:
-    DIALOG_FREEROUTE( PCB_EDIT_FRAME* parent );
-    ~DIALOG_FREEROUTE() {};
+    AUTOPLACE_TOOL();
+    ~AUTOPLACE_TOOL();
 
+    ///> Bind handlers to corresponding TOOL_ACTIONs
+    void setTransitions() override;
+
+private:
+    int autoplace( std::vector<MODULE*>& aModules, bool aPlaceOffboard );
+
+    int autoplaceSelected( const TOOL_EVENT& aEvent );
+    int autoplaceOffboard( const TOOL_EVENT& aEvent );
 };
 
-#endif
 
-// _DIALOG_FREEROUTE_EXCHANGE_H_
+#endif // TOOLS_AUTOPLACE_TOOL_H

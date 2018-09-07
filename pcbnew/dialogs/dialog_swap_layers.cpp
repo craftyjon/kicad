@@ -49,7 +49,12 @@ public:
 
     wxString GetColLabelValue( int aCol ) override
     {
-        return aCol == 1 ? wxString( _( "Move To:" ) ) : wxString( wxEmptyString );
+        switch( aCol )
+        {
+        case 0: return _( "Move items on:" );
+        case 1: return _( "To layer:" );
+        default: return wxEmptyString;
+        }
     }
 
     wxString GetValue( int row, int col ) override { return "undefined"; }
@@ -144,8 +149,8 @@ bool DIALOG_SWAP_LAYERS::TransferDataToWindow()
 
 bool DIALOG_SWAP_LAYERS::TransferDataFromWindow()
 {
-    // Commit any pending changes
-    m_grid->DisableCellEditControl();
+    if( !m_grid->CommitPendingChanges() )
+        return false;
 
     LSET enabledCopperLayers = LSET::AllCuMask( m_parent->GetBoard()->GetCopperLayerCount() );
     wxGridTableBase* table = m_grid->GetTable();

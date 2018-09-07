@@ -193,9 +193,10 @@ enum GAL_LAYER_ID: int
     LAYER_DRC,                  ///< drc markers
     LAYER_WORKSHEET,            ///< worksheet frame
     LAYER_GP_OVERLAY,           ///< general purpose overlay
+    LAYER_SELECT_OVERLAY,       ///< currently selected items overlay
     LAYER_PCB_BACKGROUND,       ///< PCB background color
     LAYER_CURSOR,               ///< PCB cursor
-    LAYER_AUX_ITEMS,            ///< Auxillary items (guides, rule, etc)
+    LAYER_AUX_ITEMS,            ///< Auxiliary items (guides, rule, etc)
 
     /// This is the end of the layers used for visibility bitmasks in Pcbnew
     /// There can be at most 32 layers above here.
@@ -305,6 +306,7 @@ enum GERBVIEW_LAYER_ID: int
 #define MIN_VISIBILITY_MASK int( ( 1 << GAL_LAYER_INDEX( LAYER_PADS_PLATEDHOLES ) ) +\
                  ( 1 << GAL_LAYER_INDEX( LAYER_VIAS_HOLES ) ) +\
                  ( 1 << GAL_LAYER_INDEX( LAYER_DRC ) ) +\
+                 ( 1 << GAL_LAYER_INDEX( LAYER_SELECT_OVERLAY ) ) +\
                  ( 1 << GAL_LAYER_INDEX( LAYER_GP_OVERLAY ) ) )
 
 
@@ -524,19 +526,18 @@ public:
     static LSET UserMask();
 
     /**
-     * Function ForbiddenTextLayersForBoard
-     * returns the layer set that should not be allowed for free text on the board
-     * Currently this is only EdgeCuts and Margin
+     * Function ForbiddenFootprintLayers
+     * Layers which are not allowed within footprint definitions.  Currently internal
+     * copper layers, Edge.Cuts and Margin.
      */
-    static LSET ForbiddenTextLayersForBoard();
+
+    static LSET ForbiddenFootprintLayers();
 
     /**
-     * Function ForbiddenTextLayersForFootprint
-     * returns the layer set that should not be allowed in text that is attached to a
-     * footprint.  Currently, this is any copper layer (not handled by router or fills)
-     * and any of the aperture layers (mask, paste, adhesive)
+     * Function ForbiddenTextLayers
+     * Layers which are now allowed to have text on them.  Currently Edge.Cuts and Margin.
      */
-    static LSET ForbiddenTextLayersForFootprint();
+    static LSET ForbiddenTextLayers();
 
     /**
      * Function CuStack

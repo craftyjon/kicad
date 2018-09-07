@@ -152,8 +152,6 @@ set( PCBNEW_DIALOGS
     dialogs/panel_modedit_settings_base.cpp
     dialogs/panel_pcbnew_display_options.cpp
     dialogs/panel_pcbnew_display_options_base.cpp
-    dialogs/panel_pcbnew_display_options.cpp
-    dialogs/panel_pcbnew_display_options_base.cpp
     dialogs/panel_pcbnew_settings.cpp
     dialogs/panel_pcbnew_settings_base.cpp
     dialogs/panel_setup_mask_and_paste.cpp
@@ -173,6 +171,13 @@ set( PCBNEW_DIALOGS
     footprint_wizard_frame_functions.cpp
     ${GITHUB_3DLIBRARIES_WIZARD}
     )
+
+if( KICAD_SCRIPTING AND KICAD_SCRIPTING_ACTION_MENU )
+    set( PCBNEW_DIALOGS ${PCBNEW_DIALOGS}
+        dialogs/panel_pcbnew_action_plugins.cpp
+        dialogs/panel_pcbnew_action_plugins_base.cpp
+        )
+endif()
 
 set( PCBNEW_IMPORT_DXF
     import_dxf/dialog_dxf_import.cpp
@@ -205,6 +210,9 @@ set( PCBNEW_CLASS_SRCS
 
     autorouter/rect_placement/rect_placement.cpp
     autorouter/spread_footprints.cpp
+    autorouter/ar_autoplacer.cpp
+    autorouter/ar_matrix.cpp
+    autorouter/autoplacer_tool.cpp
 
     action_plugin.cpp
     append_board_to_current.cpp

@@ -30,10 +30,25 @@
 #ifndef EDA_TEXT_H_
 #define EDA_TEXT_H_
 
+#include <mutex>
 #include <trigo.h>                  // NORMALIZE_ANGLE_POS( angle );
 #include <common.h>                 // wxStringSplit
 #include <gr_basic.h>               // EDA_DRAW_MODE_T
 #include <base_struct.h>            // EDA_RECT
+
+#include <mutex>
+
+class SHAPE_POLY_SET;
+
+// A mutex which is unique to each instance it appears in (ie: a new std::mutex is allocated
+// on copy or assignment).
+class UNIQUE_MUTEX : public std::mutex
+{
+public:
+    UNIQUE_MUTEX() : std::mutex() {}
+    UNIQUE_MUTEX( const UNIQUE_MUTEX& ) : std::mutex() {}
+    UNIQUE_MUTEX& operator= (const UNIQUE_MUTEX& ) { return *this; }
+};
 
 
 // part of the kicad_plugin.h family of defines.
@@ -252,6 +267,20 @@ public:
     void TransformTextShapeToSegmentList( std::vector<wxPoint>& aCornerBuffer ) const;
 
     /**
+     * Function TransformBoundingBoxWithClearanceToPolygon
+     * Convert the text bounding box to a rectangular polygon
+     * depending on the text orientation, the bounding box
+     * is not always horizontal or vertical
+     * Used in filling zones calculations
+     * Circles and arcs are approximated by segments
+     * @param aCornerBuffer = a buffer to store the polygon
+     * @param aClearanceValue = the clearance around the text bounding box
+     * to the real clearance value (usually near from 1.0)
+     */
+    void TransformBoundingBoxWithClearanceToPolygon( SHAPE_POLY_SET* aCornerBuffer,
+                                                     int aClearanceValue ) const;
+
+    /**
      * Function TextHitTest
      * Test if \a aPoint is within the bounds of this object.
      * @param aPoint- A wxPoint to test
@@ -342,6 +371,9 @@ public:
 
 protected:
     wxString    m_Text;
+
+    // wxString isn't thread-safe, so make use of this in multi-threaded situations
+    mutable UNIQUE_MUTEX m_mutex;
 
 private:
     /**

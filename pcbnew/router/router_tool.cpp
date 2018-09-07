@@ -799,7 +799,7 @@ void ROUTER_TOOL::performRouting()
             updateEndItem( *evt );
             m_router->Move( m_endSnapPoint, m_endItem );
         }
-        else if( evt->IsClick( BUT_LEFT ) )
+        else if( evt->IsClick( BUT_LEFT ) || evt->IsAction( &ACT_NewTrack ) )
         {
             updateEndItem( *evt );
             bool needLayerSwitch = m_router->IsPlacingVia();
@@ -808,7 +808,7 @@ void ROUTER_TOOL::performRouting()
 
             if( m_router->FixRoute( m_endSnapPoint, m_endItem, forceFinish ) )
                 break;
-            
+
             if( needLayerSwitch )
                 switchLayerOnViaPlacement();
 
@@ -1008,7 +1008,7 @@ void ROUTER_TOOL::performDragging( int aMode )
         KIDIALOG dlg( frame(), _( "The selected item is locked." ), _( "Confirmation" ),
                       wxOK | wxCANCEL | wxICON_WARNING );
         dlg.SetOKLabel( _( "Drag Anyway" ) );
-        dlg.DoNotShowCheckbox();
+        dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
 
         if( dlg.ShowModal() == wxID_CANCEL )
             return;
@@ -1162,7 +1162,7 @@ int ROUTER_TOOL::InlineDrag( const TOOL_EVENT& aEvent )
         KIDIALOG dlg( frame(), _( "The selected item is locked." ), _( "Confirmation" ),
                       wxOK | wxCANCEL | wxICON_WARNING );
         dlg.SetOKLabel( _( "Drag Anyway" ) );
-        dlg.DoNotShowCheckbox();
+        dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
 
         if( dlg.ShowModal() == wxID_CANCEL )
             return 0;

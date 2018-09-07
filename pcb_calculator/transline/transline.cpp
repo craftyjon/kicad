@@ -2,7 +2,7 @@
  * TRANSLINE.cpp - base for a transmission line implementation
  *
  * Copyright (C) 2005 Stefan Jahn <stefan@lkcc.org>
- * Modified for Kicad: 2011 jean-pierre.charras
+ * Modified for Kicad: 2018 jean-pierre.charras
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -61,15 +61,15 @@ bool   IsSelectedInDialog( enum PRMS_ID aPrmId );
 /* Constructor creates a transmission line instance. */
 TRANSLINE::TRANSLINE()
 {
-    murC = 1.0;
-    m_name = (const char*) 0;
+    m_murC = 1.0;
+    m_Name = nullptr;
 
     // Initialize these variables mainly to avoid warnings from a static analyzer
-    f = 0.0;            // Frequency of operation
+    m_freq = 0.0;       // Frequency of operation
     er = 0.0;           // dielectric constant
-    tand = 0.0;         // Dielectric Loss Tangent
-    sigma = 0.0;        // Conductivity of the metal
-    skindepth = 0.0;    // Skin depth
+    m_tand = 0.0;       // Dielectric Loss Tangent
+    m_sigma = 0.0;      // Conductivity of the metal
+    m_skindepth = 0.0;  // Skin depth
 }
 
 
@@ -122,7 +122,7 @@ double TRANSLINE::getProperty( enum PRMS_ID aPrmId )
 double TRANSLINE::skin_depth()
 {
     double depth;
-    depth = 1.0 / sqrt( M_PI * f * murC * MU0 * sigma );
+    depth = 1.0 / sqrt( M_PI * m_freq * m_murC * MU0 * m_sigma );
     return depth;
 }
 

@@ -487,13 +487,11 @@ public:
      *                         the entire hierarchy
      * @param aSearchType A #SCH_SEARCH_T value used to determine what to search for.
      * @param aSearchText The text to search for, either in value, reference or elsewhere.
-     * @param aWarpMouse If true, then move the mouse cursor to the item.
      */
     SCH_ITEM* FindComponentAndItem( const wxString& aReference,
                                     bool            aSearchHierarchy,
                                     SCH_SEARCH_T    aSearchType,
-                                    const wxString& aSearchText,
-                                    bool            aWarpMouse );
+                                    const wxString& aSearchText );
 
     /**
      * Breaks a single segment into two at the specified point
@@ -984,6 +982,11 @@ private:
     void OnUpdateRemapSymbols( wxUpdateUIEvent& aEvent );
 
     /**
+     * Close the ERC dialog if it is open.
+     */
+    void CloseErc();
+
+    /**
      * Set the main window title bar text.
      *
      * If file name defined by SCH_SCREEN::m_FileName is not set, the title is set to the
@@ -1168,8 +1171,15 @@ public:
      *   the current associated screen file name is changed and saved to disk.
      *
      * Note: the screen is not refresh. The caller is responsible to do that
+     *
+     * @param aSheet is the sheet to edit
+     * @param aHierarchy is the current hierarchy containing aSheet
+     * @param aClearAnnotationNewItems is a reference to a bool to know if the items managed by
+     * this sheet need to have their annotation cleared i.e. when an existing item list is used.
+     * it can happens when the edited sheet used an existying file, or becomes a new instance
+     * of a already existing sheet.
      */
-    bool EditSheet( SCH_SHEET* aSheet, SCH_SHEET_PATH* aHierarchy );
+    bool EditSheet( SCH_SHEET* aSheet, SCH_SHEET_PATH* aHierarchy, bool* aClearAnnotationNewItems );
 
     wxPoint GetLastSheetPinPosition() const { return m_lastSheetPinPosition; }
 

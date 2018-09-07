@@ -48,9 +48,9 @@ class DIALOG_EDIT_COMPONENT_IN_SCHEMATIC_BASE : public DIALOG_SHIM
 	protected:
 		WX_GRID* m_grid;
 		wxBitmapButton* m_bpAdd;
-		wxBitmapButton* m_bpDelete;
 		wxBitmapButton* m_bpMoveUp;
 		wxBitmapButton* m_bpMoveDown;
+		wxBitmapButton* m_bpDelete;
 		wxButton* m_updateFieldValues;
 		wxStaticText* m_staticText3;
 		wxTextCtrl* m_libraryNameTextCtrl;
@@ -72,9 +72,9 @@ class DIALOG_EDIT_COMPONENT_IN_SCHEMATIC_BASE : public DIALOG_SHIM
 		virtual void OnUpdateUI( wxUpdateUIEvent& event ) { event.Skip(); }
 		virtual void OnSizeGrid( wxSizeEvent& event ) { event.Skip(); }
 		virtual void OnAddField( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnDeleteField( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnMoveUp( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnMoveDown( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnDeleteField( wxCommandEvent& event ) { event.Skip(); }
 		virtual void UpdateFieldsFromLibrary( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnBrowseLibrary( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnEditSpiceModel( wxCommandEvent& event ) { event.Skip(); }

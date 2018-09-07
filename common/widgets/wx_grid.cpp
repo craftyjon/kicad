@@ -26,7 +26,24 @@
 #include "wx_grid.h"
 
 
-void WX_GRID::SetTable( wxGridTableBase* aTable )
+#define MIN_GRIDCELL_MARGIN 3
+
+
+WX_GRID::WX_GRID( wxWindow *parent, wxWindowID id, const wxPoint& pos, const wxSize& size,
+                  long style, const wxString& name ) :
+        wxGrid( parent, id, pos, size, style, name ),
+        m_weOwnTable( false )
+{}
+
+
+WX_GRID::~WX_GRID()
+{
+    if( m_weOwnTable )
+        DestroyTable( GetTable() );
+}
+
+
+void WX_GRID::SetTable( wxGridTableBase* aTable, bool aTakeOwnership )
 {
     // wxGrid::SetTable() messes up the column widths from wxFormBuilder so we have to save
     // and restore them.
@@ -38,9 +55,16 @@ void WX_GRID::SetTable( wxGridTableBase* aTable )
     wxGrid::SetTable( aTable );
 
     for( int i = 0; i < GetNumberCols(); ++i )
-        SetColSize( i, formBuilderColWidths[ i ] );
+    {
+        // correct wxFormBuilder width for large fonts and/or long translations
+        int headingWidth = GetTextExtent( GetColLabelValue( i ) ).x + 2 * MIN_GRIDCELL_MARGIN;
+
+        SetColSize( i, std::max( formBuilderColWidths[ i ], headingWidth ) );
+    }
 
     delete[] formBuilderColWidths;
+
+    m_weOwnTable = aTakeOwnership;
 }
 
 
@@ -48,7 +72,7 @@ void WX_GRID::DestroyTable( wxGridTableBase* aTable )
 {
     // wxGrid's destructor will crash trying to look up the cell attr if the edit control
     // is left open.  Normally it's closed in Validate(), but not if the user hit Cancel.
-    DisableCellEditControl();
+    CommitPendingChanges( true /* quiet mode */ );
 
     wxGrid::SetTable( nullptr );
     delete aTable;

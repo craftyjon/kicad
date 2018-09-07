@@ -43,6 +43,7 @@ set( GAL_SRCS
     gal/stroke_font.cpp
     geometry/hetriang.cpp
     view/view_controls.cpp
+    view/view_overlay.cpp
     view/wx_view_controls.cpp
 
     # OpenGL GAL
@@ -447,7 +448,7 @@ set( PCB_COMMON_SRCS
     ../pcbnew/ratsnest_viewitem.cpp
     ../pcbnew/sel_layer.cpp
     ../pcbnew/zone_settings.cpp
-    widgets/widget_net_selector.cpp
+    widgets/net_selector.cpp
 )
 
 # add -DPCBNEW to compilation of these PCBNEW sources

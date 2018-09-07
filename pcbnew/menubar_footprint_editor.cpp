@@ -70,10 +70,12 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
                  text, _( "Create a new footprint" ),
                  KiBitmap( new_footprint_xpm ) );
 
+#ifdef KICAD_SCRIPTING
     AddMenuItem( fileMenu, ID_MODEDIT_NEW_MODULE_FROM_WIZARD,
                  _( "&Create Footprint..." ),
                  _( "Create a new footprint using the footprint wizard" ),
                  KiBitmap( module_wizard_xpm ) );
+#endif
 
     fileMenu->AppendSeparator();
 
@@ -83,7 +85,7 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
                  KiBitmap( save_xpm ) );
 
     AddMenuItem( fileMenu, ID_MODEDIT_SAVE_AS,
-                 _( "Save a Copy &As..." ),
+                 _( "Save &As..." ),
                  _( "Save a copy to a new name and/or location" ),
                  KiBitmap( save_as_xpm ) );
 
@@ -383,11 +385,6 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
                  _( "&Load Footprint from PCB..." ),
                  _( "Load a footprint from the current board into the editor" ),
                  KiBitmap( load_module_board_xpm ) );
-
-    AddMenuItem( toolsMenu, ID_MODEDIT_UPDATE_MODULE_IN_BOARD,
-                 _( "&Update Footprint on PCB" ),
-                 _( "Push updated footprint through to current board" ),
-                 KiBitmap( update_module_board_xpm ) );
 
     AddMenuItem( toolsMenu, ID_MODEDIT_INSERT_MODULE_IN_BOARD,
                  _( "&Insert Footprint on PCB" ),

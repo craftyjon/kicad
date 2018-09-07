@@ -2,7 +2,7 @@
  * transline.h - base for a transmission line class definition
  *
  * Copyright (C) 2005 Stefan Jahn <stefan@lkcc.org>
- * Modifications 2011 for Kicad: Jean-Pierre Charras
+ * Modifications 2018 for Kicad: Jean-Pierre Charras
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -61,7 +61,7 @@ class TRANSLINE
 public: TRANSLINE();
     virtual ~TRANSLINE();
 
-    const char *m_name;
+    const char *m_Name;
     void   setProperty( enum PRMS_ID aPrmId, double aValue);
     double getProperty( enum PRMS_ID aPrmId );
     void   setResult( int, double, const char* );
@@ -72,12 +72,13 @@ public: TRANSLINE();
     virtual void analyze() { };
 
 protected:
-    double f;           /* Frequency of operation */
+    double m_freq;      // Frequency of operation
     double er;          /* dielectric constant */
-    double tand;        /* Dielectric Loss Tangent */
-    double sigma;       /* Conductivity of the metal */
-    double murC;        /* magnetic permeability of conductor */
-    double skindepth;   /* Skin depth */
+    double m_tand;      // Dielectric Loss Tangent
+    double m_sigma;     // Conductivity of the metal
+    double m_murC;      // magnetic permeability of conductor
+    double m_skindepth; // Skin depth
+
     double skin_depth();
     void   ellipke( double, double&, double& );
     double ellipk( double );

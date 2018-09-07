@@ -138,6 +138,9 @@ void GERBVIEW_DRAW_PANEL_GAL::setDefaultLayerDeps()
     m_view->SetLayerDisplayOnly( LAYER_GERBVIEW_BACKGROUND );
     m_view->SetLayerDisplayOnly( LAYER_WORKSHEET );
 
+    m_view->SetLayerTarget( LAYER_SELECT_OVERLAY, KIGFX::TARGET_OVERLAY );
+    m_view->SetLayerDisplayOnly( LAYER_SELECT_OVERLAY );
+
     m_view->SetLayerTarget( LAYER_GP_OVERLAY, KIGFX::TARGET_OVERLAY );
     m_view->SetLayerDisplayOnly( LAYER_GP_OVERLAY );
 }
@@ -164,6 +167,8 @@ void GERBVIEW_DRAW_PANEL_GAL::SetTopLayer( int aLayer )
 
     // Move DCODE layer to the top
     m_view->SetTopLayer( GERBER_DCODE_LAYER( aLayer ) );
+
+    m_view->SetTopLayer( LAYER_SELECT_OVERLAY );
 
     m_view->SetTopLayer( LAYER_GP_OVERLAY );
 

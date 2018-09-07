@@ -29,7 +29,8 @@
 #include <validators.h>
 #include <html_messagebox.h>
 #include <filename_resolver.h>
-
+#include <widgets/wx_grid.h>
+#include <widgets/grid_text_button_helpers.h>
 
 enum ENV_VAR_GRID_COLUMNS
 {
@@ -64,6 +65,24 @@ DIALOG_CONFIGURE_PATHS::DIALOG_CONFIGURE_PATHS( wxWindow* aParent, FILENAME_RESO
     m_EnvVars->HideCol( EV_FLAG_COL );
     m_EnvVars->UseNativeColHeader( true );
 
+    wxGridCellAttr* attr = new wxGridCellAttr;
+    attr->SetEditor( new GRID_CELL_PATH_EDITOR( this, &m_curdir ) );
+    m_EnvVars->SetColAttr( EV_PATH_COL, attr );
+
+    attr = new wxGridCellAttr;
+    attr->SetEditor( new GRID_CELL_PATH_EDITOR( this, &m_curdir ) );
+    m_SearchPaths->SetColAttr( EV_PATH_COL, attr );
+
+    // Give a bit more room for combobox editors
+    m_EnvVars->SetDefaultRowSize( m_EnvVars->GetDefaultRowSize() + 4 );
+    m_SearchPaths->SetDefaultRowSize( m_SearchPaths->GetDefaultRowSize() + 4 );
+
+    m_EnvVars->PushEventHandler( new GRID_TRICKS( m_EnvVars ) );
+    m_SearchPaths->PushEventHandler( new GRID_TRICKS( m_SearchPaths ) );
+
+    m_EnvVars->SetSelectionMode( wxGrid::wxGridSelectionModes::wxGridSelectRows );
+    m_SearchPaths->SetSelectionMode( wxGrid::wxGridSelectionModes::wxGridSelectRows );
+
     if( m_resolver )
     {
         m_SearchPaths->DeleteRows( 0, m_SearchPaths->GetNumberRows() );
@@ -90,6 +109,10 @@ DIALOG_CONFIGURE_PATHS::DIALOG_CONFIGURE_PATHS( wxWindow* aParent, FILENAME_RESO
 
 DIALOG_CONFIGURE_PATHS::~DIALOG_CONFIGURE_PATHS()
 {
+    // Delete the GRID_TRICKS.
+    m_SearchPaths->PopEventHandler( true );
+    m_EnvVars->PopEventHandler( true );
+
     m_EnvVars->Disconnect( wxEVT_GRID_CELL_CHANGING, wxGridEventHandler( DIALOG_CONFIGURE_PATHS::OnGridCellChanging ), NULL, this );
     m_SearchPaths->Disconnect( wxEVT_GRID_CELL_CHANGING, wxGridEventHandler( DIALOG_CONFIGURE_PATHS::OnGridCellChanging ), NULL, this );
 }
@@ -184,12 +207,11 @@ void DIALOG_CONFIGURE_PATHS::AppendSearchPath( const wxString& aName, const wxSt
 
 bool DIALOG_CONFIGURE_PATHS::TransferDataFromWindow()
 {
-    if( !wxDialog::TransferDataFromWindow() )
+    if( !m_EnvVars->CommitPendingChanges() || !m_SearchPaths->CommitPendingChanges() )
         return false;
 
-    // Commit any pending in-place edits and close the editor
-    m_EnvVars->DisableCellEditControl();
-    m_SearchPaths->DisableCellEditControl();
+    if( !wxDialog::TransferDataFromWindow() )
+        return false;
 
     // Environment variables
 
@@ -306,7 +328,7 @@ void DIALOG_CONFIGURE_PATHS::OnGridCellChanging( wxGridEvent& event )
                                "the external environment variable(s) from your system." );
             KIDIALOG dlg( this, msg1, KIDIALOG::KD_WARNING );
             dlg.ShowDetailedText( msg2 );
-            dlg.DoNotShowCheckbox();
+            dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
             dlg.ShowModal();
         }
         else if( col == EV_NAME_COL && m_EnvVars->GetCellValue( row, EV_NAME_COL ) != text )
@@ -320,6 +342,9 @@ void DIALOG_CONFIGURE_PATHS::OnGridCellChanging( wxGridEvent& event )
 
 void DIALOG_CONFIGURE_PATHS::OnAddEnvVar( wxCommandEvent& event )
 {
+    if( !m_EnvVars->CommitPendingChanges() )
+        return;
+
     AppendEnvVar( wxEmptyString, wxEmptyString, false );
 
     m_EnvVars->MakeCellVisible( m_EnvVars->GetNumberRows() - 1, EV_NAME_COL );
@@ -332,6 +357,9 @@ void DIALOG_CONFIGURE_PATHS::OnAddEnvVar( wxCommandEvent& event )
 
 void DIALOG_CONFIGURE_PATHS::OnAddSearchPath( wxCommandEvent& event )
 {
+    if( !m_SearchPaths->CommitPendingChanges() )
+        return;
+
     AppendSearchPath( wxEmptyString, wxEmptyString, wxEmptyString);
 
     m_SearchPaths->MakeCellVisible( m_SearchPaths->GetNumberRows() - 1, SP_ALIAS_COL );
@@ -346,23 +374,19 @@ void DIALOG_CONFIGURE_PATHS::OnRemoveEnvVar( wxCommandEvent& event )
 {
     int curRow = m_EnvVars->GetGridCursorRow();
 
-    if( !m_EnvVars->HasFocus() || curRow < 0 )
-    {
-        m_EnvVars->SetFocus();
+    if( curRow < 0 || m_EnvVars->GetNumberRows() <= curRow )
         return;
-    }
-
-    if( IsEnvVarImmutable( m_EnvVars->GetCellValue( curRow, EV_NAME_COL ) ) )
+    else if( IsEnvVarImmutable( m_EnvVars->GetCellValue( curRow, EV_NAME_COL ) ) )
     {
         wxBell();
         return;
     }
 
+    m_EnvVars->CommitPendingChanges( true /* silent mode; we don't care if it's valid */ );
     m_EnvVars->DeleteRows( curRow, 1 );
 
-    curRow = std::max( 0, curRow - 1 );
-    m_EnvVars->MakeCellVisible( curRow, m_EnvVars->GetGridCursorCol() );
-    m_EnvVars->SetGridCursor( curRow, m_EnvVars->GetGridCursorCol() );
+    m_EnvVars->MakeCellVisible( std::max( 0, curRow-1 ), m_EnvVars->GetGridCursorCol() );
+    m_EnvVars->SetGridCursor( std::max( 0, curRow-1 ), m_EnvVars->GetGridCursorCol() );
 }
 
 
@@ -370,26 +394,24 @@ void DIALOG_CONFIGURE_PATHS::OnDeleteSearchPath( wxCommandEvent& event )
 {
     int curRow = m_SearchPaths->GetGridCursorRow();
 
-    if( !m_SearchPaths->HasFocus() || curRow < 0 )
-    {
-        m_SearchPaths->SetFocus();
+    if( curRow < 0 || m_SearchPaths->GetNumberRows() <= curRow )
         return;
-    }
 
+    m_SearchPaths->CommitPendingChanges( true /* silent mode; we don't care if it's valid */ );
     m_SearchPaths->DeleteRows( curRow, 1 );
 
-    curRow = std::max( 0, curRow - 1 );
-    m_SearchPaths->MakeCellVisible( curRow, m_SearchPaths->GetGridCursorCol() );
-    m_SearchPaths->SetGridCursor( curRow, m_SearchPaths->GetGridCursorCol() );
+    m_SearchPaths->MakeCellVisible( std::max( 0, curRow-1 ), m_SearchPaths->GetGridCursorCol() );
+    m_SearchPaths->SetGridCursor( std::max( 0, curRow-1 ), m_SearchPaths->GetGridCursorCol() );
 }
 
 
 void DIALOG_CONFIGURE_PATHS::OnSearchPathMoveUp( wxCommandEvent& event )
 {
+    if( !m_SearchPaths->CommitPendingChanges() )
+        return;
+
     int curRow   = m_SearchPaths->GetGridCursorRow();
     int prevRow  = curRow - 1;
-
-    m_SearchPaths->DisableCellEditControl();
 
     if( curRow > 0 )
     {
@@ -402,15 +424,18 @@ void DIALOG_CONFIGURE_PATHS::OnSearchPathMoveUp( wxCommandEvent& event )
 
         m_SearchPaths->SetGridCursor( prevRow, m_SearchPaths->GetGridCursorCol() );
     }
+    else
+        wxBell();
 }
 
 
 void DIALOG_CONFIGURE_PATHS::OnSearchPathMoveDown( wxCommandEvent& event )
 {
+    if( !m_SearchPaths->CommitPendingChanges() )
+        return;
+
     int curRow   = m_SearchPaths->GetGridCursorRow();
     int nextRow  = curRow + 1;
-
-    m_SearchPaths->DisableCellEditControl();
 
     if( curRow < m_SearchPaths->GetNumberRows() - 1 )
     {
@@ -423,6 +448,8 @@ void DIALOG_CONFIGURE_PATHS::OnSearchPathMoveDown( wxCommandEvent& event )
 
         m_SearchPaths->SetGridCursor( nextRow, m_SearchPaths->GetGridCursorCol() );
     }
+    else
+        wxBell();
 }
 
 

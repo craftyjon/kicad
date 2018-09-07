@@ -402,10 +402,9 @@ public:
     static TOOL_ACTION findMove;
 
     static TOOL_ACTION editFootprintInFpEditor;
-    static TOOL_ACTION copyPadToSettings;
-    static TOOL_ACTION copySettingsToPads;
-    static TOOL_ACTION globalEditPads;
 
+    static TOOL_ACTION autoplaceOffboardComponents;
+    static TOOL_ACTION autoplaceSelectedComponents;
 
     ///> @copydoc COMMON_ACTIONS::TranslateLegacyId()
     virtual OPT<TOOL_EVENT> TranslateLegacyId( int aId ) override;

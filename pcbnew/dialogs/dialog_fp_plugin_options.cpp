@@ -29,6 +29,7 @@
 #include <dialog_fp_plugin_options_base.h>
 #include <fp_lib_table.h>
 #include <grid_tricks.h>
+#include <widgets/wx_grid.h>
 #include <bitmaps.h>
 
 
@@ -59,6 +60,11 @@ public:
         m_grid_widths_dirty( true )
     {
         SetTitle( wxString::Format( _( "Options for Library \"%s\"" ), aNickname ) );
+
+        // Give a bit more room for combobox editors
+        m_grid->SetDefaultRowSize( m_grid->GetDefaultRowSize() + 4 );
+
+        m_grid->SetSelectionMode( wxGrid::wxGridSelectionModes::wxGridSelectRows );
 
         // add Cut, Copy, and Paste to wxGrid
         m_grid->PushEventHandler( new GRID_TRICKS( m_grid ) );
@@ -129,8 +135,8 @@ public:
 
     bool TransferDataFromWindow() override
     {
-        // Write any active editors into the grid
-        m_grid->DisableCellEditControl();
+        if( !m_grid->CommitPendingChanges() )
+            return false;
 
         if( !DIALOG_SHIM::TransferDataFromWindow() )
             return false;
@@ -223,21 +229,24 @@ private:
 
     void onAppendOption( wxCommandEvent&  ) override
     {
+        if( !m_grid->CommitPendingChanges() )
+            return;
+
         appendOption();
     }
 
     void onAppendRow( wxCommandEvent&  ) override
     {
+        if( !m_grid->CommitPendingChanges() )
+            return;
+
         appendRow();
     }
 
     void onDeleteRow( wxCommandEvent&  ) override
     {
-        if( !m_grid->HasFocus() )
-        {
-            m_grid->SetFocus();
+        if( !m_grid->CommitPendingChanges() )
             return;
-        }
 
         int curRow   = m_grid->GetGridCursorRow();
 

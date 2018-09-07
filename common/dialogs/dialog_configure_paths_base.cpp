@@ -5,6 +5,8 @@
 // PLEASE DO *NOT* EDIT THIS FILE!
 ///////////////////////////////////////////////////////////////////////////
 
+#include "widgets/wx_grid.h"
+
 #include "dialog_configure_paths_base.h"
 
 ///////////////////////////////////////////////////////////////////////////
@@ -19,7 +21,7 @@ DIALOG_CONFIGURE_PATHS_BASE::DIALOG_CONFIGURE_PATHS_BASE( wxWindow* parent, wxWi
 	wxStaticBoxSizer* sbEnvVars;
 	sbEnvVars = new wxStaticBoxSizer( new wxStaticBox( this, wxID_ANY, _("Environment Variables") ), wxVERTICAL );
 	
-	m_EnvVars = new wxGrid( sbEnvVars->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SIMPLE );
+	m_EnvVars = new WX_GRID( sbEnvVars->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
 	
 	// Grid
 	m_EnvVars->CreateGrid( 1, 2 );
@@ -47,7 +49,7 @@ DIALOG_CONFIGURE_PATHS_BASE::DIALOG_CONFIGURE_PATHS_BASE( wxWindow* parent, wxWi
 	
 	// Cell Defaults
 	m_EnvVars->SetDefaultCellAlignment( wxALIGN_LEFT, wxALIGN_TOP );
-	m_EnvVars->SetMinSize( wxSize( 604,150 ) );
+	m_EnvVars->SetMinSize( wxSize( 604,170 ) );
 	
 	sbEnvVars->Add( m_EnvVars, 1, wxEXPAND|wxBOTTOM, 5 );
 	
@@ -75,7 +77,7 @@ DIALOG_CONFIGURE_PATHS_BASE::DIALOG_CONFIGURE_PATHS_BASE( wxWindow* parent, wxWi
 	
 	m_sb3DSearchPaths = new wxStaticBoxSizer( new wxStaticBox( this, wxID_ANY, _("3D Search Paths") ), wxVERTICAL );
 	
-	m_SearchPaths = new wxGrid( m_sb3DSearchPaths->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_SIMPLE );
+	m_SearchPaths = new WX_GRID( m_sb3DSearchPaths->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
 	
 	// Grid
 	m_SearchPaths->CreateGrid( 1, 3 );

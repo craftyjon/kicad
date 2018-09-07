@@ -31,6 +31,7 @@
 #include <fctsys.h>
 #include <pgm_base.h>
 #include <kiface_i.h>
+#include <kiway_express.h>
 #include <class_drawpanel.h>
 #include <base_screen.h>
 #include <confirm.h>
@@ -102,7 +103,10 @@ BEGIN_EVENT_TABLE( LIB_EDIT_FRAME, EDA_DRAW_FRAME )
     EVT_TOOL( ID_LIBEDIT_IMPORT_PART, LIB_EDIT_FRAME::OnImportPart )
     EVT_TOOL( ID_LIBEDIT_EXPORT_PART, LIB_EDIT_FRAME::OnExportPart )
     EVT_TOOL( ID_LIBEDIT_REMOVE_PART, LIB_EDIT_FRAME::OnRemovePart )
-    EVT_TOOL( ID_LIBEDIT_DUPLICATE_PART, LIB_EDIT_FRAME::OnDuplicatePart )
+    EVT_TOOL( ID_LIBEDIT_CUT_PART, LIB_EDIT_FRAME::OnCopyCutPart )
+    EVT_TOOL( ID_LIBEDIT_COPY_PART, LIB_EDIT_FRAME::OnCopyCutPart )
+    EVT_TOOL( ID_LIBEDIT_PASTE_PART, LIB_EDIT_FRAME::OnPasteDuplicatePart )
+    EVT_TOOL( ID_LIBEDIT_DUPLICATE_PART, LIB_EDIT_FRAME::OnPasteDuplicatePart )
 
     // Main horizontal toolbar.
     EVT_TOOL( ID_TO_LIBVIEW, LIB_EDIT_FRAME::OnOpenLibraryViewer )
@@ -1036,9 +1040,9 @@ void LIB_EDIT_FRAME::OnEditComponentProperties( wxCommandEvent& event )
     }
 
     if( oldName != GetCurPart()->GetName() )
-        m_libMgr->RemovePart( GetCurLib(), oldName );
-
-    m_libMgr->UpdatePart( GetCurPart(), GetCurLib() );
+        m_libMgr->UpdatePartAfterRename( GetCurPart(), oldName, GetCurLib() );
+    else
+        m_libMgr->UpdatePart( GetCurPart(), GetCurLib() );
 
     UpdatePartSelectList();
     DisplayLibInfos();
@@ -1514,19 +1518,20 @@ wxString LIB_EDIT_FRAME::getTargetLib() const
 }
 
 
-void LIB_EDIT_FRAME::SyncLibraries( bool aProgress )
+void LIB_EDIT_FRAME::SyncLibraries( bool aShowProgress )
 {
     LIB_ID selected;
 
     if( m_treePane )
         selected = m_treePane->GetLibTree()->GetSelectedLibId();
 
-    if( aProgress )
+    if( aShowProgress )
     {
-        wxProgressDialog progressDlg( _( "Loading Symbol Libraries" ),
-                wxEmptyString, m_libMgr->GetAdapter()->GetLibrariesCount(), this );
+        wxProgressDialog progressDlg( _( "Loading Symbol Libraries" ), wxEmptyString,
+                                      m_libMgr->GetAdapter()->GetLibrariesCount(), this );
 
-        m_libMgr->Sync( true, [&]( int progress, int max, const wxString& libName ) {
+        m_libMgr->Sync( true, [&]( int progress, int max, const wxString& libName )
+        {
             progressDlg.Update( progress, wxString::Format( _( "Loading library \"%s\"" ), libName ) );
         } );
     }
@@ -1564,15 +1569,25 @@ void LIB_EDIT_FRAME::SyncLibraries( bool aProgress )
 }
 
 
-SYMBOL_LIB_TABLE* LIB_EDIT_FRAME::selectSymLibTable()
+SYMBOL_LIB_TABLE* LIB_EDIT_FRAME::selectSymLibTable( bool aOptional )
 {
     wxArrayString libTableNames;
     libTableNames.Add( _( "Global" ) );
     libTableNames.Add( _( "Project" ) );
 
-    switch( SelectSingleOption( this, _( "Select Library Table" ),
-                                _( "Choose the Library Table to add the library to:" ),
-                                libTableNames ) )
+    wxSingleChoiceDialog dlg( this, _( "Choose the Library Table to add the library to:" ),
+                              _( "Add To Library Table" ), libTableNames );
+
+    if( aOptional )
+    {
+        dlg.FindWindow( wxID_CANCEL )->SetLabel( _( "Skip" ) );
+        dlg.FindWindow( wxID_OK )->SetLabel( _( "Add" ) );
+    }
+
+    if( dlg.ShowModal() != wxID_OK )
+        return nullptr;
+
+    switch( dlg.GetSelection() )
     {
     case 0:  return &SYMBOL_LIB_TABLE::GetGlobalLibTable();
     case 1:  return Prj().SchSymbolLibTable();
@@ -1658,3 +1673,52 @@ void LIB_EDIT_FRAME::ShowChangedLanguage()
     UpdateMsgPanel();
 }
 
+
+void LIB_EDIT_FRAME::KiwayMailIn( KIWAY_EXPRESS& mail )
+{
+    const std::string& payload = mail.GetPayload();
+
+    switch( mail.Command() )
+    {
+    case MAIL_LIB_EDIT:
+        if( !payload.empty() )
+        {
+            wxString libFileName( payload );
+            wxString libNickname;
+            wxString msg;
+
+            SYMBOL_LIB_TABLE*    libTable = Prj().SchSymbolLibTable();
+            const LIB_TABLE_ROW* libTableRow = libTable->FindRowByURI( libFileName );
+
+            if( !libTableRow )
+            {
+                msg.Printf( _( "The current configuration does not include the symbol library\n"
+                               "\"%s\".\nUse Manage Symbol Libraries to edit the configuration." ),
+                            libFileName );
+                DisplayErrorMessage( this, _( "Library not found in symbol library table." ), msg );
+                break;
+            }
+
+            libNickname = libTableRow->GetNickName();
+
+            if( !libTable->HasLibrary( libNickname, true ) )
+            {
+                msg.Printf( _( "The library with the nickname \"%s\" is not enabled\n"
+                               "in the current configuration.  Use Manage Symbol Libraries to\n"
+                               "edit the configuration." ), libNickname );
+                DisplayErrorMessage( this, _( "Symbol library not enabled." ), msg );
+                break;
+            }
+
+            SetCurLib( libNickname );
+
+            if( m_treePane )
+                m_treePane->GetLibTree()->ExpandLibId( LIB_ID( libNickname, wxEmptyString ) );
+        }
+
+        break;
+
+    default:
+        ;
+    }
+}

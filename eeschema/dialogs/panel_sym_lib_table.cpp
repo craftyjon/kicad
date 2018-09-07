@@ -28,6 +28,7 @@
 #include <symbol_lib_table.h>
 #include <lib_table_lexer.h>
 #include <grid_tricks.h>
+#include <widgets/wx_grid.h>
 #include <confirm.h>
 #include <bitmaps.h>
 #include <lib_table_grid.h>
@@ -168,6 +169,9 @@ PANEL_SYM_LIB_TABLE::PANEL_SYM_LIB_TABLE( DIALOG_EDIT_LIBRARY_TABLES* aParent,
     m_global_grid->PushEventHandler( new SYMBOL_GRID_TRICKS( m_parent, m_global_grid ) );
     m_project_grid->PushEventHandler( new SYMBOL_GRID_TRICKS( m_parent, m_project_grid ) );
 
+    m_global_grid->SetSelectionMode( wxGrid::wxGridSelectionModes::wxGridSelectRows );
+    m_project_grid->SetSelectionMode( wxGrid::wxGridSelectionModes::wxGridSelectRows );
+
     m_global_grid->AutoSizeColumns( false );
     m_project_grid->AutoSizeColumns( false );
 
@@ -212,17 +216,20 @@ PANEL_SYM_LIB_TABLE::PANEL_SYM_LIB_TABLE( DIALOG_EDIT_LIBRARY_TABLES* aParent,
     // for ALT+A handling, we want the initial focus to be on the first selected grid.
     m_parent->SetInitialFocus( m_cur_grid );
 
-    // Gives a selection for each grid, mainly for delete lib button.
-    // Without that, we do not see what lib will be deleted
-    m_global_grid->SelectRow( 0 );
-    m_project_grid->SelectRow( 0 );
-
     // Configure button logos
     m_append_button->SetBitmap( KiBitmap( small_plus_xpm ) );
     m_delete_button->SetBitmap( KiBitmap( trash_xpm ) );
     m_move_up_button->SetBitmap( KiBitmap( small_up_xpm ) );
     m_move_down_button->SetBitmap( KiBitmap( small_down_xpm ) );
     m_browse_button->SetBitmap( KiBitmap( folder_xpm ) );
+
+    // Gives a selection to each grid, mainly for delete button.  wxGrid's wake up with
+    // a currentCell which is sometimes not highlighted.
+    if( m_global_grid->GetNumberRows() > 0 )
+        m_global_grid->SelectRow( 0 );
+
+    if( m_project_grid->GetNumberRows() > 0 )
+        m_project_grid->SelectRow( 0 );
 }
 
 
@@ -417,6 +424,9 @@ void PANEL_SYM_LIB_TABLE::browseLibrariesHandler( wxCommandEvent& event )
 
 void PANEL_SYM_LIB_TABLE::appendRowHandler( wxCommandEvent& event )
 {
+    if( !m_cur_grid->CommitPendingChanges() )
+        return;
+
     if( m_cur_grid->AppendRows( 1 ) )
     {
         int row = m_cur_grid->GetNumberRows() - 1;
@@ -435,6 +445,9 @@ void PANEL_SYM_LIB_TABLE::appendRowHandler( wxCommandEvent& event )
 
 void PANEL_SYM_LIB_TABLE::deleteRowHandler( wxCommandEvent& event )
 {
+    if( !m_cur_grid->CommitPendingChanges() )
+        return;
+
     int curRow = m_cur_grid->GetGridCursorRow();
     int curCol = m_cur_grid->GetGridCursorCol();
 
@@ -463,6 +476,12 @@ void PANEL_SYM_LIB_TABLE::deleteRowHandler( wxCommandEvent& event )
     if( selectedRows.size() == 0 && m_cur_grid->GetGridCursorRow() >= 0 )
         selectedRows.Add( m_cur_grid->GetGridCursorRow() );
 
+    if( selectedRows.size() == 0 )
+    {
+        wxBell();
+        return;
+    }
+
     std::sort( selectedRows.begin(), selectedRows.end() );
 
     // Remove selected rows (note: a row can be stored more than once in list)
@@ -485,6 +504,9 @@ void PANEL_SYM_LIB_TABLE::deleteRowHandler( wxCommandEvent& event )
 
 void PANEL_SYM_LIB_TABLE::moveUpHandler( wxCommandEvent& event )
 {
+    if( !m_cur_grid->CommitPendingChanges() )
+        return;
+
     SYMBOL_LIB_TABLE_GRID* tbl = cur_model();
     int curRow = m_cur_grid->GetGridCursorRow();
 
@@ -512,6 +534,9 @@ void PANEL_SYM_LIB_TABLE::moveUpHandler( wxCommandEvent& event )
 
 void PANEL_SYM_LIB_TABLE::moveDownHandler( wxCommandEvent& event )
 {
+    if( !m_cur_grid->CommitPendingChanges() )
+        return;
+
     SYMBOL_LIB_TABLE_GRID* tbl = cur_model();
     int curRow = m_cur_grid->GetGridCursorRow();
 
@@ -539,8 +564,8 @@ void PANEL_SYM_LIB_TABLE::moveDownHandler( wxCommandEvent& event )
 
 bool PANEL_SYM_LIB_TABLE::TransferDataFromWindow()
 {
-    // Commit any pending in-place edits and close the editor
-    m_cur_grid->DisableCellEditControl();
+    if( !m_cur_grid->CommitPendingChanges() )
+        return false;
 
     if( !verifyTables() )
         return false;

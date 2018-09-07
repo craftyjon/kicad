@@ -23,9 +23,12 @@
 #include <class_board.h>
 #include <board_connected_item.h>
 #include <class_module.h>
+#include <class_text_mod.h>
+#include <class_edge_mod.h>
 #include <class_track.h>
 #include <class_zone.h>
 #include <class_drawsegment.h>
+#include <class_pcb_text.h>
 #include <board_commit.h>
 #include <layers_id_colors_and_visibility.h>
 #include <geometry/convex_hull.h>
@@ -187,7 +190,8 @@ int PNS_PCBNEW_RULE_RESOLVER::Clearance( const PNS::ITEM* aA, const PNS::ITEM* a
     int cl_b = ( net_b >= 0 ? m_netClearanceCache[net_b].clearance : m_defaultClearance );
 
     // Clearance in differential pairs can only happen when there is a specific net
-    if( net_a >= 0 && net_b >= 0 && m_netClearanceCache[net_a].coupledNet == net_b )
+    if( m_router->Mode() == PNS::PNS_MODE_ROUTE_DIFF_PAIR &&
+            net_a >= 0 && net_b >= 0 && m_netClearanceCache[net_a].coupledNet == net_b )
     {
         cl_a = m_netClearanceCache[net_a].dpClearance;
         cl_b = m_netClearanceCache[net_b].dpClearance;
@@ -373,7 +377,7 @@ public:
             return;
 
         m_items = new KIGFX::VIEW_GROUP( m_view );
-        m_items->SetLayer( LAYER_GP_OVERLAY ) ;
+        m_items->SetLayer( LAYER_SELECT_OVERLAY ) ;
         m_view->Add( m_items );
     }
 
@@ -800,7 +804,7 @@ bool PNS_KICAD_IFACE::syncZone( PNS::NODE* aWorld, ZONE_CONTAINER* aZone )
             wxString::Format( _( "%s\nThis zone cannot be handled by the track layout tool.\n"
                                  "Please verify it is not a self-intersecting polygon." ),
                               aZone->GetSelectMenuText( MILLIMETRES ) ) );
-        dlg.DoNotShowCheckbox();
+        dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
         dlg.ShowModal();
 
         return false;
@@ -843,11 +847,64 @@ bool PNS_KICAD_IFACE::syncZone( PNS::NODE* aWorld, ZONE_CONTAINER* aZone )
     return true;
 }
 
+
+bool PNS_KICAD_IFACE::syncTextItem( PNS::NODE* aWorld, EDA_TEXT* aText, PCB_LAYER_ID aLayer )
+{
+    if( !IsCopperLayer( aLayer ) )
+        return false;
+
+    int textWidth = aText->GetThickness();
+    std::vector<wxPoint> textShape;
+
+    aText->TransformTextShapeToSegmentList( textShape );
+
+    if( textShape.size() < 2 )
+        return false;
+
+    for( size_t jj = 0; jj < textShape.size(); jj += 2 )
+    {
+        VECTOR2I start( textShape[jj] );
+        VECTOR2I end( textShape[jj+1] );
+        std::unique_ptr< PNS::SOLID > solid( new PNS::SOLID );
+
+        solid->SetLayer( aLayer );
+        solid->SetNet( -1 );
+        solid->SetParent( nullptr );
+        solid->SetShape( new SHAPE_SEGMENT( start, end, textWidth ) );
+        solid->SetRoutable( false );
+
+        aWorld->Add( std::move( solid ) );
+    }
+
+    return true;
+
+    /* A coarser (but faster) method:
+     *
+    SHAPE_POLY_SET outline;
+    SHAPE_SIMPLE* shape = new SHAPE_SIMPLE();
+
+    aText->TransformBoundingBoxWithClearanceToPolygon( &outline, 0 );
+
+    for( auto iter = outline.CIterate( 0 ); iter; iter++ )
+        shape->Append( *iter );
+
+    solid->SetShape( shape );
+
+    solid->SetLayer( aLayer );
+    solid->SetNet( -1 );
+    solid->SetParent( nullptr );
+    solid->SetRoutable( false );
+    aWorld->Add( std::move( solid ) );
+    return true;
+     */
+}
+
+
 bool PNS_KICAD_IFACE::syncGraphicalItem( PNS::NODE* aWorld, DRAWSEGMENT* aItem )
 {
     std::vector<SHAPE_SEGMENT*> segs;
 
-    if( aItem->GetLayer() != Edge_Cuts )
+    if( aItem->GetLayer() != Edge_Cuts && !IsCopperLayer( aItem->GetLayer() ) )
         return false;
 
     switch( aItem->GetShape() )
@@ -915,7 +972,11 @@ bool PNS_KICAD_IFACE::syncGraphicalItem( PNS::NODE* aWorld, DRAWSEGMENT* aItem )
     {
         std::unique_ptr< PNS::SOLID > solid( new PNS::SOLID );
 
-        solid->SetLayers( LAYER_RANGE( F_Cu, B_Cu ) );
+        if( aItem->GetLayer() == Edge_Cuts )
+            solid->SetLayers( LAYER_RANGE( F_Cu, B_Cu ) );
+        else
+            solid->SetLayer( aItem->GetLayer() );
+
         solid->SetNet( -1 );
         solid->SetParent( nullptr );
         solid->SetShape( seg );
@@ -950,6 +1011,10 @@ void PNS_KICAD_IFACE::SyncWorld( PNS::NODE *aWorld )
         {
             syncGraphicalItem( aWorld, static_cast<DRAWSEGMENT*>( gitem ) );
         }
+        else if( gitem->Type() == PCB_TEXT_T )
+        {
+            syncTextItem( aWorld, dynamic_cast<TEXTE_PCB*>( gitem ), gitem->GetLayer() );
+        }
     }
 
     for( auto zone : m_board->Zones() )
@@ -968,6 +1033,21 @@ void PNS_KICAD_IFACE::SyncWorld( PNS::NODE *aWorld )
 
 
             worstPadClearance = std::max( worstPadClearance, pad->GetLocalClearance() );
+        }
+
+        syncTextItem( aWorld, &module->Reference(), module->Reference().GetLayer() );
+        syncTextItem( aWorld, &module->Value(), module->Value().GetLayer() );
+
+        for( auto mgitem : module->GraphicalItems() )
+        {
+            if( mgitem->Type() == PCB_MODULE_EDGE_T )
+            {
+                syncGraphicalItem( aWorld, static_cast<DRAWSEGMENT*>( mgitem ) );
+            }
+            else if( mgitem->Type() == PCB_MODULE_TEXT_T )
+            {
+                syncTextItem( aWorld, dynamic_cast<TEXTE_MODULE*>( mgitem ), mgitem->GetLayer() );
+            }
         }
     }
 
@@ -1139,7 +1219,7 @@ void PNS_KICAD_IFACE::SetView( KIGFX::VIEW* aView )
 
     m_view = aView;
     m_previewItems = new KIGFX::VIEW_GROUP( m_view );
-    m_previewItems->SetLayer( LAYER_GP_OVERLAY ) ;
+    m_previewItems->SetLayer( LAYER_SELECT_OVERLAY ) ;
     m_view->Add( m_previewItems );
 
     delete m_debugDecorator;

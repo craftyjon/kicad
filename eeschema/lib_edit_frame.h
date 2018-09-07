@@ -62,6 +62,9 @@ class LIB_EDIT_FRAME : public SCH_BASE_FRAME
     SYMBOL_TREE_PANE*  m_treePane;             ///< component search tree widget
     LIB_MANAGER*       m_libMgr;               ///< manager taking care of temporary modificatoins
 
+    // Copy/cut/paste buffer to move parts between libraries
+    std::unique_ptr<LIB_PART> m_copiedPart;
+
     /** Convert of the item currently being drawn. */
     bool m_drawSpecificConvert;
 
@@ -293,6 +296,8 @@ public:
     void OnRemovePart( wxCommandEvent& aEvent );
 
     void OnDuplicatePart( wxCommandEvent& aEvent );
+    void OnCopyCutPart( wxCommandEvent& aEvent );
+    void OnPasteDuplicatePart( wxCommandEvent& aEvent );
 
     void OnSelectPart( wxCommandEvent& event );
 
@@ -687,9 +692,10 @@ public:
     void SVG_PlotComponent( const wxString& aFullFileName );
 
     /**
-     * Synchronize the library manager and the symbol library table. Displays a progress dialog.
+     * Synchronize the library manager to the symbol library table, and then the symbol tree
+     * to the library manager.  Optionally displays a progress dialog.
      */
-    void SyncLibraries( bool aLoad );
+    void SyncLibraries( bool aShowProgress );
 
     /**
      * Allows Libedit to install its preferences panel into the preferences dialog.
@@ -703,15 +709,18 @@ public:
 
     void ShowChangedLanguage() override;
 
+    void KiwayMailIn( KIWAY_EXPRESS& mail ) override;
+
 private:
     ///> Helper screen used when no part is loaded
     SCH_SCREEN* m_dummyScreen;
 
     /**
      * Displays a dialog asking the user to select a symbol library table.
+     * @param aOptional if set the Cancel button will be relabelled "Skip".
      * @return Pointer to the selected symbol library table or nullptr if cancelled.
      */
-    SYMBOL_LIB_TABLE* selectSymLibTable();
+    SYMBOL_LIB_TABLE* selectSymLibTable( bool aOptional = false );
 
     ///> Creates a backup copy of a file with requested extension
     bool backupFile( const wxFileName& aOriginalFile, const wxString& aBackupExt );

@@ -48,6 +48,7 @@ class RN_DATA;
 class RN_NET;
 class TRACK;
 class D_PAD;
+class MODULE;
 class PROGRESS_REPORTER;
 
 struct CN_DISJOINT_NET_ENTRY
@@ -174,6 +175,8 @@ public:
 
     const std::vector<D_PAD*> GetConnectedPads( const BOARD_CONNECTED_ITEM* aItem ) const;
 
+    const void GetConnectedPads( const BOARD_CONNECTED_ITEM* aItem, std::set<D_PAD*>* pads ) const;
+
     const std::vector<BOARD_CONNECTED_ITEM*> GetConnectedItems( const BOARD_CONNECTED_ITEM* aItem, const VECTOR2I& aAnchor, KICAD_T aTypes[] );
 
     void GetUnconnectedEdges( std::vector<CN_EDGE>& aEdges ) const;
@@ -232,11 +235,14 @@ public:
     }
 
     void MarkItemNetAsDirty( BOARD_ITEM* aItem );
-
     void SetProgressReporter( PROGRESS_REPORTER* aReporter );
 
+#ifndef SWIG
+    const std::vector<CN_EDGE> GetRatsnestForComponent( MODULE* aComponent, bool aSkipInternalConnections = false );
+#endif
+
 private:
-    
+
     int countRelevantItems( const std::vector<BOARD_ITEM*>& aItems );
     void    updateRatsnest();
     void    addRatsnestCluster( const std::shared_ptr<CN_CLUSTER>& aCluster );

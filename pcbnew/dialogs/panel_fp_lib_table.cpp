@@ -45,6 +45,7 @@
 #include <invoke_pcb_dialog.h>
 #include <bitmaps.h>
 #include <grid_tricks.h>
+#include <widgets/wx_grid.h>
 #include <confirm.h>
 #include <lib_table_grid.h>
 #include <wildcards_and_files_ext.h>
@@ -276,8 +277,6 @@ PANEL_FP_LIB_TABLE::PANEL_FP_LIB_TABLE( DIALOG_EDIT_LIBRARY_TABLES* aParent,
     m_GblTableFilename->SetLabel( aGlobalTblPath );
     m_PrjTableFilename->SetLabel( aProjectTblPath );
 
-    // wxGrid only supports user owned tables if they exist past end of ~wxGrid(),
-    // so make it a grid owned table.
     m_global_grid->SetTable(  new FP_LIB_TABLE_GRID( *aGlobal ),  true );
     m_project_grid->SetTable( new FP_LIB_TABLE_GRID( *aProject ), true );
 
@@ -288,6 +287,9 @@ PANEL_FP_LIB_TABLE::PANEL_FP_LIB_TABLE( DIALOG_EDIT_LIBRARY_TABLES* aParent,
     // add Cut, Copy, and Paste to wxGrids
     m_global_grid->PushEventHandler( new FP_GRID_TRICKS( m_parent, m_global_grid ) );
     m_project_grid->PushEventHandler( new FP_GRID_TRICKS( m_parent, m_project_grid ) );
+
+    m_global_grid->SetSelectionMode( wxGrid::wxGridSelectionModes::wxGridSelectRows );
+    m_project_grid->SetSelectionMode( wxGrid::wxGridSelectionModes::wxGridSelectRows );
 
     m_global_grid->AutoSizeColumns( false );
     m_project_grid->AutoSizeColumns( false );
@@ -345,10 +347,13 @@ PANEL_FP_LIB_TABLE::PANEL_FP_LIB_TABLE( DIALOG_EDIT_LIBRARY_TABLES* aParent,
     m_move_up_button->SetBitmap( KiBitmap( small_up_xpm ) );
     m_move_down_button->SetBitmap( KiBitmap( small_down_xpm ) );
 
-    // Gives a selection for each grid, mainly for delete lib button.
-    // Without that, we do not see what lib will be deleted
-    m_global_grid->SetGridCursor( 0, 1 );
-    m_project_grid->SetGridCursor( 0, 1 );
+    // Gives a selection to each grid, mainly for delete button.  wxGrid's wake up with
+    // a currentCell which is sometimes not highlighted.
+    if( m_global_grid->GetNumberRows() > 0 )
+        m_global_grid->SelectRow( 0 );
+
+    if( m_project_grid->GetNumberRows() > 0 )
+        m_project_grid->SelectRow( 0 );
 }
 
 
@@ -461,6 +466,9 @@ void PANEL_FP_LIB_TABLE::pageChangedHandler( wxAuiNotebookEvent& event )
 
 void PANEL_FP_LIB_TABLE::appendRowHandler( wxCommandEvent& event )
 {
+    if( !m_cur_grid->CommitPendingChanges() )
+        return;
+
     if( m_cur_grid->AppendRows( 1 ) )
     {
         int last_row = m_cur_grid->GetNumberRows() - 1;
@@ -476,6 +484,9 @@ void PANEL_FP_LIB_TABLE::appendRowHandler( wxCommandEvent& event )
 
 void PANEL_FP_LIB_TABLE::deleteRowHandler( wxCommandEvent& event )
 {
+    if( !m_cur_grid->CommitPendingChanges() )
+        return;
+
     int curRow = m_cur_grid->GetGridCursorRow();
     int curCol = m_cur_grid->GetGridCursorCol();
 
@@ -504,6 +515,12 @@ void PANEL_FP_LIB_TABLE::deleteRowHandler( wxCommandEvent& event )
     if( selectedRows.size() == 0 && m_cur_grid->GetGridCursorRow() >= 0 )
         selectedRows.Add( m_cur_grid->GetGridCursorRow() );
 
+    if( selectedRows.size() == 0 )
+    {
+        wxBell();
+        return;
+    }
+
     std::sort( selectedRows.begin(), selectedRows.end() );
 
     // Remove selected rows (note: a row can be stored more than once in list)
@@ -525,6 +542,9 @@ void PANEL_FP_LIB_TABLE::deleteRowHandler( wxCommandEvent& event )
 
 void PANEL_FP_LIB_TABLE::moveUpHandler( wxCommandEvent& event )
 {
+    if( !m_cur_grid->CommitPendingChanges() )
+        return;
+
     FP_LIB_TABLE_GRID* tbl = cur_model();
     int curRow = m_cur_grid->GetGridCursorRow();
 
@@ -552,6 +572,9 @@ void PANEL_FP_LIB_TABLE::moveUpHandler( wxCommandEvent& event )
 
 void PANEL_FP_LIB_TABLE::moveDownHandler( wxCommandEvent& event )
 {
+    if( !m_cur_grid->CommitPendingChanges() )
+        return;
+
     FP_LIB_TABLE_GRID* tbl = cur_model();
     int curRow = m_cur_grid->GetGridCursorRow();
 
@@ -579,6 +602,9 @@ void PANEL_FP_LIB_TABLE::moveDownHandler( wxCommandEvent& event )
 
 void PANEL_FP_LIB_TABLE::browseLibrariesHandler( wxCommandEvent& event )
 {
+    if( !m_cur_grid->CommitPendingChanges() )
+        return;
+
     if( m_lastBrowseDir.IsEmpty() )
         m_lastBrowseDir = m_projectBasePath;
 
@@ -669,8 +695,8 @@ void PANEL_FP_LIB_TABLE::onSizeGrid( wxSizeEvent& event )
 
 bool PANEL_FP_LIB_TABLE::TransferDataFromWindow()
 {
-    // stuff any pending cell editor text into the table.
-    m_cur_grid->DisableCellEditControl();
+    if( !m_cur_grid->CommitPendingChanges() )
+        return false;
 
     if( verifyTables() )
     {

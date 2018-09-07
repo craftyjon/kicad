@@ -968,11 +968,17 @@ void SELECTION_TOOL::selectAllItemsConnectedToTrack( TRACK& aSourceTrack )
 
 void SELECTION_TOOL::selectAllItemsConnectedToItem( BOARD_CONNECTED_ITEM& aSourceItem )
 {
-    constexpr KICAD_T types[] = { PCB_TRACE_T, PCB_VIA_T, EOT };
+    constexpr KICAD_T types[] = { PCB_TRACE_T, PCB_VIA_T, PCB_PAD_T, EOT };
     auto connectivity = board()->GetConnectivity();
 
     for( auto item : connectivity->GetConnectedItems( &aSourceItem, types ) )
-        select( item );
+    {
+        // We want to select items connected through pads but not pads
+        // otherwise, the common use case of "Select Copper"->Delete will
+        // remove footprints in addition to traces and vias
+        if( item->Type() != PCB_PAD_T )
+            select( item );
+    }
 }
 
 
@@ -1411,7 +1417,7 @@ BOARD_ITEM* SELECTION_TOOL::doSelectionMenu( GENERAL_COLLECTOR* aCollector,
     SELECTION highlightGroup;
     CONTEXT_MENU menu;
 
-    highlightGroup.SetLayer( LAYER_GP_OVERLAY );
+    highlightGroup.SetLayer( LAYER_SELECT_OVERLAY );
     getView()->Add( &highlightGroup );
 
     int limit = std::min( 9, aCollector->GetCount() );
@@ -1612,14 +1618,6 @@ bool SELECTION_TOOL::selectable( const BOARD_ITEM* aItem ) const
         // In the module editor, we do not want to select the module itself
         // rather, the module sub-components should be selected individually
         if( m_editModules )
-            return false;
-
-        float viewArea = getView()->GetViewport().GetArea();
-        float modArea = aItem->GetBoundingBox().GetArea();
-
-        // Do not select modules that are larger the view area
-        // (most likely footprints representing shield connectors)
-        if( viewArea > 0.0 && modArea > viewArea )
             return false;
 
         // Allow selection of footprints if at least one draw layer is on and
@@ -1844,10 +1842,11 @@ void SELECTION_TOOL::unhighlight( BOARD_ITEM* aItem, int aMode, SELECTION& aGrou
             if( aMode == SELECTED )
                 item->ClearSelected();
             else if( aMode == BRIGHTENED )
-            {
                 item->ClearBrightened();
-                aGroup.Remove( item );
-            }
+
+            // N.B. if we clear the selection flag for sub-elements, we need to also
+            // remove the element from the selection group (if it exists)
+            aGroup.Remove( item );
             view()->Hide( item, false );
             view()->Update( item );
         });

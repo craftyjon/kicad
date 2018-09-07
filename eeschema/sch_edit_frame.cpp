@@ -827,6 +827,16 @@ void SCH_EDIT_FRAME::OnErc( wxCommandEvent& event )
 }
 
 
+void SCH_EDIT_FRAME::CloseErc()
+{
+    // Find the ERC dialog if it's open and close it
+    wxWindow* erc = FindWindowById( ID_DIALOG_ERC, this );
+
+    if( erc )
+        erc->Close( false );
+}
+
+
 void SCH_EDIT_FRAME::OnUpdatePCB( wxCommandEvent& event )
 {
     doUpdatePcb( "" );
@@ -1379,13 +1389,19 @@ void SCH_EDIT_FRAME::addCurrentItemToList( bool aRedraw )
 
     if( item->IsNew() )
     {
+        // When a new sheet is added to the hierarchy, a clear annotation can be needed
+        // for all new sheet paths added by the new sheet (if this sheet is loaded from
+        // and existing sheet or a existing file, it can also contain subsheets)
+        bool doClearAnnotation = false;
+        SCH_SHEET_LIST initial_sheetpathList( g_RootSheet );
+
         if( item->Type() == SCH_SHEET_T )
         {
             // Fix the size and position of the new sheet using the last values set by
             // the m_mouseCaptureCallback function.
             m_canvas->SetMouseCapture( NULL, NULL );
 
-            if( !EditSheet( (SCH_SHEET*)item, g_CurrentSheet ) )
+            if( !EditSheet( (SCH_SHEET*)item, g_CurrentSheet, &doClearAnnotation ) )
             {
                 screen->SetCurItem( NULL );
                 delete item;
@@ -1422,6 +1438,14 @@ void SCH_EDIT_FRAME::addCurrentItemToList( bool aRedraw )
             else
                 wxLogMessage( wxT( "addCurrentItemToList: expected type = SCH_SHEET_PIN_T, actual type = %d" ),
                               item->Type() );
+        }
+
+        if( doClearAnnotation )
+        {
+            // Clear annotation of new sheet paths: the new sheet and its sub-sheets
+            // If needed the missing alternate references of components will be created
+            SCH_SCREENS screensList( g_RootSheet );
+            screensList.ClearAnnotationOfNewSheetPaths( initial_sheetpathList );
         }
 
         // Update connectivity info for new item

@@ -30,9 +30,9 @@
 #include <fctsys.h>
 #include <pcb_edit_frame.h>
 #include <trigo.h>
-#include <base_units.h>
 #include <board_design_settings.h>
-
+#include <class_edge_mod.h>
+#include <class_drawsegment.h>
 #include <class_module.h>
 #include <class_track.h>
 #include <class_pad.h>
@@ -42,7 +42,7 @@
 #include <view/view.h>
 #include <geometry/seg.h>
 #include <math_for_graphics.h>
-
+#include <geometry/geometry_utils.h>
 #include <connectivity_data.h>
 #include <connectivity_algo.h>
 
@@ -55,6 +55,8 @@
 #include <dialog_drc.h>
 #include <wx/progdlg.h>
 #include <board_commit.h>
+#include <geometry/shape_segment.h>
+#include <geometry/shape_arc.h>
 
 void DRC::ShowDRCDialog( wxWindow* aParent )
 {
@@ -131,7 +133,6 @@ DRC::DRC( PCB_EDIT_FRAME* aPcbWindow )
     m_pcbEditorFrame = aPcbWindow;
     m_pcb = aPcbWindow->GetBoard();
     m_drcDialog  = NULL;
-    m_units = aPcbWindow->GetUserUnits();
 
     // establish initial values for everything:
     m_drcInLegacyRoutingMode = false;
@@ -178,7 +179,11 @@ int DRC::DrcOnCreatingTrack( TRACK* aRefSegm, TRACK* aList )
     if( !doTrackDrc( aRefSegm, aList, true ) )
     {
         if( m_currentMarker )
+        {
             m_pcbEditorFrame->SetMsgPanel( m_currentMarker );
+            delete m_currentMarker;
+            m_currentMarker = nullptr;
+        }
 
         m_drcInLegacyRoutingMode = drc_state;
         m_reportAllTrackErrors = rpt_state;
@@ -187,11 +192,13 @@ int DRC::DrcOnCreatingTrack( TRACK* aRefSegm, TRACK* aList )
 
     if( !doTrackKeepoutDrc( aRefSegm ) )
     {
-        wxASSERT( m_currentMarker );
+        if( m_currentMarker )
+        {
+            m_pcbEditorFrame->SetMsgPanel( m_currentMarker );
+            delete m_currentMarker;
+            m_currentMarker = nullptr;
+        }
 
-        m_pcbEditorFrame->SetMsgPanel( m_currentMarker );
-        delete m_currentMarker;
-        m_currentMarker = nullptr;
         m_drcInLegacyRoutingMode = drc_state;
         m_reportAllTrackErrors = rpt_state;
         return BAD_DRC;
@@ -206,7 +213,6 @@ int DRC::DrcOnCreatingTrack( TRACK* aRefSegm, TRACK* aList )
 int DRC::TestZoneToZoneOutline( ZONE_CONTAINER* aZone, bool aCreateMarkers )
 {
     BOARD* board = m_pcbEditorFrame->GetBoard();
-    EDA_UNITS_T units = m_pcbEditorFrame->GetUserUnits();
     BOARD_COMMIT commit( m_pcbEditorFrame );
     int nerrors = 0;
 
@@ -225,7 +231,7 @@ int DRC::TestZoneToZoneOutline( ZONE_CONTAINER* aZone, bool aCreateMarkers )
         if( aZone && ( aZone != zoneRef) )
             continue;
 
-        for( int ia2 = 0; ia2 < board->GetAreaCount(); ia2++ )
+        for( int ia2 = ia + 1; ia2 < board->GetAreaCount(); ia2++ )
         {
             ZONE_CONTAINER* zoneToTest = board->GetArea( ia2 );
             SHAPE_POLY_SET testSmoothedPoly;
@@ -267,17 +273,12 @@ int DRC::TestZoneToZoneOutline( ZONE_CONTAINER* aZone, bool aCreateMarkers )
             for( auto iterator = refSmoothedPoly.IterateWithHoles(); iterator; iterator++ )
             {
                 VECTOR2I currentVertex = *iterator;
+                wxPoint pt( currentVertex.x, currentVertex.y );
 
                 if( testSmoothedPoly.Contains( currentVertex ) )
                 {
-                    // COPPERAREA_COPPERAREA error: copper area ref corner inside copper area
                     if( aCreateMarkers )
-                    {
-                        wxPoint pt( currentVertex.x, currentVertex.y );
-                        auto marker = new MARKER_PCB( units, COPPERAREA_INSIDE_COPPERAREA,
-                                                      pt, zoneRef, pt, zoneToTest, pt );
-                        commit.Add( marker );
-                    }
+                        commit.Add( newMarker( pt, zoneRef, zoneToTest, DRCE_ZONES_INTERSECT ) );
 
                     nerrors++;
                 }
@@ -287,23 +288,20 @@ int DRC::TestZoneToZoneOutline( ZONE_CONTAINER* aZone, bool aCreateMarkers )
             for( auto iterator = testSmoothedPoly.IterateWithHoles(); iterator; iterator++ )
             {
                 VECTOR2I currentVertex = *iterator;
+                wxPoint pt( currentVertex.x, currentVertex.y );
 
                 if( refSmoothedPoly.Contains( currentVertex ) )
                 {
-                    // COPPERAREA_COPPERAREA error: copper area corner inside copper area ref
                     if( aCreateMarkers )
-                    {
-                        wxPoint pt( currentVertex.x, currentVertex.y );
-                        auto marker = new MARKER_PCB( units, COPPERAREA_INSIDE_COPPERAREA,
-                                                      pt, zoneToTest, pt, zoneRef, pt );
-                        commit.Add( marker );
-                    }
+                        commit.Add( newMarker( pt, zoneToTest, zoneRef, DRCE_ZONES_INTERSECT ) );
 
                     nerrors++;
                 }
             }
 
             // Iterate through all the segments of refSmoothedPoly
+            std::set<wxPoint> conflictPoints;
+
             for( auto refIt = refSmoothedPoly.IterateSegmentsWithHoles(); refIt; refIt++ )
             {
                 // Build ref segment
@@ -336,18 +334,16 @@ int DRC::TestZoneToZoneOutline( ZONE_CONTAINER* aZone, bool aCreateMarkers )
                                                          &pt.x, &pt.y );
 
                     if( d < zone2zoneClearance )
-                    {
-                        // COPPERAREA_COPPERAREA error : intersect or too close
-                        if( aCreateMarkers )
-                        {
-                            auto marker = new MARKER_PCB( units, COPPERAREA_CLOSE_TO_COPPERAREA,
-                                                          pt, zoneRef, pt, zoneToTest, pt );
-                            commit.Add( marker );
-                        }
-
-                        nerrors++;
-                    }
+                        conflictPoints.insert( pt );
                 }
+            }
+
+            for( wxPoint pt : conflictPoints )
+            {
+                if( aCreateMarkers )
+                    commit.Add( newMarker( pt, zoneRef, zoneToTest, DRCE_ZONES_TOO_CLOSE ) );
+
+                nerrors++;
             }
         }
     }
@@ -430,15 +426,6 @@ void DRC::RunTests( wxTextCtrl* aMessages )
 
     testDrilledHoles();
 
-    // test track and via clearances to other tracks, pads, and vias
-    if( aMessages )
-    {
-        aMessages->AppendText( _( "Track clearances...\n" ) );
-        wxSafeYield();
-    }
-
-    testTracks( aMessages ? aMessages->GetParent() : m_pcbEditorFrame, true );
-
     // caller (a wxTopLevelFrame) is the wxDialog or the Pcb Editor frame that call DRC:
     wxWindow* caller = aMessages ? aMessages->GetParent() : m_pcbEditorFrame;
 
@@ -456,6 +443,15 @@ void DRC::RunTests( wxTextCtrl* aMessages )
 
         m_pcbEditorFrame->Check_All_Zones( caller );
     }
+
+    // test track and via clearances to other tracks, pads, and vias
+    if( aMessages )
+    {
+        aMessages->AppendText( _( "Track clearances...\n" ) );
+        wxSafeYield();
+    }
+
+    testTracks( aMessages ? aMessages->GetParent() : m_pcbEditorFrame, true );
 
     // test zone clearances to other zones
     if( aMessages )
@@ -497,7 +493,7 @@ void DRC::RunTests( wxTextCtrl* aMessages )
         wxSafeYield();
     }
 
-    testTexts();
+    testCopperTextAndGraphics();
 
     // find overlapping courtyard ares.
     if( m_pcb->GetDesignSettings().m_ProhibitOverlappingCourtyards
@@ -590,8 +586,7 @@ bool DRC::doNetClass( const NETCLASSPTR& nc, wxString& msg )
                     FmtVal( g.m_TrackMinWidth )
                     );
 
-        addMarkerToPcb( fillMarker( DRCE_NETCLASS_TRACKWIDTH, msg, m_currentMarker ) );
-        m_currentMarker = nullptr;
+        addMarkerToPcb( newMarker( DRCE_NETCLASS_TRACKWIDTH, msg ) );
         ret = false;
     }
 
@@ -603,8 +598,7 @@ bool DRC::doNetClass( const NETCLASSPTR& nc, wxString& msg )
                     FmtVal( g.m_ViasMinSize )
                     );
 
-        addMarkerToPcb( fillMarker( DRCE_NETCLASS_VIASIZE, msg, m_currentMarker ) );
-        m_currentMarker = nullptr;
+        addMarkerToPcb( newMarker( DRCE_NETCLASS_VIASIZE, msg ) );
         ret = false;
     }
 
@@ -616,8 +610,7 @@ bool DRC::doNetClass( const NETCLASSPTR& nc, wxString& msg )
                     FmtVal( g.m_ViasMinDrill )
                     );
 
-        addMarkerToPcb( fillMarker( DRCE_NETCLASS_VIADRILLSIZE, msg, m_currentMarker ) );
-        m_currentMarker = nullptr;
+        addMarkerToPcb( newMarker( DRCE_NETCLASS_VIADRILLSIZE, msg ) );
         ret = false;
     }
 
@@ -626,11 +619,9 @@ bool DRC::doNetClass( const NETCLASSPTR& nc, wxString& msg )
         msg.Printf( _( "NETCLASS: \"%s\" has uVia Dia:%s which is less than global:%s" ),
                     GetChars( nc->GetName() ),
                     FmtVal( nc->GetuViaDiameter() ),
-                    FmtVal( g.m_MicroViasMinSize )
-                    );
+                    FmtVal( g.m_MicroViasMinSize ) );
 
-        addMarkerToPcb( fillMarker( DRCE_NETCLASS_uVIASIZE, msg, m_currentMarker ) );
-        m_currentMarker = nullptr;
+        addMarkerToPcb( newMarker( DRCE_NETCLASS_uVIASIZE, msg ) );
         ret = false;
     }
 
@@ -639,11 +630,9 @@ bool DRC::doNetClass( const NETCLASSPTR& nc, wxString& msg )
         msg.Printf( _( "NETCLASS: \"%s\" has uVia Drill:%s which is less than global:%s" ),
                     GetChars( nc->GetName() ),
                     FmtVal( nc->GetuViaDrill() ),
-                    FmtVal( g.m_MicroViasMinDrill )
-                    );
+                    FmtVal( g.m_MicroViasMinDrill ) );
 
-        addMarkerToPcb( fillMarker( DRCE_NETCLASS_uVIADRILLSIZE, msg, m_currentMarker ) );
-        m_currentMarker = nullptr;
+        addMarkerToPcb( newMarker( DRCE_NETCLASS_uVIADRILLSIZE, msg ) );
         ret = false;
     }
 
@@ -890,24 +879,21 @@ void DRC::testZones()
     // if it differs from the net name from net code, there is a DRC issue
     for( int ii = 0; ii < m_pcb->GetAreaCount(); ii++ )
     {
-        ZONE_CONTAINER* test_area = m_pcb->GetArea( ii );
+        ZONE_CONTAINER* zone = m_pcb->GetArea( ii );
 
-        if( !test_area->IsOnCopperLayer() )
+        if( !zone->IsOnCopperLayer() )
             continue;
 
-        int netcode = test_area->GetNetCode();
-
+        int netcode = zone->GetNetCode();
         // a netcode < 0 or > 0 and no pad in net  is a error or strange
         // perhaps a "dead" net, which happens when all pads in this net were removed
         // Remark: a netcode < 0 should not happen (this is more a bug somewhere)
-        int pads_in_net = (test_area->GetNetCode() > 0) ?
-                            m_pcb->GetConnectivity()->GetPadCount( test_area->GetNetCode() ) : 1;
+        int pads_in_net = ( netcode > 0 ) ? m_pcb->GetConnectivity()->GetPadCount( netcode ) : 1;
 
         if( ( netcode < 0 ) || pads_in_net == 0 )
         {
-            addMarkerToPcb( fillMarker( test_area, test_area->GetPosition(),
-                                        DRCE_SUSPICIOUS_NET_FOR_ZONE_OUTLINE, m_currentMarker ) );
-            m_currentMarker = nullptr;
+            wxPoint markerPos = zone->GetPosition();
+            addMarkerToPcb( newMarker( markerPos, zone, DRCE_SUSPICIOUS_NET_FOR_ZONE_OUTLINE ) );
         }
     }
 
@@ -939,13 +925,10 @@ void DRC::testKeepoutAreas()
                 if( !area->IsOnLayer( segm->GetLayer() ) )
                     continue;
 
-                if( area->Outline()->Distance( SEG( segm->GetStart(), segm->GetEnd() ),
-                                               segm->GetWidth() ) == 0 )
-                {
-                    addMarkerToPcb( fillMarker( segm, NULL,
-                                                DRCE_TRACK_INSIDE_KEEPOUT, m_currentMarker ) );
-                    m_currentMarker = nullptr;
-                }
+                SEG trackSeg( segm->GetStart(), segm->GetEnd() );
+
+                if( area->Outline()->Distance( trackSeg, segm->GetWidth() ) == 0 )
+                    addMarkerToPcb( newMarker( segm, area, DRCE_TRACK_INSIDE_KEEPOUT ) );
             }
             else if( segm->Type() == PCB_VIA_T )
             {
@@ -958,11 +941,7 @@ void DRC::testKeepoutAreas()
                     continue;
 
                 if( area->Outline()->Distance( segm->GetPosition() ) < segm->GetWidth()/2 )
-                {
-                    addMarkerToPcb( fillMarker( segm, NULL,
-                                                DRCE_VIA_INSIDE_KEEPOUT, m_currentMarker ) );
-                    m_currentMarker = nullptr;
-                }
+                    addMarkerToPcb( newMarker( segm, area, DRCE_VIA_INSIDE_KEEPOUT ) );
             }
         }
         // Test pads: TODO
@@ -970,123 +949,204 @@ void DRC::testKeepoutAreas()
 }
 
 
-void DRC::testTexts()
+void DRC::testCopperTextAndGraphics()
 {
-    std::vector<wxPoint> textShape;      // a buffer to store the text shape (set of segments)
-    std::vector<D_PAD*> padList = m_pcb->GetPads();
+    // Test copper items for clearance violations with vias, tracks and pads
 
-    // Test text areas for vias, tracks and pads inside text areas
-    for( auto item : m_pcb->Drawings() )
+    for( BOARD_ITEM* brdItem : m_pcb->Drawings() )
     {
-        // Drc test only items on copper layers
-        if( !IsCopperLayer( item->GetLayer() ) )
-            continue;
-
-        // only texts on copper layers are tested
-        if( item->Type() !=  PCB_TEXT_T )
-            continue;
-
-        textShape.clear();
-
-        // So far the bounding box makes up the text-area
-        TEXTE_PCB* text = (TEXTE_PCB*) item;
-        text->TransformTextShapeToSegmentList( textShape );
-
-        if( textShape.size() == 0 )     // Should not happen (empty text?)
-            continue;
-
-        for( TRACK* track = m_pcb->m_Track; track != NULL; track = track->Next() )
+        if( IsCopperLayer( brdItem->GetLayer() ) )
         {
-            if( !track->IsOnLayer( item->GetLayer() ) )
-                    continue;
+            if( brdItem->Type() == PCB_TEXT_T )
+                testCopperTextItem( brdItem );
+            else if( brdItem->Type() == PCB_LINE_T )
+                testCopperDrawItem( static_cast<DRAWSEGMENT*>( brdItem ));
+        }
+    }
 
-            // Test the distance between each segment and the current track/via
-            int min_dist = ( track->GetWidth() + text->GetThickness() ) /2 +
-                           track->GetClearance(NULL);
+    for( MODULE* module : m_pcb->Modules() )
+    {
+        if( IsCopperLayer( module->Reference().GetLayer() ) )
+            testCopperTextItem( &module->Reference());
 
-            if( track->Type() == PCB_TRACE_T )
+        if( IsCopperLayer( module->Value().GetLayer() ) )
+            testCopperTextItem( &module->Value());
+
+        for( BOARD_ITEM* item = module->GraphicalItemsList();  item;  item = item->Next() )
+        {
+            if( IsCopperLayer( item->GetLayer() ) )
             {
-                SEG segref( track->GetStart(), track->GetEnd() );
-
-                // Error condition: Distance between text segment and track segment is
-                // smaller than the clearance of the segment
-                for( unsigned jj = 0; jj < textShape.size(); jj += 2 )
-                {
-                    SEG segtest( textShape[jj], textShape[jj+1] );
-                    int dist = segref.Distance( segtest );
-
-                    if( dist < min_dist )
-                    {
-                        addMarkerToPcb( fillMarker( track, text,
-                                                    DRCE_TRACK_INSIDE_TEXT, m_currentMarker ) );
-                        m_currentMarker = nullptr;
-                        break;
-                    }
-                }
-            }
-            else if( track->Type() == PCB_VIA_T )
-            {
-                // Error condition: Distance between text segment and via is
-                // smaller than the clearance of the via
-                for( unsigned jj = 0; jj < textShape.size(); jj += 2 )
-                {
-                    SEG segtest( textShape[jj], textShape[jj+1] );
-
-                    if( segtest.PointCloserThan( track->GetPosition(), min_dist ) )
-                    {
-                        addMarkerToPcb( fillMarker( track, text,
-                                                    DRCE_VIA_INSIDE_TEXT, m_currentMarker ) );
-                        m_currentMarker = nullptr;
-                        break;
-                    }
-                }
+                if( item->Type() == PCB_MODULE_TEXT_T )
+                    testCopperTextItem( item );
+                else if( item->Type() == PCB_MODULE_EDGE_T )
+                    testCopperDrawItem( static_cast<DRAWSEGMENT*>( item ));
             }
         }
+    }
+}
 
-        // Test pads
-        for( unsigned ii = 0; ii < padList.size(); ii++ )
+
+void DRC::testCopperDrawItem( DRAWSEGMENT* aItem )
+{
+    std::vector<SEG> itemShape;
+    int itemWidth = aItem->GetWidth();
+
+    switch( aItem->GetShape() )
+    {
+    case S_ARC:
+    {
+        SHAPE_ARC arc( aItem->GetCenter(), aItem->GetArcStart(), (double) aItem->GetAngle() / 10.0 );
+
+        auto l = arc.ConvertToPolyline();
+
+        for( int i = 0; i < l.SegmentCount(); i++ )
+            itemShape.push_back( l.CSegment(i) );
+
+        break;
+    }
+
+    case S_SEGMENT:
+        itemShape.push_back( SEG( aItem->GetStart(), aItem->GetEnd() ) );
+        break;
+
+    case S_CIRCLE:
+    {
+        // SHAPE_CIRCLE has no ConvertToPolyline() method, so use a 360.0 SHAPE_ARC
+        SHAPE_ARC circle( aItem->GetCenter(), aItem->GetEnd(), 360.0 );
+
+        auto l = circle.ConvertToPolyline();
+
+        for( int i = 0; i < l.SegmentCount(); i++ )
+            itemShape.push_back( l.CSegment(i) );
+
+        break;
+    }
+
+    case S_CURVE:
+    {
+        aItem->RebuildBezierToSegmentsPointsList( aItem->GetWidth() );
+        wxPoint start_pt = aItem->GetBezierPoints()[0];
+
+        for( unsigned int jj = 1; jj < aItem->GetBezierPoints().size(); jj++ )
         {
-            D_PAD* pad = padList[ii];
+            wxPoint end_pt = aItem->GetBezierPoints()[jj];
+            itemShape.push_back( SEG( start_pt, end_pt ) );
+            start_pt = end_pt;
+        }
 
-            if( !pad->IsOnLayer( item->GetLayer() ) )
-                    continue;
+        break;
+    }
 
-            wxPoint shape_pos = pad->ShapePos();
+    default:
+        break;
+    }
 
-            for( unsigned jj = 0; jj < textShape.size(); jj += 2 )
+    // Test tracks and vias
+    for( TRACK* track = m_pcb->m_Track; track != NULL; track = track->Next() )
+    {
+        if( !track->IsOnLayer( aItem->GetLayer() ) )
+            continue;
+
+        int minDist = ( track->GetWidth() + itemWidth ) / 2 + track->GetClearance( NULL );
+        SEG trackAsSeg( track->GetStart(), track->GetEnd() );
+
+        for( const auto& itemSeg : itemShape )
+        {
+            if( trackAsSeg.Distance( itemSeg ) < minDist )
             {
-                /* In order to make some calculations more easier or faster,
-                 * pads and tracks coordinates will be made relative
-                 * to the segment origin
-                 */
-                wxPoint origin = textShape[jj];  // origin will be the origin of other coordinates
-                m_segmEnd = textShape[jj+1] - origin;
-                wxPoint delta = m_segmEnd;
-                m_segmAngle = 0;
+                if( track->Type() == PCB_VIA_T )
+                    addMarkerToPcb( newMarker( track, aItem, itemSeg, DRCE_VIA_NEAR_COPPER ) );
+                else
+                    addMarkerToPcb( newMarker( track, aItem, itemSeg, DRCE_TRACK_NEAR_COPPER ) );
+                break;
+            }
+        }
+    }
 
-                // for a non horizontal or vertical segment Compute the segment angle
-                // in tenths of degrees and its length
-                if( delta.x || delta.y )    // delta.x == delta.y == 0 for vias
-                {
-                    // Compute the segment angle in 0,1 degrees
-                    m_segmAngle = ArcTangente( delta.y, delta.x );
+    // Test pads
+    for( auto pad : m_pcb->GetPads() )
+    {
+        if( !pad->IsOnLayer( aItem->GetLayer() ) )
+            continue;
 
-                    // Compute the segment length: we build an equivalent rotated segment,
-                    // this segment is horizontal, therefore dx = length
-                    RotatePoint( &delta, m_segmAngle );    // delta.x = length, delta.y = 0
-                }
+        const int      segmentCount = 18;
+        double         correctionFactor = GetCircletoPolyCorrectionFactor( segmentCount );
+        SHAPE_POLY_SET padOutline;
 
-                m_segmLength = delta.x;
-                m_padToTestPos = shape_pos - origin;
+        // We incorporate "minDist" into the pad's outline
+        pad->TransformShapeWithClearanceToPolygon( padOutline, pad->GetClearance( NULL ),
+                                                   segmentCount, correctionFactor );
 
-                if( !checkClearanceSegmToPad( pad, text->GetThickness(),
-                                              pad->GetClearance(NULL) ) )
-                {
-                    addMarkerToPcb( fillMarker( pad, text,
-                                                DRCE_PAD_INSIDE_TEXT, m_currentMarker ) );
-                    m_currentMarker = nullptr;
-                    break;
-                }
+        for( const auto& itemSeg : itemShape )
+        {
+            if( padOutline.Distance( itemSeg, itemWidth ) == 0 )
+            {
+                addMarkerToPcb( newMarker( pad, aItem, DRCE_PAD_NEAR_COPPER ) );
+                break;
+            }
+        }
+    }
+}
+
+
+void DRC::testCopperTextItem( BOARD_ITEM* aTextItem )
+{
+    EDA_TEXT* text = dynamic_cast<EDA_TEXT*>( aTextItem );
+    std::vector<wxPoint> textShape;      // a buffer to store the text shape (set of segments)
+    int textWidth = text->GetThickness();
+
+    // So far the bounding box makes up the text-area
+    text->TransformTextShapeToSegmentList( textShape );
+
+    if( textShape.size() == 0 )     // Should not happen (empty text?)
+        return;
+
+    // Test tracks and vias
+    for( TRACK* track = m_pcb->m_Track; track != NULL; track = track->Next() )
+    {
+        if( !track->IsOnLayer( aTextItem->GetLayer() ) )
+            continue;
+
+        int minDist = ( track->GetWidth() + textWidth ) / 2 + track->GetClearance( NULL );
+        SEG trackAsSeg( track->GetStart(), track->GetEnd() );
+
+        for( unsigned jj = 0; jj < textShape.size(); jj += 2 )
+        {
+            SEG textSeg( textShape[jj], textShape[jj+1] );
+
+            if( trackAsSeg.Distance( textSeg ) < minDist )
+            {
+                if( track->Type() == PCB_VIA_T )
+                    addMarkerToPcb( newMarker( track, aTextItem, textSeg, DRCE_VIA_NEAR_COPPER ) );
+                else
+                    addMarkerToPcb( newMarker( track, aTextItem, textSeg, DRCE_TRACK_NEAR_COPPER ) );
+                break;
+            }
+        }
+    }
+
+    // Test pads
+    for( auto pad : m_pcb->GetPads() )
+    {
+        if( !pad->IsOnLayer( aTextItem->GetLayer() ) )
+            continue;
+
+        const int      segmentCount = 18;
+        double         correctionFactor = GetCircletoPolyCorrectionFactor( segmentCount );
+        SHAPE_POLY_SET padOutline;
+
+        // We incorporate "minDist" into the pad's outline
+        pad->TransformShapeWithClearanceToPolygon( padOutline, pad->GetClearance( NULL ),
+                                                   segmentCount, correctionFactor );
+
+        for( unsigned jj = 0; jj < textShape.size(); jj += 2 )
+        {
+            SEG textSeg( textShape[jj], textShape[jj+1] );
+
+            if( padOutline.Distance( textSeg, textWidth ) == 0 )
+            {
+                addMarkerToPcb( newMarker( pad, aTextItem, DRCE_PAD_NEAR_COPPER ) );
+                break;
             }
         }
     }
@@ -1101,10 +1161,7 @@ void DRC::testDisabledLayers()
 
     auto createMarker = [&]( BOARD_ITEM* aItem )
     {
-        m_currentMarker = fillMarker( aItem, aItem->GetPosition(), DRCE_DISABLED_LAYER_ITEM,
-                                      m_currentMarker );
-        addMarkerToPcb( m_currentMarker );
-        m_currentMarker = nullptr;
+        addMarkerToPcb( newMarker( aItem->GetPosition(), aItem, DRCE_DISABLED_LAYER_ITEM ) );
     };
 
     for( auto track : board->Tracks() )
@@ -1151,8 +1208,7 @@ bool DRC::doTrackKeepoutDrc( TRACK* aRefSeg )
             if( area->Outline()->Distance( SEG( aRefSeg->GetStart(), aRefSeg->GetEnd() ),
                                            aRefSeg->GetWidth() ) == 0 )
             {
-                m_currentMarker = fillMarker( aRefSeg, NULL,
-                                              DRCE_TRACK_INSIDE_KEEPOUT, m_currentMarker );
+                m_currentMarker = newMarker( aRefSeg, area, DRCE_TRACK_INSIDE_KEEPOUT );
                 return false;
             }
         }
@@ -1168,8 +1224,7 @@ bool DRC::doTrackKeepoutDrc( TRACK* aRefSeg )
 
             if( area->Outline()->Distance( aRefSeg->GetPosition() ) < aRefSeg->GetWidth()/2 )
             {
-                m_currentMarker = fillMarker( aRefSeg, NULL,
-                                              DRCE_VIA_INSIDE_KEEPOUT, m_currentMarker );
+                m_currentMarker = newMarker( aRefSeg, area, DRCE_VIA_INSIDE_KEEPOUT );
                 return false;
             }
         }
@@ -1251,8 +1306,7 @@ bool DRC::doPadToPadsDrc( D_PAD* aRefPad, D_PAD** aStart, D_PAD** aEnd, int x_li
                 if( !checkClearancePadToPad( aRefPad, &dummypad ) )
                 {
                     // here we have a drc error on pad!
-                    m_currentMarker = fillMarker( pad, aRefPad,
-                                                  DRCE_HOLE_NEAR_PAD, m_currentMarker );
+                    m_currentMarker = newMarker( pad, aRefPad, DRCE_HOLE_NEAR_PAD );
                     return false;
                 }
             }
@@ -1268,8 +1322,7 @@ bool DRC::doPadToPadsDrc( D_PAD* aRefPad, D_PAD** aStart, D_PAD** aEnd, int x_li
                 if( !checkClearancePadToPad( pad, &dummypad ) )
                 {
                     // here we have a drc error on aRefPad!
-                    m_currentMarker = fillMarker( aRefPad, pad,
-                                                  DRCE_HOLE_NEAR_PAD, m_currentMarker );
+                    m_currentMarker = newMarker( aRefPad, pad, DRCE_HOLE_NEAR_PAD );
                     return false;
                 }
             }
@@ -1304,7 +1357,7 @@ bool DRC::doPadToPadsDrc( D_PAD* aRefPad, D_PAD** aStart, D_PAD** aEnd, int x_li
         if( !checkClearancePadToPad( aRefPad, pad ) )
         {
             // here we have a drc error!
-            m_currentMarker = fillMarker( aRefPad, pad, DRCE_PAD_NEAR_PAD1, m_currentMarker );
+            m_currentMarker = newMarker( aRefPad, pad, DRCE_PAD_NEAR_PAD1 );
             return false;
         }
     }
@@ -1323,15 +1376,12 @@ bool DRC::doFootprintOverlappingDrc()
     // Update courtyard polygons, and test for missing courtyard definition:
     for( MODULE* footprint = m_pcb->m_Modules; footprint; footprint = footprint->Next() )
     {
+        wxPoint pos = footprint->GetPosition();
         bool is_ok = footprint->BuildPolyCourtyard();
 
         if( !is_ok && m_pcb->GetDesignSettings().m_ProhibitOverlappingCourtyards )
         {
-            m_currentMarker = fillMarker( footprint, footprint->GetPosition(),
-                                          DRCE_MALFORMED_COURTYARD_IN_FOOTPRINT,
-                                          m_currentMarker );
-            addMarkerToPcb( m_currentMarker );
-            m_currentMarker = nullptr;
+            addMarkerToPcb( newMarker( pos, footprint, DRCE_MALFORMED_COURTYARD_IN_FOOTPRINT ) );
             success = false;
         }
 
@@ -1342,11 +1392,7 @@ bool DRC::doFootprintOverlappingDrc()
             footprint->GetPolyCourtyardBack().OutlineCount() == 0 &&
             is_ok )
         {
-            m_currentMarker = fillMarker( footprint, footprint->GetPosition(),
-                                          DRCE_MISSING_COURTYARD_IN_FOOTPRINT,
-                                          m_currentMarker );
-            addMarkerToPcb( m_currentMarker );
-            m_currentMarker = nullptr;
+            addMarkerToPcb( newMarker( pos, footprint, DRCE_MISSING_COURTYARD_IN_FOOTPRINT ) );
             success = false;
         }
     }
@@ -1380,10 +1426,8 @@ bool DRC::doFootprintOverlappingDrc()
             {
                 //Overlap between footprint and candidate
                 VECTOR2I& pos = courtyard.Vertex( 0, 0, -1 );
-                m_currentMarker = fillMarker( wxPoint( pos.x, pos.y ), footprint, candidate,
-                                              DRCE_OVERLAPPING_FOOTPRINTS, m_currentMarker );
-                addMarkerToPcb( m_currentMarker );
-                m_currentMarker = nullptr;
+                addMarkerToPcb( newMarker( wxPoint( pos.x, pos.y ), footprint, candidate,
+                                           DRCE_OVERLAPPING_FOOTPRINTS ) );
                 success = false;
             }
         }
@@ -1413,10 +1457,8 @@ bool DRC::doFootprintOverlappingDrc()
             {
                 //Overlap between footprint and candidate
                 VECTOR2I& pos = courtyard.Vertex( 0, 0, -1 );
-                m_currentMarker = fillMarker( wxPoint( pos.x, pos.y ), footprint, candidate,
-                                              DRCE_OVERLAPPING_FOOTPRINTS, m_currentMarker );
-                addMarkerToPcb( m_currentMarker );
-                m_currentMarker = nullptr;
+                addMarkerToPcb( newMarker( wxPoint( pos.x, pos.y ), footprint, candidate,
+                                           DRCE_OVERLAPPING_FOOTPRINTS ) );
                 success = false;
             }
         }
