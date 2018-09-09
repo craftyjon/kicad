@@ -887,6 +887,21 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                             auto type = driver->Connection( subsheet )->Type();
 
+                            // Directly update subsheet net connections
+                            if( connection->IsNet() )
+                            {
+                                for( auto c_item : candidate->m_items )
+                                {
+                                    auto c = c_item->Connection( subsheet );
+
+                                    wxASSERT( c );
+
+                                    c->SetSheet( connection->Sheet() );
+                                    c->SetNetCode( connection->NetCode() );
+                                }
+                            }
+
+                            // Now propagate to subsheet neighbors
                             for( auto& kv : candidate->m_neighbor_map )
                             {
                                 auto member = kv.first;
