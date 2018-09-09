@@ -897,7 +897,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                                     // Bus group: match parent by name
                                     for( auto parent_member : connection->Members() )
                                     {
-                                        if( parent_member->Name() == member->Name() )
+                                        if( parent_member->Name( true ) == member->Name( true ) )
                                         {
                                             top_level_conn = parent_member;
                                         }
