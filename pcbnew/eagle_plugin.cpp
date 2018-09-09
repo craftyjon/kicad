@@ -689,7 +689,7 @@ void EAGLE_PLUGIN::loadPlain( wxXmlNode* aGraphics )
             module->SetReference( wxString::Format( "@HOLE%d", m_hole_count++ ) );
             module->Reference().SetVisible( false );
 
-            packageHole( module, gr );
+            packageHole( module, gr, true );
 
             m_xpath->pop();
         }
@@ -1372,7 +1372,7 @@ MODULE* EAGLE_PLUGIN::makeModule( wxXmlNode* aPackage, const wxString& aPkgName 
             packageCircle( m.get(), packageItem );
 
         else if( itemName == "hole" )
-            packageHole( m.get(), packageItem );
+            packageHole( m.get(), packageItem, false );
 
         else if( itemName == "smd" )
             packageSMD( m.get(), packageItem );
@@ -1785,7 +1785,7 @@ void EAGLE_PLUGIN::packageCircle( MODULE* aModule, wxXmlNode* aTree ) const
 }
 
 
-void EAGLE_PLUGIN::packageHole( MODULE* aModule, wxXmlNode* aTree ) const
+void EAGLE_PLUGIN::packageHole( MODULE* aModule, wxXmlNode* aTree, bool aCenter ) const
 {
     EHOLE   e( aTree );
 
@@ -1803,8 +1803,17 @@ void EAGLE_PLUGIN::packageHole( MODULE* aModule, wxXmlNode* aTree ) const
 
     wxPoint padpos( kicad_x( e.x ), kicad_y( e.y ) );
 
-    pad->SetPos0( padpos );
-    pad->SetPosition( padpos + aModule->GetPosition() );
+    if( aCenter )
+    {
+        pad->SetPos0( wxPoint( 0, 0 ) );
+        aModule->SetPosition( padpos );
+        pad->SetPosition( padpos );
+    }
+    else
+    {
+        pad->SetPos0( padpos );
+        pad->SetPosition( padpos + aModule->GetPosition() );
+    }
 
     wxSize  sz( e.drill.ToPcbUnits(), e.drill.ToPcbUnits() );
 
@@ -2172,7 +2181,9 @@ PCB_LAYER_ID EAGLE_PLUGIN::kicad_layer( int aEagleLayer ) const
         switch( aEagleLayer )
         {
         // Eagle says "Dimension" layer, but it's for board perimeter
+        case EAGLE_LAYER::MILLING:       kiLayer = Edge_Cuts;    break;
         case EAGLE_LAYER::DIMENSION:     kiLayer = Edge_Cuts;    break;
+
         case EAGLE_LAYER::TPLACE:        kiLayer = F_SilkS;      break;
         case EAGLE_LAYER::BPLACE:        kiLayer = B_SilkS;      break;
         case EAGLE_LAYER::TNAMES:        kiLayer = F_SilkS;      break;
@@ -2208,7 +2219,6 @@ PCB_LAYER_ID EAGLE_PLUGIN::kicad_layer( int aEagleLayer ) const
         case EAGLE_LAYER::BKEEPOUT:
         case EAGLE_LAYER::TTEST:
         case EAGLE_LAYER::BTEST:
-        case EAGLE_LAYER::MILLING:
         case EAGLE_LAYER::HOLES:
         default:
             // some layers do not map to KiCad
