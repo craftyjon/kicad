@@ -379,6 +379,7 @@ void NETLIST_EXPORTER_PSPICE::UpdateDirectives( unsigned aCtl )
     const SCH_SHEET_LIST& sheetList = g_RootSheet;
 
     m_directives.clear();
+    bool controlBlock = false;
 
     for( unsigned i = 0; i < sheetList.size(); i++ )
     {
@@ -399,6 +400,12 @@ void NETLIST_EXPORTER_PSPICE::UpdateDirectives( unsigned aCtl )
             {
                 wxString line( tokenizer.GetNextToken() );
 
+                // Convert to lower-case and remove preceding
+                // and trailing white-space characters
+                line.MakeLower().Trim( true ).Trim( false );
+
+                // 'Include' directive stores the library file name, so it
+                // can be later resolved using a list of paths
                 if( line.StartsWith( ".inc" ) )
                 {
                     wxString lib = line.AfterFirst( ' ' );
@@ -415,11 +422,32 @@ void NETLIST_EXPORTER_PSPICE::UpdateDirectives( unsigned aCtl )
 
                     m_libraries.insert( lib );
                 }
+
+                // Store the title to be sure it appears
+                // in the first line of output
                 else if( line.StartsWith( ".title " ) )
                 {
                     m_title = line.AfterFirst( ' ' );
                 }
+
+                // Handle .control .. .endc blocks
+                else if( line.IsSameAs( ".control" ) && ( !controlBlock ) )
+                {
+                    controlBlock = true;
+                }
+                else if( line.IsSameAs( ".endc" ) && controlBlock )
+                {
+                    controlBlock = false;
+                    m_directives.push_back( line );
+                }
+
+                // Usual one-line directives
                 else if( line.StartsWith( '.' ) )
+                {
+                    m_directives.push_back( line );
+                }
+
+                if( controlBlock )
                 {
                     m_directives.push_back( line );
                 }
