@@ -43,6 +43,9 @@ public:
     virtual bool OnCmdLineParsed(wxCmdLineParser& parser) override;
 
 private:
+    ///> Returns file extension for the selected output format
+    wxString getOutputExt() const;
+
 #ifdef SUPPORTS_IGES
     bool     m_fmtIGES;
 #endif
@@ -250,23 +253,29 @@ int KICAD2MCAD::OnRun()
     wxFileName tfname;
 
     if( m_outputFile.empty() )
+    {
         tfname.Assign( fname.GetFullPath() );
+        tfname.SetExt( getOutputExt() );
+    }
     else
+    {
         tfname.Assign( m_outputFile );
 
-    // Set the file extension if the user's requested file name does not have an extension.
-    if( !tfname.HasExt() )
+        // Set the file extension if the user's requested
+        // file name does not have an extension.
+        if( !tfname.HasExt() )
+            tfname.SetExt( getOutputExt() );
+    }
+
+    if( tfname.FileExists() && !m_overwrite )
     {
-#ifdef SUPPORTS_IGES
-        if( m_fmtIGES )
-            tfname.SetExt( "igs" );
-        else
-#endif
-            tfname.SetExt( "stp" );
+        std::cerr << "** Output already exists. "
+            << "Enable the force overwrite flag to overwrite it." << std::endl;
+
+        return -1;
     }
 
     wxString outfile = tfname.GetFullPath();
-
     KICADPCB pcb;
 
     pcb.SetOrigin( m_xOrigin, m_yOrigin );
@@ -288,10 +297,10 @@ int KICAD2MCAD::OnRun()
 
         #ifdef SUPPORTS_IGES
             if( m_fmtIGES )
-                res = pcb.WriteIGES( outfile, m_overwrite );
+                res = pcb.WriteIGES( outfile );
             else
         #endif
-                res = pcb.WriteSTEP( outfile, m_overwrite );
+                res = pcb.WriteSTEP( outfile );
 
             if( !res )
                 return -1;
@@ -309,4 +318,15 @@ int KICAD2MCAD::OnRun()
     }
 
     return 0;
+}
+
+
+wxString KICAD2MCAD::getOutputExt() const
+{
+#ifdef SUPPORTS_IGES
+    if( m_fmtIGES )
+        return wxString( "igs" );
+    else
+#endif
+        return wxString( "stp" );
 }

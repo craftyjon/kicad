@@ -62,6 +62,8 @@
 #include <tools/pcb_actions.h>
 
 const wxChar PCB_BASE_FRAME::CANVAS_TYPE_KEY[] = wxT( "canvas_type" );
+const wxChar PCB_BASE_FRAME::AUTO_ZOOM_KEY[] = wxT( "AutoZoom" );
+const wxChar PCB_BASE_FRAME::ZOOM_KEY[] = wxT( "Zoom" );
 
 // Configuration entry names.
 static const wxChar UserGridSizeXEntry[] = wxT( "PcbUserGrid_X" );
@@ -170,7 +172,7 @@ FP_LIB_TABLE* PROJECT::PcbFootprintLibs()
     FP_LIB_TABLE*   tbl = (FP_LIB_TABLE*) GetElem( ELEM_FPTBL );
 
     // its gotta be NULL or a FP_LIB_TABLE, or a bug.
-    wxASSERT( !tbl || dynamic_cast<FP_LIB_TABLE*>( tbl ) );
+    wxASSERT( !tbl || tbl->Type() == FP_LIB_TABLE_T );
 
     if( !tbl )
     {
@@ -736,7 +738,7 @@ void PCB_BASE_FRAME::OnUpdateSelectGrid( wxUpdateUIEvent& aEvent )
 
 void PCB_BASE_FRAME::OnUpdateSelectZoom( wxUpdateUIEvent& aEvent )
 {
-    if( m_zoomSelectBox == NULL || m_auxiliaryToolBar == NULL )
+    if( m_zoomSelectBox == NULL || m_zoomSelectBox->GetParent() == NULL )
         return;
 
     int current = 0;    // display Auto if no match found
@@ -1069,6 +1071,7 @@ void PCB_BASE_FRAME::updateGridSelectBox()
 
     m_gridSelectBox->SetSelection( icurr );
 }
+
 
 void PCB_BASE_FRAME::updateZoomSelectBox()
 {

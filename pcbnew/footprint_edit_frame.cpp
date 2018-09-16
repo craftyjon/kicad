@@ -270,7 +270,6 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent,
 
     // ReCreateMenuBar();       // UseGalCanvas() will do this for us.
     ReCreateHToolbar();
-    ReCreateAuxiliaryToolbar();
     ReCreateVToolbar();
     ReCreateOptToolbar();
 
@@ -289,7 +288,6 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent,
 
     // Horizontal items; layers 4 - 6
     m_auimgr.AddPane( m_mainToolBar, EDA_PANE().HToolbar().Name( "MainToolbar" ).Top().Layer(6) );
-    m_auimgr.AddPane( m_auxiliaryToolBar, EDA_PANE().HToolbar().Name( "AuxToolbar" ).Top().Layer(4) );
     m_auimgr.AddPane( m_messagePanel, EDA_PANE().Messages().Name( "MsgPanel" ).Bottom().Layer(6) );
 
     // Vertical items; layers 1 - 3
@@ -347,24 +345,24 @@ BOARD_ITEM_CONTAINER* FOOTPRINT_EDIT_FRAME::GetModel() const
 }
 
 
-LIB_ID FOOTPRINT_EDIT_FRAME::getTargetFPId() const
+LIB_ID FOOTPRINT_EDIT_FRAME::getTargetFPID() const
 {
     LIB_ID   id = m_treePane->GetLibTree()->GetSelectedLibId();
     wxString nickname = id.GetLibNickname();
 
     if( nickname.IsEmpty() )
-        return GetCurrentFPId();
+        return GetLoadedFPID();
 
     return id;
 }
 
 
-LIB_ID FOOTPRINT_EDIT_FRAME::GetCurrentFPId() const
+LIB_ID FOOTPRINT_EDIT_FRAME::GetLoadedFPID() const
 {
     MODULE* module = GetBoard()->m_Modules;
 
     if( module )
-        return module->GetFPID();
+        return LIB_ID( module->GetFPID().GetLibNickname(), m_footprintNameWhenLoaded );
     else
         return LIB_ID();
 }
@@ -380,7 +378,7 @@ bool FOOTPRINT_EDIT_FRAME::IsCurrentFPFromBoard() const
 
 void FOOTPRINT_EDIT_FRAME::retainLastFootprint()
 {
-    LIB_ID id = GetCurrentFPId();
+    LIB_ID id = GetLoadedFPID();
 
     if( id.IsValid() )
     {
@@ -404,7 +402,10 @@ void FOOTPRINT_EDIT_FRAME::restoreLastFootprint()
         MODULE* module = loadFootprint( id );
 
         if( module )
+        {
+            m_footprintNameWhenLoaded = curFootprintName;
             GetBoard()->Add( module );
+        }
     }
 }
 
@@ -572,7 +573,7 @@ void FOOTPRINT_EDIT_FRAME::OnUpdateModuleSelected( wxUpdateUIEvent& aEvent )
 
 void FOOTPRINT_EDIT_FRAME::OnUpdateModuleTargeted( wxUpdateUIEvent& aEvent )
 {
-    aEvent.Enable( getTargetFPId().IsValid() );
+    aEvent.Enable( getTargetFPID().IsValid() );
 }
 
 
@@ -584,7 +585,7 @@ void FOOTPRINT_EDIT_FRAME::OnUpdateSave( wxUpdateUIEvent& aEvent )
 
 void FOOTPRINT_EDIT_FRAME::OnUpdateSaveAs( wxUpdateUIEvent& aEvent )
 {
-    LIB_ID libId = getTargetFPId();
+    LIB_ID libId = getTargetFPID();
     const wxString& libName = libId.GetLibNickname();
     const wxString& partName = libId.GetLibItemName();
 
@@ -729,7 +730,7 @@ void FOOTPRINT_EDIT_FRAME::OnModify()
 void FOOTPRINT_EDIT_FRAME::updateTitle()
 {
     wxString title = _( "Footprint Library Editor" );
-    LIB_ID   fpid = GetCurrentFPId();
+    LIB_ID   fpid = GetLoadedFPID();
     bool     writable = true;
 
     if( fpid.IsValid() )
@@ -743,14 +744,16 @@ void FOOTPRINT_EDIT_FRAME::updateTitle()
             // best efforts...
         }
 
+        // Note: don't used GetLoadedFPID(); footprint name may have been edited
         title += wxString::Format( wxT( " \u2014 %s %s" ),
-                                   FROM_UTF8( fpid.Format().c_str() ),
+                                   FROM_UTF8( GetBoard()->m_Modules->GetFPID().Format().c_str() ),
                                    writable ? wxString( wxEmptyString ) : _( "[Read Only]" ) );
     }
     else if( !fpid.GetLibItemName().empty() )
     {
+        // Note: don't used GetLoadedFPID(); footprint name may have been edited
         title += wxString::Format( wxT( " \u2014 %s %s" ),
-                                   FROM_UTF8( fpid.GetLibItemName().c_str() ),
+                                   FROM_UTF8( GetBoard()->m_Modules->GetFPID().GetLibItemName().c_str() ),
                                    _( "[Unsaved]" ) );
     }
 
@@ -811,7 +814,7 @@ void FOOTPRINT_EDIT_FRAME::SyncLibraryTree( bool aProgress )
 {
     FP_LIB_TABLE* fpTable = Prj().PcbFootprintLibs();
     auto          adapter = static_cast<FP_TREE_SYNCHRONIZING_ADAPTER*>( m_adapter.get() );
-    LIB_ID        target = getTargetFPId();
+    LIB_ID        target = getTargetFPID();
     bool          targetSelected = ( target == m_treePane->GetLibTree()->GetSelectedLibId() );
 
     // Sync FOOTPRINT_INFO list to the libraries on disk
@@ -986,7 +989,6 @@ void FOOTPRINT_EDIT_FRAME::CommonSettingsChanged()
     PCB_BASE_EDIT_FRAME::CommonSettingsChanged();
 
     ReCreateHToolbar();
-    ReCreateAuxiliaryToolbar();
     ReCreateVToolbar();
     ReCreateOptToolbar();
     Layout();

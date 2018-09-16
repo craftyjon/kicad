@@ -47,6 +47,8 @@ class FOOTPRINT_EDIT_FRAME : public PCB_BASE_EDIT_FRAME
     FOOTPRINT_TREE_PANE*        m_treePane;
     LIB_TREE_MODEL_ADAPTER::PTR m_adapter;
 
+    wxString                    m_footprintNameWhenLoaded;
+
 public:
 
     ~FOOTPRINT_EDIT_FRAME();
@@ -121,7 +123,6 @@ public:
 
     void ReCreateVToolbar() override;
     void ReCreateOptToolbar() override;
-    void ReCreateAuxiliaryToolbar() override;
     void OnLeftClick( wxDC* DC, const wxPoint& MousePos ) override;
 
     /**
@@ -296,10 +297,10 @@ public:
     BOARD_ITEM* ModeditLocateAndDisplay( int aHotKeyCode = 0 );
 
     /// Return the LIB_ID of the part selected in the footprint or the part being edited.
-    LIB_ID getTargetFPId() const;
+    LIB_ID getTargetFPID() const;
 
     /// Return the LIB_ID of the part being edited.
-    LIB_ID GetCurrentFPId() const;
+    LIB_ID GetLoadedFPID() const;
 
     void RemoveStruct( EDA_ITEM* Item );
 
@@ -411,7 +412,7 @@ public:
      * Function DeleteModuleFromLibrary
      * deletes the given module from its library.
      */
-    bool DeleteModuleFromLibrary( MODULE* aModule );
+    bool DeleteModuleFromLibrary( const LIB_ID& aFPID, bool aConfirm );
 
     /**
      * Function IsElementVisible
@@ -550,6 +551,11 @@ protected:
     TEXTE_MODULE* CreateTextModule( MODULE* aModule, wxDC* aDC );
 
 private:
+
+    /**
+     * Run the Footprint Properties dialog and handle changes made in it.
+     */
+    void editFootprintProperties( MODULE* aFootprint );
 
     /**
      * Function moveExact

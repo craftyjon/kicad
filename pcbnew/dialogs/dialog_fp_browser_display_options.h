@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2015 Cirilo Bernardo <cirilo.bernardo@gmail.com>
+ * Copyright (C) 2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,19 +21,29 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#ifndef CACHE_WRAPPER_3D_H
-#define CACHE_WRAPPER_3D_H
+#ifndef DIALOG_FP_BROWSER_DISPLAY_OPTIONS_H
+#define DIALOG_FP_BROWSER_DISPLAY_OPTIONS_H
 
-#include <project.h>
-#include "3d_cache.h"
+#include <dialog_fp_browser_display_options_base.h>
 
-class CACHE_WRAPPER : public S3D_CACHE, public PROJECT::_ELEM
+
+class FOOTPRINT_VIEWER_FRAME;
+
+
+class DIALOG_FP_BROWSER_DISPLAY_OPTIONS : public DIALOG_FP_BROWSER_DISPLAY_OPTIONS_BASE
 {
-public:
-    KICAD_T Type() override { return CACHE_WRAPPER_T; }
+private:
+    FOOTPRINT_VIEWER_FRAME* m_frame;
 
-    CACHE_WRAPPER();
-    virtual ~CACHE_WRAPPER();
+public:
+    DIALOG_FP_BROWSER_DISPLAY_OPTIONS( FOOTPRINT_VIEWER_FRAME* aParent );
+    ~DIALOG_FP_BROWSER_DISPLAY_OPTIONS();
+
+private:
+    void initDialog();
+    void UpdateObjectSettings();
+    void OnApplyClick( wxCommandEvent& event ) override;
+    bool TransferDataFromWindow() override;
 };
 
-#endif  // CACHE_WRAPPER_3D_H
+#endif      // DIALOG_FP_BROWSER_DISPLAY_OPTIONS_H

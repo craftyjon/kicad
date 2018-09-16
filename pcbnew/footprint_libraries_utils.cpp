@@ -53,6 +53,7 @@
 #include <wildcards_and_files_ext.h>
 #include <kicad_plugin.h>
 #include <legacy_plugin.h>
+#include <env_paths.h>
 
 
 // unique, "file local" translations:
@@ -317,11 +318,10 @@ MODULE* FOOTPRINT_EDIT_FRAME::Import_Module( const wxString& aName )
             return NULL;
     }
 
-    LIB_ID fpid;
-    fpid.SetLibItemName( module->GetFPID().GetLibItemName() );
-    module->SetFPID( fpid );
+    module->SetFPID( LIB_ID( wxEmptyString, moduleName ) );
 
     // Insert footprint in list
+    m_footprintNameWhenLoaded = module->GetFPID().GetLibItemName();
     GetBoard()->Add( module );
 
     // Display info :
@@ -501,15 +501,21 @@ wxString PCB_BASE_EDIT_FRAME::CreateNewLibrary(const wxString& aLibName )
 
         pi->FootprintLibCreate( libPath );
 
+        // try to use path normalized to an environmental variable or project path
+        wxString path = NormalizePath( libPath, &Pgm().GetLocalEnvVariables(), &Prj() );
+
+        if( path.IsEmpty() )
+            path = libPath;
+
         if( saveInGlobalTable )
         {
-            auto row = new FP_LIB_TABLE_ROW( fn.GetName(), libPath, wxT( "KiCad" ), wxEmptyString );
+            auto row = new FP_LIB_TABLE_ROW( fn.GetName(), path, wxT( "KiCad" ), wxEmptyString );
             GFootprintTable.InsertRow( row );
             GFootprintTable.Save( FP_LIB_TABLE::GetGlobalTableFileName() );
         }
         else if( saveInProjectTable )
         {
-            auto row = new FP_LIB_TABLE_ROW( fn.GetName(), libPath, wxT( "KiCad" ), wxEmptyString );
+            auto row = new FP_LIB_TABLE_ROW( fn.GetName(), path, wxT( "KiCad" ), wxEmptyString );
             Prj().PcbFootprintLibs()->InsertRow( row );
             Prj().PcbFootprintLibs()->Save( Prj().FootprintLibTblName() );
         }
@@ -524,18 +530,13 @@ wxString PCB_BASE_EDIT_FRAME::CreateNewLibrary(const wxString& aLibName )
 }
 
 
-bool FOOTPRINT_EDIT_FRAME::DeleteModuleFromLibrary( MODULE* aModule )
+bool FOOTPRINT_EDIT_FRAME::DeleteModuleFromLibrary( const LIB_ID& aFPID, bool aConfirm )
 {
-    if( !aModule )
+    if( !aFPID.IsValid() )
         return false;
 
-    LIB_ID fpid = aModule->GetFPID();
-
-    if( !fpid.IsValid() )
-        return false;
-
-    wxString nickname = fpid.GetLibNickname();
-    wxString fpname = fpid.GetLibItemName();
+    wxString nickname = aFPID.GetLibNickname();
+    wxString fpname = aFPID.GetLibItemName();
 
     // Legacy libraries are readable, but modifying legacy format is not allowed
     // So prompt the user if he try to delete a footprint from a legacy lib
@@ -557,7 +558,7 @@ bool FOOTPRINT_EDIT_FRAME::DeleteModuleFromLibrary( MODULE* aModule )
     // Confirmation
     wxString msg = wxString::Format( FMT_OK_DELETE, fpname.GetData(), nickname.GetData() );
 
-    if( !IsOK( this, msg ) )
+    if( aConfirm && !IsOK( this, msg ) )
         return false;
 
     try
@@ -670,16 +671,24 @@ bool FOOTPRINT_EDIT_FRAME::SaveFootprint( MODULE* aModule )
 {
     wxString libraryName = aModule->GetFPID().GetLibNickname();
     wxString footprintName = aModule->GetFPID().GetLibItemName();
+    bool nameChanged = m_footprintNameWhenLoaded != footprintName;
 
     if( aModule->GetLink() )
     {
-        return SaveFootprintToBoard( false );
+        if( SaveFootprintToBoard( false ) )
+        {
+            m_footprintNameWhenLoaded = footprintName;
+            return true;
+        }
+        else
+            return false;
     }
 
     if( libraryName.IsEmpty() || footprintName.IsEmpty() )
         return SaveFootprintAs( aModule );
 
     FP_LIB_TABLE* tbl = Prj().PcbFootprintLibs();
+    bool syncLibraryTree = false;
 
     // Legacy libraries are readable, but modifying legacy format is not allowed
     // So prompt the user if he try to add/replace a footprint in a legacy lib
@@ -689,6 +698,12 @@ bool FOOTPRINT_EDIT_FRAME::SaveFootprint( MODULE* aModule )
     {
         DisplayInfoMessage( this, INFO_LEGACY_LIB_WARN_EDIT );
         return false;
+    }
+
+    if( nameChanged )
+    {
+        LIB_ID oldFPID( libraryName, m_footprintNameWhenLoaded );
+        DeleteModuleFromLibrary( oldFPID, false );
     }
 
     try
@@ -707,6 +722,12 @@ bool FOOTPRINT_EDIT_FRAME::SaveFootprint( MODULE* aModule )
     {
         DisplayError( this, ioe.What() );
         return false;
+    }
+
+    if( nameChanged )
+    {
+        m_footprintNameWhenLoaded = footprintName;
+        SyncLibraryTree( true );
     }
 
     return true;
@@ -911,6 +932,8 @@ bool FOOTPRINT_EDIT_FRAME::SaveFootprintAs( MODULE* aModule )
         DisplayError( this, ioe.What() );
         return false;
     }
+
+    m_footprintNameWhenLoaded = footprintName;
 
     wxString fmt = module_exists ? _( "Component \"%s\" replaced in \"%s\"" ) :
                                    _( "Component \"%s\" added in  \"%s\"" );

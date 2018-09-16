@@ -34,6 +34,7 @@ using namespace std::placeholders;
 #include "pcb_actions.h"
 #include "selection_tool.h"
 #include "point_editor.h"
+#include "grid_helper.h"
 #include <board_commit.h>
 #include <bitmaps.h>
 #include <status_popup.h>
@@ -302,6 +303,8 @@ int POINT_EDITOR::OnSelectionChange( const TOOL_EVENT& aEvent )
     KIGFX::VIEW_CONTROLS* controls = getViewControls();
     KIGFX::VIEW* view = getView();
     PCB_BASE_EDIT_FRAME* editFrame = getEditFrame<PCB_BASE_EDIT_FRAME>();
+
+    GRID_HELPER grid( editFrame );
     auto item = selection.Front();
 
     m_editPoints = EDIT_POINTS_FACTORY::Make( item, getView()->GetGAL() );
@@ -358,6 +361,7 @@ int POINT_EDITOR::OnSelectionChange( const TOOL_EVENT& aEvent )
             else
                 m_editedPoint->ApplyConstraint();
 
+            m_editedPoint->SetPosition( grid.Align( m_editedPoint->GetPosition() ) );
             updateItem();
             updatePoints();
         }
@@ -684,9 +688,18 @@ void POINT_EDITOR::updatePoints()
         case S_POLYGON:
         {
             const auto& points = segment->BuildPolyPointsList();
-            for( unsigned i = 0; i < points.size(); i++ )
+
+            if( m_editPoints->PointsSize() != (unsigned) points.size() )
             {
-                m_editPoints->Point( i ).SetPosition( points[i] );
+                getView()->Remove( m_editPoints.get() );
+                m_editedPoint = nullptr;
+                m_editPoints = EDIT_POINTS_FACTORY::Make( item, getView()->GetGAL() );
+                getView()->Add( m_editPoints.get() );
+            }
+            else
+            {
+                for( unsigned i = 0; i < points.size(); i++ )
+                    m_editPoints->Point( i ).SetPosition( points[i] );
             }
             break;
         }
@@ -857,7 +870,8 @@ bool POINT_EDITOR::canAddCorner( const EDA_ITEM& aItem )
     // Works only for zones and line segments
     return type == PCB_ZONE_AREA_T ||
            ( ( type == PCB_LINE_T || type == PCB_MODULE_EDGE_T ) &&
-               static_cast<const DRAWSEGMENT&>( aItem ).GetShape() == S_SEGMENT );
+             ( static_cast<const DRAWSEGMENT&>( aItem ).GetShape() == S_SEGMENT  ||
+               static_cast<const DRAWSEGMENT&>( aItem ).GetShape() == S_POLYGON ) );
 }
 
 
@@ -895,12 +909,18 @@ bool POINT_EDITOR::removeCornerCondition( const SELECTION& )
 
     EDA_ITEM* item = m_editPoints->GetParent();
 
-    if( !item || item->Type() != PCB_ZONE_AREA_T )
+    if( !item || !( item->Type() == PCB_ZONE_AREA_T || ( item->Type() == PCB_MODULE_EDGE_T &&
+                   static_cast<DRAWSEGMENT*>( item )->GetShape() == S_POLYGON ) ) )
         return false;
 
-    ZONE_CONTAINER* zone = static_cast<ZONE_CONTAINER*>( item );
-    auto& polyset = *zone->Outline();
-    auto vertex = findVertex( polyset, *m_editedPoint );
+    SHAPE_POLY_SET *polyset;
+
+    if( item->Type() == PCB_ZONE_AREA_T )
+        polyset = static_cast<ZONE_CONTAINER*>( item )->Outline();
+    else
+        polyset = &static_cast<DRAWSEGMENT*>( item )->GetPolyShape();
+
+    auto vertex = findVertex( *polyset, *m_editedPoint );
 
     if( !vertex.first )
         return false;
@@ -911,7 +931,7 @@ bool POINT_EDITOR::removeCornerCondition( const SELECTION& )
     // degenerating the polygon.
     // The first condition allows one to remove all corners from holes (when
     // there are only 2 vertices left, a hole is removed).
-    if( vertexIdx.m_contour == 0 && polyset.Polygon( vertexIdx.m_polygon )[vertexIdx.m_contour].PointCount() <= 3 )
+    if( vertexIdx.m_contour == 0 && polyset->Polygon( vertexIdx.m_polygon )[vertexIdx.m_contour].PointCount() <= 3 )
         return false;
 
     // Remove corner does not work with lines
@@ -937,17 +957,23 @@ int POINT_EDITOR::addCorner( const TOOL_EVENT& aEvent )
 
     BOARD_COMMIT commit( frame );
 
-    if( item->Type() == PCB_ZONE_AREA_T )
+    bool moduleEdge = item->Type() == PCB_MODULE_EDGE_T;
+
+    if( item->Type() == PCB_ZONE_AREA_T ||
+            ( moduleEdge && static_cast<DRAWSEGMENT*>( item )->GetShape() == S_POLYGON ) )
     {
-        ZONE_CONTAINER* zone = static_cast<ZONE_CONTAINER*>( item );
-        SHAPE_POLY_SET* zoneOutline = zone->Outline();
-
-        commit.Modify( zone );
-
         unsigned int nearestIdx = 0;
         unsigned int nextNearestIdx = 0;
         unsigned int nearestDist = INT_MAX;
         unsigned int firstPointInContour = 0;
+        SHAPE_POLY_SET* zoneOutline;
+
+        if( moduleEdge )
+            zoneOutline = &( static_cast<DRAWSEGMENT*>( item )->GetPolyShape() );
+        else
+            zoneOutline = static_cast<ZONE_CONTAINER*>( item )->Outline();
+
+        commit.Modify( item );
 
         // Search the best outline segment to add a new corner
         // and therefore break this segment into two segments
@@ -994,15 +1020,18 @@ int POINT_EDITOR::addCorner( const TOOL_EVENT& aEvent )
 
         // Add corner between nearestIdx and nextNearestIdx:
         zoneOutline->InsertVertex( nextNearestIdx, nearestPoint );
-        zone->Hatch();
+
+        // In board editor, we re-hatch the zone item
+        if( !moduleEdge )
+            static_cast<ZONE_CONTAINER*>( item )->Hatch();
+
 
         commit.Push( _( "Add a zone corner" ) );
     }
 
-    else if( item->Type() == PCB_LINE_T || item->Type() == PCB_MODULE_EDGE_T )
+    else if( item->Type() == PCB_LINE_T ||
+            ( moduleEdge && static_cast<DRAWSEGMENT*>( item )->GetShape() == S_SEGMENT ) )
     {
-        bool moduleEdge = item->Type() == PCB_MODULE_EDGE_T;
-
         DRAWSEGMENT* segment = static_cast<DRAWSEGMENT*>( item );
 
         if( segment->GetShape() == S_SEGMENT )
@@ -1061,7 +1090,7 @@ int POINT_EDITOR::removeCorner( const TOOL_EVENT& aEvent )
         auto zone = static_cast<ZONE_CONTAINER*>( item );
         polygon = zone->Outline();
     }
-    else if( item->Type() == PCB_LINE_T )
+    else if( (item->Type() == PCB_MODULE_EDGE_T ) || ( item->Type() == PCB_LINE_T ) )
     {
         auto ds = static_cast<DRAWSEGMENT*>( item );
 

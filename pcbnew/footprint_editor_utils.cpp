@@ -276,9 +276,9 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_MODEDIT_DELETE_PART:
-        if( DeleteModuleFromLibrary( LoadFootprint( getTargetFPId() ) ) )
+        if( DeleteModuleFromLibrary( getTargetFPID(), true ) )
         {
-            if( getTargetFPId() == GetCurrentFPId() )
+            if( getTargetFPID() == GetLoadedFPID() )
                 Clear_Pcb( false );
 
             SyncLibraryTree( true );
@@ -297,6 +297,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
                 break;
 
             SetCrossHairPosition( wxPoint( 0, 0 ) );
+            m_footprintNameWhenLoaded = module->GetFPID().GetLibItemName();
             AddModuleToBoard( module );
 
             // Initialize data relative to nets and netclasses (for a new
@@ -358,6 +359,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
                 SetCrossHairPosition( wxPoint( 0, 0 ) );
 
                 //  Add the new object to board
+                m_footprintNameWhenLoaded = module->GetFPID().GetLibItemName();
                 GetBoard()->Add( module, ADD_APPEND );
 
                 // Initialize data relative to nets and netclasses (for a new
@@ -392,7 +394,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_MODEDIT_SAVE:
-        if( getTargetFPId() == GetCurrentFPId() )
+        if( getTargetFPID() == GetLoadedFPID() )
         {
             if( SaveFootprint( GetBoard()->m_Modules ) )
             {
@@ -411,33 +413,39 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_MODEDIT_SAVE_AS:
-        if( getTargetFPId().GetLibItemName().empty() )
+        if( getTargetFPID().GetLibItemName().empty() )
         {
             // Save Library As
-            const wxString& libName = getTargetFPId().GetLibNickname();
+            const wxString& libName = getTargetFPID().GetLibNickname();
             if( SaveLibraryAs( Prj().PcbFootprintLibs()->FindRow( libName )->GetFullURI() ) )
                 SyncLibraryTree( true );
         }
-        else
+        else if( getTargetFPID() == GetLoadedFPID() )
         {
-            // Save Footprint As
-            MODULE* footprint = LoadFootprint( getTargetFPId() );
+            // Save Board Footprint As
+            MODULE* footprint = GetBoard()->m_Modules;
+
             if( footprint && SaveFootprintAs( footprint ) )
             {
-                SyncLibraryTree( false );
+                SyncLibraryTree( true );
 
-                if( getTargetFPId() == GetCurrentFPId() )
-                {
-                    m_toolManager->GetView()->Update( GetBoard()->m_Modules );
+                m_toolManager->GetView()->Update( GetBoard()->m_Modules );
 
-                    if( IsGalCanvasActive() && GetGalCanvas() )
-                        GetGalCanvas()->ForceRefresh();
-                    else
-                        GetCanvas()->Refresh();
+                if( IsGalCanvasActive() && GetGalCanvas() )
+                    GetGalCanvas()->ForceRefresh();
+                else
+                    GetCanvas()->Refresh();
 
-                    GetScreen()->ClrModify();
-                }
+                GetScreen()->ClrModify();
             }
+        }
+        else
+        {
+            // Save Selected Footprint As
+            MODULE* footprint = LoadFootprint( getTargetFPID() );
+
+            if( footprint && SaveFootprintAs( footprint ) )
+                SyncLibraryTree( false );
         }
 
         m_treePane->GetLibTree()->Refresh();
@@ -465,7 +473,10 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_MODEDIT_EXPORT_PART:
-        Export_Module( LoadFootprint( getTargetFPId() ) );
+        if( getTargetFPID() == GetLoadedFPID() )
+            Export_Module( GetBoard()->m_Modules );
+        else
+            Export_Module( LoadFootprint( getTargetFPID() ) );
         break;
 
     case ID_MODEDIT_CREATE_NEW_LIB:
@@ -477,7 +488,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         {
             LIB_ID newLib( name, wxEmptyString );
 
-            SyncLibraryTree( false );
+            SyncLibraryTree( true );
             m_treePane->GetLibTree()->SelectLibId( newLib );
         }
     }
@@ -498,6 +509,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
             break;
 
         SetCrossHairPosition( wxPoint( 0, 0 ) );
+        m_footprintNameWhenLoaded = module->GetFPID().GetLibItemName();
         AddModuleToBoard( module );
 
         if( GetBoard()->m_Modules )
@@ -547,11 +559,7 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         if( GetBoard()->m_Modules )
         {
             SetCurItem( GetBoard()->m_Modules );
-
-            DIALOG_FOOTPRINT_FP_EDITOR dialog( this, (MODULE*) GetScreen()->GetCurItem() );
-
-            dialog.ShowModal();
-            GetScreen()->GetCurItem()->ClearFlags();
+            editFootprintProperties( (MODULE*) GetScreen()->GetCurItem() );
 
             m_canvas->Refresh();
         }
@@ -576,13 +584,9 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_POPUP_PCB_EDIT_MODULE_PRMS:
-        {
-            DIALOG_FOOTPRINT_FP_EDITOR dialog( this, (MODULE*) GetScreen()->GetCurItem() );
-            dialog.ShowModal();
-            GetScreen()->GetCurItem()->ClearFlags();
-            m_canvas->MoveCursorToCrossHair();
-            m_canvas->Refresh();
-        }
+        editFootprintProperties( (MODULE*) GetScreen()->GetCurItem() );
+        m_canvas->MoveCursorToCrossHair();
+        m_canvas->Refresh();
         break;
 
     case ID_POPUP_PCB_MOVE_PAD_REQUEST:
@@ -763,6 +767,19 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
                       wxT( "FOOTPRINT_EDIT_FRAME::Process_Special_Functions error" ) );
         break;
     }
+}
+
+
+void FOOTPRINT_EDIT_FRAME::editFootprintProperties( MODULE* aModule )
+{
+    LIB_ID oldFPID = aModule->GetFPID();
+
+    DIALOG_FOOTPRINT_FP_EDITOR dialog( this, aModule );
+    dialog.ShowModal();
+
+    GetScreen()->GetCurItem()->ClearFlags();
+
+    updateTitle();      // in case of a name change...
 }
 
 

@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2015 Cirilo Bernardo <cirilo.bernardo@gmail.com>
+ * Copyright (C) 2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,19 +21,30 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#ifndef CACHE_WRAPPER_3D_H
-#define CACHE_WRAPPER_3D_H
+#ifndef GRID_READONLY_TEXT_HELPERS_H
+#define GRID_READONLY_TEXT_HELPERS_H
 
-#include <project.h>
-#include "3d_cache.h"
+#include <wx/textctrl.h>
+#include <wx/generic/gridctrl.h>
+#include <wx/generic/grideditors.h>
 
-class CACHE_WRAPPER : public S3D_CACHE, public PROJECT::_ELEM
+
+class GRID_CELL_READONLY_TEXT_EDITOR : public wxGridCellTextEditor
 {
 public:
-    KICAD_T Type() override { return CACHE_WRAPPER_T; }
+    GRID_CELL_READONLY_TEXT_EDITOR() {};
 
-    CACHE_WRAPPER();
-    virtual ~CACHE_WRAPPER();
+    void Create(wxWindow* parent, wxWindowID id, wxEvtHandler* evtHandler) override
+    {
+        DoCreate(parent, id, evtHandler);
+        Text()->SetEditable( false );
+    }
+
+wxDECLARE_NO_COPY_CLASS( GRID_CELL_READONLY_TEXT_EDITOR );
 };
 
-#endif  // CACHE_WRAPPER_3D_H
+
+
+
+
+#endif  // GRID_READONLY_TEXT_HELPERS_H

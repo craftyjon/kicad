@@ -159,9 +159,9 @@ SEARCH_STACK* PROJECT::SchSearchS()
 
 PART_LIBS* PROJECT::SchLibs()
 {
-    PART_LIBS* libs = (PART_LIBS*)  GetElem( PROJECT::ELEM_SCH_PART_LIBS );
+    PART_LIBS* libs = (PART_LIBS*) GetElem( PROJECT::ELEM_SCH_PART_LIBS );
 
-    wxASSERT( !libs || dynamic_cast<PART_LIBS*>( libs ) );
+    wxASSERT( !libs || libs->Type() == PART_LIBS_T );
 
     if( !libs )
     {
@@ -177,7 +177,7 @@ PART_LIBS* PROJECT::SchLibs()
         catch( const PARSE_ERROR& pe )
         {
             wxString    lib_list = UTF8( pe.inputLine );
-            wxWindow*   parent = 0; // Pgm().App().GetTopWindow();
+            wxWindow*   parent = Pgm().App().GetTopWindow();
 
             // parent of this dialog cannot be NULL since that breaks the Kiway() chain.
             HTML_MESSAGE_BOX dlg( parent, _( "Not Found" ) );
@@ -192,7 +192,9 @@ PART_LIBS* PROJECT::SchLibs()
         }
         catch( const IO_ERROR& ioe )
         {
-            DisplayError( NULL, ioe.What() );
+            wxWindow* parent = Pgm().App().GetTopWindow();
+
+            DisplayError( parent, ioe.What() );
         }
     }
 
