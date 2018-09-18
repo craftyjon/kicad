@@ -299,6 +299,15 @@ public:
     }
 
     /**
+     * Function UseNetClassDiffPair
+     * returns true if netclass values should be used to obtain appropriate diff pair dimensions.
+     */
+    inline bool UseNetClassDiffPair() const
+    {
+        return ( m_diffPairIndex == 0 && !m_useCustomDiffPair );
+    }
+
+    /**
      * Function SetCurrentNetClass
      * Must be called after a netclass selection (or after a netclass parameter change
      * Initialize vias and tracks values displayed in comb boxes of the auxiliary toolbar
@@ -571,6 +580,48 @@ public:
     inline bool UseCustomDiffPairDimensions() const
     {
         return m_useCustomDiffPair;
+    }
+
+    /**
+     * Function GetCurrentDiffPairWidth
+     * @return the current diff pair track width, according to the selected options
+     * ( using the default netclass value or a preset/custom value )
+     * the default netclass is always in m_DiffPairDimensionsList[0]
+     */
+    inline int GetCurrentDiffPairWidth() const
+    {
+        if( m_useCustomDiffPair )
+            return m_customDiffPair.m_Width;
+        else
+            return m_DiffPairDimensionsList[m_diffPairIndex].m_Width;
+    }
+
+    /**
+     * Function GetCurrentDiffPairGap
+     * @return the current diff pair gap, according to the selected options
+     * ( using the default netclass value or a preset/custom value )
+     * the default netclass is always in m_DiffPairDimensionsList[0]
+     */
+    inline int GetCurrentDiffPairGap() const
+    {
+        if( m_useCustomDiffPair )
+            return m_customDiffPair.m_Gap;
+        else
+            return m_DiffPairDimensionsList[m_diffPairIndex].m_Gap;
+    }
+
+    /**
+     * Function GetCurrentDiffPairViaGap
+     * @return the current diff pair via gap, according to the selected options
+     * ( using the default netclass value or a preset/custom value )
+     * the default netclass is always in m_DiffPairDimensionsList[0]
+     */
+    inline int GetCurrentDiffPairViaGap() const
+    {
+        if( m_useCustomDiffPair )
+            return m_customDiffPair.m_ViaGap;
+        else
+            return m_DiffPairDimensionsList[m_diffPairIndex].m_ViaGap;
     }
 
     /**
