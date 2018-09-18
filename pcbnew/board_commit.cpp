@@ -30,6 +30,7 @@
 #include <view/view.h>
 #include <board_commit.h>
 #include <tools/pcb_tool.h>
+#include <tools/pcb_actions.h>
 #include <connectivity_data.h>
 
 #include <functional>
@@ -150,54 +151,34 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry, bool a
                 case PCB_PAD_T:
                 case PCB_MODULE_EDGE_T:
                 case PCB_MODULE_TEXT_T:
-                {
-                    // Do not allow footprint text removal when not editing a module
+                    // This level can only handle module items when editing modules
                     if( !m_editModules )
                         break;
-
-                    bool remove = true;
 
                     if( boardItem->Type() == PCB_MODULE_TEXT_T )
                     {
                         TEXTE_MODULE* text = static_cast<TEXTE_MODULE*>( boardItem );
 
-                        switch( text->GetType() )
-                        {
-                            case TEXTE_MODULE::TEXT_is_REFERENCE:
-                                //DisplayError( frame, _( "Cannot delete component reference." ) );
-                                remove = false;
-                                break;
-
-                            case TEXTE_MODULE::TEXT_is_VALUE:
-                                //DisplayError( frame, _( "Cannot delete component value." ) );
-                                remove = false;
-                                break;
-
-                            case TEXTE_MODULE::TEXT_is_DIVERS:    // suppress warnings
-                                break;
-
-                            default:
-                                wxASSERT( false );
-                                break;
-                        }
+                        // don't allow deletion of Reference or Value
+                        if( text->GetType() != TEXTE_MODULE::TEXT_is_DIVERS )
+                            break;
                     }
 
-                    if( remove )
+                    view->Remove( boardItem );
+
+                    // Removing an item should trigger the unselect
+                    m_toolMgr->RunAction( PCB_ACTIONS::unselectItem, true, boardItem );
+
+                    if( !( changeFlags & CHT_DONE ) )
                     {
-                        view->Remove( boardItem );
-
-                        if( !( changeFlags & CHT_DONE ) )
-                        {
-                            MODULE* module = static_cast<MODULE*>( boardItem->GetParent() );
-                            wxASSERT( module && module->Type() == PCB_MODULE_T );
-                            module->Delete( boardItem );
-                        }
-
-                        board->m_Status_Pcb = 0; // it is done in the legacy view (ratsnest perhaps?)
+                        MODULE* module = static_cast<MODULE*>( boardItem->GetParent() );
+                        wxASSERT( module && module->Type() == PCB_MODULE_T );
+                        module->Delete( boardItem );
                     }
+
+                    board->m_Status_Pcb = 0; // it is done in the legacy view (ratsnest perhaps?)
 
                     break;
-                }
 
                 // Board items
                 case PCB_LINE_T:                // a segment not on copper layers
@@ -211,6 +192,9 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry, bool a
                 case PCB_ZONE_AREA_T:
                     view->Remove( boardItem );
 
+                    // Removing an item should trigger the unselect
+                    m_toolMgr->RunAction( PCB_ACTIONS::unselectItem, true, boardItem );
+
                     if( !( changeFlags & CHT_DONE ) )
                         board->Remove( boardItem );
 
@@ -222,9 +206,11 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry, bool a
                     wxASSERT( !m_editModules );
 
                     MODULE* module = static_cast<MODULE*>( boardItem );
-                    module->ClearFlags();
-
                     view->Remove( module );
+
+                    // Removing an item should trigger the unselect
+                    m_toolMgr->RunAction( PCB_ACTIONS::unselectItem, true, boardItem );
+                    module->ClearFlags();
 
                     if( !( changeFlags & CHT_DONE ) )
                         board->Remove( module );        // handles connectivity

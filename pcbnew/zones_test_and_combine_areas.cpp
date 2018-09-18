@@ -172,8 +172,8 @@ bool BOARD::TestAreaIntersections( ZONE_CONTAINER* area_to_test )
         if( area_to_test == area2 )
             continue;
 
-        // see if areas are on same layer
-        if( area_to_test->GetLayer() != area2->GetLayer() )
+        // see if areas are on same layers
+        if( area_to_test->GetLayerSet() != area2->GetLayerSet() )
             continue;
 
         // test for different priorities
@@ -183,6 +183,49 @@ bool BOARD::TestAreaIntersections( ZONE_CONTAINER* area_to_test )
         // test for different types
         if( area_to_test->GetIsKeepout() != area2->GetIsKeepout() )
             continue;
+
+        // Keepout area-specific tests
+        if( area_to_test->GetIsKeepout() )
+        {
+            if( area_to_test->GetDoNotAllowCopperPour() != area2->GetDoNotAllowCopperPour() )
+                continue;
+
+            if( area_to_test->GetDoNotAllowTracks() != area2->GetDoNotAllowTracks() )
+                continue;
+
+            if( area_to_test->GetDoNotAllowVias() != area2->GetDoNotAllowVias() )
+                continue;
+        }
+        // Filled zone specific tests
+        else
+        {
+            if( area_to_test->GetClearance() != area2->GetClearance() )
+                continue;
+
+            if( area_to_test->GetThermalReliefGap() != area2->GetThermalReliefGap() )
+                continue;
+
+            if( area_to_test->GetThermalReliefCopperBridge() != area2->GetThermalReliefCopperBridge() )
+                continue;
+
+            if( area_to_test->GetArcSegmentCount() != area2->GetArcSegmentCount() )
+                continue;
+
+            if( area_to_test->GetZoneClearance() != area2->GetZoneClearance() )
+                continue;
+
+            if( area_to_test->GetPadConnection() != area2->GetPadConnection() )
+                continue;
+
+            if( area_to_test->GetMinThickness() != area2->GetMinThickness() )
+                continue;
+
+            if( area_to_test->GetCornerSmoothingType() != area2->GetCornerSmoothingType() )
+                continue;
+
+            if( area_to_test->GetCornerRadius() != area2->GetCornerRadius() )
+                continue;
+        }
 
         if( TestAreaIntersection( area_to_test, area2 ) )
             return true;
