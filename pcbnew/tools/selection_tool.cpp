@@ -359,6 +359,9 @@ int SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
         else if( evt->IsCancel() || evt->Action() == TA_UNDO_REDO_PRE )
         {
             clearSelection();
+
+            if( evt->IsCancel() && !m_editModules )
+                m_toolMgr->RunAction( PCB_ACTIONS::clearHighlight, true );
         }
 
         else if( evt->Action() == TA_CONTEXT_MENU_CLOSED )
@@ -1220,7 +1223,6 @@ void SELECTION_TOOL::findCallback( BOARD_ITEM* aItem )
 int SELECTION_TOOL::find( const TOOL_EVENT& aEvent )
 {
     DIALOG_FIND dlg( m_frame );
-    dlg.EnableWarp( false );
     dlg.SetCallback( std::bind( &SELECTION_TOOL::findCallback, this, _1 ) );
     dlg.ShowModal();
 
@@ -1525,8 +1527,10 @@ bool SELECTION_TOOL::selectable( const BOARD_ITEM* aItem ) const
     int layers[KIGFX::VIEW::VIEW_MAX_LAYERS], layers_count;
 
     // Filter out items that do not belong to active layers
-    const std::set<unsigned int>& activeLayers = getView()->GetPainter()->
-                                                 GetSettings()->GetActiveLayers();
+    std::set<unsigned int> activeLayers = getView()->GetPainter()->GetSettings()->GetActiveLayers();
+
+    // The markers layer is considered to be always active
+    activeLayers.insert( (unsigned int) LAYER_DRC );
 
     aItem->ViewGetLayers( layers, layers_count );
 
