@@ -580,11 +580,12 @@ void LIB_EDIT_FRAME::OnViewEntryDoc( wxCommandEvent& event )
     {
         CONTEXT_MENU popup;
         wxString     msg;
+        int          id = 0;
 
         for( LIB_ALIAS* alias : part->GetAliases() )
         {
             msg.Printf( wxT( "%s (%s)" ), alias->GetName(), alias->GetDocFileName() );
-            popup.Append( wxID_ANY, msg );
+            popup.Append( id++, msg );
         }
 
         PopupMenu( &popup );
@@ -1713,7 +1714,11 @@ void LIB_EDIT_FRAME::KiwayMailIn( KIWAY_EXPRESS& mail )
             SetCurLib( libNickname );
 
             if( m_treePane )
-                m_treePane->GetLibTree()->ExpandLibId( LIB_ID( libNickname, wxEmptyString ) );
+            {
+                LIB_ID id( libNickname, wxEmptyString );
+                m_treePane->GetLibTree()->ExpandLibId( id );
+                m_treePane->GetLibTree()->CenterLibId( id );
+            }
         }
 
         break;

@@ -1,9 +1,9 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2017 Jean_Pierre Charras <jp.charras at wanadoo.fr>
+ * Copyright (C) 2018 Jean_Pierre Charras <jp.charras at wanadoo.fr>
  * Copyright (C) 2015 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
- * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -54,6 +54,11 @@
 // tools used for PTH and tools used for NPTH
 // #define WRITE_PTH_NPTH_COMMENT
 
+// Oblong holes can be drilled by a "canned slot" command (G85) or a routing command
+// a linear routing command (G01) is perhaps more usual for drill files
+// Comment this next line to use a canned slot hole (old way)
+// Uncomment this next line to use a linear routed hole (new way)
+#define USE_ROUTING_MODE_FOR_OBLONG_HOLE
 
 EXCELLON_WRITER::EXCELLON_WRITER( BOARD* aPcb )
     : GENDRILL_WRITER_BASE( aPcb )
@@ -273,25 +278,35 @@ int EXCELLON_WRITER::createDrillFile( FILE* aFile )
 
         xt = x0 * m_conversionUnits;
         yt = y0 * m_conversionUnits;
+#ifdef USE_ROUTING_MODE_FOR_OBLONG_HOLE
+        fputs( "G00", m_file );    // Select the routing mode
+#endif
         writeCoordinates( line, xt, yt );
 
+#ifndef USE_ROUTING_MODE_FOR_OBLONG_HOLE
         /* remove the '\n' from end of line, because we must add the "G85"
          * command to the line: */
         for( int kk = 0; line[kk] != 0; kk++ )
         {
-            if( line[kk] == '\n' || line[kk] =='\r' )
+            if( line[kk] < ' ' )
                 line[kk] = 0;
         }
 
         fputs( line, m_file );
         fputs( "G85", m_file );    // add the "G85" command
-
+#else
+        fputs( line, m_file );
+        fputs( "M15\nG01", m_file );    // tool down and linear routing from last coordinates
+#endif
         xt = xf * m_conversionUnits;
         yt = yf * m_conversionUnits;
         writeCoordinates( line, xt, yt );
 
         fputs( line, m_file );
-        fputs( "G05\n", m_file );
+#ifdef USE_ROUTING_MODE_FOR_OBLONG_HOLE
+        fputs( "M16\n", m_file );       // Tool up (end routing)
+#endif
+        fputs( "G05\n", m_file );       // Select drill mode
         holes_count++;
     }
 
@@ -362,8 +377,14 @@ void EXCELLON_WRITER::writeCoordinates( char* aLine, double aCoordX, double aCoo
         while( xs.Last() == '0' )
             xs.RemoveLast();
 
+        if( xs.Last() == '.' )      // however keep a trailing 0 after the floating point separator
+            xs << '0';
+
         while( ys.Last() == '0' )
             ys.RemoveLast();
+
+        if( ys.Last() == '.' )
+            ys << '0';
 
         sprintf( aLine, "X%sY%s\n", TO_UTF8( xs ), TO_UTF8( ys ) );
         break;
@@ -442,6 +463,8 @@ void EXCELLON_WRITER::writeEXCELLONHeader()
         msg = wxT( ";FORMAT={" );
 
         // Print precision:
+        // Note in decimal format the precision is not used.
+        // the floating point notation has higher priority than the precision.
         if( m_zeroFormat != DECIMAL_FORMAT )
             msg << m_precision.GetPrecisionString();
         else
@@ -467,8 +490,7 @@ void EXCELLON_WRITER::writeEXCELLONHeader()
             wxT( "keep zeros" )
         };
 
-        msg << zero_fmt[m_zeroFormat];
-        msg << wxT( "}\n" );
+        msg << zero_fmt[m_zeroFormat] << wxT( "}\n" );
         fputs( TO_UTF8( msg ), m_file );
         fputs( "FMAT,2\n", m_file );     // Use Format 2 commands (version used since 1979)
     }
@@ -477,8 +499,11 @@ void EXCELLON_WRITER::writeEXCELLONHeader()
 
     switch( m_zeroFormat )
     {
-    case SUPPRESS_LEADING:
     case DECIMAL_FORMAT:
+        fputs( "\n", m_file );
+        break;
+
+    case SUPPRESS_LEADING:
         fputs( ",TZ\n", m_file );
         break;
 
@@ -487,7 +512,8 @@ void EXCELLON_WRITER::writeEXCELLONHeader()
         break;
 
     case KEEP_ZEROS:
-        fputs( ",TZ\n", m_file ); // TZ is acceptable when all zeros are kept
+        // write nothing, but TZ is acceptable when all zeros are kept
+        fputs( "\n", m_file );
         break;
     }
 }

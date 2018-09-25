@@ -350,6 +350,7 @@ int POINT_EDITOR::OnSelectionChange( const TOOL_EVENT& aEvent )
                 m_original = *m_editedPoint;    // Save the original position
                 controls->SetAutoPan( true );
                 modified = true;
+                grid.SetAuxAxes( true, m_original.GetPosition(), true );
             }
 
             bool enableAltConstraint = !!evt->Modifier( MD_CTRL );
