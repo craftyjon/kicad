@@ -96,43 +96,43 @@ public:
         wxGUIEventLoop eventLoop;
         wxEventLoopActivator activate( &eventLoop );
 
-        while ( eventLoop.Pending() )
+        while( !m_cancelled && !m_selected )
         {
-            wxPoint screenPos = wxGetMousePosition();
-
-            if( m_netListBox->GetScreenRect().Contains( screenPos ) )
+            if( eventLoop.Pending() )
             {
-                if( HasCapture() )
-                    ReleaseMouse();
+                wxPoint screenPos = wxGetMousePosition();
+
+                if( m_netListBox->GetScreenRect().Contains( screenPos ) )
+                {
+                    if( HasCapture() )
+                        ReleaseMouse();
 
 #ifdef __WXOSX_MAC__
-                m_netListBox->OSXForceFocus();
+                    m_netListBox->OSXForceFocus();
 #else
-                m_netListBox->SetFocus();
+                    m_netListBox->SetFocus();
 #endif
 
-                wxPoint relativePos = m_netListBox->ScreenToClient( screenPos );
-                int     item = m_netListBox->HitTest( relativePos );
+                    wxPoint relativePos = m_netListBox->ScreenToClient( screenPos );
+                    int     item = m_netListBox->HitTest( relativePos );
 
-                if( item >= 0 )
-                    m_netListBox->SetSelection( item );
+                    if( item >= 0 )
+                        m_netListBox->SetSelection( item );
+                }
+                else if( m_filterCtrl->GetScreenRect().Contains( screenPos ) )
+                {
+                    if( HasCapture() )
+                        ReleaseMouse();
+
+                    m_filterCtrl->SetFocus();
+                }
+                else if( !HasCapture() )
+                {
+                    CaptureMouse();
+                }
+
+                eventLoop.Dispatch();
             }
-            else if( m_filterCtrl->GetScreenRect().Contains( screenPos ) )
-            {
-                if( HasCapture() )
-                    ReleaseMouse();
-
-                m_filterCtrl->SetFocus();
-            }
-            else if( !HasCapture() )
-            {
-                CaptureMouse();
-            }
-
-            eventLoop.Dispatch();
-
-            if( m_cancelled || m_selected )
-                break;
 
             wxSafeYield( m_parent );
         }
@@ -262,10 +262,12 @@ NET_SELECTOR::NET_SELECTOR( wxWindow *parent, wxWindowID id,
         m_netSelectorPopup( nullptr )
 { }
 
+
 void NET_SELECTOR::DoSetPopupControl( wxComboPopup* aPopup )
 {
     m_popup = nullptr;
 }
+
 
 void NET_SELECTOR::OnButtonClick()
 {
@@ -287,10 +289,12 @@ void NET_SELECTOR::OnButtonClick()
         SetSelectedNetcode( popup->GetSelectedNetcode() );
 }
 
+
 void NET_SELECTOR::SetNetInfo( NETINFO_LIST* aNetInfoList )
 {
     m_netinfoList = aNetInfoList;
 }
+
 
 void NET_SELECTOR::SetSelectedNetcode( int aNetcode )
 {
@@ -311,16 +315,19 @@ void NET_SELECTOR::SetSelectedNetcode( int aNetcode )
     }
 }
 
+
 void NET_SELECTOR::SetIndeterminate()
 {
     m_netcode = -1;
     SetValue( INDETERMINATE );
 }
 
+
 bool NET_SELECTOR::IsIndeterminate()
 {
     return m_netcode == -1;
 }
+
 
 int NET_SELECTOR::GetSelectedNetcode()
 {

@@ -38,7 +38,7 @@
 #include <pcb_base_frame.h>
 #include <base_units.h>
 #include <msgpanel.h>
-
+#include <pgm_base.h>
 #include <3d_viewer/eda_3d_viewer.h>                                            // To include VIEWER3D_FRAMENAME
 
 #include <pcbnew.h>
@@ -112,7 +112,7 @@ PCB_BASE_FRAME::PCB_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
 {
     m_Pcb                 = NULL;
 
-    m_UserGridSize        = wxPoint( 10 * IU_PER_MILS, 10 * IU_PER_MILS );
+    m_UserGridSize        = wxPoint( (int) 10 * IU_PER_MILS, (int) 10 * IU_PER_MILS );
     m_Collector           = new GENERAL_COLLECTOR();
 
     m_FastGrid1           = 0;
@@ -208,6 +208,36 @@ void PCB_BASE_FRAME::SetBoard( BOARD* aBoard )
         delete m_Pcb;
         m_Pcb = aBoard;
         m_Pcb->SetColorsSettings( &Settings().Colors() );
+    }
+}
+
+
+void PCB_BASE_FRAME::AddModuleToBoard( MODULE* module )
+{
+    if( module )
+    {
+        GetBoard()->Add( module, ADD_APPEND );
+
+        module->SetFlags( IS_NEW );
+        module->SetLink( 0 );
+
+        if( IsGalCanvasActive() )
+            module->SetPosition( wxPoint( 0, 0 ) ); // cursor in GAL may not be initialized at the moment
+        else
+            module->SetPosition( GetCrossHairPosition() );
+
+        module->SetTimeStamp( GetNewTimeStamp() );
+        GetBoard()->m_Status_Pcb = 0;
+
+        // Put it on FRONT layer,
+        // (Can be stored flipped if the lib is an archive built from a board)
+        if( module->IsFlipped() )
+            module->Flip( module->GetPosition() );
+
+        // Place it in orientation 0,
+        // even if it is not saved with orientation 0 in lib
+        // (Can happen if the lib is an archive built from a board)
+        module->SetOrientation( 0 );
     }
 }
 
@@ -375,10 +405,10 @@ double PCB_BASE_FRAME::BestZoom()
 // Find the first child dialog.
 wxWindow* findDialog( wxWindowList& aList )
 {
-    for( wxWindowList::iterator iter = aList.begin(); iter != aList.end(); ++iter )
+    for( wxWindow* window : aList )
     {
-        if( dynamic_cast<DIALOG_SHIM*>( *iter ) )
-            return *iter;
+        if( dynamic_cast<DIALOG_SHIM*>( window ) )
+            return window;
     }
     return NULL;
 }
@@ -437,7 +467,7 @@ void PCB_BASE_FRAME::FocusOnLocation( const wxPoint& aPos,
 
 
 // Virtual function
-void PCB_BASE_FRAME::ReCreateMenuBar( void )
+void PCB_BASE_FRAME::ReCreateMenuBar()
 {
 }
 
@@ -1028,6 +1058,26 @@ void PCB_BASE_FRAME::SaveSettings( wxConfigBase* aCfg )
     aCfg->Write( baseCfgName + DisplayModuleTextEntry, m_DisplayOptions.m_DisplayModTextFill );
     aCfg->Write( baseCfgName + FastGrid1Entry, ( long )m_FastGrid1 );
     aCfg->Write( baseCfgName + FastGrid2Entry, ( long )m_FastGrid2 );
+}
+
+
+void PCB_BASE_FRAME::CommonSettingsChanged()
+{
+    EDA_DRAW_FRAME::CommonSettingsChanged();
+
+    ReCreateHToolbar();
+    ReCreateAuxiliaryToolbar();
+    ReCreateVToolbar();
+    ReCreateOptToolbar();
+
+    EDA_3D_VIEWER* viewer = Get3DViewerFrame();
+
+    if( viewer )
+    {
+        bool option;
+        Pgm().CommonSettings()->Read( ENBL_MOUSEWHEEL_PAN_KEY, &option );
+        viewer->GetSettings().SetFlag( FL_MOUSEWHEEL_PANNING, option );
+    }
 }
 
 
