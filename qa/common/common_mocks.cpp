@@ -21,41 +21,22 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#ifndef __WIDGET_NET_SELECTOR_H
-#define __WIDGET_NET_SELECTOR_H
+/**
+ * @file common_mocks.cpp
+ * @brief Mock objects for libcommon unit tests
+ */
 
-#include <wx/wx.h>
-#include <wx/combo.h>
-
-
-class BOARD;
-class NETINFO_LIST;
-class NET_SELECTOR_COMBOPOPUP;
+#include <pgm_base.h>
 
 
-wxDECLARE_EVENT( NET_SELECTED, wxCommandEvent );
-
-
-class NET_SELECTOR : public wxComboCtrl
+struct PGM_TEST_FRAME : public PGM_BASE
 {
-public:
-    // Note: this list of arguments is here because it keeps us from having to customize
-    // the constructor calls in wxFormBuilder.
-    NET_SELECTOR( wxWindow *parent, wxWindowID id,
-                  const wxPoint &pos = wxDefaultPosition, const wxSize &size = wxDefaultSize,
-                  long style = 0 );
-
-    void SetNetInfo( NETINFO_LIST* aNetInfoList );
-
-    void SetSelectedNetcode( int aNetcode );
-    void SetIndeterminate();
-
-    bool IsIndeterminate();
-    int GetSelectedNetcode();
-
-protected:
-    NET_SELECTOR_COMBOPOPUP* m_netSelectorPopup;
+    void MacOpenFile( const wxString& aFileName ) override
+    {}
 };
 
-
-#endif
+PGM_BASE& Pgm()
+{
+    static PGM_TEST_FRAME program;
+    return program;
+}

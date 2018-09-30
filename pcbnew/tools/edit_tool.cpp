@@ -185,9 +185,14 @@ void EditToolSelectionFilter( GENERAL_COLLECTOR& aCollector, int aFlags )
         {
             MODULE* mod = static_cast<MODULE*>( item->GetParent() );
 
-            // case 1: module (or its pads) are locked
-            if( mod && ( mod->PadsLocked() || mod->IsLocked() ) )
+            // case 1: handle locking
+            if( ( aFlags & EXCLUDE_LOCKED ) && mod && mod->IsLocked() )
             {
+                aCollector.Remove( item );
+            }
+            else if( ( aFlags & EXCLUDE_LOCKED_PADS ) && mod && mod->PadsLocked() )
+            {
+                // Pad locking is considerably "softer" than item locking
                 aCollector.Remove( item );
 
                 if( !mod->IsLocked() && !aCollector.HasItem( mod ) )
@@ -264,19 +269,21 @@ bool EDIT_TOOL::Init()
     menu.AddItem( PCB_ACTIONS::createArray, SELECTION_CONDITIONS::NotEmpty );
 
 
+    menu.AddSeparator( SELECTION_CONDITIONS::NotEmpty );
     menu.AddItem( PCB_ACTIONS::copyToClipboard, SELECTION_CONDITIONS::NotEmpty );
     menu.AddItem( PCB_ACTIONS::cutToClipboard, SELECTION_CONDITIONS::NotEmpty );
     // Selection tool handles the context menu for some other tools, such as the Picker.
     // Don't add things like Paste when another tool is active.
     menu.AddItem( PCB_ACTIONS::pasteFromClipboard, noActiveToolCondition );
-    menu.AddSeparator( noActiveToolCondition );
 
     // Mirror only available in modedit
+    menu.AddSeparator( editingModuleCondition && SELECTION_CONDITIONS::NotEmpty );
     menu.AddItem( PCB_ACTIONS::mirror, editingModuleCondition && SELECTION_CONDITIONS::NotEmpty );
     menu.AddItem( PCB_ACTIONS::createPadFromShapes, editingModuleCondition && SELECTION_CONDITIONS::NotEmpty );
     menu.AddItem( PCB_ACTIONS::explodePadToShapes, editingModuleCondition && SELECTION_CONDITIONS::NotEmpty );
 
     // Footprint actions
+    menu.AddSeparator( singleModuleCondition );
     menu.AddItem( PCB_ACTIONS::editFootprintInFpEditor, singleModuleCondition );
     menu.AddItem( PCB_ACTIONS::updateFootprints, singleModuleCondition );
     menu.AddItem( PCB_ACTIONS::exchangeFootprints, singleModuleCondition );
@@ -337,7 +344,7 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
     // try looking for the stuff under mouse cursor (i.e. Kicad old-style hover selection)
     auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
 
     if( selection.Empty() )
         return 0;
@@ -605,7 +612,7 @@ int EDIT_TOOL::Properties( const TOOL_EVENT& aEvent )
 
     const auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_TRANSIENTS ); } );
 
     // Tracks & vias are treated in a special way:
     if( ( SELECTION_CONDITIONS::OnlyTypes( GENERAL_COLLECTOR::Tracks ) )( selection ) )
@@ -647,7 +654,7 @@ int EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
 
     auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
 
     if( selection.Empty() )
         return 0;
@@ -723,7 +730,7 @@ int EDIT_TOOL::Mirror( const TOOL_EVENT& aEvent )
 {
     auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
 
     if( selection.Empty() )
         return 0;
@@ -802,7 +809,7 @@ int EDIT_TOOL::Flip( const TOOL_EVENT& aEvent )
 {
     auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
 
     if( selection.Empty() )
         return 0;
@@ -846,29 +853,29 @@ int EDIT_TOOL::Remove( const TOOL_EVENT& aEvent )
         return 0;
 
     // get a copy instead of reference (as we're going to clear the selection before removing items)
-    auto selection = m_selectionTool->RequestSelection(
+    auto selectionCopy = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
 
     // is this "alternative" remove?
     const bool isAlt = aEvent.Parameter<intptr_t>() == (int) PCB_ACTIONS::REMOVE_FLAGS::ALT;
 
     // in "alternative" mode, deletion is not just a simple list of selected items,
     // it removes whole tracks, not just segments
-    if( isAlt && selection.IsHover()
-            && ( selection.HasType( PCB_TRACE_T ) || selection.HasType( PCB_VIA_T ) ) )
+    if( isAlt && selectionCopy.IsHover()
+            && ( selectionCopy.HasType( PCB_TRACE_T ) || selectionCopy.HasType( PCB_VIA_T ) ) )
     {
         m_toolMgr->RunAction( PCB_ACTIONS::expandSelectedConnection, true );
-        selection = m_selectionTool->GetSelection();
+        selectionCopy = m_selectionTool->GetSelection();
     }
 
-    if( selection.Empty() )
+    if( selectionCopy.Empty() )
         return 0;
 
     // As we are about to remove items, they have to be removed from the selection first
     m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
 
-    for( auto item : selection )
+    for( auto item : selectionCopy )
     {
         if( m_editModules )
         {
@@ -908,7 +915,7 @@ int EDIT_TOOL::MoveExact( const TOOL_EVENT& aEvent )
 {
     const auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
 
     if( selection.Empty() )
         return 0;
@@ -984,7 +991,7 @@ int EDIT_TOOL::Duplicate( const TOOL_EVENT& aEvent )
     // Be sure that there is at least one item that we can modify
     const auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
 
     if( selection.Empty() )
         return 0;
@@ -1131,7 +1138,7 @@ int EDIT_TOOL::CreateArray( const TOOL_EVENT& aEvent )
 {
     const auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
 
     if( selection.Empty() )
         return 0;
@@ -1417,7 +1424,7 @@ int EDIT_TOOL::doCopyToClipboard( bool withAnchor )
 
     SELECTION& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
 
     if( selection.Empty() )
         return 1;

@@ -25,9 +25,17 @@ find_package( wxWidgets 3.0.0 COMPONENTS gl aui adv html core net base xml stc R
 
 add_definitions(-DBOOST_TEST_DYN_LINK)
 
-add_executable( qa_geometry
+add_executable( qa_common
+    # This is needed for the global mock objects
+    common_mocks.cpp
+
+    # The main test entry points
     test_module.cpp
-    test_fillet.cpp
+
+    test_hotkey_store.cpp
+    test_utf8.cpp
+
+    geometry/test_fillet.cpp
 )
 
 include_directories(
@@ -37,13 +45,14 @@ include_directories(
     ${Boost_INCLUDE_DIR}
 )
 
-target_link_libraries( qa_geometry
+target_link_libraries( qa_common
     common
     polygon
+    bitmaps
     ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
     ${wxWidgets_LIBRARIES}
 )
 
-add_test( NAME geometry
-    COMMAND qa_geometry
+add_test( NAME common
+    COMMAND qa_common
 )

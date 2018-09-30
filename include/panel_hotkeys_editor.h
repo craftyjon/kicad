@@ -25,6 +25,8 @@
 #define PANEL_HOTKEYS_EDITOR_H
 
 #include <hotkeys_basic.h>
+#include <hotkey_store.h>
+
 #include "../common/dialogs/panel_hotkeys_editor_base.h"
 #include <widgets/widget_hotkey_list.h>
 
@@ -37,6 +39,7 @@ protected:
     struct EDA_HOTKEY_CONFIG* m_showHotkeys;
     wxString                  m_nickname;
 
+    HOTKEY_STORE              m_hotkeyStore;
     WIDGET_HOTKEY_LIST*       m_hotkeyListCtrl;
 
     bool TransferDataToWindow() override;
@@ -69,6 +72,14 @@ private:
 
     void OnExport( wxCommandEvent& aEvent ) override;
     void OnImport( wxCommandEvent& aEvent ) override;
+
+    /**
+     * Function OnFilterSearch
+     * Handle a change in the hoteky filter text
+     *
+     * @param aEvent: the search event, used to get the search query
+     */
+    void OnFilterSearch( wxCommandEvent& aEvent ) override;
 };
 
 

@@ -215,6 +215,7 @@ public:
         SetIcon( locked_xpm );
         SetTitle( _( "Locking" ) );
 
+        AppendSeparator();
         Add( PCB_ACTIONS::lock );
         Add( PCB_ACTIONS::unlock );
         Add( PCB_ACTIONS::toggleLock );
@@ -303,6 +304,8 @@ bool PCB_EDITOR_CONTROL::Init()
         menu.AddItem( PCB_ACTIONS::findMove, inactiveStateCondition );
         menu.AddSeparator( inactiveStateCondition );
 
+        menu.AddItem( PCB_ACTIONS::zoneDeleteSegzone,
+                SELECTION_CONDITIONS::OnlyType( PCB_SEGZONE_T ) );
         toolMenu.AddSubMenu( zoneMenu );
         toolMenu.AddSubMenu( lockMenu );
 
