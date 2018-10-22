@@ -155,7 +155,7 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
 
             if( !found )
             {
-                std::cout << "Net " << net_name << " not found in old algorithm" << std::endl;
+                // std::cout << "Net " << net_name << " not found in old algorithm" << std::endl;
             }
         }
 

@@ -690,21 +690,22 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         auto candidate_subgraphs( m_subgraphs );
         auto connections_to_check( connection->Members() );
 
-        bool contains_hier_labels = false;
+        bool contains_hier_stuff = false;
 
-        for( auto item : subgraph->m_drivers )
+        for( auto item : subgraph->m_items )
         {
-            if( item->Type() == SCH_HIERARCHICAL_LABEL_T )
+            if( item->Type() == SCH_HIERARCHICAL_LABEL_T ||
+                item->Type() == SCH_SHEET_PIN_T )
             {
-                contains_hier_labels = true;
+                contains_hier_stuff = true;
                 break;
             }
         }
 
-        // We only want to set up the neighbor map for connections with parents
-        // TODO(JE) is this true? It's an efficiency boost, but maybe it's best
-        // to just unconditonally link together all subgraphs?
-        if( !contains_hier_labels )
+        // TODO(JE) maybe it will be better to form these links eventually,
+        // but for now let's only include subgraphs that contain hierarchical
+        // links in one direction or another
+        if( !contains_hier_stuff )
             continue;
 
         // For plain nets, just link based on the driver
@@ -833,6 +834,30 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                     member->SetNetCode( candidate_net_code );
                 }
             }
+
+            // Some bus members might not have a neighbor to establish a net
+            // code, so generate new ones as needed.
+            for( auto& member : connection->Members() )
+            {
+                if( member->NetCode() == 0 )
+                {
+                    int code;
+
+                    try
+                    {
+                        code = m_net_name_to_code_map.at( member->Name() );
+                    }
+                    catch( const std::out_of_range& oor )
+                    {
+                        code = m_last_net_code++;
+                        m_net_name_to_code_map[ member->Name() ] = code;
+                    }
+
+                    //std::cout << "setting new net code " << code << " for anonymous bus member " << member->Name() << std::endl;
+
+                    member->SetNetCode( code );
+                }
+            }
         }
 
         // Now go to each subsheet and broadcast the new net codes
@@ -857,6 +882,9 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
          *     3)  Recurse down onto any subsheets connected to the SSSG.
          */
 
+        #ifdef USE_OPENMP
+            #pragma omp parallel for schedule(dynamic)
+        #endif
         for( auto item : subgraph->m_items )
         {
             if( item->Type() == SCH_SHEET_PIN_T )
@@ -888,17 +916,20 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                             auto type = driver->Connection( subsheet )->Type();
 
                             // Directly update subsheet net connections
-                            if( connection->IsNet() )
+
+                            for( auto c_item : candidate->m_items )
                             {
-                                for( auto c_item : candidate->m_items )
+                                auto c = c_item->Connection( subsheet );
+
+                                wxASSERT( c );
+
+                                if( ( connection->IsBus() && c->IsNet() ) ||
+                                    ( connection->IsNet() && c->IsBus() ) )
                                 {
-                                    auto c = c_item->Connection( subsheet );
-
-                                    wxASSERT( c );
-
-                                    c->SetSheet( connection->Sheet() );
-                                    c->SetNetCode( connection->NetCode() );
+                                    continue;
                                 }
+
+                                c->Clone( *connection );
                             }
 
                             // Now propagate to subsheet neighbors
@@ -944,8 +975,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
                                         wxASSERT( c );
 
-                                        c->SetSheet( top_level_conn->Sheet() );
-                                        c->SetNetCode( top_level_conn->NetCode() );
+                                        c->Clone( *top_level_conn );
                                     }
                                 }
                             }
@@ -971,6 +1001,9 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             std::cout << "subgraph is still dirty after bus propagation!" << std::endl;
             //wxASSERT(false);
         }
+
+        if( subgraph->m_driver->Connection( subgraph->m_sheet )->IsBus() )
+            continue;
 
         int code = subgraph->m_driver->Connection( subgraph->m_sheet )->NetCode();
         m_net_code_to_subgraphs_map[ code ].push_back( subgraph );
