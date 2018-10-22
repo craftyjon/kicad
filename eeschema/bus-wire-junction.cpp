@@ -716,7 +716,7 @@ bool SCH_EDIT_FRAME::SchematicCleanUp( bool aAppend, SCH_SCREEN* aScreen )
                     remove_item( item );
                     remove_item( secondItem );
                     itemList.PushItem( ITEM_PICKER( line, UR_NEW ) );
-                    AddToScreen( line );
+                    AddToScreen( line, aScreen );
                     break;
                 }
             }
@@ -757,7 +757,7 @@ bool SCH_EDIT_FRAME::BreakSegment( SCH_LINE* aSegment, const wxPoint& aPoint,
 
     newSegment->SetStartPoint( aPoint );
     aSegment->SetEndPoint( aPoint );
-    AddToScreen( newSegment );
+    AddToScreen( newSegment, aScreen );
 
     if( aNewSegment )
         *aNewSegment = newSegment;
