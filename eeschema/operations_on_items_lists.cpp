@@ -30,7 +30,7 @@
 
 #include <fctsys.h>
 #include <pgm_base.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <sch_edit_frame.h>
 
 #include <general.h>
@@ -76,7 +76,7 @@ void RotateListOfItems( PICKED_ITEMS_LIST& aItemsList, const wxPoint& rotationPo
 {
     for( unsigned ii = 0; ii < aItemsList.GetCount(); ii++ )
     {
-        SCH_ITEM* item = (SCH_ITEM*) aItemsList.GetPickedItem( ii );
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( aItemsList.GetPickedItem( ii ) );
         item->Rotate( rotationPoint );      // Place it in its new position.
         item->ClearFlags();
     }
@@ -87,7 +87,7 @@ void MirrorY( PICKED_ITEMS_LIST& aItemsList, const wxPoint& aMirrorPoint )
 {
     for( unsigned ii = 0; ii < aItemsList.GetCount(); ii++ )
     {
-        SCH_ITEM* item = (SCH_ITEM*) aItemsList.GetPickedItem( ii );
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( aItemsList.GetPickedItem( ii ) );
         item->MirrorY( aMirrorPoint.x );      // Place it in its new position.
         item->ClearFlags();
     }
@@ -98,19 +98,9 @@ void MirrorX( PICKED_ITEMS_LIST& aItemsList, const wxPoint& aMirrorPoint )
 {
     for( unsigned ii = 0; ii < aItemsList.GetCount(); ii++ )
     {
-        SCH_ITEM* item = (SCH_ITEM*) aItemsList.GetPickedItem( ii );
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( aItemsList.GetPickedItem( ii ) );
         item->MirrorX( aMirrorPoint.y );      // Place it in its new position.
         item->ClearFlags();
-    }
-}
-
-
-void MoveItemsInList( PICKED_ITEMS_LIST& aItemsList, const wxPoint& aMoveVector )
-{
-    for( unsigned ii = 0; ii < aItemsList.GetCount(); ii++ )
-    {
-        SCH_ITEM* item = (SCH_ITEM*) aItemsList.GetPickedItem( ii );
-        item->Move( aMoveVector );
     }
 }
 
@@ -123,7 +113,7 @@ void SCH_EDIT_FRAME::CheckListConnections( PICKED_ITEMS_LIST& aItemsList, bool a
     GetSchematicConnections( connections );
     for( unsigned ii = 0; ii < aItemsList.GetCount(); ii++ )
     {
-        SCH_ITEM* item = (SCH_ITEM*) aItemsList.GetPickedItem( ii );
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( aItemsList.GetPickedItem( ii ) );
         std::vector< wxPoint > new_pts;
 
         if( !item->IsConnectable() )
@@ -175,7 +165,7 @@ void SCH_EDIT_FRAME::DeleteItemsInList( PICKED_ITEMS_LIST& aItemsList, bool aApp
 {
     for( unsigned ii = 0; ii < aItemsList.GetCount(); ii++ )
     {
-        SCH_ITEM* item = (SCH_ITEM*) aItemsList.GetPickedItem( ii );
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( aItemsList.GetPickedItem( ii ) );
 
         if( item->GetFlags() & STRUCT_DELETED )
             continue;
@@ -199,13 +189,15 @@ void SCH_EDIT_FRAME::DeleteItem( SCH_ITEM* aItem, bool aAppend )
 
     if( aItem->Type() == SCH_SHEET_PIN_T )
     {
+        RemoveFromScreen( aItem );
+
         // This item is attached to a node, and is not accessible by the global list directly.
         SCH_SHEET* sheet = (SCH_SHEET*) aItem->GetParent();
         wxCHECK_RET( (sheet != NULL) && (sheet->Type() == SCH_SHEET_T),
                      wxT( "Sheet label has invalid parent item." ) );
         SaveCopyInUndoList( (SCH_ITEM*) sheet, UR_CHANGED, aAppend );
         sheet->RemovePin( (SCH_SHEET_PIN*) aItem );
-        m_canvas->RefreshDrawingRect( sheet->GetBoundingBox() );
+        RefreshItem( sheet );
     }
     else if( aItem->Type() == SCH_JUNCTION_T )
     {
@@ -215,7 +207,7 @@ void SCH_EDIT_FRAME::DeleteItem( SCH_ITEM* aItem, bool aAppend )
     {
         aItem->SetFlags( STRUCT_DELETED );
         SaveCopyInUndoList( aItem, UR_DELETED, aAppend );
-        screen->Remove( aItem );
+        RemoveFromScreen( aItem );
 
         std::vector< wxPoint > pts;
         aItem->GetConnectionPoints( pts );
@@ -225,15 +217,14 @@ void SCH_EDIT_FRAME::DeleteItem( SCH_ITEM* aItem, bool aAppend )
             if( junction && !screen->IsJunctionNeeded( point ) )
                 DeleteJunction( junction, true );
         }
-
-        m_canvas->RefreshDrawingRect( aItem->GetBoundingBox() );
     }
 }
 
 
-void DuplicateItemsInList( SCH_SCREEN* screen, PICKED_ITEMS_LIST& aItemsList,
-                           const wxPoint& aMoveVector )
+void SCH_EDIT_FRAME::DuplicateItemsInList( SCH_SCREEN* screen, PICKED_ITEMS_LIST& aItemsList,
+                                           const wxPoint& aMoveVector )
 {
+    SCH_ITEM* olditem;
     SCH_ITEM* newitem;
 
     if( aItemsList.GetCount() == 0 )
@@ -246,32 +237,34 @@ void DuplicateItemsInList( SCH_SCREEN* screen, PICKED_ITEMS_LIST& aItemsList,
 
     for( unsigned ii = 0; ii < aItemsList.GetCount(); ii++ )
     {
-        newitem = DuplicateStruct( (SCH_ITEM*) aItemsList.GetPickedItem( ii ) );
+        olditem = static_cast<SCH_ITEM*>( aItemsList.GetPickedItem( ii ) );
+        newitem = DuplicateStruct( olditem );
+
         aItemsList.SetPickedItem( newitem, ii );
         aItemsList.SetPickedItemStatus( UR_NEW, ii );
-        {
-            switch( newitem->Type() )
-            {
-            case SCH_JUNCTION_T:
-            case SCH_LINE_T:
-            case SCH_BUS_BUS_ENTRY_T:
-            case SCH_BUS_WIRE_ENTRY_T:
-            case SCH_TEXT_T:
-            case SCH_LABEL_T:
-            case SCH_GLOBAL_LABEL_T:
-            case SCH_HIERARCHICAL_LABEL_T:
-            case SCH_SHEET_PIN_T:
-            case SCH_MARKER_T:
-            case SCH_NO_CONNECT_T:
-            default:
-                break;
 
-            case SCH_SHEET_T:
-            {
-                SCH_SHEET* sheet = (SCH_SHEET*) newitem;
-                // Duplicate sheet names and sheet time stamps are not valid.  Use a time stamp
-                // based sheet name and update the time stamp for each sheet in the block.
-                timestamp_t timeStamp = GetNewTimeStamp();
+        switch( newitem->Type() )
+        {
+        case SCH_JUNCTION_T:
+        case SCH_LINE_T:
+        case SCH_BUS_BUS_ENTRY_T:
+        case SCH_BUS_WIRE_ENTRY_T:
+        case SCH_TEXT_T:
+        case SCH_LABEL_T:
+        case SCH_GLOBAL_LABEL_T:
+        case SCH_HIERARCHICAL_LABEL_T:
+        case SCH_SHEET_PIN_T:
+        case SCH_MARKER_T:
+        case SCH_NO_CONNECT_T:
+        default:
+            break;
+
+        case SCH_SHEET_T:
+        {
+            SCH_SHEET* sheet = (SCH_SHEET*) newitem;
+            // Duplicate sheet names and sheet time stamps are not valid.  Use a time stamp
+            // based sheet name and update the time stamp for each sheet in the block.
+            timestamp_t timeStamp = GetNewTimeStamp();
 
                 sheet->SetName( wxString::Format( wxT( "sheet%8.8lX" ), (unsigned long)timeStamp ) );
                 sheet->SetTimeStamp( timeStamp );
@@ -279,18 +272,15 @@ void DuplicateItemsInList( SCH_SCREEN* screen, PICKED_ITEMS_LIST& aItemsList,
                 break;
             }
 
-            case SCH_COMPONENT_T:
-                ( (SCH_COMPONENT*) newitem )->SetTimeStamp( GetNewTimeStamp() );
-                ( (SCH_COMPONENT*) newitem )->ClearAnnotation( NULL );
-                break;
-            }
-
-            SetSchItemParent( newitem, screen );
-            screen->Append( newitem );
+        case SCH_COMPONENT_T:
+            ( (SCH_COMPONENT*) newitem )->SetTimeStamp( GetNewTimeStamp() );
+            ( (SCH_COMPONENT*) newitem )->ClearAnnotation( NULL );
+            break;
         }
-    }
 
-    MoveItemsInList( aItemsList, aMoveVector );
+        SetSchItemParent( newitem, screen );
+        AddToScreen( newitem );
+    }
 
     if( hasSheetCopied )
     {

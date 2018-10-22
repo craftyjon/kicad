@@ -30,7 +30,7 @@
 
 #include <fctsys.h>
 #include <gr_basic.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <sch_edit_frame.h>
 
 #include <sch_bus_entry.h>
@@ -46,7 +46,7 @@ SCH_BUS_BUS_ENTRY* SCH_EDIT_FRAME::CreateBusBusEntry()
 
     busEntry->SetFlags( IS_NEW );
     GetScreen()->SetCurItem( busEntry );
-    addCurrentItemToList();
+    addCurrentItemToScreen();
     return busEntry;
 }
 
@@ -57,7 +57,7 @@ SCH_BUS_WIRE_ENTRY* SCH_EDIT_FRAME::CreateBusWireEntry()
 
     busEntry->SetFlags( IS_NEW );
     GetScreen()->SetCurItem( busEntry );
-    addCurrentItemToList();
+    addCurrentItemToScreen();
     return busEntry;
 }
 
@@ -74,10 +74,9 @@ void SCH_EDIT_FRAME::SetBusEntryShape( wxDC* DC, SCH_BUS_ENTRY_BASE* BusEntry, c
 
     s_LastShape = entry_shape == '/' ? '/' : '\\';
 
-    BusEntry->Draw( m_canvas, DC, wxPoint( 0, 0 ), g_XorMode );
     BusEntry->SetBusEntryShape( s_LastShape );
-    GetScreen()->TestDanglingEnds();
-    BusEntry->Draw( m_canvas, DC, wxPoint( 0, 0 ), g_XorMode );
+    TestDanglingEnds();
 
+    RefreshItem( BusEntry );
     OnModify( );
 }

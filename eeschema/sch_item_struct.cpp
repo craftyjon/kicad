@@ -33,8 +33,8 @@
 #include <trace_helpers.h>
 #include <sch_item_struct.h>
 #include <sch_screen.h>
-#include <class_drawpanel.h>
 #include <sch_sheet_path.h>
+#include <sch_draw_panel.h>
 #include <sch_edit_frame.h>
 
 #include <general.h>
@@ -66,6 +66,14 @@ SCH_ITEM::~SCH_ITEM()
     // are owned by the sheet object container.
     if( !m_connections.empty() )
         m_connections.clear();
+}
+
+
+void SCH_ITEM::ViewGetLayers( int aLayers[], int& aCount ) const
+{
+    // Basic fallback
+    aCount      = 1;
+    aLayers[0]  = LAYER_DEVICE;
 }
 
 

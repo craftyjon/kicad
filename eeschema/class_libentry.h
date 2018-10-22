@@ -87,6 +87,9 @@ protected:
     wxString        keyWords;       ///< keyword list (used for search for parts by keyword)
     wxString        docFileName;    ///< Associate doc file name
 
+    int             tmpUnit;        ///< Temporary unit designator (used for rendering)
+    int             tmpConversion;  ///< Temporary conversion designator (used for rendering)
+
 public:
     LIB_ALIAS( const wxString& aName, LIB_PART* aRootComponent );
     LIB_ALIAS( const LIB_ALIAS& aAlias, LIB_PART* aRootComponent = NULL );
@@ -157,6 +160,12 @@ public:
     wxString GetUnitReference( int aUnit ) override;
 
     /**
+     * A temporary conversion (deMorgan) designation for rendering, preview, etc.
+     */
+    void SetTmpConversion( int aConversion ) { tmpConversion = aConversion; }
+    int GetTmpConversion() { return tmpConversion; }
+
+    /**
      * KEEPCASE sensitive comparison of the part entry name.
      */
     bool operator==( const wxChar* aName ) const;
@@ -166,6 +175,8 @@ public:
     }
 
     bool operator==( const LIB_ALIAS* aAlias ) const { return this == aAlias; }
+
+    void ViewGetLayers( int aLayers[], int& aCount ) const override;
 
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override { ShowDummy( os ); }
@@ -320,6 +331,8 @@ public:
 
     wxArrayString& GetFootprints() { return m_FootprintList; }
 
+    void ViewGetLayers( int aLayers[], int& aCount ) const override;
+
     /**
      * Get the bounding box for the symbol.
      *
@@ -399,9 +412,7 @@ public:
     void SetFields( const std::vector <LIB_FIELD>& aFieldsList );
 
     /**
-     * Return a list of fields withing this part. The only known caller of
-     * this function is the library part field editor, and it establishes
-     * needed behavior.
+     * Return a list of fields within this part.
      *
      * @param aList - List to add fields to
      */
@@ -577,70 +588,6 @@ public:
      * Clears the status flag all draw objects in this part.
      */
     void ClearStatus();
-
-    /**
-     * Checks all draw objects of part to see if they are with block.
-     *
-     * Use this method to mark draw objects as selected during block
-     * functions.
-     *
-     * @param aRect - The bounding rectangle to test in draw items are inside.
-     * @param aUnit - The current unit number to test against.
-     * @param aConvert - Are the draw items being selected a conversion.
-     * @param aSyncPinEdit - Enable pin selection in other units.
-     * @return The number of draw objects found inside the block select
-     *         rectangle.
-     */
-    int SelectItems( EDA_RECT& aRect, int aUnit, int aConvert, bool aSyncPinEdit );
-
-    /**
-     * Clears all the draw items marked by a block select.
-     */
-    void ClearSelectedItems();
-
-    /**
-     * Deletes the select draw items marked by a block select.
-     *
-     * The name and reference field will not be deleted.  They are the
-     * minimum drawing items required for any part.  Their properties
-     * can be changed but the cannot be removed.
-     */
-    void DeleteSelectedItems();
-
-    /**
-     * Move the selected draw items marked by a block select.
-     */
-    void MoveSelectedItems( const wxPoint& aOffset );
-
-    /**
-     * Make a copy of the selected draw items marked by a block select.
-     *
-     * Fields are not copied.  Only part body items are copied.
-     * Copying fields would result in duplicate fields which does not
-     * make sense in this context.
-     */
-    void CopySelectedItems( const wxPoint& aOffset );
-
-    /**
-     * Horizontally (X axis) mirror selected draw items about a point.
-     *
-     * @param aCenter - Center point to mirror around.
-     */
-    void MirrorSelectedItemsH( const wxPoint& aCenter );
-
-    /**
-     * Vertically (Y axis) mirror selected draw items about a point.
-     *
-     * @param aCenter - Center point to mirror around.
-     */
-    void MirrorSelectedItemsV( const wxPoint& aCenter );
-
-    /**
-     * Rotate CCW selected draw items about a point.
-     *
-     * @param aCenter - Center point to mirror around.
-     */
-    void RotateSelectedItems( const wxPoint& aCenter );
 
     /**
      * Locate a draw object.

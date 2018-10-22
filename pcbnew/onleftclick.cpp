@@ -369,6 +369,7 @@ void PCB_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
             if( module )
             {
                 m_canvas->MoveCursorToCrossHair();
+                module->SetLink( 0 );
                 AddModuleToBoard( module );
 
                 if( aDC )
@@ -607,7 +608,7 @@ void PCB_EDIT_FRAME::OnEditItemRequest( wxDC* aDC, BOARD_ITEM* aItem )
         break;
 
     case PCB_LINE_T:
-        InstallGraphicItemPropertiesDialog( aItem, aDC );
+        InstallGraphicItemPropertiesDialog( aItem );
         break;
 
     case PCB_ZONE_AREA_T:

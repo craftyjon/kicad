@@ -61,6 +61,14 @@ public:
     wxString CreateNewLibrary(const wxString& aLibName = wxEmptyString);
 
     /**
+     * Function AddLibrary
+     * Add an existing library to either the global or project library table.
+     * @param aFileName the library to add; a file open dialog will be displayed if empty.
+     * @return true if successfully added
+     */
+    bool AddLibrary(const wxString& aLibName = wxEmptyString);
+
+    /**
      * Function OnEditItemRequest
      * Install the corresponding dialog editor for the given item
      * @param aDC = the current device context
@@ -156,7 +164,7 @@ public:
     void SetRotationAngle( int aRotationAngle );
 
     void InstallTextOptionsFrame( BOARD_ITEM* aText, wxDC* aDC );
-    void InstallGraphicItemPropertiesDialog( BOARD_ITEM* aItem, wxDC* aDC );
+    void InstallGraphicItemPropertiesDialog( BOARD_ITEM* aItem );
 
     ///> @copydoc EDA_DRAW_FRAME::UseGalCanvas()
     void UseGalCanvas( bool aEnable ) override;
@@ -201,6 +209,8 @@ protected:
      * duplicateItem(BOARD_ITEM*, bool) above
      */
     virtual void duplicateItems( bool aIncrement ) = 0;
+
+    void unitsChangeRefresh() override;
 };
 
 #endif

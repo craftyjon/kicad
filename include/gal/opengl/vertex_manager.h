@@ -107,6 +107,20 @@ public:
     bool Vertex( GLfloat aX, GLfloat aY, GLfloat aZ );
 
     /**
+     * Function Vertex()
+     * adds a vertex with the given coordinates to the currently set item. Vertex coordinates will
+     * have the current transformation matrix applied.
+     *
+     * @param aXY are the XY coordinates of the new vertex.
+     * @param aZ is the Z coordinate of the new vertex.
+     * @return True if successful, false otherwise.
+     */
+    bool Vertex( const VECTOR2D& aXY, GLfloat aZ )
+    {
+        return Vertex( aXY.x, aXY.y, aZ );
+    }
+
+    /**
      * Function Vertices()
      * adds one or more vertices to the currently set item. It takes advantage of allocating memory
      * in advance, so should be faster than adding vertices one by one. Color & shader
@@ -334,6 +348,12 @@ public:
      * finishes drawing operations.
      */
     void EndDrawing() const;
+
+    /**
+     * Function EnableDepthTest()
+     * Enables/disables Z buffer depth test.
+     */
+    void EnableDepthTest( bool aEnabled );
 
 protected:
     /**

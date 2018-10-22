@@ -27,7 +27,7 @@
  */
 
 #include <fctsys.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <trigo.h>
 #include <macros.h>
 #include <bitmaps.h>
@@ -128,7 +128,7 @@ void SCH_BITMAP::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOffset
         GRSetDrawMode( aDC, aDrawMode );
 #endif
 
-        m_image->DrawBitmap( aPanel, aDC, pos );
+        m_image->DrawBitmap( aDC, pos );
     }
     else    // draws bounding box only (used to move items)
     {
@@ -228,4 +228,11 @@ void SCH_BITMAP::Plot( PLOTTER* aPlotter )
 BITMAP_DEF SCH_BITMAP::GetMenuImage() const
 {
     return image_xpm;
+}
+
+
+void SCH_BITMAP::ViewGetLayers( int aLayers[], int& aCount ) const
+{
+    aCount = 1;
+    aLayers[0] = LAYER_WORKSHEET;
 }

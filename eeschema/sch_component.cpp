@@ -29,7 +29,7 @@
 
 #include <fctsys.h>
 #include <pgm_base.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <gr_basic.h>
 #include <kicad_string.h>
 #include <richio.h>
@@ -227,6 +227,14 @@ void SCH_COMPONENT::Init( const wxPoint& pos )
 EDA_ITEM* SCH_COMPONENT::Clone() const
 {
     return new SCH_COMPONENT( *this );
+}
+
+
+void SCH_COMPONENT::ViewGetLayers( int aLayers[], int& aCount ) const
+{
+    aCount      = 2;
+    aLayers[0]  = LAYER_DEVICE;
+    aLayers[1]  = LAYER_DEVICE_BACKGROUND;
 }
 
 
@@ -1326,29 +1334,27 @@ void SCH_COMPONENT::SetOrientation( int aOrientation )
 
 int SCH_COMPONENT::GetOrientation()
 {
-    int type_rotate = CMP_ORIENT_0;
-    TRANSFORM transform;
-    int ii;
-
-    #define ROTATE_VALUES_COUNT 12
-
-    // list of all possibilities, but only the first 8 are actually used
-    int rotate_value[ROTATE_VALUES_COUNT] =
+    int rotate_values[] =
     {
-        CMP_ORIENT_0,                  CMP_ORIENT_90,                  CMP_ORIENT_180,
+        CMP_ORIENT_0,
+        CMP_ORIENT_90,
+        CMP_ORIENT_180,
         CMP_ORIENT_270,
-        CMP_MIRROR_X + CMP_ORIENT_0,   CMP_MIRROR_X + CMP_ORIENT_90,
-        CMP_MIRROR_Y, CMP_MIRROR_X + CMP_ORIENT_270,
-        CMP_MIRROR_Y + CMP_ORIENT_0,   CMP_MIRROR_Y + CMP_ORIENT_90,
-        CMP_MIRROR_Y + CMP_ORIENT_180, CMP_MIRROR_Y + CMP_ORIENT_270
+        CMP_MIRROR_X + CMP_ORIENT_0,
+        CMP_MIRROR_X + CMP_ORIENT_90,
+        CMP_MIRROR_X + CMP_ORIENT_270,
+        CMP_MIRROR_Y,
+        CMP_MIRROR_Y + CMP_ORIENT_0,
+        CMP_MIRROR_Y + CMP_ORIENT_90,
+        CMP_MIRROR_Y + CMP_ORIENT_180,
+        CMP_MIRROR_Y + CMP_ORIENT_270
     };
 
     // Try to find the current transform option:
-    transform = m_transform;
+    TRANSFORM transform = m_transform;
 
-    for( ii = 0; ii < ROTATE_VALUES_COUNT; ii++ )
+    for( int type_rotate : rotate_values )
     {
-        type_rotate = rotate_value[ii];
         SetOrientation( type_rotate );
 
         if( transform == m_transform )

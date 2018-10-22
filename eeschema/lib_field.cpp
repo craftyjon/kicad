@@ -33,7 +33,7 @@
 #include <base_struct.h>
 #include <draw_graphic_text.h>
 #include <kicad_string.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <plotter.h>
 #include <trigo.h>
 #include <base_units.h>
@@ -393,26 +393,27 @@ const EDA_RECT LIB_FIELD::GetBoundingBox() const
 }
 
 
-COLOR4D LIB_FIELD::GetDefaultColor()
+void LIB_FIELD::ViewGetLayers( int aLayers[], int& aCount ) const
 {
-    COLOR4D color;
+    aCount      = 1;
 
     switch( m_id )
     {
-    case REFERENCE:
-        color = GetLayerColor( LAYER_REFERENCEPART );
-        break;
-
-    case VALUE:
-        color = GetLayerColor( LAYER_VALUEPART );
-        break;
-
-    default:
-        color = GetLayerColor( LAYER_FIELDS );
-        break;
+    case REFERENCE: aLayers[0] = LAYER_REFERENCEPART; break;
+    case VALUE:     aLayers[0] = LAYER_VALUEPART;     break;
+    default:        aLayers[0] = LAYER_FIELDS;        break;
     }
+}
 
-    return color;
+
+COLOR4D LIB_FIELD::GetDefaultColor()
+{
+    switch( m_id )
+    {
+    case REFERENCE: return GetLayerColor( LAYER_REFERENCEPART );
+    case VALUE:     return GetLayerColor( LAYER_VALUEPART );
+    default:        return GetLayerColor( LAYER_FIELDS );
+    }
 }
 
 
@@ -547,7 +548,6 @@ void LIB_FIELD::BeginEdit( STATUS_FLAGS aEditMode, const wxPoint aPosition )
     {
         m_initialPos = GetTextPos();
         m_initialCursorPos = aPosition;
-        SetEraseLastDrawItem();
     }
     else
     {
@@ -575,11 +575,10 @@ void LIB_FIELD::EndEdit( const wxPoint& aPosition, bool aAbort )
     m_Flags = 0;
     m_rotate = false;
     m_updateText = false;
-    SetEraseLastDrawItem( false );
 }
 
 
-void LIB_FIELD::calcEdit( const wxPoint& aPosition )
+void LIB_FIELD::CalcEdit( const wxPoint& aPosition )
 {
     if( m_rotate )
     {

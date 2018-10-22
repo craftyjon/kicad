@@ -102,7 +102,7 @@ def LoadOnePlugin(Dirname, ModuleName):
     try:  # If there is an error loading the script, skip it
         mtime = os.path.getmtime(module_filename)
 
-        if KICAD_PLUGINS.has_key(ModuleName):
+        if ModuleName in KICAD_PLUGINS:
             plugin = KICAD_PLUGINS[ModuleName]
 
             if not plugin["modification_time"] == mtime:
@@ -121,8 +121,7 @@ def LoadOnePlugin(Dirname, ModuleName):
         if NOT_LOADED_WIZARDS != "" :
             NOT_LOADED_WIZARDS += "\n"
         NOT_LOADED_WIZARDS += module_filename
-        FULL_BACK_TRACE += traceback.format_exc(sys.exc_info())
-        pass
+        FULL_BACK_TRACE += traceback.format_exc()
 
 
 
@@ -154,8 +153,7 @@ def LoadOneSubdirPlugin(Dirname, SubDirname):
                 if NOT_LOADED_WIZARDS != "" :
                     NOT_LOADED_WIZARDS += "\n"
                 NOT_LOADED_WIZARDS += fullPath
-                FULL_BACK_TRACE += traceback.format_exc(sys.exc_info())
-                pass
+                FULL_BACK_TRACE += traceback.format_exc()
 
         else:
             if NOT_LOADED_WIZARDS != "" :

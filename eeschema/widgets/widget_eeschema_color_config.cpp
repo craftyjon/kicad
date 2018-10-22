@@ -27,8 +27,8 @@
 
 #include <fctsys.h>
 #include <draw_frame.h>
-#include <class_drawpanel.h>
-
+#include <sch_draw_panel.h>
+#include <sch_view.h>
 #include <general.h>
 
 #include "widget_eeschema_color_config.h"
@@ -90,8 +90,12 @@ static COLORBUTTON sheetColorButtons[] = {
 static COLORBUTTON miscColorButtons[] = {
     { _( "ERC warning" ),       LAYER_ERC_WARN },
     { _( "ERC error" ),         LAYER_ERC_ERR },
-    { _( "Grid" ),              LAYER_SCHEMATIC_GRID },
     { _( "Brightened" ),        LAYER_BRIGHTENED },
+    { _( "Hidden items" ),      LAYER_HIDDEN },
+    { _( "Worksheet" ),         LAYER_WORKSHEET },
+    { _( "Cursor" ),            LAYER_SCHEMATIC_CURSOR },
+    { _( "Grid" ),              LAYER_SCHEMATIC_GRID },
+    { _( "Background" ),        LAYER_SCHEMATIC_BACKGROUND },
     { wxT( "" ), -1 }                           // Sentinel marking end of list.
 };
 
@@ -106,7 +110,7 @@ static BUTTONINDEX buttonGroups[] = {
 
 static COLORBUTTON bgColorButton = { "", LAYER_SCHEMATIC_BACKGROUND };
 
-static COLOR4D currentColors[ SCH_LAYER_ID_COUNT ];
+static COLOR4D currentColors[ LAYER_ID_COUNT ];
 
 
 WIDGET_EESCHEMA_COLOR_CONFIG::WIDGET_EESCHEMA_COLOR_CONFIG( wxWindow* aParent, EDA_DRAW_FRAME* aDrawFrame ) :
@@ -155,7 +159,7 @@ void WIDGET_EESCHEMA_COLOR_CONFIG::CreateControls()
             columnBoxSizer->Add( rowBoxSizer, 0, wxGROW | wxALL, 0 );
 
             COLOR4D color = GetLayerColor( SCH_LAYER_ID( buttons->m_Layer ) );
-            currentColors[ SCH_LAYER_INDEX( buttons->m_Layer ) ] = color;
+            currentColors[ buttons->m_Layer ] = color;
 
             wxMemoryDC iconDC;
             wxBitmap   bitmap( m_butt_size_pix );
@@ -185,42 +189,7 @@ void WIDGET_EESCHEMA_COLOR_CONFIG::CreateControls()
         groups++;
     }
 
-    COLOR4D bgColor = GetDrawFrame()->GetDrawBgColor();
-    wxMemoryDC iconDC;
-    wxBitmap   bitmap( m_butt_size_pix );
-
-    iconDC.SelectObject( bitmap );
-    iconDC.SetPen( *wxBLACK_PEN );
-
-    wxBrush brush;
-    brush.SetColour( bgColor.ToColour() );
-    brush.SetStyle( wxBRUSHSTYLE_SOLID );
-    iconDC.SetBrush( brush );
-    iconDC.DrawRectangle( 0, 0, m_butt_size_pix.x, m_butt_size_pix.y );
-
-    buttonId++;
-    wxBitmapButton* selBgColorBtn = new wxBitmapButton(
-                            this, buttonId, bitmap, wxDefaultPosition,
-                            m_butt_size_pix + m_butt_border_pix + wxSize( 1, 1 ) );
-    selBgColorBtn->SetClientData( (void*) &bgColorButton );
-
-    Connect( 1800, buttonId, wxEVT_COMMAND_BUTTON_CLICKED,
-             wxCommandEventHandler( WIDGET_EESCHEMA_COLOR_CONFIG::SetColor ) );
-
-    wxStaticText* bgColorLabel = new wxStaticText( this, wxID_ANY, _( "Background Color" ) );
-    wxFont font( bgColorLabel->GetFont() );
-    font.SetWeight( wxFONTWEIGHT_BOLD );
-    bgColorLabel->SetFont( font );
-
-    if( columnBoxSizer )
-    {
-        // Add a spacer to improve appearance.
-        columnBoxSizer->AddSpacer( 5 );
-        columnBoxSizer->Add( bgColorLabel, 1, wxALL, 5 );
-        columnBoxSizer->Add( selBgColorBtn, 1, wxRIGHT | wxBOTTOM, 5 );
-    }
-
-    currentColors[ SCH_LAYER_INDEX( LAYER_SCHEMATIC_BACKGROUND ) ] = bgColor;
+    Connect( 1800, buttonId, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( WIDGET_EESCHEMA_COLOR_CONFIG::SetColor ) );
 
     // Dialog now needs to be resized, but the associated command is found elsewhere.
 }
@@ -235,7 +204,7 @@ void WIDGET_EESCHEMA_COLOR_CONFIG::SetColor( wxCommandEvent& event )
     COLORBUTTON* colorButton = (COLORBUTTON*) button->GetClientData();
 
     wxCHECK_RET( colorButton != NULL, wxT( "Client data not set for color button." ) );
-    COLOR4D oldColor = currentColors[ SCH_LAYER_INDEX( colorButton->m_Layer ) ];
+    COLOR4D oldColor = currentColors[ colorButton->m_Layer ];
     COLOR4D newColor = COLOR4D::UNSPECIFIED;
     DIALOG_COLOR_PICKER dialog( this, oldColor, false );
 
@@ -247,7 +216,7 @@ void WIDGET_EESCHEMA_COLOR_CONFIG::SetColor( wxCommandEvent& event )
     if( newColor == COLOR4D::UNSPECIFIED || oldColor == newColor )
         return;
 
-    currentColors[ SCH_LAYER_INDEX( colorButton->m_Layer ) ] = newColor;
+    currentColors[ colorButton->m_Layer ] = newColor;
 
     wxMemoryDC iconDC;
 
@@ -270,46 +239,30 @@ void WIDGET_EESCHEMA_COLOR_CONFIG::SetColor( wxCommandEvent& event )
 
 bool WIDGET_EESCHEMA_COLOR_CONFIG::TransferDataFromControl()
 {
-    bool warning = false;
-
     // Check for color conflicts with background color to give user a chance to bail
     // out before making changes.
 
-    COLOR4D bgcolor = currentColors[ SCH_LAYER_INDEX( LAYER_SCHEMATIC_BACKGROUND ) ];
+    COLOR4D bgcolor = currentColors[ LAYER_SCHEMATIC_BACKGROUND ];
 
-    for( SCH_LAYER_ID clyr = LAYER_WIRE; clyr < SCH_LAYER_ID_END; ++clyr )
+    for( SCH_LAYER_ID clyr = SCH_LAYER_ID_START; clyr < SCH_LAYER_ID_END; ++clyr )
     {
-        if( bgcolor == currentColors[ SCH_LAYER_INDEX( clyr ) ] && clyr != LAYER_SCHEMATIC_BACKGROUND )
+        if( bgcolor == currentColors[ clyr ] && clyr != LAYER_SCHEMATIC_BACKGROUND )
         {
-            warning = true;
+            wxString msg = _( "Some items have the same color as the background\n"
+                              "and they will not be seen on the screen.  Are you\n"
+                              "sure you want to use these colors?" );
+
+            if( wxMessageBox( msg,  _( "Warning" ), wxYES_NO | wxICON_QUESTION, this ) == wxNO )
+                return false;
+
             break;
         }
     }
 
-    // Prompt the user if an item has the same color as the background
-    // because this item cannot be seen:
-    if( warning )
-    {
-        if( wxMessageBox( _( "Some items have the same color as the background\n"
-                             "and they will not be seen on the screen.  Are you\n"
-                             "sure you want to use these colors?" ),
-                          _( "Warning" ),
-                          wxYES_NO | wxICON_QUESTION, this ) == wxNO )
-            return false;
-    }
+    for( SCH_LAYER_ID clyr = SCH_LAYER_ID_START; clyr < SCH_LAYER_ID_END; ++clyr )
+        SetLayerColor( currentColors[ clyr ], clyr );
 
-    // Update color of background
-    GetDrawFrame()->SetDrawBgColor( bgcolor );
-    currentColors[ SCH_LAYER_INDEX( LAYER_SCHEMATIC_BACKGROUND ) ] = bgcolor;
-
-
-    for( SCH_LAYER_ID clyr = LAYER_WIRE; clyr < SCH_LAYER_ID_END; ++clyr )
-    {
-        SetLayerColor( currentColors[ SCH_LAYER_INDEX( clyr ) ], clyr );
-    }
-
-    GetDrawFrame()->SetGridColor( GetLayerColor( LAYER_SCHEMATIC_GRID ) );
-    GetDrawFrame()->GetCanvas()->Refresh();
+    SetLayerColor( currentColors[ LAYER_WORKSHEET ], (SCH_LAYER_ID) LAYER_WORKSHEET );
 
     return true;
 }

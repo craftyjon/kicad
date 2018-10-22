@@ -149,6 +149,8 @@ public:
 
     const wxArrayString& GetPathsAndReferences() const { return m_PathsAndReferences; }
 
+    void ViewGetLayers( int aLayers[], int& aCount ) const override;
+
     /**
      * Return true for items which are moved with the anchor point at mouse cursor
      * and false for items moved with no reference to anchor.
@@ -466,6 +468,8 @@ public:
      * @param aPinsList is the list to populate with all of the pins.
      */
     void GetPins( std::vector<LIB_PIN*>& aPinsList );
+
+    std::vector<bool>* GetDanglingPinFlags() { return &m_isDangling; }
 
     void Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOffset,
                GR_DRAWMODE aDrawMode, COLOR4D aColor = COLOR4D::UNSPECIFIED ) override

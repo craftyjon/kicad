@@ -30,7 +30,7 @@
 #include <fctsys.h>
 #include <gr_basic.h>
 #include <macros.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <plotter.h>
 #include <base_units.h>
 #include <eeschema_config.h>
@@ -39,6 +39,7 @@
 #include <sch_line.h>
 #include <sch_edit_frame.h>
 #include <netlist_object.h>
+#include <sch_view.h>
 
 #include <dialogs/dialog_edit_line_style.h>
 
@@ -830,7 +831,7 @@ int SCH_EDIT_FRAME::EditLine( SCH_LINE* aLine, bool aRedraw )
         return wxID_CANCEL;
 
     if( aRedraw )
-        m_canvas->Refresh();
+        RefreshItem( aLine );
 
     return wxID_OK;
 }

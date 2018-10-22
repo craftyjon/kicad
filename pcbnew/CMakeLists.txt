@@ -10,6 +10,8 @@ endif()
 
 add_definitions( -DPCBNEW )
 
+add_subdirectory(connectivity)
+
 add_subdirectory(router)
 
 # psnrouter depends on make_lexer outputs in common (bug # 1285878 )
@@ -35,6 +37,7 @@ endif()
 
 include_directories( BEFORE ${INC_BEFORE} )
 include_directories(
+    ../include/legacy_wx
     ./dialogs
     ./autorouter
     ../3d-viewer
@@ -657,12 +660,14 @@ set( PCBNEW_KIFACE_LIBRARIES
     pcbcommon
     pnsrouter
     pcad2kicadpcb
+    legacy_wx
     common
     polygon
     bitmaps
     gal
     lib_dxf
     idf3
+    connectivity
     ${wxWidgets_LIBRARIES}
     ${GITHUB_PLUGIN_LIBRARIES}
     ${GDI_PLUS_LIBRARIES}

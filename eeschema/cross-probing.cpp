@@ -33,7 +33,7 @@
 #include <kiway_express.h>
 #include <macros.h>
 #include <eda_dde.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 
 #include <sch_edit_frame.h>
 #include <general.h>
@@ -42,6 +42,7 @@
 #include <lib_pin.h>
 #include <sch_component.h>
 #include <sch_sheet.h>
+#include <sch_view.h>
 
 
 /**
@@ -81,7 +82,9 @@ void SCH_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
 
             SetStatusText( _( "Selected net: " ) + m_SelectedNetName );
             SetCurrentSheetHighlightFlags();
-            m_canvas->Refresh();
+            // Be sure hightlight change will be redrawn in any case
+            GetGalCanvas()->GetView()->RecacheAllItems();
+            GetGalCanvas()->GetView()->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
         }
 
         return;
@@ -247,6 +250,7 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_EXPRESS& mail )
         break;
 
     case MAIL_SCH_REFRESH:
+        GetCanvas()->GetView()->UpdateAllItems( KIGFX::ALL );
         GetCanvas()->Refresh();
         break;
 

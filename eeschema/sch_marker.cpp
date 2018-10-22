@@ -28,7 +28,7 @@
  */
 
 #include <fctsys.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <trigo.h>
 #include <msgpanel.h>
 #include <bitmaps.h>
@@ -39,6 +39,7 @@
 
 SCH_MARKER::SCH_MARKER() : SCH_ITEM( NULL, SCH_MARKER_T ), MARKER_BASE()
 {
+    m_ScalingFactor = 8;
 }
 
 
@@ -46,6 +47,7 @@ SCH_MARKER::SCH_MARKER( const wxPoint& pos, const wxString& text ) :
     SCH_ITEM( NULL, SCH_MARKER_T ),
     MARKER_BASE( 0, pos, text, pos )
 {
+    m_ScalingFactor = 8;
 }
 
 
@@ -103,6 +105,13 @@ bool SCH_MARKER::Matches( wxFindReplaceData& aSearchData, void* aAuxData,
     }
 
     return false;
+}
+
+
+void SCH_MARKER::ViewGetLayers( int aLayers[], int& aCount ) const
+{
+    aCount      = 1;
+    aLayers[0]  = this->m_ErrorLevel == MARKER_SEVERITY_ERROR ? LAYER_ERC_ERR : LAYER_ERC_WARN;
 }
 
 

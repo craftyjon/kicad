@@ -25,6 +25,8 @@
 #include <fctsys.h>
 #include <base_screen.h>
 #include <lib_edit_frame.h>
+#include <sch_view.h>
+#include <sch_painter.h>
 
 #include "panel_libedit_settings.h"
 
@@ -37,16 +39,6 @@ PANEL_LIBEDIT_SETTINGS::PANEL_LIBEDIT_SETTINGS( LIB_EDIT_FRAME* aFrame, wxWindow
 
 bool PANEL_LIBEDIT_SETTINGS::TransferDataToWindow()
 {
-    const GRIDS& gridSizes = m_frame->GetScreen()->GetGrids();
-
-    for( size_t i = 0; i < gridSizes.size(); i++ )
-    {
-        m_choiceGridSize->Append( wxString::Format( wxT( "%0.1f" ), gridSizes[i].m_Size.x ) );
-
-        if( gridSizes[i].m_CmdId == m_frame->GetScreen()->GetGridCmdId() )
-            m_choiceGridSize->SetSelection( (int) i );
-    }
-
     m_lineWidthCtrl->SetValue( StringFromValue( INCHES, GetDefaultLineThickness(), false, true ) );
     m_pinLengthCtrl->SetValue( StringFromValue( INCHES, m_frame->GetDefaultPinLength(), false, true ) );
     m_pinNumSizeCtrl->SetValue( StringFromValue( INCHES, m_frame->GetPinNumDefaultSize(), false, true ) );
@@ -56,7 +48,6 @@ bool PANEL_LIBEDIT_SETTINGS::TransferDataToWindow()
     m_choicePinDisplacement->SetSelection( m_frame->GetRepeatPinStep() == 50 ? 1 : 0 );
     m_spinRepeatLabel->SetValue( m_frame->GetRepeatDeltaLabel() );
 
-    m_checkShowGrid->SetValue( m_frame->IsGridVisible() );
     m_checkShowPinElectricalType->SetValue( m_frame->GetShowElectricalType() );
 
     return true;
@@ -65,11 +56,6 @@ bool PANEL_LIBEDIT_SETTINGS::TransferDataToWindow()
 
 bool PANEL_LIBEDIT_SETTINGS::TransferDataFromWindow()
 {
-    const GRIDS& gridSizes = m_frame->GetScreen()->GetGrids();
-    wxRealPoint gridsize = gridSizes[ (size_t) m_choiceGridSize->GetSelection() ].m_Size;
-    m_frame->SetLastGridSizeId( m_frame->GetScreen()->SetGrid( gridsize ) );
-    m_frame->SetGridVisibility( m_checkShowGrid->GetValue() );
-
     SetDefaultLineThickness( ValueFromString( INCHES, m_lineWidthCtrl->GetValue(), true ) );
     m_frame->SetDefaultPinLength( ValueFromString( INCHES, m_pinLengthCtrl->GetValue(), true ) );
     m_frame->SetPinNumDefaultSize( ValueFromString( INCHES, m_pinNumSizeCtrl->GetValue(), true ) );
@@ -80,6 +66,9 @@ bool PANEL_LIBEDIT_SETTINGS::TransferDataFromWindow()
     m_frame->SetRepeatDeltaLabel( m_spinRepeatLabel->GetValue() );
 
     m_frame->SetShowElectricalType( m_checkShowPinElectricalType->GetValue() );
+
+    m_frame->GetRenderSettings()->m_ShowPinsElectricalType = m_frame->GetShowElectricalType();
+    m_frame->GetCanvas()->Refresh();
 
     return true;
 }

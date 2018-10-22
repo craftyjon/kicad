@@ -45,15 +45,21 @@ public:
                   const wxPoint &pos = wxDefaultPosition, const wxSize &size = wxDefaultSize,
                   long style = 0 );
 
+    ~NET_SELECTOR() override;
+
     void SetNetInfo( NETINFO_LIST* aNetInfoList );
 
     void SetSelectedNetcode( int aNetcode );
+    void SetSelectedNet( const wxString& aNetname );
     void SetIndeterminate();
 
     bool IsIndeterminate();
     int GetSelectedNetcode();
+    wxString GetSelectedNetname();
 
 protected:
+    void onKeyDown( wxKeyEvent& aEvt );
+
     NET_SELECTOR_COMBOPOPUP* m_netSelectorPopup;
 };
 

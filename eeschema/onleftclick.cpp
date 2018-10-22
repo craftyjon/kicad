@@ -30,7 +30,7 @@
 #include <fctsys.h>
 #include <kiway.h>
 #include <eeschema_id.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <confirm.h>
 #include <sch_edit_frame.h>
 #include <sim/sim_plot_frame.h>
@@ -50,6 +50,7 @@
 #include <netlist_object.h>
 #include <class_library.h>      // for class SCHLIB_FILTER to filter power parts
 
+#include <sch_view.h>
 
 // TODO(hzeller): These pairs of elmenets should be represented by an object, but don't want
 // to refactor too much right now to not get in the way with other code changes.
@@ -61,6 +62,8 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
 {
     SCH_ITEM*   item = GetScreen()->GetCurItem();
     wxPoint     gridPosition = GetGridPosition( aPosition );
+    DBG(printf("mousep %d %d gridp %d %d\n", aPosition.x, aPosition.y, gridPosition.x, gridPosition.y );)
+
 
     if( ( GetToolId() == ID_NO_TOOL_SELECTED ) || ( item && item->GetFlags() ) )
     {
@@ -84,7 +87,9 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
             case SCH_FIELD_T:
             case SCH_BITMAP_T:
             case SCH_NO_CONNECT_T:
-                addCurrentItemToList();
+                addCurrentItemToScreen();
+                GetCanvas()->GetView()->ClearPreview();
+                GetCanvas()->GetView()->ClearHiddenFlags();
                 return;
 
             case SCH_LINE_T:    // May already be drawing segment.
@@ -128,7 +133,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
@@ -145,7 +150,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
@@ -157,7 +162,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
@@ -169,38 +174,38 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
     case ID_SCHEMATIC_DELETE_ITEM_BUTT:
-        DeleteItemAtCrossHair( aDC );
+        DeleteItemAtCrossHair();
         break;
 
     case ID_WIRE_BUTT:
-        BeginSegment( aDC, LAYER_WIRE );
+        BeginSegment( LAYER_WIRE );
         m_canvas->SetAutoPanRequest( true );
         break;
 
     case ID_BUS_BUTT:
-        BeginSegment( aDC, LAYER_BUS );
+        BeginSegment( LAYER_BUS );
         m_canvas->SetAutoPanRequest( true );
         break;
 
     case ID_LINE_COMMENT_BUTT:
-        BeginSegment( aDC, LAYER_NOTES );
+        BeginSegment( LAYER_NOTES );
         m_canvas->SetAutoPanRequest( true );
         break;
 
     case ID_TEXT_COMMENT_BUTT:
         if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
         {
-            GetScreen()->SetCurItem( CreateNewText( aDC, LAYER_NOTES ) );
+            GetScreen()->SetCurItem( CreateNewText( LAYER_NOTES ) );
             m_canvas->SetAutoPanRequest( true );
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
@@ -212,19 +217,19 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
     case ID_LABEL_BUTT:
         if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
         {
-            GetScreen()->SetCurItem( CreateNewText( aDC, LAYER_LOCLABEL ) );
+            GetScreen()->SetCurItem( CreateNewText( LAYER_LOCLABEL ) );
             m_canvas->SetAutoPanRequest( true );
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
@@ -233,16 +238,16 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         if( (item == NULL) || (item->GetFlags() == 0) )
         {
             if( GetToolId() == ID_GLABEL_BUTT )
-                GetScreen()->SetCurItem( CreateNewText( aDC, LAYER_GLOBLABEL ) );
+                GetScreen()->SetCurItem( CreateNewText( LAYER_GLOBLABEL ) );
 
             if( GetToolId() == ID_HIERLABEL_BUTT )
-                GetScreen()->SetCurItem( CreateNewText( aDC, LAYER_HIERLABEL ) );
+                GetScreen()->SetCurItem( CreateNewText( LAYER_HIERLABEL ) );
 
             m_canvas->SetAutoPanRequest( true );
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
@@ -259,7 +264,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
@@ -274,13 +279,13 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         if( (item->Type() == SCH_SHEET_T) && (item->GetFlags() == 0) )
         {
             if( GetToolId() == ID_IMPORT_HLABEL_BUTT )
-                GetScreen()->SetCurItem( ImportSheetPin( (SCH_SHEET*) item, aDC ) );
+                GetScreen()->SetCurItem( ImportSheetPin( (SCH_SHEET*) item ) );
             else
-                GetScreen()->SetCurItem( CreateSheetPin( (SCH_SHEET*) item, aDC ) );
+                GetScreen()->SetCurItem( CreateSheetPin( (SCH_SHEET*) item ) );
         }
         else if( (item->Type() == SCH_SHEET_PIN_T) && (item->GetFlags() != 0) )
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
@@ -289,13 +294,12 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         {
             // ERC dialog interferes with moving items so we close it before starting
             CloseErc();
-            GetScreen()->SetCurItem( Load_Component( aDC, NULL,
-                                                     s_CmpNameList, true ) );
+            GetScreen()->SetCurItem( Load_Component( NULL, s_CmpNameList, true ) );
             m_canvas->SetAutoPanRequest( true );
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
@@ -304,13 +308,12 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         {
             SCHLIB_FILTER filter;
             filter.FilterPowerParts( true );
-            GetScreen()->SetCurItem( Load_Component( aDC, &filter,
-                                                     s_PowerNameList, false ) );
+            GetScreen()->SetCurItem( Load_Component( &filter, s_PowerNameList, false ) );
             m_canvas->SetAutoPanRequest( true );
         }
         else
         {
-            addCurrentItemToList();
+            addCurrentItemToScreen();
         }
         break;
 
@@ -318,7 +321,9 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
     case ID_SIM_PROBE:
         {
             constexpr KICAD_T wiresAndComponents[] = { SCH_LINE_T,
-                SCH_COMPONENT_T, SCH_SHEET_PIN_T, EOT };
+                                                       SCH_COMPONENT_T,
+                                                       SCH_SHEET_PIN_T,
+                                                       EOT };
             item = LocateAndShowItem( aPosition, wiresAndComponents );
 
             if( !item )

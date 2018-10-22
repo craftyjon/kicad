@@ -58,7 +58,7 @@
 #include <class_pcb_text.h>
 #include <class_pcb_target.h>
 #include <class_dimension.h>
-#include <connectivity_data.h>
+#include <connectivity/connectivity_data.h>
 
 
 /**
@@ -2484,19 +2484,23 @@ void BOARD::updateComponentPadConnections( NETLIST& aNetlist, MODULE* footprint,
         }
         else                                 // Footprint pad has a net.
         {
-            if( net.GetNetName() != pad->GetNetname() )
+            const wxString& netName = net.GetNetName();
+            NETINFO_ITEM* netinfo = FindNet( netName );
+
+            if( netinfo && !aNetlist.IsDryRun() )
+                netinfo->SetIsCurrent( true );
+
+            if( pad->GetNetname() != netName )
             {
                 msg.Printf( _( "Changing footprint %s pad %s net from %s to %s." ),
                             footprint->GetReference(),
                             pad->GetName(),
                             pad->GetNetname(),
-                            net.GetNetName() );
+                            netName );
                 aReporter.Report( msg, REPORTER::RPT_ACTION );
 
                 if( !aNetlist.IsDryRun() )
                 {
-                    NETINFO_ITEM* netinfo = FindNet( net.GetNetName() );
-
                     if( netinfo == NULL )
                     {
                         // It is a new net, we have to add it
@@ -2556,10 +2560,16 @@ void BOARD::ReplaceNetlist( NETLIST& aNetlist, bool aDeleteSinglePadNets,
 
     m_Status_Pcb = 0;
 
+    // Mark all nets (except <no net>) as stale; we'll update those to current that
+    // we find in the netlist
+    for( NETINFO_ITEM* net : m_NetInfo )
+        net->SetIsCurrent( net->GetNet() == 0 );
+
     for( i = 0;  i < aNetlist.GetCount();  i++ )
     {
         COMPONENT* component = aNetlist.GetComponent( i );
         int        matchCount = 0;
+        MODULE*    tmp;
 
         msg.Printf( _( "Checking netlist symbol footprint \"%s:%s:%s\"." ),
                     component->GetReference(),
@@ -2567,20 +2577,14 @@ void BOARD::ReplaceNetlist( NETLIST& aNetlist, bool aDeleteSinglePadNets,
                     GetChars( component->GetFPID().Format() ) );
         aReporter.Report( msg, REPORTER::RPT_INFO );
 
-        // This loop must be executed at least once to add new footprints even
-        // if the board has no existing footprints:
-        for( MODULE* footprint = m_Modules; ; footprint = footprint->Next() )
+        for( MODULE* footprint = m_Modules; footprint; footprint = footprint->Next() )
         {
-            bool     match = false;
-            MODULE*  tmp;
+            bool     match;
 
-            if( footprint )
-            {
-                if( aNetlist.IsFindByTimeStamp() )
-                    match = footprint->GetPath() == component->GetTimeStamp();
-                else
-                    match = footprint->GetReference().CmpNoCase( component->GetReference() );
-            }
+            if( aNetlist.IsFindByTimeStamp() )
+                match = footprint->GetPath() == component->GetTimeStamp();
+            else
+                match = footprint->GetReference().CmpNoCase( component->GetReference() ) == 0;
 
             if( match )
             {
@@ -2688,46 +2692,43 @@ void BOARD::ReplaceNetlist( NETLIST& aNetlist, bool aDeleteSinglePadNets,
 
             if( footprint == lastPreexistingFootprint )
             {
-                if( matchCount == 0 )
-                {
-                    if( component->GetModule() != NULL )
-                    {
-                        msg.Printf( _( "Adding new symbol %s footprint %s." ),
-                                    component->GetReference(),
-                                    GetChars( component->GetFPID().Format() ) );
-                        aReporter.Report( msg, REPORTER::RPT_ACTION );
-                    }
-                    else
-                    {
-                        msg.Printf( _( "Cannot add new symbol %s due to missing footprint %s." ),
-                                    component->GetReference(),
-                                    GetChars( component->GetFPID().Format() ) );
-                        aReporter.Report( msg, REPORTER::RPT_ERROR );
-                    }
-
-                    if( !aNetlist.IsDryRun() && (component->GetModule() != NULL) )
-                    {
-                        // Owned by NETLIST, can only copy it.
-                        tmp = new MODULE( *component->GetModule() );
-                        tmp->SetParent( this );
-                        tmp->SetPosition( bestPosition );
-                        tmp->SetTimeStamp( GetNewTimeStamp() );
-                        newFootprints.push_back( tmp );
-                        Add( tmp, ADD_APPEND );
-                        m_connectivity->Add( tmp );
-
-                        updateComponentPadConnections( aNetlist, tmp, component, aReporter );
-                    }
-
-                    matchCount++;
-                }
-
                 // No sense going through the newly-created footprints: end loop
                 break;
             }
         }
 
-        if( matchCount > 1 )
+        if( matchCount == 0 )
+        {
+            if( component->GetModule() != NULL )
+            {
+                msg.Printf( _( "Adding new symbol %s footprint %s." ),
+                            component->GetReference(),
+                            GetChars( component->GetFPID().Format() ) );
+                aReporter.Report( msg, REPORTER::RPT_ACTION );
+            }
+            else
+            {
+                msg.Printf( _( "Cannot add new symbol %s due to missing footprint %s." ),
+                            component->GetReference(),
+                            GetChars( component->GetFPID().Format() ) );
+                aReporter.Report( msg, REPORTER::RPT_ERROR );
+            }
+
+            if( !aNetlist.IsDryRun() && (component->GetModule() != NULL) )
+            {
+                // Owned by NETLIST, can only copy it.
+                tmp = new MODULE( *component->GetModule() );
+                tmp->SetParent( this );
+                tmp->SetPosition( bestPosition );
+                tmp->SetTimeStamp( GetNewTimeStamp() );
+                newFootprints.push_back( tmp );
+                Add( tmp, ADD_APPEND );
+                m_connectivity->Add( tmp );
+
+                updateComponentPadConnections( aNetlist, tmp, component, aReporter );
+            }
+        }
+        else if( matchCount > 1 )
         {
             msg.Printf( _( "Multiple footprints found for \"%s\"." ), component->GetReference() );
             aReporter.Report( msg, REPORTER::RPT_ERROR );

@@ -34,7 +34,7 @@
 #include <gr_basic.h>
 #include <macros.h>
 #include <trigo.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <draw_graphic_text.h>
 #include <plotter.h>
 #include <sch_edit_frame.h>
@@ -564,7 +564,13 @@ bool LIB_PIN::HitTest( const wxPoint &aPosition, int aThreshold, const TRANSFORM
 
 int LIB_PIN::GetPenSize() const
 {
-    return ( m_width == 0 ) ? GetDefaultLineThickness() : m_width;
+    if( m_width > 0 )
+        return m_width;
+
+    if( m_width == 0 )
+       return GetDefaultLineThickness();
+
+    return 0;
 }
 
 
@@ -2014,3 +2020,17 @@ void LIB_PIN::Show( int nestLevel, std::ostream& os ) const
 }
 
 #endif
+
+void LIB_PIN::CalcEdit( const wxPoint& aPosition )
+{
+    DBG(printf("m_Flags %x\n", m_Flags );)
+    if( m_Flags == IS_NEW )
+    {
+        SetPosition( aPosition );
+    }
+    else if( m_Flags == IS_MOVED )
+    {
+        DBG(printf("MOVEPIN\n");)
+        Move( aPosition );
+    }
+}

@@ -29,7 +29,7 @@
 #include <fctsys.h>
 #include <gr_basic.h>
 #include <macros.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <trigo.h>
 #include <common.h>
 #include <richio.h>
@@ -41,6 +41,13 @@
 
 
 int SCH_JUNCTION::m_symbolSize = 40;    // Default diameter of the junction symbol
+
+
+int SCH_JUNCTION::GetEffectiveSymbolSize()
+{
+    return std::max( KiROUND( GetDefaultLineThickness() * 1.5 ), m_symbolSize );
+}
+
 
 SCH_JUNCTION::SCH_JUNCTION( const wxPoint& pos ) :
     SCH_ITEM( NULL, SCH_JUNCTION_T )
@@ -66,12 +73,19 @@ void SCH_JUNCTION::SwapData( SCH_ITEM* aItem )
 }
 
 
+void SCH_JUNCTION::ViewGetLayers( int aLayers[], int& aCount ) const
+{
+    aCount      = 1;
+    aLayers[0]  = LAYER_JUNCTION;
+}
+
+
 const EDA_RECT SCH_JUNCTION::GetBoundingBox() const
 {
     EDA_RECT rect;
 
     rect.SetOrigin( m_pos );
-    rect.Inflate( ( GetPenSize() + GetSymbolSize() ) / 2 );
+    rect.Inflate( ( GetPenSize() + GetEffectiveSymbolSize() ) / 2 );
 
     return rect;
 }
@@ -94,7 +108,7 @@ void SCH_JUNCTION::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOffs
     GRSetDrawMode( aDC, aDrawMode );
 
     GRFilledCircle( aPanel->GetClipBox(), aDC, m_pos.x + aOffset.x, m_pos.y + aOffset.y,
-                    ( GetSymbolSize() / 2 ), 0, color, color );
+                    ( GetEffectiveSymbolSize() / 2 ), 0, color, color );
 }
 
 
@@ -203,7 +217,7 @@ bool SCH_JUNCTION::doIsConnected( const wxPoint& aPosition ) const
 void SCH_JUNCTION::Plot( PLOTTER* aPlotter )
 {
     aPlotter->SetColor( GetLayerColor( GetLayer() ) );
-    aPlotter->Circle( m_pos, GetSymbolSize(), FILLED_SHAPE );
+    aPlotter->Circle( m_pos, GetEffectiveSymbolSize(), FILLED_SHAPE );
 }
 
 

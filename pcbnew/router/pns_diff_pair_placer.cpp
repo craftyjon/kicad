@@ -503,7 +503,7 @@ bool DIFF_PAIR_PLACER::findDpPrimitivePair( const VECTOR2I& aP, ITEM* aItem,
                 found = true;
                 bestDist = dist;
 
-                if( refNet == netP )
+                if( refNet != netP )
                 {
                     aPair = DP_PRIMITIVE_PAIR ( item, primRef );
                     aPair.SetAnchors( *anchor, *refAnchor );
@@ -661,14 +661,20 @@ bool DIFF_PAIR_PLACER::routeHead( const VECTOR2I& aP )
         m_prevPair->CursorOrientation( fp, midp, dirV );
 
         VECTOR2I fpProj = SEG( midp, midp + dirV ).LineProject( fp );
+
+        // compute 'leader point' distance from the cursor (project cursor position
+        // on the extension of the starting segment pair of the DP)
         int lead_dist = ( fpProj - fp ).EuclideanNorm();
 
         gwsTarget.SetFitVias( m_placingVia, m_sizes.ViaDiameter(), viaGap() );
 
+        // far from the initial segment extension line -> allow a 45-degree obtuse turn
         if( lead_dist > m_sizes.DiffPairGap() + m_sizes.DiffPairWidth() )
         {
             gwsTarget.BuildForCursor( fp );
         }
+        // close to the initial segment extension line -> keep straight part only, project as close
+        // as possible to the cursor
         else
         {
             gwsTarget.BuildForCursor( fpProj );
@@ -711,8 +717,7 @@ bool DIFF_PAIR_PLACER::Move( const VECTOR2I& aP , ITEM* aEndItem )
     delete m_lastNode;
     m_lastNode = NULL;
 
-    if( !route( aP ) )
-        return false;
+    bool retval = route( aP );
 
     NODE* latestNode = m_currentNode;
     m_lastNode = latestNode->Branch();
@@ -722,7 +727,7 @@ bool DIFF_PAIR_PLACER::Move( const VECTOR2I& aP , ITEM* aEndItem )
 
     updateLeadingRatLine();
 
-    return true;
+    return retval;
 }
 
 
@@ -740,7 +745,7 @@ void DIFF_PAIR_PLACER::UpdateSizes( const SIZES_SETTINGS& aSizes )
 
 bool DIFF_PAIR_PLACER::FixRoute( const VECTOR2I& aP, ITEM* aEndItem, bool aForceFinish )
 {
-    if( !m_fitOk )
+    if( !m_fitOk && !Settings().CanViolateDRC() )
         return false;
 
     if( m_currentTrace.CP().SegmentCount() < 1 ||

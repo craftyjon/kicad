@@ -91,10 +91,21 @@ VIEW_ITEM *VIEW_GROUP::GetItem( unsigned int idx ) const
 
 const BOX2I VIEW_GROUP::ViewBBox() const
 {
-    BOX2I maxBox;
+    BOX2I bb;
 
-    maxBox.SetMaximum();
-    return maxBox;
+    if( !m_groupItems.size() )
+    {
+        bb.SetMaximum();
+    }
+    else
+    {
+        bb = m_groupItems[0]->ViewBBox();
+
+        for( auto item : m_groupItems )
+            bb.Merge( item->ViewBBox() );
+    }
+
+    return bb;
 }
 
 
@@ -125,7 +136,8 @@ void VIEW_GROUP::ViewDraw( int aLayer, VIEW* aView ) const
         }
     }
 
-    int layers[VIEW::VIEW_MAX_LAYERS], layers_count = 0;
+    int layers[VIEW::VIEW_MAX_LAYERS] = { 0 };
+    int layers_count = 0;
 
     for( const auto& entry : layer_item_map )
     {

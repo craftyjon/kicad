@@ -41,7 +41,7 @@ wxDEFINE_EVENT( NET_SELECTED, wxCommandEvent );
     #define LIST_PADDING 5
 #else
     #define POPUP_PADDING 0
-    #define LIST_ITEM_PADDING 2
+    #define LIST_ITEM_PADDING 6
     #define LIST_PADDING 5
 #endif
 
@@ -71,6 +71,9 @@ public:
 
         m_filterCtrl = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition,
                                        wxDefaultSize, wxTE_PROCESS_ENTER );
+        m_filterValidator = new wxTextValidator( wxFILTER_EXCLUDE_CHAR_LIST );
+        m_filterValidator->SetCharExcludes( " " );
+        m_filterCtrl->SetValidator( *m_filterValidator );
         mainSizer->Add( m_filterCtrl, 0, wxEXPAND, 0 );
 
         m_listBox = new wxListBox( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, 0,
@@ -122,6 +125,20 @@ public:
     void SetSelectedNetcode( int aNetcode ) { m_selectedNetcode = aNetcode; }
     int GetSelectedNetcode() { return m_selectedNetcode; }
 
+    void SetSelectedNet( const wxString& aNetname )
+    {
+        if( m_netinfoList && m_netinfoList->GetNetItem( aNetname ) )
+            m_selectedNetcode = m_netinfoList->GetNetItem( aNetname )->GetNet();
+    }
+
+    wxString GetSelectedNetname()
+    {
+        if( m_netinfoList && m_netinfoList->GetNetItem( m_selectedNetcode ) )
+            return m_netinfoList->GetNetItem( m_selectedNetcode )->GetNetname();
+        else
+            return wxEmptyString;
+    }
+
     wxSize GetAdjustedSize( int aMinWidth, int aPrefHeight, int aMaxHeight ) override
     {
         // Called when the popup is first shown.  Stash the minWidth and maxHeight so we
@@ -134,9 +151,19 @@ public:
 
     void OnPopup() override
     {
+        // While it can sometimes be useful to keep the filter, it's always expected.
+        // Better to clear it.
+        m_filterCtrl->Clear();
+
         // The updateSize() call in GetAdjustedSize() leaves the height off-by-one for
         // some reason, so do it again.
         updateSize();
+    }
+
+    void OnStartingKey( wxKeyEvent& aEvent )
+    {
+        doSetFocus( m_filterCtrl );
+        doStartingKey( aEvent );
     }
 
     void Accept()
@@ -209,14 +236,15 @@ protected:
 
         for( NETINFO_ITEM* netinfo : *m_netinfoList )
         {
-            if( netinfo->GetNet() == 0 )
-                continue;  // we'll insert NO_NET after sorting
-
-            if( filter.IsEmpty() || wxString( netinfo->GetNetname() ).MakeLower().Matches( filter ) )
-                netNames.push_back( netinfo->GetNetname() );
+            if( netinfo->GetNet() > 0 && netinfo->IsCurrent() )
+            {
+                if( filter.IsEmpty() || wxString( netinfo->GetNetname() ).MakeLower().Matches( filter ) )
+                    netNames.push_back( netinfo->GetNetname() );
+            }
         }
         std::sort( netNames.begin(), netNames.end() );
 
+        // Special handling for <no net>
         if( filter.IsEmpty() || wxString( NO_NET ).MakeLower().Matches( filter ) )
             netNames.insert( netNames.begin(), NO_NET );
 
@@ -328,9 +356,9 @@ protected:
             {
                 doSetFocus( m_filterCtrl );
 
-                // We already missed our chance to have the native widget handle it.  We'll
-                // have to do the first character ourselves.
-                onStartingKey( aEvent );
+                // Because we didn't have focus we missed our chance to have the native widget
+                // handle the keystroke.  We'll have to do the first character ourselves.
+                doStartingKey( aEvent );
             }
             else
             {
@@ -351,7 +379,16 @@ protected:
         Accept();
     }
 
-    void onStartingKey( wxKeyEvent& aEvent )
+    void onFilterEdit( wxCommandEvent& aEvent )
+    {
+        rebuildList();
+        updateSize();
+
+        if( m_listBox->GetCount() > 0 )
+            m_listBox->SetSelection( 0 );
+    }
+
+    void doStartingKey( wxKeyEvent& aEvent )
     {
         if( aEvent.GetKeyCode() == WXK_BACK )
         {
@@ -368,7 +405,7 @@ protected:
             else
             {
                 ch = aEvent.GetKeyCode();
-                isPrintable = ch >= WXK_SPACE && ch < WXK_START;
+                isPrintable = ch > WXK_SPACE && ch < WXK_START;
             }
 
             if( isPrintable )
@@ -379,15 +416,9 @@ protected:
                 if( !aEvent.ShiftDown() )
                     text.MakeLower();
 
-                m_filterCtrl->WriteText( text );
+                m_filterCtrl->AppendText( text );
             }
         }
-    }
-
-    void onFilterEdit( wxCommandEvent& aEvent )
-    {
-        rebuildList();
-        updateSize();
     }
 
     void doSetFocus( wxWindow* aWindow )
@@ -400,33 +431,81 @@ protected:
     }
 
 protected:
-    wxTextCtrl*   m_filterCtrl;
-    wxListBox*    m_listBox;
-    int           m_minPopupWidth;
-    int           m_maxPopupHeight;
+    wxTextValidator* m_filterValidator;
+    wxTextCtrl*      m_filterCtrl;
+    wxListBox*       m_listBox;
+    int              m_minPopupWidth;
+    int              m_maxPopupHeight;
 
-    NETINFO_LIST* m_netinfoList;
+    NETINFO_LIST*    m_netinfoList;
 
-    int           m_selectedNetcode;
+    int              m_selectedNetcode;
 
-    wxEvtHandler* m_focusHandler;
+    wxEvtHandler*    m_focusHandler;
 };
 
 
 NET_SELECTOR::NET_SELECTOR( wxWindow *parent, wxWindowID id, const wxPoint &pos,
                             const wxSize &size, long style ) :
-        wxComboCtrl( parent, id, wxEmptyString, pos, size, style|wxCB_READONLY )
+        wxComboCtrl( parent, id, wxEmptyString, pos, size, style|wxCB_READONLY|wxTE_PROCESS_ENTER )
 {
     UseAltPopupWindow();
 
     m_netSelectorPopup = new NET_SELECTOR_COMBOPOPUP();
     SetPopupControl( m_netSelectorPopup );
+
+    Connect( wxEVT_CHAR_HOOK, wxKeyEventHandler( NET_SELECTOR::onKeyDown ), NULL, this );
 }
+
+
+NET_SELECTOR::~NET_SELECTOR()
+{
+    Disconnect( wxEVT_CHAR_HOOK, wxKeyEventHandler( NET_SELECTOR::onKeyDown ), NULL, this );
+}
+
+
+void NET_SELECTOR::onKeyDown( wxKeyEvent& aEvt )
+{
+    int key = aEvt.GetKeyCode();
+
+    if( IsPopupShown() )
+    {
+        // If the popup is shown then it's CHAR_HOOK should be eating these before they
+        // even get to us.  But just to be safe, we go ahead and skip.
+        aEvt.Skip();
+    }
+
+    // Shift-return accepts dialog
+    else if( key == WXK_RETURN && aEvt.ShiftDown() )
+    {
+        wxPostEvent( m_parent, wxCommandEvent( wxEVT_COMMAND_BUTTON_CLICKED, wxID_OK ) );
+    }
+
+    // Return, arrow-down and space-bar all open popup
+    else if( key == WXK_RETURN || key == WXK_DOWN || key == WXK_NUMPAD_DOWN || key == WXK_SPACE )
+    {
+        Popup();
+    }
+
+    // Non-control characters go to filterbox in popup
+    else if( key > WXK_SPACE && key < WXK_START )
+    {
+        Popup();
+        m_netSelectorPopup->OnStartingKey( aEvt );
+    }
+
+    else
+    {
+        aEvt.Skip();
+    }
+}
+
 
 void NET_SELECTOR::SetNetInfo( NETINFO_LIST* aNetInfoList )
 {
     m_netSelectorPopup->SetNetInfo( aNetInfoList );
 }
+
 
 void NET_SELECTOR::SetSelectedNetcode( int aNetcode )
 {
@@ -434,16 +513,32 @@ void NET_SELECTOR::SetSelectedNetcode( int aNetcode )
     SetValue( m_netSelectorPopup->GetStringValue() );
 }
 
+
+void NET_SELECTOR::SetSelectedNet( const wxString& aNetname )
+{
+    m_netSelectorPopup->SetSelectedNet( aNetname );
+    SetValue( m_netSelectorPopup->GetStringValue() );
+}
+
+
+wxString NET_SELECTOR::GetSelectedNetname()
+{
+    return m_netSelectorPopup->GetSelectedNetname();
+}
+
+
 void NET_SELECTOR::SetIndeterminate()
 {
     m_netSelectorPopup->SetIndeterminate();
     SetValue( INDETERMINATE );
 }
 
+
 bool NET_SELECTOR::IsIndeterminate()
 {
     return m_netSelectorPopup->IsIndeterminate();
 }
+
 
 int NET_SELECTOR::GetSelectedNetcode()
 {

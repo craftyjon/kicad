@@ -30,7 +30,7 @@
 #include <fctsys.h>
 #include <macros.h>
 #include <kicad_string.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <plotter.h>
 #include <gr_basic.h>
 #include <sch_screen.h>
@@ -64,7 +64,9 @@ int LIB_PART::m_subpartFirstId = 'A';
 
 LIB_ALIAS::LIB_ALIAS( const wxString& aName, LIB_PART* aRootPart ) :
     EDA_ITEM( LIB_ALIAS_T ),
-    shared( aRootPart )
+    shared( aRootPart ),
+    tmpUnit( 0 ),
+    tmpConversion( 0 )
 {
     SetName( aName );
 }
@@ -72,7 +74,9 @@ LIB_ALIAS::LIB_ALIAS( const wxString& aName, LIB_PART* aRootPart ) :
 
 LIB_ALIAS::LIB_ALIAS( const LIB_ALIAS& aAlias, LIB_PART* aRootPart ) :
     EDA_ITEM( aAlias ),
-    shared( aRootPart )
+    shared( aRootPart ),
+    tmpUnit( 0 ),
+    tmpConversion( 0 )
 {
     name   = aAlias.name;
 
@@ -127,7 +131,7 @@ PART_LIB* LIB_ALIAS::GetLib()
 
 void LIB_ALIAS::SetName( const wxString& aName )
 {
-    name = LIB_ID::FixIllegalChars( aName, LIB_ID::ID_ALIAS );
+    name = LIB_ID::FixIllegalChars( aName, LIB_ID::ID_SCH );
 }
 
 
@@ -173,6 +177,14 @@ bool LIB_ALIAS::operator==( const wxChar* aName ) const
 bool operator<( const LIB_ALIAS& aItem1, const LIB_ALIAS& aItem2 )
 {
     return aItem1.GetName() < aItem2.GetName();
+}
+
+
+void LIB_ALIAS::ViewGetLayers( int aLayers[], int& aCount ) const
+{
+    aCount      = 2;
+    aLayers[0]  = LAYER_DEVICE;
+    aLayers[1]  = LAYER_DEVICE_BACKGROUND;
 }
 
 
@@ -338,7 +350,6 @@ void LIB_PART::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDc, const wxPoint& aOffset,
             int aMulti, int aConvert, const PART_DRAW_OPTIONS& aOpts )
 {
     BASE_SCREEN*   screen = aPanel ? aPanel->GetScreen() : NULL;
-
     GRSetDrawMode( aDc, aOpts.draw_mode );
 
     /* draw background for filled items using background option
@@ -406,7 +417,7 @@ void LIB_PART::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDc, const wxPoint& aOffset,
 
         if( drawItem.Type() == LIB_FIELD_T )
         {
-            LIB_FIELD& field = dynamic_cast<LIB_FIELD&>( drawItem );
+            LIB_FIELD& field = static_cast<LIB_FIELD&>( drawItem );
 
             if( field.IsVisible() && !aOpts.draw_visible_fields )
                 continue;
@@ -417,7 +428,7 @@ void LIB_PART::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDc, const wxPoint& aOffset,
 
         if( drawItem.Type() == LIB_PIN_T )
         {
-            LIB_PIN& pin = dynamic_cast<LIB_PIN&>( drawItem );
+            LIB_PIN& pin = static_cast<LIB_PIN&>( drawItem );
 
             uintptr_t flags = 0;
             if( aOpts.show_pin_text )
@@ -758,6 +769,14 @@ const EDA_RECT LIB_PART::GetUnitBoundingBox( int aUnit, int aConvert ) const
 }
 
 
+void LIB_PART::ViewGetLayers( int aLayers[], int& aCount ) const
+{
+    aCount      = 2;
+    aLayers[0]  = LAYER_DEVICE;
+    aLayers[1]  = LAYER_DEVICE_BACKGROUND;
+}
+
+
 const EDA_RECT LIB_PART::GetBodyBoundingBox( int aUnit, int aConvert ) const
 {
     EDA_RECT bBox;
@@ -812,9 +831,6 @@ void LIB_PART::SetFields( const std::vector <LIB_FIELD>& aFields )
 void LIB_PART::GetFields( LIB_FIELDS& aList )
 {
     LIB_FIELD*  field;
-
-    // The only caller of this function is the library field editor, so it
-    // establishes policy here.
 
     // Grab the MANDATORY_FIELDS first, in expected order given by
     // enum NumFieldType
@@ -956,7 +972,6 @@ bool LIB_PART::HasConversion() const
     return false;
 }
 
-
 void LIB_PART::ClearStatus()
 {
     for( LIB_ITEM& item : m_drawings )
@@ -964,157 +979,6 @@ void LIB_PART::ClearStatus()
         item.m_Flags = 0;
     }
 }
-
-
-int LIB_PART::SelectItems( EDA_RECT& aRect, int aUnit, int aConvert, bool aSyncPinEdit )
-{
-    int itemCount = 0;
-
-    for( LIB_ITEM& item : m_drawings )
-    {
-        item.ClearFlags( SELECTED );
-
-        if( ( item.m_Unit && item.m_Unit != aUnit )
-            || ( item.m_Convert && item.m_Convert != aConvert ) )
-        {
-            if( item.Type() != LIB_PIN_T )
-                continue;
-
-             // Specific rules for pins:
-             // - do not select pins in other units when synchronized pin edit mode is disabled
-             // - do not select pins in other units when units are not interchangeable
-             // - in other cases verify if the pin belongs to the requested unit
-            if( !aSyncPinEdit || m_unitsLocked
-                || ( item.m_Convert && item.m_Convert != aConvert ) )
-                continue;
-        }
-
-        if( item.Inside( aRect ) )
-        {
-            item.SetFlags( SELECTED );
-            itemCount++;
-        }
-    }
-
-    return itemCount;
-}
-
-
-void LIB_PART::MoveSelectedItems( const wxPoint& aOffset )
-{
-    for( LIB_ITEM& item : m_drawings )
-    {
-        if( !item.IsSelected() )
-            continue;
-
-        item.SetOffset( aOffset );
-        item.m_Flags = 0;
-    }
-}
-
-
-void LIB_PART::ClearSelectedItems()
-{
-    for( LIB_ITEM& item : m_drawings )
-    {
-        item.m_Flags = 0;
-    }
-}
-
-
-void LIB_PART::DeleteSelectedItems()
-{
-    LIB_ITEMS_CONTAINER::ITERATOR item = m_drawings.begin();
-
-    // We *do not* remove the 2 mandatory fields: reference and value
-    // so skip them (do not remove) if they are flagged selected.
-    // Skip also not visible items.
-    // But I think fields must not be deleted by a block delete command or other global command
-    // because they are not really graphic items
-    while( item != m_drawings.end() )
-    {
-        if( item->Type() == LIB_FIELD_T )
-        {
-            item->ClearFlags( SELECTED );
-        }
-
-        if( !item->IsSelected() )
-            ++item;
-        else
-            item = m_drawings.erase( item );
-    }
-}
-
-
-void LIB_PART::CopySelectedItems( const wxPoint& aOffset )
-{
-    std::vector< LIB_ITEM* > tmp;
-
-    for( LIB_ITEM& item : m_drawings )
-    {
-        // We *do not* copy fields because they are unique for the whole component
-        // so skip them (do not duplicate) if they are flagged selected.
-        if( item.Type() == LIB_FIELD_T )
-            item.ClearFlags( SELECTED );
-
-        if( !item.IsSelected() )
-            continue;
-
-        item.ClearFlags( SELECTED );
-        LIB_ITEM* newItem = (LIB_ITEM*) item.Clone();
-        newItem->SetFlags( SELECTED );
-
-        // When push_back elements in buffer, a memory reallocation can happen
-        // and will break pointers.
-        // So, push_back later.
-        tmp.push_back( newItem );
-    }
-
-    for( auto item : tmp )
-        m_drawings.push_back( item );
-
-    MoveSelectedItems( aOffset );
-}
-
-
-void LIB_PART::MirrorSelectedItemsH( const wxPoint& aCenter )
-{
-    for( LIB_ITEM& item : m_drawings )
-    {
-        if( !item.IsSelected() )
-            continue;
-
-        item.MirrorHorizontal( aCenter );
-        item.m_Flags = 0;
-    }
-}
-
-
-void LIB_PART::MirrorSelectedItemsV( const wxPoint& aCenter )
-{
-    for( LIB_ITEM& item : m_drawings )
-    {
-        if( !item.IsSelected() )
-            continue;
-
-        item.MirrorVertical( aCenter );
-        item.m_Flags = 0;
-    }
-}
-
-
-void LIB_PART::RotateSelectedItems( const wxPoint& aCenter )
-{
-    for( LIB_ITEM& item : m_drawings )
-    {
-        if( !item.IsSelected() )
-            continue;
-
-        item.Rotate( aCenter );
-        item.m_Flags = 0;
-    }
-}
-
 
 LIB_ITEM* LIB_PART::LocateDrawItem( int aUnit, int aConvert,
                                     KICAD_T aType, const wxPoint& aPoint )

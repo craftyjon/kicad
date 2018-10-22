@@ -29,7 +29,7 @@
  */
 
 #include <fctsys.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <confirm.h>
 #include <gestfich.h>
 #include <sch_edit_frame.h>
@@ -382,12 +382,14 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
             RecalculateConnections();
             OnModify();
         }
+
+        GetScreen()->m_Initialized = true;
     }
 
     GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId );
     Zoom_Automatique( false );
     SetSheetNumberAndCount();
-    m_canvas->Refresh( true );
+    SyncView();
     GetScreen()->ClearDrawingState();
 
     return true;
@@ -629,12 +631,11 @@ bool SCH_EDIT_FRAME::AppendSchematic()
     }
 
     // It is finally safe to add the imported schematic.
+    // fixme-gal: rebuild view
     screen->Append( newScreen );
 
     SCH_SCREENS allScreens;
     allScreens.ReplaceDuplicateTimeStamps();
-
-    OnModify();
 
     SCH_SCREENS screens( GetCurrentSheet().Last() );
     screens.UpdateSymbolLinks( true );
@@ -646,7 +647,11 @@ bool SCH_EDIT_FRAME::AppendSchematic()
     GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId );
     Zoom_Automatique( false );
     SetSheetNumberAndCount();
-    m_canvas->Refresh( true );
+
+    SyncView();
+    GetCanvas()->Refresh();
+    OnModify();
+
     return true;
 }
 
@@ -836,7 +841,7 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
                 // Ensure the schematic is fully segmented on first display
                 BreakSegmentsOnJunctions();
                 SchematicCleanUp( true );
-
+                GetScreen()->m_Initialized = true;
 
                 SCH_TYPE_COLLECTOR components;
                 SCH_SCREENS allScreens;
@@ -878,7 +883,7 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
                 GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId );
                 Zoom_Automatique( false );
                 SetSheetNumberAndCount();
-                m_canvas->Refresh( true );
+                SyncView();
                 UpdateTitle();
             }
             catch( const IO_ERROR& ioe )

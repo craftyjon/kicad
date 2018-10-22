@@ -53,7 +53,13 @@ public:
     static int GetSymbolSize() { return m_symbolSize; }
     static void SetSymbolSize( int aSize ) { m_symbolSize = aSize; }
 
+    // Return the size the symbol should be drawn at.  This is GetSymbolSize() clamped to be
+    // no less than 1.5 X the current wire width.
+    static int GetEffectiveSymbolSize();
+
     void SwapData( SCH_ITEM* aItem ) override;
+
+    void ViewGetLayers( int aLayers[], int& aCount ) const override;
 
     const EDA_RECT GetBoundingBox() const override;
 

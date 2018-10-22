@@ -204,7 +204,7 @@ public:
                                      * > 0 except for schematics.
                                      * false: when coordinates can only be >= 0
                                      * Schematic */
-    bool        m_FirstRedraw;
+    bool        m_Initialized;
 
     // Undo/redo list of commands
     UNDO_REDO_CONTAINER m_UndoList;         ///< Objects list for the undo command (old data)
@@ -346,7 +346,7 @@ public:
      * @param iu_per_du is the number of internal units (world units) per
      *   device units (pixels typically).
      */
-    bool SetZoom( double iu_per_du );
+    virtual bool SetZoom( double iu_per_du );
 
     bool SetNextZoom();
     bool SetPreviousZoom();

@@ -35,14 +35,14 @@
  */
 #include <fctsys.h>
 #include <pgm_base.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <confirm.h>
 #include <kicad_string.h>
 #include <gestfich.h>
 #include <sch_edit_frame.h>
 #include <base_units.h>
 #include <trace_helpers.h>
-
+#include <sch_view.h>
 #include <general.h>
 #include <class_library.h>
 #include <lib_pin.h>
@@ -90,7 +90,8 @@ void SCH_EDIT_FRAME::OnFindDrcMarker( wxFindDialogEvent& event )
 
         SetCrossHairPosition( lastMarker->GetPosition() );
 
-        RedrawScreen( lastMarker->GetPosition(), warpCursor );
+
+        CenterScreen( lastMarker->GetPosition(), warpCursor );
 
         msg.Printf( _( "Design rule check marker found in sheet %s at %s, %s" ),
                     sheetFoundIn->Path(),
@@ -115,7 +116,6 @@ SCH_ITEM* SCH_EDIT_FRAME::FindComponentAndItem( const wxString& aReference,
     SCH_ITEM*       item = NULL;
     SCH_COMPONENT*  Component = NULL;
     wxPoint         pos;
-    bool            centerAndRedraw = false;
     bool            notFound = true;
     LIB_PIN*        pin;
     SCH_SHEET_LIST  sheetList( g_RootSheet );
@@ -191,9 +191,7 @@ SCH_ITEM* SCH_EDIT_FRAME::FindComponentAndItem( const wxString& aReference,
         {
             sheet->LastScreen()->SetZoom( GetScreen()->GetZoom() );
             *g_CurrentSheet = *sheet;
-            g_CurrentSheet->UpdateAllScreenReferences();
-            sheet->LastScreen()->TestDanglingEnds();
-            centerAndRedraw = true;
+            DisplayCurrentSheet();
         }
 
         wxPoint delta;
@@ -201,24 +199,8 @@ SCH_ITEM* SCH_EDIT_FRAME::FindComponentAndItem( const wxString& aReference,
         delta = Component->GetTransform().TransformCoordinate( pos );
         pos   = delta + Component->GetPosition();
 
-
-        /* There may be need to reframe the drawing */
-        if( ! m_canvas->IsPointOnDisplay( pos ) )
-            centerAndRedraw = true;
-
-        if( centerAndRedraw )
-        {
-            SetCrossHairPosition( pos );
-            RedrawScreen( pos, false );
-        }
-        else
-        {
-            INSTALL_UNBUFFERED_DC( dc, m_canvas );
-
-            m_canvas->CrossHairOff( &dc );
-            SetCrossHairPosition( pos );
-            m_canvas->CrossHairOn( &dc );
-        }
+        SetCrossHairPosition( pos );
+        CenterScreen( pos, false );
     }
 
     /* Print diag */
@@ -351,6 +333,7 @@ void SCH_EDIT_FRAME::OnFindReplace( wxFindDialogEvent& aEvent )
 
             if( m_foundItems.ReplaceItem( sheet ) )
             {
+                GetCanvas()->GetView()->Update( undoItem, KIGFX::ALL );
                 OnModify();
                 SaveUndoItemInUndoList( undoItem );
                 updateFindReplaceView( aEvent );
@@ -381,6 +364,7 @@ void SCH_EDIT_FRAME::OnFindReplace( wxFindDialogEvent& aEvent )
 
         if( m_foundItems.ReplaceItem( sheet ) )
         {
+            GetCanvas()->GetView()->Update( undoItem, KIGFX::ALL );
             OnModify();
             SaveUndoItemInUndoList( undoItem );
             updateFindReplaceView( aEvent );
@@ -438,10 +422,8 @@ void SCH_EDIT_FRAME::updateFindReplaceView( wxFindDialogEvent& aEvent )
             sheet->LastScreen()->TestDanglingEnds();
         }
 
-        // careful here
         SetCrossHairPosition( data.GetPosition() );
-
-        RedrawScreen( data.GetPosition(), warpCursor );
+        CenterScreen( data.GetPosition(), warpCursor );
 
         msg = m_foundItems.GetText( m_UserUnits );
 

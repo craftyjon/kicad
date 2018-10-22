@@ -84,6 +84,17 @@ public:
         return m_image->GetScalingFactor();
     }
 
+    /**
+     * @return the m_Scale image "zoom" value
+     * m_Scale is an user dependant value, and is similar to a "zoom" value
+     *  m_Scale = 1.0 = original size of bitmap.
+     *  m_Scale < 1.0 = the bitmap is drawn smaller than its original size.
+     *  m_Scale > 1.0 = the bitmap is drawn bigger than its original size.
+     */
+    double GetImageScale() const
+    {
+        return m_image->GetScale();
+    }
 
     wxString GetClass() const override
     {
@@ -103,7 +114,10 @@ public:
     void Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOffset,
                GR_DRAWMODE aDrawMode, COLOR4D aColor = COLOR4D::UNSPECIFIED ) override;
 
-    /**
+    /// @copydoc VIEW_ITEM::ViewGetLayers()
+    virtual void ViewGetLayers( int aLayers[], int& aCount ) const override;
+
+   /**
      * Reads and stores an image file. Init the bitmap used to draw this item
      * format.
      *

@@ -28,7 +28,7 @@
  */
 
 #include <fctsys.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <draw_graphic_text.h>
 #include <trigo.h>
 #include <richio.h>
@@ -421,6 +421,14 @@ wxPoint SCH_SHEET::GetFileNamePosition()
     }
 
     return pos;
+}
+
+
+void SCH_SHEET::ViewGetLayers( int aLayers[], int& aCount ) const
+{
+    aCount      = 2;
+    aLayers[0]  = LAYER_SHEET;
+    aLayers[1]  = LAYER_SHEET_BACKGROUND;
 }
 
 

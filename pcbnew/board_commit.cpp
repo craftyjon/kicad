@@ -26,12 +26,11 @@
 #include <class_module.h>
 #include <pcb_edit_frame.h>
 #include <tool/tool_manager.h>
-#include <ratsnest_data.h>
 #include <view/view.h>
 #include <board_commit.h>
 #include <tools/pcb_tool.h>
 #include <tools/pcb_actions.h>
-#include <connectivity_data.h>
+#include <connectivity/connectivity_data.h>
 
 #include <functional>
 using namespace std::placeholders;
@@ -197,6 +196,8 @@ void BOARD_COMMIT::Push( const wxString& aMessage, bool aCreateUndoEntry, bool a
 
                 case PCB_MODULE_T:
                 {
+                    itemsToDeselect.push_back( boardItem );
+
                     // There are no modules inside a module yet
                     wxASSERT( !m_editModules );
 

@@ -29,7 +29,7 @@
 
 #include <fctsys.h>
 #include <eeschema_id.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <confirm.h>
 #include <sch_edit_frame.h>
 #include <menus_helpers.h>
@@ -77,6 +77,8 @@ bool SCH_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
     SCH_ITEM*   item = GetScreen()->GetCurItem();
     bool        blockActive = GetScreen()->IsBlockActive();
     wxString    msg;
+
+    DBG(printf("on-rclick cur %p blk %d\n", item, blockActive ? 1 : 0 );)
 
     // Do not start a block command on context menu.
     m_canvas->SetCanStartBlock( -1 );
@@ -141,6 +143,9 @@ bool SCH_EDIT_FRAME::OnRightClick( const wxPoint& aPosition, wxMenu* PopMenu )
     {
         bool actionCancelled = false;
         item = LocateAndShowItem( aPosition, SCH_COLLECTOR::AllItemsButPins, 0, &actionCancelled );
+
+        printf("Locateandshow %d %d item %p type %d\n", aPosition.x, aPosition.y,
+                    item, item ? item->Type() : 0 ); fflush(0);
 
         // If the clarify item selection context menu is aborted, don't show the context menu.
         if( item == NULL && actionCancelled )
@@ -378,8 +383,7 @@ void AddMenusForComponent( wxMenu* PopMenu, SCH_COMPONENT* Component, SYMBOL_LIB
 
     if( !Component->GetFlags() )
     {
-        msg.Printf( _( "Move %s" ),
-                    GetChars( Component->GetField( REFERENCE )->GetText() ) );
+        msg.Printf( _( "Move %s" ), Component->GetField( REFERENCE )->GetText() );
         msg = AddHotkeyName( msg, g_Schematic_Hokeys_Descr, HK_MOVE_COMPONENT_OR_ITEM );
         AddMenuItem( PopMenu, ID_SCH_MOVE_ITEM, msg, KiBitmap( move_xpm ) );
         msg = AddHotkeyName( _( "Drag" ), g_Schematic_Hokeys_Descr, HK_DRAG );
@@ -595,13 +599,11 @@ void AddMenusForLabel( wxMenu* PopMenu, SCH_LABEL* Label )
 
     if( !Label->GetFlags() )
     {
-        msg = AddHotkeyName( _( "Move" ), g_Schematic_Hokeys_Descr,
-                             HK_MOVE_COMPONENT_OR_ITEM );
+        msg = AddHotkeyName( _( "Move" ), g_Schematic_Hokeys_Descr, HK_MOVE_COMPONENT_OR_ITEM );
         AddMenuItem( PopMenu, ID_SCH_MOVE_ITEM, msg, KiBitmap( move_xpm ) );
         msg = AddHotkeyName( _( "Drag" ), g_Schematic_Hokeys_Descr, HK_DRAG );
         AddMenuItem( PopMenu, ID_SCH_DRAG_ITEM, msg, KiBitmap( drag_xpm ) );
-        msg = AddHotkeyName( _( "Duplicate" ), g_Schematic_Hokeys_Descr,
-                             HK_DUPLICATE_ITEM );
+        msg = AddHotkeyName( _( "Duplicate" ), g_Schematic_Hokeys_Descr, HK_DUPLICATE_ITEM );
         AddMenuItem( PopMenu, ID_POPUP_SCH_DUPLICATE_ITEM, msg, KiBitmap( duplicate_xpm ) );
     }
 
@@ -631,11 +633,9 @@ void AddMenusForText( wxMenu* PopMenu, SCH_TEXT* Text )
 
     if( !Text->GetFlags() )
     {
-        msg = AddHotkeyName( _( "Move" ), g_Schematic_Hokeys_Descr,
-                             HK_MOVE_COMPONENT_OR_ITEM );
+        msg = AddHotkeyName( _( "Move" ), g_Schematic_Hokeys_Descr, HK_MOVE_COMPONENT_OR_ITEM );
         AddMenuItem( PopMenu, ID_SCH_MOVE_ITEM, msg, KiBitmap( move_xpm ) );
-        msg = AddHotkeyName( _( "Duplicate" ), g_Schematic_Hokeys_Descr,
-                             HK_DUPLICATE_ITEM );
+        msg = AddHotkeyName( _( "Duplicate" ), g_Schematic_Hokeys_Descr, HK_DUPLICATE_ITEM );
         AddMenuItem( PopMenu, ID_POPUP_SCH_DUPLICATE_ITEM, msg, KiBitmap( duplicate_xpm ) );
     }
 
@@ -704,8 +704,7 @@ void AddMenusForWire( wxMenu* PopMenu, SCH_LINE* Wire, SCH_EDIT_FRAME* frame )
         return;
     }
 
-    bool is_new = Wire->IsNew();
-    if( is_new )
+    if( Wire->IsNew() )
     {
         msg = AddHotkeyName( _( "Wire End" ), g_Schematic_Hokeys_Descr, HK_END_CURR_LINEWIREBUS );
         AddMenuItem( PopMenu, ID_POPUP_END_LINE, msg, KiBitmap( checked_ok_xpm ) );
@@ -754,8 +753,7 @@ void AddMenusForBus( wxMenu* PopMenu, SCH_LINE* Bus, SCH_EDIT_FRAME* frame )
         return;
     }
 
-    bool    is_new = Bus->IsNew();
-    if( is_new )
+    if( Bus->IsNew() )
     {
         msg = AddHotkeyName( _( "Bus End" ), g_Schematic_Hokeys_Descr, HK_END_CURR_LINEWIREBUS );
         AddMenuItem( PopMenu, ID_POPUP_END_LINE, msg, KiBitmap( checked_ok_xpm ) );
@@ -904,16 +902,14 @@ void AddMenusForSheetPin( wxMenu* PopMenu, SCH_SHEET_PIN* PinSheet )
 
     if( !PinSheet->GetFlags() )
     {
-        msg = AddHotkeyName( _( "Move" ), g_Schematic_Hokeys_Descr,
-                             HK_MOVE_COMPONENT_OR_ITEM );
+        msg = AddHotkeyName( _( "Move" ), g_Schematic_Hokeys_Descr, HK_MOVE_COMPONENT_OR_ITEM );
         AddMenuItem( PopMenu, ID_SCH_MOVE_ITEM, msg, KiBitmap( move_xpm ) );
     }
 
     AddMenuItem( PopMenu, ID_SCH_EDIT_ITEM, _( "Edit..." ), KiBitmap( edit_xpm ) );
 
     if( !PinSheet->GetFlags() )
-        AddMenuItem( PopMenu, ID_POPUP_SCH_DELETE, _( "Delete" ),
-                     KiBitmap( delete_xpm ) );
+        AddMenuItem( PopMenu, ID_POPUP_SCH_DELETE, _( "Delete" ), KiBitmap( delete_xpm ) );
 }
 
 

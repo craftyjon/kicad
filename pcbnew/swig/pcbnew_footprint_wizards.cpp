@@ -99,12 +99,14 @@ wxString PYTHON_FOOTPRINT_WIZARD::CallRetStrMethod( const char* aMethod, PyObjec
 
     PyObject*   result = CallMethod( aMethod, aArglist );
 
-    if( result )
+    if( result == Py_None )
     {
-        const char* str_res = PyString_AsString( result );
-        ret = FROM_UTF8( str_res );
         Py_DECREF( result );
+        return ret;
     }
+
+    ret = PyStringToWx( result );
+    Py_XDECREF( result );
 
     return ret;
 }
@@ -173,10 +175,17 @@ int PYTHON_FOOTPRINT_WIZARD::GetNumParameterPages()
 
     if( result )
     {
+#if PY_MAJOR_VERSION >= 3
+        if( !PyLong_Check( result ) )
+            return -1;
+
+        ret = PyLong_AsLong( result );
+#else
         if( !PyInt_Check( result ) )
             return -1;
 
         ret = PyInt_AsLong( result );
+#endif
         Py_DECREF( result );
     }
 
@@ -195,12 +204,14 @@ wxString PYTHON_FOOTPRINT_WIZARD::GetParameterPageName( int aPage )
 
     Py_DECREF( arglist );
 
-    if( result )
+    if( result == Py_None )
     {
-        const char* str_res = PyString_AsString( result );
-        ret = FROM_UTF8( str_res );
         Py_DECREF( result );
+        return ret;
     }
+
+    ret = PyStringToWx( result );
+    Py_XDECREF( result );
 
     return ret;
 }
@@ -305,7 +316,11 @@ wxString PYTHON_FOOTPRINT_WIZARD::SetParameterValues( int aPage, wxArrayString& 
     for( int i = 0; i < len; i++ )
     {
         wxString&    str     = aValues[i];
+#if PY_MAJOR_VERSION >= 3
+        PyObject*   py_str  = PyUnicode_FromString( (const char*) str.mb_str() );
+#else
         PyObject*   py_str  = PyString_FromString( (const char*) str.mb_str() );
+#endif
         PyList_SetItem( py_list, i, py_str );
     }
 

@@ -53,7 +53,7 @@
 #include <dialog_drc.h>
 #include <invoke_pcb_dialog.h>
 #include <array_creator.h>
-#include <connectivity_data.h>
+#include <connectivity/connectivity_data.h>
 
 #include <zone_filler.h>
 
@@ -1119,7 +1119,7 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_POPUP_PCB_EDIT_DRAWING:
-        InstallGraphicItemPropertiesDialog( GetCurItem(), &dc );
+        InstallGraphicItemPropertiesDialog( GetCurItem() );
         break;
 
     case ID_POPUP_PCB_MOVE_DRAWING_REQUEST:
@@ -1216,11 +1216,11 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case ID_MENU_PCB_UPDATE_FOOTPRINTS:
-        InstallExchangeModuleFrame( (MODULE*) nullptr, true );
+        InstallExchangeModuleFrame( (MODULE*) GetCurItem(), true );
         break;
 
     case ID_MENU_PCB_EXCHANGE_FOOTPRINTS:
-        InstallExchangeModuleFrame( (MODULE*) nullptr, false );
+        InstallExchangeModuleFrame( (MODULE*) GetCurItem(), false );
         break;
 
     case ID_MENU_PCB_SWAP_LAYERS:

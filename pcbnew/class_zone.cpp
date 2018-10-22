@@ -646,14 +646,13 @@ int ZONE_CONTAINER::GetThermalReliefCopperBridge( D_PAD* aPad ) const
 void ZONE_CONTAINER::SetCornerRadius( unsigned int aRadius )
 {
     m_cornerRadius = aRadius;
-    if( m_cornerRadius > (unsigned int) Mils2iu( MAX_ZONE_CORNER_RADIUS_MILS ) )
-        m_cornerRadius = Mils2iu( MAX_ZONE_CORNER_RADIUS_MILS );
 }
 
 
 bool ZONE_CONTAINER::HitTest( const wxPoint& aPosition ) const
 {
-    return HitTestForCorner( aPosition ) || HitTestForEdge( aPosition );
+    return HitTestForCorner( aPosition ) || HitTestForEdge( aPosition ) ||
+            HitTestFilledArea( aPosition );
 }
 
 

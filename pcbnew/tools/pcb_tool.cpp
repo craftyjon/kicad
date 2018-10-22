@@ -66,9 +66,12 @@ void PCB_TOOL::doInteractiveItemPlacement( INTERACTIVE_PLACER_BASE* aPlacer,
         VECTOR2I cursorPos = controls()->GetCursorPosition();
 
         newItem = aPlacer->CreateItem();
-        newItem->SetPosition( wxPoint( cursorPos.x, cursorPos.y ) );
 
-        preview.Add( newItem.get() );
+        if( newItem )
+        {
+            newItem->SetPosition( wxPoint( cursorPos.x, cursorPos.y ) );
+            preview.Add( newItem.get() );
+        }
     }
 
     // Main loop: keep receiving events
@@ -155,9 +158,12 @@ void PCB_TOOL::doInteractiveItemPlacement( INTERACTIVE_PLACER_BASE* aPlacer,
                     VECTOR2I pos = controls()->GetCursorPosition();
 
                     newItem = aPlacer->CreateItem();
-                    newItem->SetPosition( wxPoint( pos.x, pos.y ) );
 
-                    preview.Add( newItem.get() );
+                    if( newItem )
+                    {
+                        newItem->SetPosition( wxPoint( pos.x, pos.y ) );
+                        preview.Add( newItem.get() );
+                    }
                 }
             }
         }
@@ -174,8 +180,7 @@ void PCB_TOOL::doInteractiveItemPlacement( INTERACTIVE_PLACER_BASE* aPlacer,
 
             if( TOOL_EVT_UTILS::IsRotateToolEvt( *evt ) && ( aOptions & IPO_ROTATE ) )
             {
-                const auto rotationAngle = TOOL_EVT_UTILS::GetEventRotationAngle(
-                        *frame(), *evt );
+                const int rotationAngle = TOOL_EVT_UTILS::GetEventRotationAngle( *frame(), *evt );
                 newItem->Rotate( newItem->GetPosition(), rotationAngle );
                 view()->Update( &preview );
             }

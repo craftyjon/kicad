@@ -276,6 +276,8 @@ public:
         paintListener = aPaintListener;
     }
 
+    virtual void EnableDepthTest( bool aEnabled = false ) override;
+
     ///< Parameters passed to the GLU tesselator
     typedef struct
     {
@@ -326,8 +328,14 @@ private:
     bool                    isInitialized;              ///< Basic initialization flag, has to be done
                                                         ///< when the window is visible
     bool                    isGrouping;                 ///< Was a group started?
+    bool                    isContextLocked;            ///< Used for assertion checking
+    GLint                   ufm_worldPixelSize;
 
     std::unique_ptr<GL_BITMAP_CACHE>         bitmapCache;
+
+    void lockContext() override;
+
+    void unlockContext() override;
 
     ///< Update handler for OpenGL settings
     bool updatedGalDisplayOptions( const GAL_DISPLAY_OPTIONS& aOptions ) override;
@@ -462,6 +470,8 @@ private:
         // Bigger arcs need smaller alpha increment to make them look smooth
         return std::min( 1e6 / aRadius, 2.0 * M_PI / CIRCLE_POINTS );
     }
+
+    double getWorldPixelSize() const;
 
     /**
      * @brief Basic OpenGL initialization.

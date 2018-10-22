@@ -45,7 +45,7 @@
 #include <pcb_draw_panel_gal.h>
 #include <class_module.h>
 #include <class_pcb_target.h>
-#include <connectivity_data.h>
+#include <connectivity/connectivity_data.h>
 #include <collectors.h>
 #include <zones_functions_for_undo_redo.h>
 #include <board_commit.h>
@@ -474,6 +474,7 @@ int PCB_EDITOR_CONTROL::PlaceModule( const TOOL_EVENT& aEvent )
                 if( module == NULL )
                     continue;
 
+                module->SetLink( 0 );
                 m_frame->AddModuleToBoard( module );
                 commit.Added( module );
                 module->SetPosition( wxPoint( cursorPos.x, cursorPos.y ) );
@@ -950,8 +951,12 @@ static bool highlightNet( TOOL_MANAGER* aToolMgr, const VECTOR2D& aPosition,
         GENERAL_COLLECTOR collector;
 
         // Find a connected item for which we are going to highlight a net
-        collector.Collect( board, GENERAL_COLLECTOR::PadsTracksOrZones,
+        collector.Collect( board, GENERAL_COLLECTOR::PadsOrTracks,
                            wxPoint( aPosition.x, aPosition.y ), guide );
+
+        if( collector.GetCount() == 0 )
+            collector.Collect( board, GENERAL_COLLECTOR::Zones,
+                               wxPoint( aPosition.x, aPosition.y ), guide );
 
         for( int i = 0; i < collector.GetCount(); i++ )
         {
@@ -1060,7 +1065,7 @@ int PCB_EDITOR_CONTROL::HighlightNetCursor( const TOOL_EVENT& aEvent )
 
     m_frame->SetToolID( ID_PCB_HIGHLIGHT_BUTT, wxCURSOR_HAND, _( "Highlight net" ) );
     picker->SetClickHandler( std::bind( highlightNet, m_toolMgr, _1, false ) );
-    picker->SetSnapping( false );
+    picker->SetLayerSet( LSET::AllCuMask() );
     picker->Activate();
     Wait();
 

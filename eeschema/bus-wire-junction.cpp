@@ -29,7 +29,7 @@
 
 #include <fctsys.h>
 #include <gr_basic.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <sch_edit_frame.h>
 
 #include <lib_draw_item.h>
@@ -43,6 +43,9 @@
 #include <sch_component.h>
 #include <sch_sheet.h>
 #include <list_operations.h>
+#include <sch_view.h>
+#include <view/view_group.h>
+
 
 
 static void AbortCreateNewLine( EDA_DRAW_PANEL* aPanel, wxDC* aDC );
@@ -119,30 +122,17 @@ static void RemoveBacktracks( DLIST<SCH_ITEM>& aWires )
 /**
  * Mouse capture callback for drawing line segments.
  */
-static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosition,
-                         bool aErase )
+static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosition, bool aErase )
 {
-    SCH_LINE* segment;
-
     if( s_wires.GetCount() == 0 )
         return;
 
-    segment = (SCH_LINE*) s_wires.begin();
-    COLOR4D color = GetLayerColor( segment->GetLayer() );
     SCH_EDIT_FRAME* frame = (SCH_EDIT_FRAME*) aPanel->GetParent();
 
-    if( aErase )
-    {
-        while( segment )
-        {
-            if( !segment->IsNull() )  // Redraw if segment length != 0
-                segment->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, color );
-
-            segment = segment->Next();
-        }
-    }
-
     wxPoint endpos = frame->GetCrossHairPosition();
+
+    auto view = static_cast<SCH_DRAW_PANEL*>( aPanel )->GetView();
+    view->ClearPreview();
 
     // Update the bus unfold posture based on the mouse movement
     if( frame->m_busUnfold.in_progress && !frame->m_busUnfold.label_placed )
@@ -158,9 +148,6 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
         if( shape != entry->GetBusEntryShape() ||
             offset != frame->m_busUnfold.offset )
         {
-            if( aErase )
-                entry->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, color );
-
             entry->SetBusEntryShape( shape );
             wxPoint entry_pos = frame->m_busUnfold.origin;
 
@@ -170,7 +157,7 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
             entry->SetPosition( entry_pos );
             frame->m_busUnfold.offset = offset;
 
-            entry->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, color );
+            frame->RefreshItem( entry );
 
             wxPoint wire_start = ( offset ? entry->GetPosition() : entry->m_End() );
             ( (SCH_LINE*) s_wires.begin() )->SetStartPoint( wire_start );
@@ -178,14 +165,8 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
 
         // Update the label "ghost" position
         auto label = frame->m_busUnfold.label;
-        COLOR4D label_color = GetLayerColor( LAYER_LOCLABEL );
-
-        if( aErase )
-            label->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, label_color );
-
         label->SetPosition( endpos );
-
-        label->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, label_color );
+        view->AddToPreview( label->Clone() );
     }
 
     if( frame->GetForceHVLines() ) /* Coerce the line to vertical or horizontal one: */
@@ -193,19 +174,15 @@ static void DrawSegment( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosi
     else
         ( (SCH_LINE*) s_wires.GetLast() )->SetEndPoint( endpos );
 
-    segment = (SCH_LINE*) s_wires.begin();
-
-    while( segment )
+    for( SCH_LINE* segment = (SCH_LINE*) s_wires.begin(); segment; segment = segment->Next() )
     {
-        if( !segment->IsNull() )  // Redraw if segment length != 0
-            segment->Draw( aPanel, aDC, wxPoint( 0, 0 ), g_XorMode, color );
-
-        segment = segment->Next();
+        if( !segment->IsNull() )  // Add to preview if segment length != 0
+            view->AddToPreview( segment->Clone() );
     }
 }
 
 
-void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
+void SCH_EDIT_FRAME::BeginSegment( int type )
 {
     SCH_LINE* segment;
     SCH_LINE* nextSegment;
@@ -218,10 +195,8 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
         if( !segment->GetFlags() || ( segment->Type() != SCH_LINE_T ) )
         {
             if( segment->GetFlags() )
-            {
-                wxLogDebug( wxT( "BeginSegment: item->GetFlags()== %X" ),
-                    segment->GetFlags() );
-            }
+                wxLogDebug( wxT( "BeginSegment: item->GetFlags()== %X" ), segment->GetFlags() );
+
             // no wire, bus or graphic line in progress
             segment = NULL;
         }
@@ -261,14 +236,6 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
             GetScreen()->SetCurItem( nextSegment );
         }
 
-        // Initially draw the label for bus unfolding if needed
-        if( IsBusUnfoldInProgress() && !m_busUnfold.label_placed )
-        {
-            auto label = m_busUnfold.label;
-            COLOR4D label_color = GetLayerColor( LAYER_LOCLABEL );
-            label->Draw( m_canvas, DC, wxPoint( 0, 0 ), g_XorMode, label_color );
-        }
-
         m_canvas->SetMouseCapture( DrawSegment, AbortCreateNewLine );
         SetRepeatItem( NULL );
     }
@@ -279,8 +246,7 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
         {
             wxASSERT( type == LAYER_WIRE );
 
-            auto screen = GetScreen();
-            screen->Append( m_busUnfold.label );
+            AddToScreen( m_busUnfold.label );
             m_busUnfold.label_placed = true;
 
             nextSegment = new SCH_LINE( cursorpos, LAYER_WIRE );
@@ -320,7 +286,7 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
                 return;
         }
 
-        m_canvas->CallMouseCapture( DC, wxDefaultPosition, false );
+        m_canvas->CallMouseCapture( nullptr, wxDefaultPosition, false );
 
         // Terminate the command if the end point is on a pin, junction, or another wire or bus.
         if( !IsBusUnfoldInProgress() &&
@@ -340,7 +306,7 @@ void SCH_EDIT_FRAME::BeginSegment( wxDC* DC, int type )
         segment->SetFlags( SELECTED );
         nextSegment->SetFlags( IS_NEW );
         GetScreen()->SetCurItem( nextSegment );
-        m_canvas->CallMouseCapture( DC, wxDefaultPosition, false );
+        m_canvas->CallMouseCapture( nullptr, wxDefaultPosition, false );
     }
 }
 
@@ -359,6 +325,27 @@ void SCH_EDIT_FRAME::GetSchematicConnections( std::vector< wxPoint >& aConnectio
             []( const wxPoint& a, const wxPoint& b ) -> bool
             { return a.x < b.x || (a.x == b.x && a.y < b.y); } );
     aConnections.erase( unique( aConnections.begin(), aConnections.end() ), aConnections.end() );
+}
+
+
+bool SCH_EDIT_FRAME::TestDanglingEnds()
+{
+    std::vector<DANGLING_END_ITEM> endPoints;
+    bool hasStateChanged = false;
+
+    for( SCH_ITEM* item = GetScreen()->GetDrawList().begin(); item; item = item->Next() )
+        item->GetEndPoints( endPoints );
+
+    for( SCH_ITEM* item = GetScreen()->GetDrawList().begin(); item; item = item->Next() )
+    {
+        if( item->IsDanglingStateChanged( endPoints ) )
+        {
+            GetCanvas()->GetView()->Update( item, KIGFX::REPAINT );
+            hasStateChanged = true;
+        }
+    }
+
+    return hasStateChanged;
 }
 
 
@@ -417,8 +404,14 @@ void SCH_EDIT_FRAME::EndSegment()
     SetRepeatItem( segment = (SCH_LINE*) s_wires.GetLast() );
 
     // Add the new wires
-    screen->Append( s_wires );
-    SaveCopyInUndoList( itemList, UR_NEW, true );
+    AddToScreen( s_wires );
+
+    auto view = GetCanvas()->GetView();
+    view->ClearPreview();
+    view->ShowPreview( false );
+    view->ClearHiddenFlags();
+
+    SaveCopyInUndoList(itemList, UR_NEW);
 
     // Correct and remove segments that need to be merged.
     SchematicCleanUp( true );
@@ -430,11 +423,13 @@ void SCH_EDIT_FRAME::EndSegment()
 
         std::vector< wxPoint > pts;
         item->GetConnectionPoints( pts );
-        std::remove_if( pts.begin(), pts.end(), [ segment ]( const wxPoint& aPt )
-                { return segment->IsEndPoint( aPt ); } );
 
         if( pts.size() > 2 )
             continue;
+
+        // Do not trim wires that connect directly to an endpoint
+        pts.erase( std::remove_if( pts.begin(), pts.end(), [ &segment ]( const wxPoint& aPt )
+                { return segment->IsEndPoint( aPt ); } ), pts.end() );
 
         for( auto i = pts.begin(); i != pts.end(); i++ )
             for( auto j = i + 1; j != pts.end(); j++ )
@@ -452,10 +447,12 @@ void SCH_EDIT_FRAME::EndSegment()
         FinishBusUnfold();
     }
 
-    screen->TestDanglingEnds();
+    TestDanglingEnds();
+
     screen->ClearDrawingState();
     screen->SetCurItem( NULL );
     m_canvas->EndMouseCapture( -1, -1, wxEmptyString, false );
+    m_canvas->Refresh();
     OnModify();
 }
 
@@ -546,7 +543,7 @@ static void ComputeBreakPoint( SCH_SCREEN* aScreen, SCH_LINE* aSegment, wxPoint&
 }
 
 
-void SCH_EDIT_FRAME::DeleteCurrentSegment( wxDC* DC )
+void SCH_EDIT_FRAME::DeleteCurrentSegment()
 {
     SCH_SCREEN* screen = GetScreen();
 
@@ -555,9 +552,7 @@ void SCH_EDIT_FRAME::DeleteCurrentSegment( wxDC* DC )
     if( ( screen->GetCurItem() == NULL ) || !screen->GetCurItem()->IsNew() )
         return;
 
-    DrawSegment( m_canvas, DC, wxDefaultPosition, false );
-
-    screen->Remove( screen->GetCurItem() );
+    RemoveFromScreen( screen->GetCurItem() );
     m_canvas->SetMouseCaptureCallback( NULL );
     screen->SetCurItem( NULL );
 }
@@ -565,25 +560,32 @@ void SCH_EDIT_FRAME::DeleteCurrentSegment( wxDC* DC )
 
 void SCH_EDIT_FRAME::SaveWireImage()
 {
-    DLIST< SCH_ITEM > oldWires;
+    PICKED_ITEMS_LIST oldItems;
+    oldItems.m_Status = UR_WIRE_IMAGE;
 
-    oldWires.SetOwnership( false );      // Prevent DLIST for deleting items in destructor.
-    GetScreen()->ExtractWires( oldWires, true );
+    SCH_ITEM* item;
+    SCH_ITEM* next_item;
 
-    if( oldWires.GetCount() != 0 )
+    for( item = GetScreen()->GetDrawItems(); item; item = next_item )
     {
-        PICKED_ITEMS_LIST oldItems;
+        next_item = item->Next();
 
-        oldItems.m_Status = UR_WIRE_IMAGE;
-
-        while( oldWires.GetCount() != 0 )
+        if( item->Type() == SCH_JUNCTION_T || item->Type() == SCH_LINE_T )
         {
-            ITEM_PICKER picker = ITEM_PICKER( oldWires.PopFront(), UR_WIRE_IMAGE );
-            oldItems.PushItem( picker );
-        }
+            GetScreen()->Remove( item );
+            GetCanvas()->GetView()->Remove( item );
 
-        SaveCopyInUndoList( oldItems, UR_WIRE_IMAGE );
+            oldItems.PushItem( ITEM_PICKER( item, UR_WIRE_IMAGE ) );
+
+            SCH_ITEM* item_copy = static_cast<SCH_ITEM*>( item->Clone() );
+
+            GetScreen()->GetDrawList().Insert( item_copy, next_item );
+            GetCanvas()->GetView()->Add( item_copy );
+        }
     }
+
+    if( oldItems.GetCount() != 0 )
+        SaveCopyInUndoList( oldItems, UR_WIRE_IMAGE );
 }
 
 
@@ -627,7 +629,7 @@ bool SCH_EDIT_FRAME::TrimWire( const wxPoint& aStart, const wxPoint& aEnd, bool 
             line = return_line;
 
         SaveCopyInUndoList( (SCH_ITEM*)line, UR_DELETED, aAppend );
-        GetScreen()->Remove( (SCH_ITEM*)line );
+        RemoveFromScreen( (SCH_ITEM*)line );
         aAppend = true;
         retval = true;
     }
@@ -714,7 +716,7 @@ bool SCH_EDIT_FRAME::SchematicCleanUp( bool aAppend, SCH_SCREEN* aScreen )
                     remove_item( item );
                     remove_item( secondItem );
                     itemList.PushItem( ITEM_PICKER( line, UR_NEW ) );
-                    aScreen->Append( (SCH_ITEM*) line );
+                    AddToScreen( line );
                     break;
                 }
             }
@@ -729,12 +731,12 @@ bool SCH_EDIT_FRAME::SchematicCleanUp( bool aAppend, SCH_SCREEN* aScreen )
         secondItem = item->Next();
 
         if( item->GetFlags() & STRUCT_DELETED )
-            aScreen->Remove( item );
+            RemoveFromScreen( item, aScreen );
     }
 
     SaveCopyInUndoList( itemList, UR_CHANGED, aAppend );
 
-    return !!( itemList.GetCount() );
+    return itemList.GetCount() > 0;
 }
 
 
@@ -755,7 +757,7 @@ bool SCH_EDIT_FRAME::BreakSegment( SCH_LINE* aSegment, const wxPoint& aPoint,
 
     newSegment->SetStartPoint( aPoint );
     aSegment->SetEndPoint( aPoint );
-    aScreen->Append( newSegment );
+    AddToScreen( newSegment );
 
     if( aNewSegment )
         *aNewSegment = newSegment;
@@ -826,7 +828,7 @@ void SCH_EDIT_FRAME::DeleteJunction( SCH_ITEM* aJunction, bool aAppend )
     {
         aItem->SetFlags( STRUCT_DELETED );
         itemList.PushItem( ITEM_PICKER( aItem, UR_DELETED ) );
-        screen->Remove( aItem );
+        RemoveFromScreen( aItem );
     };
 
     remove_item( aJunction );
@@ -863,7 +865,7 @@ void SCH_EDIT_FRAME::DeleteJunction( SCH_ITEM* aJunction, bool aAppend )
                 remove_item( item );
                 remove_item( secondItem );
                 itemList.PushItem( ITEM_PICKER( line, UR_NEW ) );
-                screen->Append( (SCH_ITEM*) line );
+                AddToScreen( line );
                 break;
             }
         }
@@ -877,7 +879,7 @@ void SCH_EDIT_FRAME::DeleteJunction( SCH_ITEM* aJunction, bool aAppend )
         nextitem = item->Next();
 
         if( item->GetFlags() & STRUCT_DELETED )
-            screen->Remove( item );
+            RemoveFromScreen( item );
     }
 }
 
@@ -885,14 +887,19 @@ void SCH_EDIT_FRAME::DeleteJunction( SCH_ITEM* aJunction, bool aAppend )
 SCH_JUNCTION* SCH_EDIT_FRAME::AddJunction( const wxPoint& aPosition, bool aAppend )
 {
     SCH_JUNCTION* junction = new SCH_JUNCTION( aPosition );
-    SCH_SCREEN* screen = GetScreen();
     bool broken_segments = false;
 
-    screen->Append( junction );
-    broken_segments = BreakSegments( aPosition, aAppend, screen );
-    screen->TestDanglingEnds();
+    AddToScreen( junction );
+    broken_segments = BreakSegments( aPosition, aAppend );
+    TestDanglingEnds();
     OnModify();
     SaveCopyInUndoList( junction, UR_NEW, broken_segments || aAppend );
+
+    auto view = GetCanvas()->GetView();
+    view->ClearPreview();
+    view->ShowPreview( false );
+    view->ClearHiddenFlags();
+
     return junction;
 }
 
@@ -902,11 +909,16 @@ SCH_NO_CONNECT* SCH_EDIT_FRAME::AddNoConnect( const wxPoint& aPosition )
     SCH_NO_CONNECT* no_connect = new SCH_NO_CONNECT( aPosition );
 
     SetRepeatItem( no_connect );
-    GetScreen()->Append( no_connect );
+    AddToScreen( no_connect );
     SchematicCleanUp();
-    GetScreen()->TestDanglingEnds();
+    TestDanglingEnds();
     OnModify();
-    m_canvas->Refresh();
+
+    auto view = GetCanvas()->GetView();
+    view->ClearPreview();
+    view->ShowPreview( false );
+    view->ClearHiddenFlags();
+
     SaveCopyInUndoList( no_connect, UR_NEW );
     return no_connect;
 }
@@ -917,14 +929,13 @@ SCH_NO_CONNECT* SCH_EDIT_FRAME::AddNoConnect( const wxPoint& aPosition )
 static void AbortCreateNewLine( EDA_DRAW_PANEL* aPanel, wxDC* aDC )
 {
     SCH_SCREEN* screen = (SCH_SCREEN*) aPanel->GetScreen();
-    auto parent = static_cast<SCH_EDIT_FRAME*>( aPanel->GetParent() );
 
+    SCH_EDIT_FRAME* parent = ( SCH_EDIT_FRAME* ) aPanel->GetParent();
 
     if( screen->GetCurItem() )
     {
         s_wires.DeleteAll();    // Free the list, for a future usage
         screen->SetCurItem( NULL );
-        aPanel->Refresh();
     }
     else
     {
@@ -936,19 +947,22 @@ static void AbortCreateNewLine( EDA_DRAW_PANEL* aPanel, wxDC* aDC )
         parent->CancelBusUnfold();
     }
 
+    auto view = static_cast<SCH_DRAW_PANEL*>(aPanel)->GetView();
+    view->ClearPreview();
+    view->ShowPreview( false );
+    view->ClearHiddenFlags();
+
     // Clear flags used in edit functions.
     screen->ClearDrawingState();
 }
 
 
-void SCH_EDIT_FRAME::RepeatDrawItem( wxDC* DC )
+void SCH_EDIT_FRAME::RepeatDrawItem()
 {
     SCH_ITEM*   repeater = GetRepeatItem();
 
     if( !repeater )
         return;
-
-    //D( repeater>Show( 0, std::cout ); )
 
     // clone the repeater, move it, insert into display list, then save a copy
     // via SetRepeatItem();
@@ -958,14 +972,12 @@ void SCH_EDIT_FRAME::RepeatDrawItem( wxDC* DC )
     // If cloning a component then put into 'move' mode.
     if( my_clone->Type() == SCH_COMPONENT_T )
     {
-        wxPoint pos = GetCrossHairPosition() -
-                      ( (SCH_COMPONENT*) my_clone )->GetPosition();
+        wxPoint pos = GetCrossHairPosition() - ( (SCH_COMPONENT*) my_clone )->GetPosition();
 
         my_clone->SetFlags( IS_NEW );
         ( (SCH_COMPONENT*) my_clone )->SetTimeStamp( GetNewTimeStamp() );
         my_clone->Move( pos );
-        my_clone->Draw( m_canvas, DC, wxPoint( 0, 0 ), g_XorMode );
-        PrepareMoveItem( my_clone, DC );
+        PrepareMoveItem( my_clone );
     }
     else
     {
@@ -974,17 +986,10 @@ void SCH_EDIT_FRAME::RepeatDrawItem( wxDC* DC )
         if( my_clone->CanIncrementLabel() )
             ( (SCH_TEXT*) my_clone )->IncrementLabel( GetRepeatDeltaLabel() );
 
-        GetScreen()->Append( my_clone );
+        AddToScreen( my_clone );
 
         if( my_clone->IsConnectable() )
-        {
-            GetScreen()->TestDanglingEnds();
-            m_canvas->Refresh();
-        }
-        else
-        {
-            my_clone->Draw( m_canvas, DC, wxPoint( 0, 0 ), GR_DEFAULT_DRAWMODE );
-        }
+            TestDanglingEnds();
 
         SaveCopyInUndoList( my_clone, UR_NEW );
         my_clone->ClearFlags();
@@ -993,3 +998,5 @@ void SCH_EDIT_FRAME::RepeatDrawItem( wxDC* DC )
     // clone my_clone, now that it has been moved, thus saving new position.
     SetRepeatItem( my_clone );
 }
+
+

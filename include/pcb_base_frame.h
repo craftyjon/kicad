@@ -74,8 +74,9 @@ public:
     int m_FastGrid2;                // 2nd fast grid setting (index in EDA_DRAW_FRAME::m_gridSelectBox)
 
 protected:
-    BOARD*              m_Pcb;
-    GENERAL_COLLECTOR*  m_Collector;
+    BOARD*               m_Pcb;
+    GENERAL_COLLECTOR*   m_Collector;
+
     PCB_GENERAL_SETTINGS m_configSettings;
 
     void updateGridSelectBox();

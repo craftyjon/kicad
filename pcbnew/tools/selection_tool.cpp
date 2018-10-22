@@ -53,7 +53,7 @@ using namespace std::placeholders;
 #include <tool/tool_event.h>
 #include <tool/tool_manager.h>
 #include <router/router_tool.h>
-#include <connectivity_data.h>
+#include <connectivity/connectivity_data.h>
 #include <footprint_viewer_frame.h>
 #include "tool_event_utils.h"
 
@@ -195,6 +195,7 @@ SELECTION_TOOL::SELECTION_TOOL() :
         m_additive( false ),
         m_subtractive( false ),
         m_multiple( false ),
+        m_skip_heuristics( false ),
         m_locked( true ),
         m_menu( *this ),
         m_priv( std::make_unique<PRIV>() )
@@ -274,6 +275,10 @@ int SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
         // This will be ignored if the SHIFT modifier is pressed
         m_subtractive = !m_additive && evt->Modifier( MD_CTRL );
 
+        // Is the user requesting that the selection list include all possible
+        // items without removing less likely selection candidates
+        m_skip_heuristics = !!evt->Modifier( MD_ALT );
+
         // Single click? Select single object
         if( evt->IsClick( BUT_LEFT ) )
         {
@@ -283,13 +288,24 @@ int SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
             }
             else
             {
+                CLIENT_SELECTION_FILTER filter = nullptr;
+
                 // If no modifier keys are pressed, clear the selection
                 if( !m_additive )
                 {
+                    if( m_selection.Size() != 0 )
+                        filter = []( const VECTOR2I&, GENERAL_COLLECTOR& aCollector )
+                        {
+                            for( int i = aCollector.GetCount() - 1; i >= 0; i-- )
+                                if( aCollector[i]->Type() == PCB_ZONE_AREA_T )
+                                    aCollector.Remove( i );
+                        };
+
                     clearSelection();
                 }
 
-                selectPoint( evt->Position() );
+                selectPoint( evt->Position(), false, nullptr, filter );
+
             }
         }
 
@@ -380,6 +396,15 @@ int SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
 SELECTION& SELECTION_TOOL::GetSelection()
 {
     return m_selection;
+}
+
+
+static EDA_RECT getRect( const BOARD_ITEM* aItem )
+{
+    if( aItem->Type() == PCB_MODULE_T )
+        return static_cast<const MODULE*>( aItem )->GetFootprintRect();
+
+    return aItem->GetBoundingBox();
 }
 
 
@@ -513,12 +538,15 @@ bool SELECTION_TOOL::selectPoint( const VECTOR2I& aWhere, bool aOnDrag,
     }
 
     // Apply some ugly heuristics to avoid disambiguation menus whenever possible
-    guessSelectionCandidates( collector );
-
-    if( collector.GetCount() == 1 )
+    if( !m_skip_heuristics )
     {
-        toggleSelection( collector[0] );
-        return true;
+        guessSelectionCandidates( collector, aWhere );
+
+        if( collector.GetCount() == 1 )
+        {
+            toggleSelection( collector[0] );
+            return true;
+        }
     }
 
     // Still more than one item.  We're going to have to ask the user.
@@ -631,7 +659,7 @@ bool SELECTION_TOOL::selectMultiple()
 
                 if( windowSelection )
                 {
-                    BOX2I bbox = item->GetBoundingBox();
+                    BOX2I bbox = getRect( item );
 
                     if( selectionBox.Contains( bbox ) )
                     {
@@ -1889,15 +1917,6 @@ bool SELECTION_TOOL::selectionContains( const VECTOR2I& aPoint ) const
 }
 
 
-static EDA_RECT getRect( const BOARD_ITEM* aItem )
-{
-    if( aItem->Type() == PCB_MODULE_T )
-        return static_cast<const MODULE*>( aItem )->GetFootprintRect();
-
-    return aItem->GetBoundingBox();
-}
-
-
 static double calcArea( const BOARD_ITEM* aItem )
 {
     if( aItem->Type() == PCB_TRACE_T )
@@ -1977,7 +1996,8 @@ double calcRatio( double a, double b )
 // We currently check for pads and text mostly covering a footprint, but we don’t check for
 // smaller footprints mostly covering a larger footprint.
 //
-void SELECTION_TOOL::guessSelectionCandidates( GENERAL_COLLECTOR& aCollector ) const
+void SELECTION_TOOL::guessSelectionCandidates( GENERAL_COLLECTOR& aCollector,
+        const VECTOR2I& aWhere ) const
 {
     std::set<BOARD_ITEM*> rejected;
     std::set<BOARD_ITEM*> forced;
@@ -2027,6 +2047,33 @@ void SELECTION_TOOL::guessSelectionCandidates( GENERAL_COLLECTOR& aCollector ) c
             for( BOARD_ITEM* item : preferred )
                 aCollector.Append( item );
             return;
+        }
+    }
+
+    int numZones = aCollector.CountType( PCB_ZONE_AREA_T );
+
+    if( numZones > 0 && aCollector.GetCount() > numZones )
+    {
+        for( int i = aCollector.GetCount() - 1; i >= 0; i-- )
+        {
+            if( aCollector[i]->Type() == PCB_ZONE_AREA_T && !static_cast<ZONE_CONTAINER*>
+                    ( aCollector[i] )->HitTestForEdge( wxPoint( aWhere.x, aWhere.y ) ) )
+            {
+                aCollector.Remove( i );
+            }
+        }
+    }
+
+    int numDrawitems = aCollector.CountType( PCB_LINE_T ) +
+            aCollector.CountType( PCB_MODULE_EDGE_T );
+
+    if( numDrawitems > 0 && aCollector.GetCount() > numDrawitems )
+    {
+        for( int i = aCollector.GetCount() - 1; i >= 0; i-- )
+        {
+            auto ds = static_cast<DRAWSEGMENT*>( aCollector[i] );
+            if( ds->GetShape() == S_POLYGON )
+                aCollector.Remove( i );
         }
     }
 

@@ -41,9 +41,13 @@
 
 /* init functions defined by swig */
 
+#if PY_MAJOR_VERSION >= 3
+extern "C" PyObject* PyInit__pcbnew( void );
+#else
 extern "C" void init_kicad( void );
 
 extern "C" void init_pcbnew( void );
+#endif
 
 #define EXTRA_PYTHON_MODULES 10     // this is the number of python
                                     // modules that we want to add into the list
@@ -67,7 +71,11 @@ bool IsWxPythonLoaded()
 
 /* Add a name + initfuction to our SwigImportInittab */
 
+#if PY_MAJOR_VERSION >= 3
+static void swigAddModule( const char* name, PyObject* (* initfunc)() )
+#else
 static void swigAddModule( const char* name, void (* initfunc)() )
+#endif
 {
     SwigImportInittab[SwigNumModules].name      = (char*) name;
     SwigImportInittab[SwigNumModules].initfunc  = initfunc;
@@ -110,7 +118,11 @@ static void swigAddBuiltin()
 
 static void swigAddModules()
 {
+#if PY_MAJOR_VERSION >= 3
+    swigAddModule( "_pcbnew", PyInit__pcbnew );
+#else
     swigAddModule( "_pcbnew", init_pcbnew );
+#endif
 
     // finally it seems better to include all in just one module
     // but in case we needed to include any other modules,
@@ -236,7 +248,25 @@ static void pcbnewRunPythonMethodWithReturnedString( const char* aMethodName, wx
     if( pobj )
     {
         PyObject* str = PyDict_GetItemString(localDict, "result" );
+#if PY_MAJOR_VERSION >= 3
+        const char* str_res = NULL;
+        if(str)
+        {
+            PyObject* temp_bytes = PyUnicode_AsEncodedString( str, "UTF-8", "strict" );
+            if( temp_bytes != NULL )
+            {
+                str_res = PyBytes_AS_STRING( temp_bytes );
+                str_res = strdup( str_res );
+                Py_DECREF( temp_bytes );
+            }
+            else
+            {
+                wxLogMessage( "cannot encode unicode python string" );
+            }
+        }
+#else
         const char* str_res = str ? PyString_AsString( str ) : 0;
+#endif
         aNames = FROM_UTF8( str_res );
         Py_DECREF( pobj );
     }
@@ -312,7 +342,13 @@ wxWindow* CreatePythonShellWindow( wxWindow* parent, const wxString& aFramenameI
     // executed.  Put a reference to the builtins module in it.
 
     PyObject*   globals     = PyDict_New();
+#if PY_MAJOR_VERSION >= 3
+    PyObject*   builtins    = PyImport_ImportModule( "builtins" );
+#else
     PyObject*   builtins    = PyImport_ImportModule( "__builtin__" );
+#endif
+
+    wxASSERT( builtins );
 
     PyDict_SetItemString( globals, "__builtins__", builtins );
     Py_DECREF( builtins );
@@ -372,6 +408,35 @@ wxWindow* CreatePythonShellWindow( wxWindow* parent, const wxString& aFramenameI
 
 #endif
 
+wxString PyStringToWx( PyObject* aString )
+{
+    wxString    ret;
+
+    if( !aString )
+        return ret;
+
+#if PY_MAJOR_VERSION >= 3
+    const char* str_res = NULL;
+    PyObject* temp_bytes = PyUnicode_AsEncodedString( aString, "UTF-8", "strict" );
+    if( temp_bytes != NULL )
+    {
+        str_res = PyBytes_AS_STRING( temp_bytes );
+        ret = FROM_UTF8( str_res );
+        Py_DECREF( temp_bytes );
+    }
+    else
+    {
+        wxLogMessage( "cannot encode unicode python string" );
+    }
+#else
+    const char* str_res = PyString_AsString( aString );
+    ret = FROM_UTF8( str_res );
+#endif
+
+    return ret;
+}
+
+
 wxArrayString PyArrayStringToWx( PyObject* aArrayString )
 {
     wxArrayString   ret;
@@ -386,7 +451,24 @@ wxArrayString PyArrayStringToWx( PyObject* aArrayString )
         PyObject* element = PyList_GetItem( aArrayString, n );
 
         if( element )
+        {
+#if PY_MAJOR_VERSION >= 3
+            const char* str_res = NULL;
+            PyObject* temp_bytes = PyUnicode_AsEncodedString( element, "UTF-8", "strict" );
+            if( temp_bytes != NULL )
+            {
+                str_res = PyBytes_AS_STRING( temp_bytes );
+                ret.Add( FROM_UTF8( str_res ), 1 );
+                Py_DECREF( temp_bytes );
+            }
+            else
+            {
+                wxLogMessage( "cannot encode unicode python string" );
+            }
+#else
             ret.Add( FROM_UTF8( PyString_AsString( element ) ), 1 );
+#endif
+        }
     }
 
     return ret;
@@ -406,7 +488,20 @@ wxString PyErrStringWithTraceback()
 
     PyErr_Fetch( &type, &value, &traceback );
 
+    PyErr_NormalizeException( &type, &value, &traceback );
+    if( traceback == NULL )
+    {
+        traceback = Py_None;
+        Py_INCREF( traceback );
+    }
+
+#if PY_MAJOR_VERSION >= 3
+    PyException_SetTraceback( value, traceback );
+
+    PyObject* tracebackModuleString = PyUnicode_FromString( "traceback" );
+#else
     PyObject* tracebackModuleString = PyString_FromString( "traceback" );
+#endif
     PyObject* tracebackModule = PyImport_Import( tracebackModuleString );
     Py_DECREF( tracebackModuleString );
 

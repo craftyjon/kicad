@@ -30,7 +30,8 @@
 #include <fctsys.h>
 #include <kiface_i.h>
 #include <pgm_base.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
+#include <sch_view.h>
 #include <msgpanel.h>
 #include <bitmaps.h>
 #include <eda_dockart.h>
@@ -44,7 +45,8 @@
 #include <dialog_helpers.h>
 #include <class_libentry.h>
 #include <class_library.h>
-
+#include <view/view_controls.h>
+#include <sch_painter.h>
 
 // Save previous component library viewer state.
 wxString LIB_VIEW_FRAME::m_libraryName;
@@ -68,7 +70,7 @@ BEGIN_EVENT_TABLE( LIB_VIEW_FRAME, EDA_DRAW_FRAME )
     EVT_TOOL_RANGE( ID_LIBVIEW_DE_MORGAN_NORMAL_BUTT, ID_LIBVIEW_DE_MORGAN_CONVERT_BUTT,
                     LIB_VIEW_FRAME::onSelectSymbolBodyStyle )
     EVT_TOOL( ID_LIBVIEW_CMP_EXPORT_TO_SCHEMATIC, LIB_VIEW_FRAME::ExportToSchematicLibraryPart )
-    EVT_COMBOBOX( ID_LIBVIEW_SELECT_PART_NUMBER, LIB_VIEW_FRAME::onSelectSymbolUnit )
+    EVT_CHOICE( ID_LIBVIEW_SELECT_PART_NUMBER, LIB_VIEW_FRAME::onSelectSymbolUnit )
 
     // listbox events
     EVT_LISTBOX( ID_LIBVIEW_LIB_LIST, LIB_VIEW_FRAME::ClickOnLibList )
@@ -83,48 +85,32 @@ BEGIN_EVENT_TABLE( LIB_VIEW_FRAME, EDA_DRAW_FRAME )
     EVT_MENU( ID_LIBVIEW_SHOW_ELECTRICAL_TYPE, LIB_VIEW_FRAME::OnShowElectricalType )
 
     EVT_UPDATE_UI( ID_LIBVIEW_DE_MORGAN_NORMAL_BUTT, LIB_VIEW_FRAME::onUpdateNormalBodyStyleButton )
-    EVT_UPDATE_UI( ID_LIBVIEW_DE_MORGAN_CONVERT_BUTT,
-                   LIB_VIEW_FRAME::onUpdateAlternateBodyStyleButton )
+    EVT_UPDATE_UI( ID_LIBVIEW_DE_MORGAN_CONVERT_BUTT, LIB_VIEW_FRAME::onUpdateAltBodyStyleButton )
     EVT_UPDATE_UI( ID_LIBVIEW_SHOW_ELECTRICAL_TYPE, LIB_VIEW_FRAME::OnUpdateElectricalType )
-    EVT_UPDATE_UI( ID_LIBVIEW_SELECT_PART_NUMBER, LIB_VIEW_FRAME::OnUpdateSelectionPartBox )
+    EVT_UPDATE_UI( ID_LIBVIEW_SELECT_PART_NUMBER, LIB_VIEW_FRAME::onUpdateUnitChoice )
+    EVT_UPDATE_UI( ID_LIBEDIT_VIEW_DOC, LIB_VIEW_FRAME::onUpdateDocButton )
 
 END_EVENT_TABLE()
 
 
-/* Note:
- * LIB_VIEW_FRAME can be created in "modal mode", or as a usual frame.
- * In modal mode:
- *  a tool to export the selected symbol is shown in the toolbar
- *  the style is wxFRAME_FLOAT_ON_PARENT
- * Note:
- * On windows, when the frame with type wxFRAME_FLOAT_ON_PARENT is displayed
- * its parent frame is sometimes brought to the foreground when closing the
- * LIB_VIEW_FRAME frame.
- * If it still happens, it could be better to use wxSTAY_ON_TOP
- * instead of wxFRAME_FLOAT_ON_PARENT
- */
-#ifdef __WINDOWS__
-#define MODAL_MODE_EXTRASTYLE wxFRAME_FLOAT_ON_PARENT   // could be wxSTAY_ON_TOP if issues
-#else
-#define MODAL_MODE_EXTRASTYLE wxFRAME_FLOAT_ON_PARENT
-#endif
+#define LIB_VIEW_NAME "ViewlibFrame"
+#define LIB_VIEW_NAME_MODAL "ViewlibFrameModal"
 
-#define LIB_VIEW_FRAME_NAME "ViewlibFrame"
-#define LIB_VIEW_FRAME_NAME_MODAL "ViewlibFrameModal"
+#define LIB_VIEW_STYLE ( KICAD_DEFAULT_DRAWFRAME_STYLE )
+#define LIB_VIEW_STYLE_MODAL ( KICAD_DEFAULT_DRAWFRAME_STYLE | wxFRAME_FLOAT_ON_PARENT )
+
 
 LIB_VIEW_FRAME::LIB_VIEW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrameType,
                                 const wxString& aLibraryName ) :
     SCH_BASE_FRAME( aKiway, aParent, aFrameType, _( "Library Browser" ),
-            wxDefaultPosition, wxDefaultSize,
-            aFrameType == FRAME_SCH_VIEWER_MODAL ?
-                aParent ? KICAD_DEFAULT_DRAWFRAME_STYLE | MODAL_MODE_EXTRASTYLE
-                          : KICAD_DEFAULT_DRAWFRAME_STYLE | wxSTAY_ON_TOP
-                : KICAD_DEFAULT_DRAWFRAME_STYLE,
-            aFrameType == FRAME_SCH_VIEWER_MODAL ?
-                          LIB_VIEW_FRAME_NAME_MODAL : LIB_VIEW_FRAME_NAME )
+                    wxDefaultPosition, wxDefaultSize,
+                    aFrameType == FRAME_SCH_VIEWER_MODAL ? LIB_VIEW_STYLE_MODAL : LIB_VIEW_STYLE,
+                    aFrameType == FRAME_SCH_VIEWER_MODAL ? LIB_VIEW_NAME_MODAL : LIB_VIEW_NAME ),
+    m_libList( nullptr ),
+    m_cmpList( nullptr ),
+    m_previewItem( nullptr )
 {
-    wxASSERT( aFrameType == FRAME_SCH_VIEWER ||
-              aFrameType == FRAME_SCH_VIEWER_MODAL );
+    wxASSERT( aFrameType == FRAME_SCH_VIEWER || aFrameType == FRAME_SCH_VIEWER_MODAL );
 
     if( aFrameType == FRAME_SCH_VIEWER_MODAL )
         SetModal( true );
@@ -132,7 +118,7 @@ LIB_VIEW_FRAME::LIB_VIEW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
     // Force the frame name used in config. the lib viewer frame has a name
     // depending on aFrameType (needed to identify the frame by wxWidgets),
     // but only one configuration is preferable.
-    m_configFrameName = LIB_VIEW_FRAME_NAME;
+    m_configFrameName = LIB_VIEW_NAME;
 
     // Give an icon
     wxIcon  icon;
@@ -140,12 +126,13 @@ LIB_VIEW_FRAME::LIB_VIEW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
     SetIcon( icon );
 
     m_hotkeysDescrList = g_Viewlib_Hokeys_Descr;
-    m_libList = NULL;
-    m_cmpList = NULL;
     m_libListWidth = 200;
     m_cmpListWidth = 300;
     m_listPowerCmpOnly = false;
     SetShowElectricalType( true );
+
+    // Initialize grid id to the default value (50 mils):
+    m_LastGridSizeId = ID_POPUP_GRID_LEVEL_50 - ID_POPUP_GRID_LEVEL_1000;
 
     SetScreen( new SCH_SCREEN( aKiway ) );
     GetScreen()->m_Center = true;      // Axis origin centered on screen.
@@ -153,9 +140,7 @@ LIB_VIEW_FRAME::LIB_VIEW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
 
     SetSize( m_FramePos.x, m_FramePos.y, m_FrameSize.x, m_FrameSize.y );
 
-    // Initialize grid id to the default value (50 mils):
-    m_LastGridSizeId = ID_POPUP_GRID_LEVEL_50 - ID_POPUP_GRID_LEVEL_1000;
-    GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId  );
+    SetPresetGrid( m_LastGridSizeId );
 
     // Menu bar is not mandatory: uncomment/comment the next line
     // to add/remove the menubar
@@ -197,7 +182,7 @@ LIB_VIEW_FRAME::LIB_VIEW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
     m_auimgr.AddPane( m_cmpList, EDA_PANE().Palette().Name( "Symbols" ).Left().Layer(1)
                       .CaptionVisible( false ).MinSize( 80, -1 ).BestSize( m_cmpListWidth, -1 ) );
 
-    m_auimgr.AddPane( m_canvas, EDA_PANE().Canvas().Name( "DrawFrame" ).Center() );
+    m_auimgr.AddPane( m_canvas->GetWindow(), EDA_PANE().Canvas().Name( "DrawFrame" ).Center() );
 
     m_auimgr.GetPane( m_libList ).Show( aLibraryName.empty() );
 
@@ -215,11 +200,18 @@ LIB_VIEW_FRAME::LIB_VIEW_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
         Raise();
         Show( true );
     }
+
+    SyncView();
+    GetGalCanvas()->GetViewControls()->SetSnapping( true );
+    GetGalCanvas()->GetGAL()->SetAxesEnabled( true );
+    GetGalCanvas()->GetGAL()->SetGridVisibility( IsGridVisible() );
 }
 
 
 LIB_VIEW_FRAME::~LIB_VIEW_FRAME()
 {
+    if( m_previewItem )
+        GetCanvas()->GetView()->Remove( m_previewItem );
 }
 
 
@@ -228,10 +220,16 @@ void LIB_VIEW_FRAME::SetUnitAndConvert( int aUnit, int aConvert )
     m_unit = aUnit > 0 ? aUnit : 1;
     m_convert = aConvert > 0 ? aConvert : 1;
     m_selection_changed = false;
+
+    // Update canvas
+    GetRenderSettings()->m_ShowUnit = m_unit;
+    GetRenderSettings()->m_ShowConvert = m_convert;
+    GetCanvas()->GetView()->MarkDirty();
+    GetCanvas()->Refresh();
 }
 
 
-LIB_ALIAS* LIB_VIEW_FRAME::getSelectedAlias()
+LIB_ALIAS* LIB_VIEW_FRAME::getSelectedAlias() const
 {
     LIB_ALIAS* alias = NULL;
 
@@ -244,7 +242,7 @@ LIB_ALIAS* LIB_VIEW_FRAME::getSelectedAlias()
 }
 
 
-LIB_PART* LIB_VIEW_FRAME::getSelectedSymbol()
+LIB_PART* LIB_VIEW_FRAME::getSelectedSymbol() const
 {
     LIB_PART* symbol = NULL;
     LIB_ALIAS* alias = getSelectedAlias();
@@ -256,7 +254,37 @@ LIB_PART* LIB_VIEW_FRAME::getSelectedSymbol()
 }
 
 
-void LIB_VIEW_FRAME::onUpdateAlternateBodyStyleButton( wxUpdateUIEvent& aEvent )
+void LIB_VIEW_FRAME::updatePreviewSymbol()
+{
+    LIB_ALIAS* alias = getSelectedAlias();
+    KIGFX::SCH_VIEW* view = GetCanvas()->GetView();
+
+    if( m_previewItem )
+    {
+        view->Remove( m_previewItem );
+        m_previewItem = nullptr;
+    }
+
+    ClearMsgPanel();
+
+    if( alias )
+    {
+        GetRenderSettings()->m_ShowUnit = m_unit;
+        GetRenderSettings()->m_ShowConvert = m_convert;
+
+        view->Add( alias );
+        m_previewItem = alias;
+
+        AppendMsgPanel( _( "Name" ), alias->GetName(), BLUE, 6 );
+        AppendMsgPanel( _( "Description" ), alias->GetDescription(), CYAN, 6 );
+        AppendMsgPanel( _( "Key words" ), alias->GetKeyWords(), DARKDARKGRAY );
+    }
+
+    GetCanvas()->ForceRefresh();
+}
+
+
+void LIB_VIEW_FRAME::onUpdateAltBodyStyleButton( wxUpdateUIEvent& aEvent )
 {
     LIB_PART* symbol = getSelectedSymbol();
 
@@ -284,6 +312,8 @@ void LIB_VIEW_FRAME::onUpdateNormalBodyStyleButton( wxUpdateUIEvent& aEvent )
 
 void LIB_VIEW_FRAME::OnCloseWindow( wxCloseEvent& Event )
 {
+    GetCanvas()->StopDrawing();
+
     if( !IsModal() )
     {
         Destroy();
@@ -316,8 +346,12 @@ void LIB_VIEW_FRAME::OnSetRelativeOffset( wxCommandEvent& event )
 
 void LIB_VIEW_FRAME::OnShowElectricalType( wxCommandEvent& event )
 {
-    SetShowElectricalType( not GetShowElectricalType() );
-    m_canvas->Refresh();
+    m_showPinElectricalTypeName = !m_showPinElectricalTypeName;
+
+    // Update canvas
+    GetRenderSettings()->m_ShowPinsElectricalType = m_showPinElectricalTypeName;
+    GetCanvas()->GetView()->MarkDirty();
+    GetCanvas()->Refresh();
 }
 
 
@@ -327,42 +361,32 @@ void LIB_VIEW_FRAME::OnUpdateElectricalType( wxUpdateUIEvent& aEvent )
 }
 
 
-void LIB_VIEW_FRAME::OnUpdateSelectionPartBox( wxUpdateUIEvent& aEvent )
+void LIB_VIEW_FRAME::onUpdateUnitChoice( wxUpdateUIEvent& aEvent )
 {
-    LIB_PART* part = nullptr;
-
-    if( m_libraryName.size() && m_entryName.size() )
-    {
-        if( Prj().SchSymbolLibTable()->HasLibrary( m_libraryName ) )
-            part = GetLibPart( LIB_ID( m_libraryName, m_entryName ) );
-    }
+    LIB_PART* part = getSelectedSymbol();
 
     int unit_count = 1;
 
     if( part )
         unit_count = std::max( part->GetUnitCount(), 1 );
 
-    m_selpartBox->Enable( unit_count > 1 );
+    m_unitChoice->Enable( unit_count > 1 );
 
     if( unit_count > 1 )
     {
         // rebuild the unit list if it is not suitable
-        if( unit_count != (int)m_selpartBox->GetCount() )
+        if( unit_count != (int)m_unitChoice->GetCount() )
         {
-            m_selpartBox->Clear();
+            m_unitChoice->Clear();
 
             for( int ii = 0; ii < unit_count; ii++ )
-
-                m_selpartBox->Append( wxString::Format( _( "Unit %c" ), 'A' + ii ) );
-
-            m_selpartBox->SetSelection( m_unit > 0 ? m_unit - 1 : 0 );
+                m_unitChoice->Append( wxString::Format( _( "Unit %c" ), 'A' + ii ) );
         }
+
+        m_unitChoice->SetSelection( std::max( 0, m_unit - 1 ) );
     }
-    else
-    {
-        if( m_selpartBox->GetCount() )
-            m_selpartBox->Clear();
-    }
+    else if( m_unitChoice->GetCount() )
+        m_unitChoice->Clear();
 }
 
 
@@ -595,7 +619,7 @@ void LIB_VIEW_FRAME::SetSelectedComponent( const wxString& aComponentName )
         }
 
         Zoom_Automatique( false );
-        m_canvas->Refresh();
+        updatePreviewSymbol();
     }
 }
 
@@ -646,18 +670,10 @@ void LIB_VIEW_FRAME::ExportToSchematicLibraryPart( wxCommandEvent& event )
 #define CMPLIST_WIDTH_KEY "ViewCmplistWidth"
 #define CMPVIEW_SHOW_PINELECTRICALTYPE_KEY "ViewCmpShowPinElectricalType"
 
-// Currently, the library viewer has no dialog to change the background color
-// of the draw canvas. Therefore the background color is here just
-// in case of this option is added to some library viewer config dialog
-#define LIBVIEW_BGCOLOR   "LibviewBgColor"
-
 
 void LIB_VIEW_FRAME::LoadSettings( wxConfigBase* aCfg )
 {
     EDA_DRAW_FRAME::LoadSettings( aCfg );
-
-    SetGridColor( GetLayerColor( LAYER_SCHEMATIC_GRID ) );
-    SetDrawBgColor( GetLayerColor( LAYER_SCHEMATIC_BACKGROUND ) );
 
     aCfg->Read( LIBLIST_WIDTH_KEY, &m_libListWidth, 150 );
     aCfg->Read( CMPLIST_WIDTH_KEY, &m_cmpListWidth, 150 );
@@ -699,6 +715,8 @@ void LIB_VIEW_FRAME::OnActivate( wxActivateEvent& event )
     if (changed)
         m_selection_changed = true;
 
+    updatePreviewSymbol();
+
     DisplayLibInfos();
 }
 
@@ -721,4 +739,21 @@ void LIB_VIEW_FRAME::SetFilter( const SCHLIB_FILTER* aFilter )
     }
 
     ReCreateListLib();
+}
+
+const BOX2I LIB_VIEW_FRAME::GetDocumentExtents() const
+{
+    LIB_ALIAS*  alias = getSelectedAlias();
+    LIB_PART*   part = alias ? alias->GetPart() : nullptr;
+
+    if( !part )
+    {
+        return BOX2I( VECTOR2I(-200, -200), VECTOR2I( 400, 400 ) );
+    }
+    else
+    {
+        EDA_RECT bbox = part->GetUnitBoundingBox( m_unit, m_convert );
+        return BOX2I( bbox.GetOrigin(), VECTOR2I( bbox.GetWidth(), bbox.GetHeight() ) );
+
+    }
 }

@@ -30,7 +30,7 @@
 
 #include <fctsys.h>
 #include <gr_basic.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <confirm.h>
 #include <sch_edit_frame.h>
 #include <msgpanel.h>
@@ -79,12 +79,12 @@ void SCH_EDIT_FRAME::EditComponentFieldText( SCH_FIELD* aField )
     dlg.UpdateField( aField, g_CurrentSheet );
     m_canvas->MoveCursorToCrossHair();
     m_canvas->SetIgnoreMouseEvents( false );
-    OnModify();
 
     if( m_autoplaceFields )
         component->AutoAutoplaceFields( GetScreen() );
 
-    m_canvas->Refresh();
+    RefreshItem( aField );
+    OnModify();
 
     MSG_PANEL_ITEMS items;
     component->GetMsgPanelInfo( m_UserUnits, items );
@@ -109,5 +109,6 @@ void SCH_EDIT_FRAME::RotateField( SCH_FIELD* aField )
     else
         aField->SetTextAngle( TEXT_ANGLE_HORIZ );
 
+    RefreshItem( aField );
     OnModify();
 }

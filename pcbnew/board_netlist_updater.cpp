@@ -41,7 +41,7 @@
 #include <class_zone.h>
 
 #include <pcb_netlist.h>
-#include <connectivity_data.h>
+#include <connectivity/connectivity_data.h>
 #include <reporter.h>
 
 #include <board_netlist_updater.h>
@@ -306,10 +306,14 @@ bool BOARD_NETLIST_UPDATER::updateComponentPadConnections( MODULE* aPcbComponent
         }
         else                                 // New footprint pad has a net.
         {
-            if( net.GetNetName() != pad->GetNetname() )
+            const wxString& netName = net.GetNetName();
+            NETINFO_ITEM* netinfo = m_board->FindNet( netName );
+
+            if( netinfo && !m_isDryRun )
+                netinfo->SetIsCurrent( true );
+
+            if( pad->GetNetname() != netName )
             {
-                const wxString& netName = net.GetNetName();
-                NETINFO_ITEM* netinfo = m_board->FindNet( netName );
 
                 if( netinfo == nullptr )
                 {
@@ -326,9 +330,9 @@ bool BOARD_NETLIST_UPDATER::updateComponentPadConnections( MODULE* aPcbComponent
                         changed = true;
                         netinfo = new NETINFO_ITEM( m_board, netName );
                         m_commit.Add( netinfo );
-                        m_addedNets[netName] = netinfo;
                     }
 
+                    m_addedNets[netName] = netinfo;
                     msg.Printf( _( "Add net %s." ), netName );
                     m_reporter->Report( msg, REPORTER::RPT_ACTION );
                 }
@@ -626,12 +630,18 @@ bool BOARD_NETLIST_UPDATER::UpdateNetlist( NETLIST& aNetlist )
     if( !m_isDryRun )
     {
         m_board->SetStatus( 0 );
+
+        // Mark all nets (except <no net>) as stale; we'll update those to current that
+        // we find in the netlist
+        for( NETINFO_ITEM* net : m_board->GetNetInfo() )
+            net->SetIsCurrent( net->GetNet() == 0 );
     }
 
     for( unsigned i = 0; i < aNetlist.GetCount(); i++ )
     {
         COMPONENT* component = aNetlist.GetComponent( i );
         int        matchCount = 0;
+        MODULE*    tmp;
 
         msg.Printf( _( "Processing component \"%s:%s:%s\"." ),
                     component->GetReference(),
@@ -639,12 +649,9 @@ bool BOARD_NETLIST_UPDATER::UpdateNetlist( NETLIST& aNetlist )
                     component->GetFPID().Format().wx_str() );
         m_reporter->Report( msg, REPORTER::RPT_INFO );
 
-        // This loop must be executed at least once to add new footprints even
-        // if the board has no existing footprints:
-        for( MODULE* footprint = m_board->m_Modules; ; footprint = footprint->Next() )
+        for( MODULE* footprint = m_board->m_Modules; footprint; footprint = footprint->Next() )
         {
             bool     match = false;
-            MODULE*  tmp;
 
             if( footprint )
             {
@@ -672,25 +679,22 @@ bool BOARD_NETLIST_UPDATER::UpdateNetlist( NETLIST& aNetlist )
 
             if( footprint == lastPreexistingFootprint )
             {
-                if( matchCount == 0 )
-                {
-                    tmp = addNewComponent( component );
-
-                    if( tmp )
-                    {
-                        updateComponentParameters( tmp, component );
-                        updateComponentPadConnections( tmp, component );
-                    }
-
-                    matchCount++;
-                }
-
                 // No sense going through the newly-created footprints: end of loop
                 break;
             }
         }
 
-        if( matchCount > 1 )
+        if( matchCount == 0 )
+        {
+            tmp = addNewComponent( component );
+
+            if( tmp )
+            {
+                updateComponentParameters( tmp, component );
+                updateComponentPadConnections( tmp, component );
+            }
+        }
+        else if( matchCount > 1 )
         {
             msg.Printf( _( "Multiple footprints found for \"%s\"." ),
                         component->GetReference() );

@@ -22,7 +22,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <class_library.h>
 #include <confirm.h>
 #include <invoke_sch_dialog.h>
@@ -574,7 +574,8 @@ bool SCH_EDIT_FRAME::rescueProject( RESCUER& aRescuer, bool aRunningOnDemand )
         viewer->ReCreateListLib();
 
     GetScreen()->ClearUndoORRedoList( GetScreen()->m_UndoList, 1 );
-    m_canvas->Refresh( true );
+    SyncView();
+    GetCanvas()->Refresh();
     OnModify();
 
     return true;

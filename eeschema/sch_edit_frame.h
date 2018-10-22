@@ -38,6 +38,7 @@
 #include <sch_collectors.h>
 #include <connection_graph.h>
 #include <erc_settings.h>
+#include <sch_draw_panel.h>
 
 // enum PINSHEETLABEL_SHAPE
 #include <sch_text.h>
@@ -145,15 +146,9 @@ private:
     wxPageSetupDialogData   m_pageSetupData;
     wxFindReplaceData*      m_findReplaceData;
     wxString*               m_findReplaceStatus;
-    wxPoint                 m_previewPosition;
-    wxSize                  m_previewSize;
-    wxPoint                 m_printDialogPosition;
-    wxSize                  m_printDialogSize;
     bool                    m_printMonochrome;     ///< Print monochrome instead of grey scale.
     bool                    m_printSheetReference;
     DIALOG_SCH_FIND*        m_dlgFindReplace;
-    wxPoint                 m_findDialogPosition;
-    wxSize                  m_findDialogSize;
     wxArrayString           m_findStringHistoryList;
     wxArrayString           m_replaceStringHistoryList;
     BLOCK_SELECTOR          m_blockItems;         ///< List of selected items.
@@ -228,10 +223,8 @@ protected:
     /**
      * Add the item currently being edited to the schematic and adds the changes to
      * the undo/redo container.
-     *
-     * @param aRedraw = true (default) to redrw -the screen after adding the item.
      */
-    void addCurrentItemToList( bool aRedraw = true );
+    void addCurrentItemToScreen();
 
     void updateFindReplaceView( wxFindDialogEvent& aEvent );
 
@@ -297,7 +290,7 @@ public:
      */
     void OnUnfoldBus( wxCommandEvent& event );
 
-    bool GeneralControl( wxDC* aDC, const wxPoint& aPosition, EDA_KEY aHotKey = 0 ) override;
+    bool GeneralControl( wxDC* aDC, const wxPoint& aPosition, EDA_KEY aHotKey ) override;
 
     /**
      * Return the project file parameter list for Eeschema.
@@ -387,7 +380,7 @@ public:
     ///> @copydoc EDA_DRAW_FRAME::GetHotKeyDescription()
     EDA_HOTKEY* GetHotKeyDescription( int aCommand ) const override;
 
-    bool OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition, EDA_ITEM* aItem = NULL ) override;
+    bool OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition, EDA_ITEM* aItem ) override;
 
     /**
      * Must be called after a schematic change in order to set the "modify" flag of the
@@ -396,8 +389,6 @@ public:
     void OnModify();
 
     virtual wxString GetScreenDesc() const override;
-
-    void InstallConfigFrame( wxCommandEvent& event );
 
     /**
      * Execute a remote command send by Pcbnew via a socket,
@@ -462,10 +453,9 @@ public:
      * cross hair position, a context menu is displayed to clarify which item to delete.
      * See LocateItem() for more information on locating multiple items.
      *
-     * @param aDC The device context to update if and item is deleted.
      * @return True if an item was deleted.
      */
-    bool DeleteItemAtCrossHair( wxDC* aDC );
+    bool DeleteItemAtCrossHair();
 
 
     /**
@@ -529,6 +519,12 @@ public:
      */
     bool BreakSegmentsOnJunctions( bool aApped = false,
                                    SCH_SCREEN* aScreen = nullptr );
+
+    /**
+     * Test all of the connectable objects in the schematic for unused connection points.
+     * @return True if any connection state changes were made.
+     */
+    bool TestDanglingEnds();
 
     /**
      * Send a message to Pcbnew via a socket connection.
@@ -680,6 +676,11 @@ public:
     void SetCurrentSheet( const SCH_SHEET_PATH& aSheet );
 
     /**
+     * Rebuild the GAL and redraw the screen.  Call when something went wrong.
+     */
+    void HardRedraw() override;
+
+    /**
      * Draw the current sheet on the display.
      */
     void DisplayCurrentSheet();
@@ -718,21 +719,6 @@ public:
     void OnPrint( wxCommandEvent& event );
 
     wxPageSetupDialogData& GetPageSetupData() { return m_pageSetupData; }
-
-    void SetPreviewPosition( const wxPoint& aPoint ) { m_previewPosition = aPoint; }
-    void SetPreviewSize( const wxSize& aSize ) { m_previewSize = aSize; }
-    const wxPoint& GetPreviewPosition() { return m_previewPosition; }
-    const wxSize& GetPreviewSize() { return m_previewSize; }
-
-    void SetPrintDialogPosition( const wxPoint& aPoint )
-    {
-        m_printDialogPosition = aPoint;
-    }
-
-
-    void SetPrintDialogSize( const wxSize& aSize ) { m_printDialogSize = aSize; }
-    const wxPoint& GetPrintDialogPosition() { return m_printDialogPosition; }
-    const wxSize& GetPrintDialogSize() { return m_printDialogSize; }
 
     bool GetPrintMonochrome() { return m_printMonochrome; }
     void SetPrintMonochrome( bool aMonochrome ) { m_printMonochrome = aMonochrome; }
@@ -957,9 +943,9 @@ private:
     void OnRescueProject( wxCommandEvent& event );
     void OnRemapSymbols( wxCommandEvent& aEvent );
 
-    // a helper function to run the dialog that allows one to rename the symbol
-    // library Id of groups of components, for instance after a symbol has moved
-    // from a library to another library
+    // a helper function to run the dialog that allows to rename the symbol library Id of
+    // groups of components, for instance after a symbol has moved from a library to
+    // another library
     void OnEditComponentSymbolsId( wxCommandEvent& aEvent );
     void OnPreferencesOptions( wxCommandEvent& event );
     void OnCancelCurrentCommand( wxCommandEvent& aEvent );
@@ -1054,10 +1040,10 @@ private:
      * @param aItem A pointer to an SCH_ITEM to move.
      * @param aDC The device context to draw \a aItem.
      */
-    void PrepareMoveItem( SCH_ITEM* aItem, wxDC* aDC );
+    void PrepareMoveItem( SCH_ITEM* aItem );
 
     // Text, label, glabel
-    SCH_TEXT* CreateNewText( wxDC* aDC, int aType );
+    SCH_TEXT* CreateNewText( int aType );
     void EditSchematicText( SCH_TEXT* TextStruct );
     void ChangeTextOrient( SCH_TEXT* aTextItem );
 
@@ -1076,7 +1062,7 @@ private:
      * and terminates the command.  If the end of the current segment is on a pin, terminate
      * the command.  In all other cases starts a new segment.
      */
-    void BeginSegment( wxDC* DC, int type );
+    void BeginSegment( int type );
 
     /**
      * Terminate a bus, wire, or line creation.
@@ -1086,18 +1072,11 @@ private:
     /**
      * Erase the last segment at the current mouse position.
      */
-    void DeleteCurrentSegment( wxDC* DC );
+    void DeleteCurrentSegment();
     void DeleteConnection( bool DeleteFullConnection );
-
-    // graphic lines
-    void Edge( DRAWSEGMENT* Segment, wxDC* DC );
-    void SetNewWidth( DRAWSEGMENT* DrawSegm, wxDC* DC );
-    void Layer( DRAWSEGMENT* Segment, wxDC* DC );
-    DRAWSEGMENT* Begin_Edge( DRAWSEGMENT* Segment, wxDC* DC );
 
     // Images:
     SCH_BITMAP* CreateNewImage( wxDC* aDC );
-    void MoveImage( SCH_BITMAP* aItem, wxDC* aDC );
     void RotateImage( SCH_BITMAP* aItem );
 
     /**
@@ -1124,7 +1103,7 @@ private:
      * @param aSheet the hierarchical sheet to rotate
      * @param aRotCCW = true to rotate CCW, false to rotate CW
      */
-    void        RotateHierarchicalSheet( SCH_SHEET* aSheet, bool aRotCCW );
+    void RotateHierarchicalSheet( SCH_SHEET* aSheet, bool aRotCCW );
 
     /**
      * Mirror a hierarchical sheet.
@@ -1137,10 +1116,6 @@ private:
      */
     void MirrorSheet( SCH_SHEET* aSheet, bool aFromXaxis );
 
-    /// Loads the cache library associated to the aFileName
-    bool        LoadCacheLibrary( const wxString& aFileName );
-
-private:
     /**
      * Function EditLine
      * displays the dialog for editing the parameters of \a aLine.
@@ -1198,10 +1173,9 @@ private:
      * Create a new SCH_SHEET_PIN object and add it to \a aSheet at the current cursor position.
      *
      * @param aSheet The sheet to add the new sheet pin to.
-     * @param aDC The device context to draw on.
      * @return The new sheet pin object created or NULL if the task was aborted by the user.
      */
-    SCH_SHEET_PIN* CreateSheetPin( SCH_SHEET* aSheet, wxDC* aDC );
+    SCH_SHEET_PIN* CreateSheetPin( SCH_SHEET* aSheet );
 
     /**
      * Display the dialog for editing the parameters of \a aSheetPin.
@@ -1217,10 +1191,9 @@ private:
      * referenced by \a aSheet.
      *
      * @param aSheet The sheet to import the new sheet pin to.
-     * @param aDC The device context to draw on.
      * @return The new sheet pin object imported or NULL if the task was aborted by the user.
      */
-    SCH_SHEET_PIN* ImportSheetPin( SCH_SHEET* aSheet, wxDC* aDC );
+    SCH_SHEET_PIN* ImportSheetPin( SCH_SHEET* aSheet );
 
 public:
     /**
@@ -1267,7 +1240,6 @@ private:
      * if libname != "", search in lib "libname"
      * else search in all loaded libs
      *
-     * @param aDC is the device context to draw upon.
      * @param aFilter is a filter to pass the allowed lib names list, or library name
      * to load the component from and/or some other filters
      *          if NULL, no filtering.
@@ -1277,8 +1249,7 @@ private:
      * (TODO(hzeller): This really should be a class doing history, but didn't
      *  want to change too much while other refactoring is going on)
      */
-    SCH_COMPONENT* Load_Component( wxDC*                            aDC,
-                                   const SCHLIB_FILTER*             aFilter,
+    SCH_COMPONENT* Load_Component( const SCHLIB_FILTER*             aFilter,
                                    SCH_BASE_FRAME::HISTORY_LIST&    aHistoryList,
                                    bool                             aUseLibBrowser );
 
@@ -1298,8 +1269,7 @@ public:
 
 private:
     void OnSelectUnit( wxCommandEvent& aEvent );
-    void ConvertPart( SCH_COMPONENT* DrawComponent, wxDC* DC );
-    void SetInitCmp( SCH_COMPONENT* DrawComponent, wxDC* DC );
+    void ConvertPart( SCH_COMPONENT* DrawComponent );
 
     /**
      * Display the edit field dialog to edit the parameters of \a aField.
@@ -1400,7 +1370,7 @@ private:
      * @sa m_blockItems
      * @param aItemsList List to copy the block select items into.
      */
-    void copyBlockItems( PICKED_ITEMS_LIST& aItemsList );
+    void copyBlockItems( PICKED_ITEMS_LIST& aItemsList, const wxPoint& aMoveVector );
 
     /**
      * Add the context menu items to \a aMenu for \a aJunction.
@@ -1455,7 +1425,7 @@ public:
      *
      * Labels that end with a number will be incremented.
      */
-    void RepeatDrawItem( wxDC* DC );
+    void RepeatDrawItem();
 
     /**
      * Clone \a aItem and owns that clone in this container.
@@ -1588,6 +1558,8 @@ public:
      */
     void doUpdatePcb( const wxString& aUpdateOptions = "" );
 
+    void SetCurrentSheet( SCH_SHEET_PATH *aSheet );
+
     /**
      * Allows Eeschema to install its preferences panels into the preferences dialog.
      */
@@ -1600,6 +1572,12 @@ public:
 
     void ShowChangedLanguage() override;
 
+    void DuplicateItemsInList( SCH_SCREEN* screen, PICKED_ITEMS_LIST& aItemsList,
+                               const wxPoint& aMoveVector );
+
+    virtual void SetScreen( BASE_SCREEN* aScreen ) override;
+
+    virtual const BOX2I GetDocumentExtents() const override;
 
     ///> Probe cursor, used by circuit simulator
     const static wxCursor CURSOR_PROBE;

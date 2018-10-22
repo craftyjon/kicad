@@ -36,7 +36,7 @@
 #include <eeschema_id.h>
 #include <pgm_base.h>
 #include <kiway.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <sch_item_struct.h>
 #include <draw_graphic_text.h>
 #include <sch_edit_frame.h>
@@ -55,6 +55,7 @@
 #include <sch_text.h>
 #include <lib_pin.h>
 #include <symbol_lib_table.h>
+#include <tool/common_tools.h>
 
 // TODO(JE) Debugging only
 #include <profile.h>
@@ -190,19 +191,20 @@ void SCH_SCREEN::DeleteItem( SCH_ITEM* aItem )
 
     SetModify();
 
+    m_drawList.Remove( aItem );
+
     if( aItem->Type() == SCH_SHEET_PIN_T )
     {
         // This structure is attached to a sheet, get the parent sheet object.
         SCH_SHEET_PIN* sheetPin = (SCH_SHEET_PIN*) aItem;
         SCH_SHEET* sheet = sheetPin->GetParent();
-        wxCHECK_RET( sheet,
-                     wxT( "Sheet label parent not properly set, bad programmer!" ) );
+        wxCHECK_RET( sheet, wxT( "Sheet label parent not properly set, bad programmer!" ) );
         sheet->RemovePin( sheetPin );
         return;
     }
     else
     {
-        delete m_drawList.Remove( aItem );
+        delete aItem;
     }
 }
 
@@ -256,34 +258,6 @@ SCH_ITEM* SCH_SCREEN::GetItem( const wxPoint& aPosition, int aAccuracy, KICAD_T 
     }
 
     return NULL;
-}
-
-
-void SCH_SCREEN::ExtractWires( DLIST< SCH_ITEM >& aList, bool aCreateCopy )
-{
-    SCH_ITEM* item;
-    SCH_ITEM* next_item;
-
-    for( item = m_drawList.begin(); item; item = next_item )
-    {
-        next_item = item->Next();
-
-        switch( item->Type() )
-        {
-        case SCH_JUNCTION_T:
-        case SCH_LINE_T:
-            m_drawList.Remove( item );
-            aList.Append( item );
-
-            if( aCreateCopy )
-                m_drawList.Insert( (SCH_ITEM*) item->Clone(), next_item );
-
-            break;
-
-        default:
-            break;
-        }
-    }
 }
 
 
@@ -1671,7 +1645,6 @@ int SCH_SCREENS::ChangeSymbolLibNickname( const wxString& aFrom, const wxString&
 
     return cnt;
 }
-
 
 
 void SCH_SCREENS::BuildClientSheetPathList()

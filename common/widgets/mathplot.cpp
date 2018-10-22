@@ -42,6 +42,7 @@
 #include <cmath>
 #include <cstdio>   // used only for debug
 #include <ctime>    // used for representation of x axes involving date
+#include <set>
 
 // Memory leak debugging
 #ifdef _DEBUG
@@ -628,7 +629,6 @@ void mpFXY::Plot( wxDC& dc, mpWindow& w )
     {
         dc.SetPen( m_pen );
 
-
         double x, y;
         // Do this to reset the counters to evaluate bounding box for label positioning
         Rewind(); GetNextXY( x, y );
@@ -643,102 +643,129 @@ void mpFXY::Plot( wxDC& dc, mpWindow& w )
 
         dc.SetClippingRegion( startPx, minYpx, endPx - startPx + 1, maxYpx - minYpx + 1 );
 
-        wxCoord ix = 0, iy = 0;
-
         if( !m_continuous )
         {
-            // for some reason DrawPoint does not use the current pen,
-            // so we use DrawLine for fat pens
-            if( m_pen.GetWidth() <= 1 )
+            bool first = true;
+            wxCoord ix;
+            std::set<wxCoord> ys;
+
+            while( GetNextXY( x, y ) )
             {
-                while( GetNextXY( x, y ) )
+                double px = m_scaleX->TransformToPlot( x );
+                double py = m_scaleY->TransformToPlot( y );
+                wxCoord newX = w.x2p( px );
+
+                if( first )
                 {
-                    double  px = m_scaleX->TransformToPlot( x );
-                    double  py = m_scaleY->TransformToPlot( y );
+                    ix = newX;
+                    first = false;
+                }
 
-                    ix  = w.x2p( px );
-                    iy  = w.y2p( py );
+                if( newX == ix )    // continue until a new X coordinate is reached
+                {
+                    // collect all unique points
+                    ys.insert( w.y2p( py ) );
+                    continue;
+                }
 
+                for( auto& iy: ys )
+                {
                     if( m_drawOutsideMargins
                         || ( (ix >= startPx) && (ix <= endPx) && (iy >= minYpx)
                              && (iy <= maxYpx) ) )
                     {
-                        dc.DrawPoint( ix, iy );
+                        // for some reason DrawPoint does not use the current pen,
+                        // so we use DrawLine for fat pens
+                        if( m_pen.GetWidth() <= 1 )
+                        {
+                            dc.DrawPoint( ix, iy );
+                        }
+                        else
+                        {
+                            dc.DrawLine( ix, iy, ix, iy );
+                        }
+
                         UpdateViewBoundary( ix, iy );
                     }
                 }
-            }
-            else
-            {
-                while( GetNextXY( x, y ) )
-                {
-                    double  px = m_scaleX->TransformToPlot( x );
-                    double  py = m_scaleY->TransformToPlot( y );
 
-                    ix  = w.x2p( px );
-                    iy  = w.y2p( py );
-
-                    if( m_drawOutsideMargins
-                        || ( (ix >= startPx) && (ix <= endPx) && (iy >= minYpx)
-                             && (iy <= maxYpx) ) )
-                    {
-                        dc.DrawLine( ix, iy, ix, iy );
-                        UpdateViewBoundary( ix, iy );
-                    }
-
-                    // dc.DrawLine(cx, cy, cx, cy);
-                }
+                ys.clear();
+                ix = newX;
+                ys.insert( w.y2p( py ) );
             }
         }
         else
         {
-            int n = 0;
-            // Old code
-            wxCoord x0  = 0, c0 = 0;
-            bool first  = true;
+            wxCoord x0, y0;
+            bool first = true;
+
+            wxCoord minY, maxY;
+            bool minFirst = true;
 
             while( GetNextXY( x, y ) )
             {
-                double  px = m_scaleX->TransformToPlot( x );
-                double  py = m_scaleY->TransformToPlot( y );
+                double px = m_scaleX->TransformToPlot( x );
+                double py = m_scaleY->TransformToPlot( y );
 
-                if( py >= 0.0 && py <= 1.0 )
-                    n++;
-
-                // printf("py %.1f\n", py);
-
-                wxCoord x1  = w.x2p( px );
-                wxCoord c1  = w.y2p( py );
-
-                // printf("px %.10f py %.10f c1 %d\n", px, py, c1);
-
-                // wxCoord x1 = XScale().X2p(w,x); // (wxCoord) ((x - w.GetPosX()) * w.GetScaleX());
-                // wxCoord c1 = YScale().X2p(w,y); // (wxCoord) ((w.GetPosY() - y) * w.GetScaleY());
+                wxCoord x1 = w.x2p( px );
+                wxCoord y1 = w.y2p( py );
 
                 if( first )
                 {
                     first = false;
-                    x0 = x1; c0 = c1;
+                    x0 = x1; y0 = y1;
+                    minY = y1;
+                    maxY = y1;
+                    continue;
                 }
 
-                bool outUp, outDown;
-
-                if( (x1 >= startPx)&&(x0 <= endPx) )
+                if( x0 == x1 )      // continue until a new X coordinate is reached
                 {
-                    outDown = (c0 > maxYpx) && (c1 > maxYpx);
-                    outUp = (c0 < minYpx) && (c1 < minYpx);
+                    // determine min and max, so they can also be marked on the plot
+                    if( y1 > maxY )
+                    {
+                        maxY = y1;
+                        minFirst = true;
+                    }
+
+                    if( y1 < minY )
+                    {
+                        minY = y1;
+                        minFirst = false;
+                    }
+                    continue;
+                }
+
+                wxCoord firstY = minFirst ? minY : maxY;
+                wxCoord secondY = minFirst ? maxY : minY;
+
+                if( ( x0 >= startPx ) && ( x0 <= endPx ) )
+                {
+                    bool outDown = ( y0 > maxYpx ) && ( firstY > maxYpx );
+                    bool outUp = ( y0 < minYpx ) && ( firstY < minYpx );
 
                     if( !outUp && !outDown )
                     {
-                        dc.DrawLine( x0, c0, x1, c1 );
-                        // UpdateViewBoundary(x1, c1);
+                        dc.DrawLine( x0, y0, x0, firstY );
+                        // UpdateViewBoundary(x1, firstY);
                     }
                 }
 
-                x0 = x1; c0 = c1;
-            }
+                bool outDown = ( firstY > maxYpx ) && ( secondY > maxYpx );
+                bool outUp = ( firstY < minYpx ) && ( secondY < minYpx );
+                bool outLeft = ( x1 < startPx ) && ( x0 < startPx );
+                bool outRight = ( x1 > endPx ) && ( x0 > endPx );
+                if( !( outUp || outDown || outLeft || outRight ) )
+                {
+                    dc.DrawLine( x0, firstY, x1, secondY );
+                    // UpdateViewBoundary(x1, secondY);
+                }
 
-            // printf("n %s %d\n", (const char *) m_name.c_str(), n);
+                x0 = x1;
+                y0 = secondY;
+                minY = y1;
+                maxY = y1;
+            }
         }
 
         if( !m_name.IsEmpty() && m_showName )
@@ -3340,13 +3367,15 @@ void mpFXYVector::Rewind()
 
 bool mpFXYVector::GetNextXY( double& x, double& y )
 {
-    if( m_index>=m_xs.size() )
+    if( m_index >= m_xs.size() )
+    {
         return false;
+    }
     else
     {
-        x   = m_xs[m_index];
-        y   = m_ys[m_index++];
-        return m_index<=m_xs.size();
+        x = m_xs[m_index];
+        y = m_ys[m_index++];
+        return m_index <= m_xs.size();
     }
 }
 

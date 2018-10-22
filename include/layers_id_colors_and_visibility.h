@@ -197,6 +197,7 @@ enum GAL_LAYER_ID: int
     LAYER_PCB_BACKGROUND,       ///< PCB background color
     LAYER_CURSOR,               ///< PCB cursor
     LAYER_AUX_ITEMS,            ///< Auxiliary items (guides, rule, etc)
+    LAYER_DRAW_BITMAPS,         ///< to handle and draw images bitmaps
 
     /// This is the end of the layers used for visibility bitmasks in Pcbnew
     /// There can be at most 32 layers above here.
@@ -252,9 +253,12 @@ enum SCH_LAYER_ID: int
     LAYER_ERC_WARN,
     LAYER_ERC_ERR,
     LAYER_DEVICE_BACKGROUND,
+    LAYER_SHEET_BACKGROUND,
     LAYER_SCHEMATIC_GRID,
     LAYER_SCHEMATIC_BACKGROUND,
+    LAYER_SCHEMATIC_CURSOR,
     LAYER_BRIGHTENED,
+    LAYER_HIDDEN,
 
     SCH_LAYER_ID_END
 };

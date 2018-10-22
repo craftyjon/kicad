@@ -97,14 +97,19 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
 
     EVT_TOOL( ID_MODEDIT_SAVE, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_SAVE_AS, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
+    EVT_TOOL( ID_MODEDIT_REVERT_PART, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_OPEN_MODULE_VIEWER, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
 
+    EVT_TOOL( ID_MODEDIT_CUT_PART, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
+    EVT_TOOL( ID_MODEDIT_COPY_PART, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
+    EVT_TOOL( ID_MODEDIT_PASTE_PART, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_DELETE_PART, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_NEW_MODULE, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_NEW_MODULE_FROM_WIZARD, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_IMPORT_PART, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_EXPORT_PART, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_CREATE_NEW_LIB, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
+    EVT_TOOL( ID_MODEDIT_ADD_LIBRARY, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_SHEET_SET, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_GEN_IMPORT_DXF_FILE, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( wxID_PRINT, FOOTPRINT_EDIT_FRAME::ToPrinter )
@@ -177,6 +182,7 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_UPDATE_UI( ID_MODEDIT_EXPORT_PART, FOOTPRINT_EDIT_FRAME::OnUpdateSaveAs )
     EVT_UPDATE_UI( ID_MODEDIT_SAVE, FOOTPRINT_EDIT_FRAME::OnUpdateSave )
     EVT_UPDATE_UI( ID_MODEDIT_SAVE_AS, FOOTPRINT_EDIT_FRAME::OnUpdateSaveAs )
+    EVT_UPDATE_UI( ID_MODEDIT_REVERT_PART, FOOTPRINT_EDIT_FRAME::OnUpdateSave )
     EVT_UPDATE_UI( ID_MODEDIT_DELETE_PART, FOOTPRINT_EDIT_FRAME::OnUpdateModuleTargeted )
     EVT_UPDATE_UI( ID_MODEDIT_LOAD_MODULE_FROM_BOARD,
                    FOOTPRINT_EDIT_FRAME::OnUpdateLoadModuleFromBoard )
@@ -409,6 +415,8 @@ void FOOTPRINT_EDIT_FRAME::restoreLastFootprint()
 
 void FOOTPRINT_EDIT_FRAME::AddModuleToBoard( MODULE* aFootprint )
 {
+    m_revertModule.reset( (MODULE*) aFootprint->Clone() );
+
     m_footprintNameWhenLoaded = aFootprint->GetFPID().GetLibItemName();
 
     // Pads are always editable in Footprint Editor
@@ -521,6 +529,11 @@ void FOOTPRINT_EDIT_FRAME::OnCloseWindow( wxCloseEvent& Event )
         GetGalCanvas()->SetEventDispatcher( NULL );
         GetGalCanvas()->StopDrawing();
     }
+
+    // Do not show the layer manager during closing to avoid flicker
+    // on some platforms (Windows) that generate useless redraw of items in
+    // the Layer Manger
+    m_auimgr.GetPane( "LayersManager" ).Show( false );
 
     Clear_Pcb( false );
 
@@ -737,11 +750,17 @@ void FOOTPRINT_EDIT_FRAME::OnModify()
 
 void FOOTPRINT_EDIT_FRAME::updateTitle()
 {
-    wxString title = _( "Footprint Library Editor" );
+    wxString title = _( "Footprint Editor" );
     LIB_ID   fpid = GetLoadedFPID();
     bool     writable = true;
 
-    if( fpid.IsValid() )
+    if( IsCurrentFPFromBoard() )
+    {
+        title += wxString::Format( wxT( " \u2014 %s [from %s.%s]" ),
+                                   GetBoard()->m_Modules->GetReference(),
+                                   Prj().GetProjectName(), PcbFileExtension );
+    }
+    else if( fpid.IsValid() )
     {
         try
         {

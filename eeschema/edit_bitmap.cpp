@@ -27,75 +27,13 @@
  */
 
 #include <fctsys.h>
-#include <class_drawpanel.h>
-
+#include <sch_draw_panel.h>
+#include <sch_view.h>
 #include <sch_edit_frame.h>
 #include <sch_bitmap.h>
 #include <dialog_image_editor.h>
 
-
-static void abortMoveBitmap( EDA_DRAW_PANEL* aPanel, wxDC* aDC )
-{
-    SCH_SCREEN*     screen = (SCH_SCREEN*) aPanel->GetScreen();
-    SCH_BITMAP*     item   = (SCH_BITMAP*) screen->GetCurItem();
-    SCH_EDIT_FRAME* parent = (SCH_EDIT_FRAME*) aPanel->GetParent();
-
-    parent->SetRepeatItem( NULL );
-
-    if( item == NULL )  /* no current item */
-        return;
-
-    if( item->IsNew() )
-    {
-        delete item;
-        item = NULL;
-    }
-    else    // Move command on an existing text item, restore the data of the original.
-    {
-        item->ClearFlags();
-
-        SCH_BITMAP * olditem = (SCH_BITMAP*) parent->GetUndoItem();
-
-        wxCHECK_RET( olditem != NULL && item->Type() == olditem->Type() &&
-                     item->Type() == SCH_BITMAP_T,
-                     wxT( "Cannot restore undefined last text item." ) );
-
-        // Never delete existing item, because it can be referenced by an undo/redo command
-        // Just restore its data
-        item->SwapData( olditem );
-        parent->SetUndoItem( NULL );
-    }
-
-    screen->SetCurItem( item );
-    aPanel->Refresh();
-}
-
-static void moveBitmap( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aPosition, bool aErase )
-{
-    SCH_SCREEN* screen = (SCH_SCREEN*) aPanel->GetScreen();
-    SCH_BITMAP* image  = (SCH_BITMAP*) screen->GetCurItem();
-
-    if( aErase )
-    {
-        // Erase the current bitmap at its current position.
-        // Note also items flagged IS_MOVING are not drawn,
-        // and if image is new, it is not yet il draw list
-        // so image is erased from screen
-        EDA_RECT dirty = image->GetBoundingBox();
-        dirty.Inflate( 4 );     // Give a margin
-        aPanel->SetMouseCapture( NULL, NULL );  // Avoid loop in redraw panel
-
-        STATUS_FLAGS flgs = image->GetFlags();
-        image->ClearFlags();
-        aPanel->RefreshDrawingRect( dirty );
-        image->SetFlags( flgs );
-        aPanel->SetMouseCapture( moveBitmap, abortMoveBitmap );
-    }
-
-    // Draw the bitmap at it's new position.
-    image->SetPosition( aPanel->GetParent()->GetCrossHairPosition() - image->GetStoredPos() );
-    image->Draw( aPanel, aDC, wxPoint( 0, 0 ), GR_DEFAULT_DRAWMODE );
-}
+#include <view/view_group.h>
 
 
 SCH_BITMAP* SCH_EDIT_FRAME::CreateNewImage( wxDC* aDC )
@@ -103,17 +41,16 @@ SCH_BITMAP* SCH_EDIT_FRAME::CreateNewImage( wxDC* aDC )
     wxFileDialog fileDlg( this, _( "Choose Image" ), wxEmptyString, wxEmptyString,
                           _( "Image Files " ) + wxImage::GetImageExtWildcard(),
                           wxFD_OPEN );
-    int          diag = fileDlg.ShowModal();
 
-    if( diag != wxID_OK )
-        return NULL;
+    if( fileDlg.ShowModal() != wxID_OK )
+        return nullptr;
 
     wxString fullFilename = fileDlg.GetPath();
 
     if( !wxFileExists( fullFilename ) )
     {
-        wxMessageBox( _( "Couldn't load image from \"%s\"" ), GetChars( fullFilename ) );
-        return NULL;
+        wxMessageBox( _( "Couldn't load image from \"%s\"" ), fullFilename );
+        return nullptr;
     }
 
     wxPoint     pos = GetCrossHairPosition();
@@ -122,53 +59,16 @@ SCH_BITMAP* SCH_EDIT_FRAME::CreateNewImage( wxDC* aDC )
 
     if( !image->ReadImageFile( fullFilename ) )
     {
-        wxMessageBox( _( "Couldn't load image from \"%s\"" ), GetChars( fullFilename ) );
+        wxMessageBox( _( "Couldn't load image from \"%s\"" ), fullFilename );
         delete image;
-        return NULL;
+        return nullptr;
     }
 
+    image->SetFlags( IS_NEW );
+    PrepareMoveItem( image );
 
-    image->SetFlags( IS_NEW | IS_MOVED );
-    image->Draw( m_canvas, aDC, wxPoint( 0, 0 ), GR_DEFAULT_DRAWMODE );
-
-    m_canvas->SetMouseCapture( moveBitmap, abortMoveBitmap );
-    GetScreen()->SetCurItem( image );
-
-    OnModify();
+//    OnModify();
     return image;
-}
-
-
-void SCH_EDIT_FRAME::MoveImage( SCH_BITMAP* aImageItem, wxDC* aDC )
-{
-    // 5.1 TODO: MoveImage(), moveBitmap() and abortMoveBitmap() are obsolete....
-
-    aImageItem->SetFlags( IS_MOVED );
-
-    m_canvas->SetMouseCapture( moveBitmap, abortMoveBitmap );
-    GetScreen()->SetCurItem( aImageItem );
-    SetRepeatItem( NULL );
-
-    SetUndoItem( aImageItem );
-
-    if( aImageItem->IsMovableFromAnchorPoint() )
-    {
-        SetCrossHairPosition( aImageItem->GetPosition() );
-        m_canvas->MoveCursorToCrossHair();
-        aImageItem->SetStoredPos( wxPoint( 0,0 ) );
-    }
-    else
-    {
-        // Round the point under the cursor to a multiple of the grid
-        wxPoint cursorpos = GetCrossHairPosition() - aImageItem->GetPosition();
-        wxPoint gridsize = GetScreen()->GetGridSize();
-        cursorpos.x = ( cursorpos.x / gridsize.x ) * gridsize.x;
-        cursorpos.y = ( cursorpos.y / gridsize.y ) * gridsize.y;
-
-        aImageItem->SetStoredPos( cursorpos );
-    }
-
-    OnModify();
 }
 
 
@@ -178,8 +78,9 @@ void SCH_EDIT_FRAME::RotateImage( SCH_BITMAP* aItem )
         SaveCopyInUndoList( aItem, UR_ROTATED, false, aItem->GetPosition() );
 
     aItem->Rotate( aItem->GetPosition() );
+
+    RefreshItem( aItem );
     OnModify();
-    m_canvas->Refresh();
 }
 
 
@@ -193,8 +94,8 @@ void SCH_EDIT_FRAME::MirrorImage( SCH_BITMAP* aItem, bool Is_X_axis )
     else
         aItem->MirrorY( aItem->GetPosition().x );
 
+    RefreshItem( aItem );
     OnModify();
-    m_canvas->Refresh();
 }
 
 
@@ -216,6 +117,7 @@ void SCH_EDIT_FRAME::EditImage( SCH_BITMAP* aItem )
     }
 
     dlg.TransfertToImage( aItem->GetImage() );
+
+    RefreshItem( aItem );
     OnModify();
-    m_canvas->Refresh();
 }

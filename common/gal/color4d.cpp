@@ -398,9 +398,13 @@ void COLOR4D::FromHSV( double aInH, double aInS, double aInV )
 
 COLOR4D& COLOR4D::Saturate( double aFactor )
 {
+    // One can saturate a color only when r, v, b are not equal
+    if( r == g && r == b )
+        return *this;
+
     double h, s, v;
 
-    ToHSV( h, s, v );
+    ToHSV( h, s, v, true );
     FromHSV( h, aFactor, 1.0 );
 
     return *this;

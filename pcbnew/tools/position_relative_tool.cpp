@@ -116,6 +116,10 @@ int POSITION_RELATIVE_TOOL::RelativeItemSelectionMove( wxPoint aPosAnchor, wxPoi
 
     for( auto item : m_selection )
     {
+        // Don't move a pad by itself unless editing the footprint
+        if( item->Type() == PCB_PAD_T && frame()->IsType( FRAME_PCB ) )
+            item = item->GetParent();
+
         m_commit->Modify( item );
         static_cast<BOARD_ITEM*>( item )->Move( aggregateTranslation );
     }
@@ -139,7 +143,6 @@ int POSITION_RELATIVE_TOOL::SelectPositionRelativeItem( const TOOL_EVENT& aEvent
     bool picking = true;
 
     statusPopup.SetText( _( "Select reference item..." ) );
-    picker->SetSnapping( false );
     picker->Activate();
 
     picker->SetClickHandler( [&]( const VECTOR2D& aPoint ) -> bool

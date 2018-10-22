@@ -25,7 +25,7 @@
 #include <wx/tooltip.h>
 #include <pgm_base.h>
 #include <kiface_i.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <confirm.h>
 #include <sch_edit_frame.h>
 #include <grid_tricks.h>
@@ -533,8 +533,9 @@ bool DIALOG_EDIT_COMPONENT_IN_SCHEMATIC::TransferDataFromWindow()
 
     m_cmp->UpdatePinCache();
 
+    GetParent()->TestDanglingEnds();
+    GetParent()->RefreshItem( m_cmp );
     GetParent()->OnModify();
-    GetParent()->GetScreen()->TestDanglingEnds();
 
     return true;
 }

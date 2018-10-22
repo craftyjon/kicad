@@ -50,7 +50,7 @@
 #include <pcbnew.h>
 #include <protos.h>
 
-#include <connectivity_data.h>
+#include <connectivity/connectivity_data.h>
 
 #define BLOCK_OUTLINE_COLOR YELLOW
 
@@ -588,6 +588,8 @@ void PCB_EDIT_FRAME::Block_Delete()
 
 void PCB_EDIT_FRAME::Block_Rotate()
 {
+    // 6.0 TODO: This is the legacy toolset version
+
     wxPoint centre;                     // rotation cent-re for the rotation transform
     int     rotAngle = m_rotationAngle; // rotation angle in 0.1 deg.
 

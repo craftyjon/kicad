@@ -29,7 +29,8 @@
  */
 
 #include <fctsys.h>
-#include <class_drawpanel.h>
+#include <sch_view.h>
+#include <sch_draw_panel.h>
 #include <sch_edit_frame.h>
 #include <erc.h>
 
@@ -70,7 +71,9 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
     SendCrossProbeNetName( m_SelectedNetName );
     SetStatusText( _( "Selected net: " ) + m_SelectedNetName );
     SetCurrentSheetHighlightFlags();
-    m_canvas->Refresh();
+    // Be sure hightlight change will be redrawn in any case
+    GetGalCanvas()->GetView()->RecacheAllItems();
+    GetGalCanvas()->GetView()->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
 
     return buildNetlistOk;
 }

@@ -241,11 +241,15 @@ void CAIRO_GAL::DrawArc( const VECTOR2D& aCenterPoint, double aRadius, double aS
 {
     SWAP( aStartAngle, >, aEndAngle );
 
-    cairo_new_sub_path( currentContext );
-    cairo_arc( currentContext, aCenterPoint.x, aCenterPoint.y, aRadius, aStartAngle, aEndAngle );
-
-    if( isFillEnabled )
+    if( isFillEnabled )     // Draw the filled area of the shape, before drawing the outline itself
     {
+        double pen_size = GetLineWidth();
+        auto fgcolor = GetStrokeColor();
+        SetStrokeColor( GetFillColor() );
+
+        SetLineWidth( 0 );
+        cairo_new_sub_path( currentContext );
+        cairo_arc( currentContext, aCenterPoint.x, aCenterPoint.y, aRadius, aStartAngle, aEndAngle );
         VECTOR2D startPoint( cos( aStartAngle ) * aRadius + aCenterPoint.x,
                              sin( aStartAngle ) * aRadius + aCenterPoint.y );
         VECTOR2D endPoint( cos( aEndAngle ) * aRadius + aCenterPoint.x,
@@ -255,8 +259,13 @@ void CAIRO_GAL::DrawArc( const VECTOR2D& aCenterPoint, double aRadius, double aS
         cairo_line_to( currentContext, startPoint.x, startPoint.y );
         cairo_line_to( currentContext, endPoint.x, endPoint.y );
         cairo_close_path( currentContext );
+        flushPath();
+        SetLineWidth( pen_size );
+        SetStrokeColor( fgcolor );
     }
 
+    cairo_new_sub_path( currentContext );
+    cairo_arc( currentContext, aCenterPoint.x, aCenterPoint.y, aRadius, aStartAngle, aEndAngle );
     flushPath();
 
     isElementAdded = true;
@@ -351,7 +360,11 @@ void CAIRO_GAL::DrawCurve( const VECTOR2D& aStartPoint, const VECTOR2D& aControl
 void CAIRO_GAL::DrawBitmap( const BITMAP_BASE& aBitmap )
 {
     int ppi = aBitmap.GetPPI();
-    double worldIU_per_mm = 1/(worldUnitLength/2.54)/1000;
+    // We have to calculate the pixel size in users units to draw the image.
+    // worldUnitLength is the user unit in GAL unit value
+    // (GAL unit = 0.1 inch in nanometer = 2.54/1000 in mm).
+    // worldUnitLength * 1000 / 2.54 is the user unit in mm
+    double worldIU_per_mm = 1/( worldUnitLength / 0.00254 );
     double pix_size_iu =  worldIU_per_mm * ( 25.4 / ppi );
     int w = aBitmap.GetSizePixels().x;
     int h = aBitmap.GetSizePixels().y;
@@ -1198,4 +1211,9 @@ unsigned int CAIRO_GAL::getNewGroupNumber()
         groupCounter++;
 
     return groupCounter++;
+}
+
+void CAIRO_GAL::EnableDepthTest( bool aEnabled )
+{
+
 }

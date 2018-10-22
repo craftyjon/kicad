@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Aug  2 2018)
+// C++ code generated with wxFormBuilder (version Jul 11 2018)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -20,8 +20,8 @@
 #include <wx/string.h>
 #include <wx/stattext.h>
 #include <wx/dataview.h>
-#include <wx/panel.h>
 #include <wx/sizer.h>
+#include <wx/panel.h>
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/icon.h>
@@ -44,10 +44,12 @@ class DIALOG_RESCUE_EACH_BASE : public DIALOG_SHIM
 		wxDataViewListCtrl* m_ListOfConflicts;
 		wxStaticText* m_titleInstances;
 		wxDataViewListCtrl* m_ListOfInstances;
-		wxStaticText* m_staticText2;
-		wxPanel* m_componentViewOld;
-		wxStaticText* m_staticText3;
-		wxPanel* m_componentViewNew;
+		wxStaticText* m_previewOldLabel;
+		wxPanel* m_previewOldPanel;
+		wxBoxSizer* m_SizerOldPanel;
+		wxStaticText* m_previewNewLabel;
+		wxPanel* m_previewNewPanel;
+		wxBoxSizer* m_SizerNewPanel;
 		wxButton* m_btnNeverShowAgain;
 		wxStdDialogButtonSizer* m_stdButtons;
 		wxButton* m_stdButtonsOK;
@@ -56,8 +58,6 @@ class DIALOG_RESCUE_EACH_BASE : public DIALOG_SHIM
 		// Virtual event handlers, overide them in your derived class
 		virtual void OnDialogResize( wxSizeEvent& event ) { event.Skip(); }
 		virtual void OnConflictSelect( wxDataViewEvent& event ) { event.Skip(); }
-		virtual void OnHandleCachePreviewRepaint( wxPaintEvent& event ) { event.Skip(); }
-		virtual void OnHandleLibraryPreviewRepaint( wxPaintEvent& event ) { event.Skip(); }
 		virtual void OnNeverShowClick( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCancelClick( wxCommandEvent& event ) { event.Skip(); }
 		

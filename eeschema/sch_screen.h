@@ -123,6 +123,8 @@ public:
 
     ~SCH_SCREEN();
 
+    DLIST< SCH_ITEM > & GetDrawList() { return m_drawList; }
+
     virtual wxString GetClass() const override
     {
         return wxT( "SCH_SCREEN" );
@@ -297,19 +299,6 @@ public:
      * @return True if any connection state changes were made.
      */
     bool TestDanglingEnds();
-
-    /**
-     * Extracts the old wires, junctions and buses.
-     *
-     *  If \a aCreateCopy is true, replace extracted items with a copy of the original.  Old
-     * items are to be put in undo list and the new ones can be modified by clean up safely.
-     * If an abort draw segment command is made, the old wires must be put back into #m_drawList,
-     * and the copies must be deleted.  This is because previously stored undo commands can
-     * handle pointers on wires or buses, and we do not delete wires or buses, we must put them
-     * in undo list.  Because cleanup deletes and/or modify bus and wires, it is easier is to put
-     * all the existing  wires in undo list and use a new copy of wires for cleanup.
-     */
-    void ExtractWires( DLIST< SCH_ITEM >& aList, bool aCreateCopy );
 
     /**
      * Replace all of the wires, buses, and junctions in the screen with \a aWireList.

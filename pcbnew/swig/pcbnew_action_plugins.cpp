@@ -105,12 +105,8 @@ wxString PYTHON_ACTION_PLUGIN::CallRetStrMethod( const char* aMethod, PyObject* 
 
     PyObject* result = CallMethod( aMethod, aArglist );
 
-    if( result )
-    {
-        const char* str_res = PyString_AsString( result );
-        ret = FROM_UTF8( str_res );
-        Py_DECREF( result );
-    }
+    ret = PyStringToWx( result );
+    Py_XDECREF( result );
 
     return ret;
 }
@@ -525,7 +521,6 @@ void PCB_EDIT_FRAME::AddActionPluginTools()
 void PCB_EDIT_FRAME::SetActionPluginSettings( const std::vector< std::pair<wxString, wxString> >& aPluginSettings )
 {
     m_configSettings.m_pluginSettings = aPluginSettings;
-    ReCreateHToolbar();
 }
 
 

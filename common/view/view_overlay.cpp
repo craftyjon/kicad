@@ -79,7 +79,8 @@ struct VIEW_OVERLAY::COMMAND_ARC : public VIEW_OVERLAY::COMMAND
         m_center( aCenter ),
         m_radius( aRadius ),
         m_startAngle( aStartAngle ),
-        m_endAngle( aEndAngle ) {}
+        m_endAngle( aEndAngle )
+    { }
 
     virtual void Execute( VIEW* aView ) const override
     {

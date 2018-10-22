@@ -223,7 +223,7 @@ void DIALOG_GLOBAL_EDIT_TEXT_AND_GRAPHICS::processItem( BOARD_COMMIT& aCommit, B
     aCommit.Modify( aItem );
 
     auto textItem = dynamic_cast<EDA_TEXT*>( aItem );
-    auto drawItem = dyn_cast<DRAWSEGMENT*>( aItem );
+    auto drawItem = dynamic_cast<DRAWSEGMENT*>( aItem );
     auto moduleTextItem = dyn_cast<TEXTE_MODULE*>( aItem );
 
     if( m_setToSpecifiedValues->GetValue() )
@@ -286,9 +286,7 @@ void DIALOG_GLOBAL_EDIT_TEXT_AND_GRAPHICS::visitItem( BOARD_COMMIT& aCommit, BOA
 
         if( module )
         {
-            wxString fpID = module->GetFPID().GetUniStringLibId();
-
-            if( !WildCompareString( m_footprintFilter->GetValue(), fpID, false ) )
+            if( !WildCompareString( m_footprintFilter->GetValue(), module->GetReference(), false ) )
                 return;
         }
     }
@@ -317,20 +315,38 @@ bool DIALOG_GLOBAL_EDIT_TEXT_AND_GRAPHICS::TransferDataFromWindow()
         // Go through all other module items
         for( BOARD_ITEM* boardItem : module->GraphicalItems() )
         {
-            if( m_otherFields->GetValue() && boardItem->Type() == PCB_MODULE_TEXT_T )
-                visitItem( commit, boardItem );
-            else if( m_footprintGraphics->GetValue() && boardItem->Type() == PCB_MODULE_EDGE_T )
-                visitItem( commit, boardItem );
+            if( boardItem->Type() == PCB_MODULE_TEXT_T )
+            {
+                const wxString& text = dynamic_cast<EDA_TEXT*>( boardItem )->GetText();
+
+                if( m_references->GetValue() && text == wxT( "%R" ) )
+                    visitItem( commit, boardItem );
+                else if( m_values->GetValue() && text == wxT( "%V" ) )
+                    visitItem( commit, boardItem );
+                else if( m_otherFields->GetValue() )
+                    visitItem( commit, boardItem );
+            }
+            else if( boardItem->Type() == PCB_MODULE_EDGE_T )
+            {
+                if( m_footprintGraphics->GetValue() )
+                    visitItem( commit, boardItem );
+            }
         }
     }
 
     // Go through the PCB text & graphic items
     for( BOARD_ITEM* boardItem : m_parent->GetBoard()->Drawings() )
     {
-        if( m_boardText->GetValue() && boardItem->Type() == PCB_TEXT_T )
-            visitItem( commit, boardItem );
-        else if( m_boardGraphics->GetValue() && boardItem->Type() == PCB_LINE_T )
-            visitItem( commit, boardItem );
+        if( boardItem->Type() == PCB_TEXT_T )
+        {
+            if( m_boardText->GetValue() )
+                visitItem( commit, boardItem );
+        }
+        else if( boardItem->Type() == PCB_LINE_T )
+        {
+            if( m_boardGraphics->GetValue() )
+                visitItem( commit, boardItem );
+        }
     }
 
     commit.Push( "Edit text and graphics properties" );

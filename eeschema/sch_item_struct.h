@@ -46,7 +46,7 @@ class wxFindReplaceData;
 class PLOTTER;
 class NETLIST_OBJECT;
 class NETLIST_OBJECT_LIST;
-
+class EDA_DRAW_PANEL;
 
 enum DANGLING_END_T {
     UNKNOWN = 0,
@@ -180,6 +180,12 @@ public:
      * @param aLayer The layer number.
      */
     void SetLayer( SCH_LAYER_ID aLayer )  { m_Layer = aLayer; }
+
+    /**
+     * Function ViewGetLayers
+     * returns the layers the item is drawn on (which may be more than its "home" layer)
+     */
+    void ViewGetLayers( int aLayers[], int& aCount ) const override;
 
     /**
      * Function GetPenSize virtual pure

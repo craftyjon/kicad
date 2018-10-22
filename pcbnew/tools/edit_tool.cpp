@@ -42,7 +42,7 @@
 #include <view/view_controls.h>
 #include <view/view.h>
 #include <gal/graphics_abstraction_layer.h>
-#include <connectivity_data.h>
+#include <connectivity/connectivity_data.h>
 #include <confirm.h>
 #include <bitmaps.h>
 #include <hotkeys.h>
@@ -70,10 +70,6 @@ using namespace std::placeholders;
 #include <preview_items/ruler_item.h>
 
 #include <board_commit.h>
-
-
-extern bool Magnetize( PCB_BASE_EDIT_FRAME* frame, int aCurrentTool,
-                       wxSize aGridSize, wxPoint on_grid, wxPoint* curpos );
 
 
 // Edit tool actions
@@ -168,6 +164,10 @@ TOOL_ACTION PCB_ACTIONS::cutToClipboard( "pcbnew.InteractiveEdit.CutToClipboard"
         AS_GLOBAL, 0,   // do not define a hotkey and let TranslateLegacyId() handle the event
         _( "Cut" ), _( "Cut selected content to clipboard" ),
         cut_xpm );
+
+TOOL_ACTION PCB_ACTIONS::updateUnits( "pcbnew.InteractiveEdit.updateUnits",
+        AS_GLOBAL, 0,
+        "", "" );
 
 
 void EditToolSelectionFilter( GENERAL_COLLECTOR& aCollector, int aFlags )
@@ -337,33 +337,36 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
 {
     KIGFX::VIEW_CONTROLS* controls = getViewControls();
     PCB_BASE_EDIT_FRAME* editFrame = getEditFrame<PCB_BASE_EDIT_FRAME>();
-
     VECTOR2I originalCursorPos = controls->GetCursorPosition();
 
     // Be sure that there is at least one item that we can modify. If nothing was selected before,
     // try looking for the stuff under mouse cursor (i.e. Kicad old-style hover selection)
     auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_TRANSIENTS ); } );
+
+    if( m_dragging || selection.Empty() )
+        return 0;
+
+    LSET item_layers = static_cast<BOARD_ITEM*>( selection.Front() )->GetLayerSet();
+    bool unselect = selection.IsHover(); //N.B. This must be saved before the re-selection below
+
+    // Filter out locked pads here
+    // We cannot do this in the selection filter as we need the pad layers
+    // when it is the curr_item.
+    selection = m_selectionTool->RequestSelection(
+        []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
+        { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
 
     if( selection.Empty() )
         return 0;
 
-    bool unselect = selection.IsHover();
-
-    if( m_dragging )
-        return 0;
-
     Activate();
-
-    m_dragging = false;         // Are selected items being dragged?
-    bool restore = false;       // Should items' state be restored when finishing the tool?
-
     controls->ShowCursor( true );
-    controls->SetSnapping( true );
     controls->SetAutoPan( true );
 
-    // cumulative translation
+    auto curr_item = static_cast<BOARD_ITEM*>( selection.Front() );
+    bool restore_state = false;
     VECTOR2I totalMovement;
     GRID_HELPER grid( editFrame );
     OPT_TOOL_EVENT evt = aEvent;
@@ -372,20 +375,17 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
     // Main loop: keep receiving events
     do
     {
+        grid.SetSnap( !evt->Modifier( MD_SHIFT ) );
+        grid.SetUseGrid( !evt->Modifier( MD_ALT ) );
+        controls->SetSnapping( !evt->Modifier( MD_ALT ) );
+
         if( evt->IsAction( &PCB_ACTIONS::editActivate ) ||
             evt->IsAction( &PCB_ACTIONS::move ) ||
             evt->IsMotion() || evt->IsDrag( BUT_LEFT ) )
         {
-            if( selection.Empty() )
-                break;
-
-            auto curr_item = static_cast<BOARD_ITEM*>( selection.Front() );
-
             if( m_dragging && evt->Category() == TC_MOUSE )
             {
-                m_cursor = grid.BestSnapAnchor( evt->Position(), curr_item );
-                controls->ForceCursorPosition( true, m_cursor );
-
+                m_cursor = grid.BestSnapAnchor( controls->GetMousePosition(), item_layers );
                 VECTOR2I movement( m_cursor - prevPos );
                 selection.SetReferencePoint( m_cursor );
 
@@ -486,7 +486,7 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
 
         else if( evt->IsCancel() || evt->IsActivate() )
         {
-            restore = true; // Cancelling the tool means that items have to be restored
+            restore_state = true; // Canceling the tool means that items have to be restored
             break;          // Finish
         }
 
@@ -554,10 +554,10 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
     // Discard reference point when selection is "dropped" onto the board (ie: not dragging anymore)
     selection.ClearReferencePoint();
 
-    if( unselect || restore )
+    if( unselect || restore_state )
         m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
 
-    if( restore )
+    if( restore_state )
         m_commit->Revert();
     else
         m_commit->Push( _( "Drag" ) );
@@ -1200,36 +1200,26 @@ int EDIT_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
     Activate();
     frame()->SetToolID( toolID, wxCURSOR_PENCIL, _( "Measure distance" ) );
 
+    EDA_UNITS_T units = frame()->GetUserUnits();
     KIGFX::PREVIEW::TWO_POINT_GEOMETRY_MANAGER twoPtMgr;
-
-    KIGFX::PREVIEW::RULER_ITEM ruler( twoPtMgr, frame()->GetUserUnits() );
+    KIGFX::PREVIEW::RULER_ITEM ruler( twoPtMgr, units );
 
     view.Add( &ruler );
     view.SetVisible( &ruler, false );
 
+    GRID_HELPER grid( frame() );
+
     bool originSet = false;
 
     controls.ShowCursor( true );
-    controls.SetSnapping( true );
     controls.SetAutoPan( false );
 
     while( auto evt = Wait() )
     {
-        // TODO: magnetic pad & track processing needs to move to VIEW_CONTROLS.
-        wxPoint pos( controls.GetMousePosition().x, controls.GetMousePosition().y );
-        frame()->SetMousePosition( pos );
-
-        wxRealPoint gridSize = frame()->GetScreen()->GetGridSize();
-        wxSize igridsize;
-        igridsize.x = KiROUND( gridSize.x );
-        igridsize.y = KiROUND( gridSize.y );
-
-        if( Magnetize( frame(), toolID, igridsize, pos, &pos ) )
-            controls.ForceCursorPosition( true, pos );
-        else
-            controls.ForceCursorPosition( false );
-
-        const VECTOR2I cursorPos = controls.GetCursorPosition();
+        grid.SetSnap( !evt->Modifier( MD_SHIFT ) );
+        grid.SetUseGrid( !evt->Modifier( MD_ALT ) );
+        controls.SetSnapping( !evt->Modifier( MD_ALT ) );
+        const VECTOR2I cursorPos = grid.BestSnapAnchor( controls.GetMousePosition(), nullptr );
 
         if( evt->IsCancel() || TOOL_EVT_UTILS::IsCancelInteractive( *evt ) || evt->IsActivate() )
         {
@@ -1267,12 +1257,15 @@ int EDIT_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
             view.Update( &ruler, KIGFX::GEOMETRY );
         }
 
-        else if( evt->IsAction( &PCB_ACTIONS::switchUnits ) )
+        else if( evt->IsAction( &PCB_ACTIONS::switchUnits )
+                    || evt->IsAction( &PCB_ACTIONS::updateUnits ) )
         {
-            ruler.SwitchUnits();
-
-            view.SetVisible( &ruler, true );
-            view.Update( &ruler, KIGFX::GEOMETRY );
+            if( frame()->GetUserUnits() != units )
+            {
+                units = frame()->GetUserUnits();
+                ruler.SwitchUnits();
+                view.Update( &ruler, KIGFX::GEOMETRY );
+            }
         }
 
         else if( evt->IsClick( BUT_RIGHT ) )

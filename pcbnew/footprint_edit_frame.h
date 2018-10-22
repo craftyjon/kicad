@@ -47,6 +47,8 @@ class FOOTPRINT_EDIT_FRAME : public PCB_BASE_EDIT_FRAME
     FOOTPRINT_TREE_PANE*        m_treePane;
     LIB_TREE_MODEL_ADAPTER::PTR m_adapter;
 
+    std::unique_ptr<MODULE>     m_copiedModule;
+    std::unique_ptr<MODULE>     m_revertModule;
     wxString                    m_footprintNameWhenLoaded;
 
 public:
@@ -219,6 +221,8 @@ public:
      */
     void LoadModuleFromBoard( wxCommandEvent& event );
 
+    void LoadModuleFromLibrary( LIB_ID aFPID );
+
     /**
      * Returns the adapter object that provides the stored data.
      */
@@ -233,6 +237,7 @@ public:
     bool SaveFootprint( MODULE* aModule );
     bool SaveFootprintAs( MODULE* aModule );
     bool SaveFootprintToBoard( bool aAddNew );
+    bool RevertFootprint();
 
     /**
      * Virtual Function OnModify()
@@ -562,6 +567,8 @@ private:
      * Run the Footprint Properties dialog and handle changes made in it.
      */
     void editFootprintProperties( MODULE* aFootprint );
+
+    bool saveFootprintInLibrary( MODULE* aModule, const wxString& aLibraryName );
 
     /**
      * Function moveExact

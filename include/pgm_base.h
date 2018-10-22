@@ -49,6 +49,8 @@
 #define MIDDLE_BUTT_PAN_LIMITED_KEY     wxT( "MiddleBtnPANLimited" )
 #define ENBL_AUTO_PAN_KEY               wxT( "AutoPAN" )
 #define FILE_HISTORY_SIZE_KEY           wxT( "FileHistorySize" )
+#define GAL_DISPLAY_OPTIONS_KEY         wxT( "GalDisplayOptions" )
+#define GAL_ANTIALIASING_MODE_KEY       wxT( "OpenGLAntialiasingMode" )
 
 ///@}
 

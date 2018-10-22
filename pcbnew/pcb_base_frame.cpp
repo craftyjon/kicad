@@ -108,10 +108,9 @@ PCB_BASE_FRAME::PCB_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
         const wxString& aTitle, const wxPoint& aPos, const wxSize& aSize,
         long aStyle, const wxString & aFrameName ) :
     EDA_DRAW_FRAME( aKiway, aParent, aFrameType, aTitle, aPos, aSize, aStyle, aFrameName ),
+    m_Pcb( nullptr ),
     m_configSettings( aFrameType )
 {
-    m_Pcb                 = NULL;
-
     m_UserGridSize        = wxPoint( (int) 10 * IU_PER_MILS, (int) 10 * IU_PER_MILS );
     m_Collector           = new GENERAL_COLLECTOR();
 
@@ -219,7 +218,6 @@ void PCB_BASE_FRAME::AddModuleToBoard( MODULE* module )
         GetBoard()->Add( module, ADD_APPEND );
 
         module->SetFlags( IS_NEW );
-        module->SetLink( 0 );
 
         if( IsGalCanvasActive() )
             module->SetPosition( wxPoint( 0, 0 ) ); // cursor in GAL may not be initialized at the moment

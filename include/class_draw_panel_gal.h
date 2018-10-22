@@ -118,7 +118,7 @@ public:
     }
 
     /// @copydoc wxWindow::Refresh()
-    void Refresh( bool aEraseBackground = true, const wxRect* aRect = NULL ) override;
+    virtual void Refresh( bool aEraseBackground = true, const wxRect* aRect = NULL ) override;
 
     /**
      * Function ForceRefresh()
@@ -162,7 +162,7 @@ public:
 
     virtual void GetMsgPanelInfo( EDA_UNITS_T aUnits, std::vector<MSG_PANEL_ITEM>& aList )
     {
-        assert( false );
+        wxASSERT( false );
     }
 
     /**
@@ -204,21 +204,18 @@ public:
         return m_stealsFocus;
     }
 
+    virtual void SetDefaultCursor();
     /**
      * Function SetCurrentCursor
      * Set the current cursor shape for this panel
      */
-    void SetCurrentCursor( int aCursor )
-    {
-        m_currentCursor = aCursor;
-        SetCursor( (wxStockCursor) m_currentCursor );
-    }
+    virtual void SetCurrentCursor( int aCursor );
 
     /**
      * Function GetDefaultCursor
      * @return the default cursor shape
      */
-    int GetDefaultCursor() const { return m_defaultCursor; }
+    virtual int GetDefaultCursor() const  { return m_defaultCursor; }
 
     /**
      * Function GetCurrentCursor
@@ -243,7 +240,7 @@ public:
     void OnEvent( wxEvent& aEvent );
 
 protected:
-    void onPaint( wxPaintEvent& WXUNUSED( aEvent ) );
+    virtual void onPaint( wxPaintEvent& WXUNUSED( aEvent ) );
     void onSize( wxSizeEvent& aEvent );
     void onEnter( wxEvent& aEvent );
     void onLostFocus( wxFocusEvent& aEvent );

@@ -60,7 +60,7 @@
 #include <class_board.h>
 #include <class_module.h>
 #include <worksheet_viewitem.h>
-#include <connectivity_data.h>
+#include <connectivity/connectivity_data.h>
 #include <ratsnest_viewitem.h>
 #include <wildcards_and_files_ext.h>
 #include <kicad_string.h>
@@ -626,6 +626,12 @@ void PCB_EDIT_FRAME::OnCloseWindow( wxCloseEvent& Event )
         wxMessageBox( msg, Pgm().App().GetAppName(), wxOK | wxICON_ERROR, this );
     }
 
+    // Do not show the layer manager during closing to avoid flicker
+    // on some platforms (Windows) that generate useless redraw of items in
+    // the Layer Manger
+    if( m_show_layer_manager_tools )
+        m_auimgr.GetPane( "LayersManager" ).Show( false );
+
     // Delete board structs and undo/redo lists, to avoid crash on exit
     // when deleting some structs (mainly in undo/redo lists) too late
     Clear_Pcb( false );
@@ -899,14 +905,6 @@ void PCB_EDIT_FRAME::syncLayerVisibilities()
 void PCB_EDIT_FRAME::OnUpdateLayerAlpha( wxUpdateUIEvent & )
 {
     m_Layers->SyncLayerAlphaIndicators();
-}
-
-
-void PCB_EDIT_FRAME::unitsChangeRefresh()
-{
-    PCB_BASE_EDIT_FRAME::unitsChangeRefresh();    // Update the grid size select box.
-
-    ReCreateAuxiliaryToolbar();
 }
 
 
@@ -1265,22 +1263,23 @@ void PCB_EDIT_FRAME::InstallFootprintPropertiesDialog( MODULE* Module, wxDC* DC 
 
     int retvalue = dlg->ShowModal();
     /* retvalue =
-     *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_ABORT if abort,
-     *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_WANT_EXCHANGE_FP if exchange module,
-     *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_EDIT_OK for normal edit
+     *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_WANT_UPDATE_FP if update footprint
+     *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_WANT_EXCHANGE_FP if change footprint
      *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_WANT_MODEDIT for a goto editor command
+     *  FP_PRM_EDITOR_RETVALUE::PRM_EDITOR_EDIT_OK for normal edit
      */
 
     dlg->Close();
     dlg->Destroy();
 
-#ifdef __WXMAC__
-    // If something edited, push a refresh request
     if( retvalue == DIALOG_FOOTPRINT_BOARD_EDITOR::PRM_EDITOR_EDIT_OK )
+    {
+#ifdef __WXMAC__
+        // If something edited, push a refresh request
         m_canvas->Refresh();
 #endif
-
-    if( retvalue == DIALOG_FOOTPRINT_BOARD_EDITOR::PRM_EDITOR_WANT_MODEDIT )
+    }
+    else if( retvalue == DIALOG_FOOTPRINT_BOARD_EDITOR::PRM_EDITOR_EDIT_BOARD_FOOTPRINT )
     {
         FOOTPRINT_EDIT_FRAME* editor = (FOOTPRINT_EDIT_FRAME*) Kiway().Player( FRAME_PCB_MODULE_EDITOR, true );
 
@@ -1291,12 +1290,23 @@ void PCB_EDIT_FRAME::InstallFootprintPropertiesDialog( MODULE* Module, wxDC* DC 
         editor->Raise();        // Iconize( false );
     }
 
-    if( retvalue == DIALOG_FOOTPRINT_BOARD_EDITOR::PRM_EDITOR_WANT_UPDATE_FP )
+    else if( retvalue == DIALOG_FOOTPRINT_BOARD_EDITOR::PRM_EDITOR_EDIT_LIBRARY_FOOTPRINT )
+    {
+        FOOTPRINT_EDIT_FRAME* editor = (FOOTPRINT_EDIT_FRAME*) Kiway().Player( FRAME_PCB_MODULE_EDITOR, true );
+
+        editor->LoadModuleFromLibrary( Module->GetFPID() );
+        SetCurItem( NULL );
+
+        editor->Show( true );
+        editor->Raise();        // Iconize( false );
+    }
+
+    else if( retvalue == DIALOG_FOOTPRINT_BOARD_EDITOR::PRM_EDITOR_WANT_UPDATE_FP )
     {
         InstallExchangeModuleFrame( Module, true );
     }
 
-    if( retvalue == DIALOG_FOOTPRINT_BOARD_EDITOR::PRM_EDITOR_WANT_EXCHANGE_FP )
+    else if( retvalue == DIALOG_FOOTPRINT_BOARD_EDITOR::PRM_EDITOR_WANT_EXCHANGE_FP )
     {
         InstallExchangeModuleFrame( Module, false );
     }

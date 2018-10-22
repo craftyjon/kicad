@@ -69,7 +69,24 @@ set( GAL_SRCS
     gal/cairo/cairo_compositor.cpp
     )
 
+set( LEGACY_GAL_SRCS
+    legacy_gal/block.cpp
+    legacy_gal/eda_draw_frame.cpp
+    legacy_gal/other.cpp
+    )
+
+set( LEGACY_WX_SRCS
+    legacy_wx/block.cpp
+    legacy_wx/eda_draw_frame.cpp
+    legacy_wx/eda_draw_panel.cpp
+    legacy_wx/other.cpp
+    )
+
 add_library( gal STATIC ${GAL_SRCS} )
+add_library( legacy_gal STATIC ${LEGACY_GAL_SRCS} )
+add_library( legacy_wx STATIC ${LEGACY_WX_SRCS} )
+
+target_include_directories( legacy_wx PUBLIC ../include/legacy_wx )
 
 target_link_libraries( gal
     ${GLEW_LIBRARIES}
@@ -163,6 +180,7 @@ set( COMMON_DLG_SRCS
     dialogs/dialog_edit_library_tables.cpp
     dialogs/dialog_exit_base.cpp
     dialogs/dialog_file_dir_picker.cpp
+    dialogs/dialog_hotkey_list.cpp
     dialogs/dialog_image_editor.cpp
     dialogs/dialog_image_editor_base.cpp
     dialogs/dialog_list_selector_base.cpp
@@ -172,12 +190,12 @@ set( COMMON_DLG_SRCS
     dialogs/panel_common_settings.cpp
     dialogs/panel_common_settings_base.cpp
     dialogs/panel_hotkeys_editor.cpp
-    dialogs/panel_hotkeys_editor_base.cpp
     dialogs/wx_html_report_panel.cpp
     dialogs/wx_html_report_panel_base.cpp
     )
 
 set( COMMON_WIDGET_SRCS
+    widgets/button_row_panel.cpp
     widgets/color_swatch.cpp
     widgets/footprint_choice.cpp
     widgets/footprint_preview_widget.cpp
@@ -195,6 +213,7 @@ set( COMMON_WIDGET_SRCS
     widgets/stepped_slider.cpp
     widgets/text_ctrl_eval.cpp
     widgets/two_column_tree_list.cpp
+    widgets/ui_common.cpp
     widgets/unit_binder.cpp
     widgets/widget_hotkey_list.cpp
     widgets/wx_grid.cpp
@@ -247,7 +266,6 @@ set( COMMON_SRCS
     bin_mod.cpp
     bitmap.cpp
     bitmap_base.cpp
-    block_commande.cpp
     build_version.cpp
     colors_design_settings.cpp
     colors.cpp
@@ -256,11 +274,8 @@ set( COMMON_SRCS
     config_params.cpp
     confirm.cpp
     convert_basic_shapes_to_polygon.cpp
-    copy_to_clipboard.cpp
     dialog_shim.cpp
     displlst.cpp
-    draw_frame.cpp
-    draw_panel.cpp
     draw_graphic_text.cpp
     dsnlexer.cpp
     eagle_parser.cpp
@@ -271,6 +286,7 @@ set( COMMON_SRCS
     eda_pattern_match.cpp
     eda_size_ctrl.cpp
     env_paths.cpp
+    env_vars.cpp
     exceptions.cpp
     executable_names.cpp
     filename_resolver.cpp
@@ -323,7 +339,6 @@ set( COMMON_SRCS
     worksheet.cpp
     wxdataviewctrl_helpers.cpp
     xnode.cpp
-    zoom.cpp
     )
 
 if( TRUE OR NOT USE_KIWAY_DLLS )
@@ -424,8 +439,9 @@ set( PCB_COMMON_SRCS
     ../pcbnew/class_track.cpp
     ../pcbnew/class_zone.cpp
     ../pcbnew/collectors.cpp
-    ../pcbnew/connectivity_algo.cpp
-    ../pcbnew/connectivity_data.cpp
+    ../pcbnew/connectivity/connectivity_algo.cpp
+    ../pcbnew/connectivity/connectivity_items.cpp
+    ../pcbnew/connectivity/connectivity_data.cpp
     ../pcbnew/convert_drawsegment_list_to_polygon.cpp
     ../pcbnew/drc_item.cpp
     ../pcbnew/eagle_plugin.cpp
@@ -462,6 +478,11 @@ set_source_files_properties( ${PCB_COMMON_SRCS} PROPERTIES
     )
 
 add_library( pcbcommon STATIC ${PCB_COMMON_SRCS} )
+
+target_include_directories( pcbcommon PUBLIC
+    ../include/legacy_wx
+)
+
 
 # auto-generate netlist_lexer.h and netlist_keywords.cpp
 make_lexer(

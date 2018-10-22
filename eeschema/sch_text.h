@@ -131,7 +131,7 @@ public:
     virtual wxPoint GetSchematicTextOffset() const;
 
     virtual void Draw( EDA_DRAW_PANEL* panel, wxDC* DC, const wxPoint& offset,
-                       GR_DRAWMODE draw_mode, COLOR4D Color = COLOR4D::UNSPECIFIED ) override;
+                       GR_DRAWMODE draw_mode, COLOR4D Color ) override;
 
     /**
      * Calculate the graphic shape (a polygon) associated to the text.
@@ -166,7 +166,7 @@ public:
 
     virtual bool Matches( wxFindReplaceData& aSearchData, void* aAuxData, wxPoint* aFindLocation ) override;
 
-    virtual bool Replace( wxFindReplaceData& aSearchData, void* aAuxData = NULL ) override
+    virtual bool Replace( wxFindReplaceData& aSearchData, void* aAuxData ) override
     {
         return EDA_ITEM::Replace( aSearchData, m_Text );
     }
@@ -178,6 +178,8 @@ public:
     virtual bool IsDanglingStateChanged( std::vector< DANGLING_END_ITEM >& aItemList ) override;
 
     virtual bool IsDangling() const override { return m_isDangling; }
+
+    virtual void SetIsDangling( bool aIsDangling ) { m_isDangling = aIsDangling; }
 
     virtual bool IsSelectStateChanged( const wxRect& aRect ) override;
 
@@ -198,8 +200,7 @@ public:
 
     virtual bool HitTest( const wxPoint& aPosition, int aAccuracy ) const override;
 
-    virtual bool HitTest( const EDA_RECT& aRect, bool aContained = false,
-                          int aAccuracy = 0 ) const override;
+    virtual bool HitTest( const EDA_RECT& aRect, bool aContained, int aAccuracy ) const override;
 
     virtual void Plot( PLOTTER* aPlotter ) override;
 
@@ -222,21 +223,10 @@ public:
 
     ~SCH_LABEL() { }
 
-    void Draw( EDA_DRAW_PANEL* panel, wxDC* DC, const wxPoint& offset,
-               GR_DRAWMODE draw_mode, COLOR4D Color = COLOR4D::UNSPECIFIED ) override;
-
     wxString GetClass() const override
     {
         return wxT( "SCH_LABEL" );
     }
-
-    void SetLabelSpinStyle( int aSpinStyle ) override;
-
-    wxPoint GetSchematicTextOffset() const override;
-
-    void MirrorX( int aXaxis_position ) override;
-
-    void Rotate( wxPoint aPosition ) override;
 
     const EDA_RECT GetBoundingBox() const override;
 
@@ -271,7 +261,7 @@ public:
     ~SCH_GLOBALLABEL() { }
 
     void Draw( EDA_DRAW_PANEL* panel, wxDC* DC, const wxPoint& offset,
-               GR_DRAWMODE draw_mode, COLOR4D Color = COLOR4D::UNSPECIFIED ) override;
+               GR_DRAWMODE draw_mode, COLOR4D Color ) override;
 
     wxString GetClass() const override
     {
@@ -285,12 +275,6 @@ public:
     const EDA_RECT GetBoundingBox() const override;
 
     void CreateGraphicShape( std::vector <wxPoint>& aPoints, const wxPoint& aPos ) override;
-
-    void MirrorY( int aYaxis_position ) override;
-
-    void MirrorX( int aXaxis_position ) override;
-
-    void Rotate( wxPoint aPosition ) override;
 
     bool IsConnectable() const override { return true; }
 
@@ -323,7 +307,7 @@ public:
     ~SCH_HIERLABEL() { }
 
     void Draw( EDA_DRAW_PANEL* panel, wxDC* DC, const wxPoint& offset,
-               GR_DRAWMODE draw_mode, COLOR4D Color = COLOR4D::UNSPECIFIED ) override;
+               GR_DRAWMODE draw_mode, COLOR4D Color ) override;
 
     wxString GetClass() const override
     {
@@ -337,12 +321,6 @@ public:
     void CreateGraphicShape( std::vector <wxPoint>& aPoints, const wxPoint& Pos ) override;
 
     const EDA_RECT GetBoundingBox() const override;
-
-    void MirrorY( int aYaxis_position ) override;
-
-    void MirrorX( int aXaxis_position ) override;
-
-    void Rotate( wxPoint aPosition ) override;
 
     bool IsConnectable() const override { return true; }
 

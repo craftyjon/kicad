@@ -29,7 +29,7 @@
 #include <fctsys.h>
 #include <gr_basic.h>
 #include <macros.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <plotter.h>
 #include <trigo.h>
 #include <base_units.h>
@@ -154,7 +154,13 @@ void LIB_RECTANGLE::Plot( PLOTTER* aPlotter, const wxPoint& aOffset, bool aFill,
 
 int LIB_RECTANGLE::GetPenSize() const
 {
-    return ( m_Width == 0 ) ? GetDefaultLineThickness() : m_Width;
+    if( m_Width > 0 )
+        return m_Width;
+
+    if( m_Width == 0 )
+       return GetDefaultLineThickness();
+
+    return -1;   // a value to use a minimal pen size
 }
 
 
@@ -332,13 +338,11 @@ void LIB_RECTANGLE::BeginEdit( STATUS_FLAGS aEditMode, const wxPoint aPosition )
             m_isHeightLocked = abs( m_End.y - aPosition.y ) >= MINIMUM_SELECTION_DISTANCE;
         }
 
-        SetEraseLastDrawItem();
     }
     else if( aEditMode == IS_MOVED )
     {
         m_initialPos = m_Pos;
         m_initialCursorPos = aPosition;
-        SetEraseLastDrawItem();
     }
 
     m_Flags = aEditMode;
@@ -362,16 +366,14 @@ void LIB_RECTANGLE::EndEdit( const wxPoint& aPosition, bool aAbort )
     m_Flags = 0;
     m_isHeightLocked = false;
     m_isWidthLocked  = false;
-    SetEraseLastDrawItem( false );
 }
 
 
-void LIB_RECTANGLE::calcEdit( const wxPoint& aPosition )
+void LIB_RECTANGLE::CalcEdit( const wxPoint& aPosition )
 {
     if( m_Flags == IS_NEW )
     {
         m_End = aPosition;
-        SetEraseLastDrawItem();
     }
     else if( m_Flags == IS_RESIZED )
     {

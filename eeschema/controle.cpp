@@ -29,7 +29,7 @@
 
 #include <fctsys.h>
 #include <gr_basic.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <eda_dde.h>
 #include <sch_edit_frame.h>
 #include <menus_helpers.h>
@@ -147,6 +147,24 @@ SCH_ITEM* SCH_EDIT_FRAME::LocateItem( const wxPoint& aPosition, const KICAD_T aF
     }
     else
     {
+        // There are certain parent/child and enclosure combinations that can be handled
+        // automatically.  Since schematics are meant to be human-readable we don't have
+        // all the various overlap and coverage issues that we do in Pcbnew.
+        if( m_collectedItems.GetCount() == 2 )
+        {
+            SCH_ITEM* a = m_collectedItems[ 0 ];
+            SCH_ITEM* b = m_collectedItems[ 1 ];
+
+            if( a->GetParent() == b )
+                item = a;
+            else if( a == b->GetParent() )
+                item = b;
+            else if( a->Type() == SCH_SHEET_T && b->Type() != SCH_SHEET_T )
+                item = b;
+            else if( b->Type() == SCH_SHEET_T && a->Type() != SCH_SHEET_T )
+                item = a;
+        }
+
         // There are certain combinations of items that do not need clarification such as
         // a corner were two lines meet or all the items form a junction.
         if( aHotKeyCommandId )
@@ -182,8 +200,7 @@ SCH_ITEM* SCH_EDIT_FRAME::LocateItem( const wxPoint& aPosition, const KICAD_T aF
 
             wxMenu selectMenu;
 
-            AddMenuItem( &selectMenu, wxID_NONE, _( "Clarify Selection" ),
-                         KiBitmap( info_xpm ) );
+            AddMenuItem( &selectMenu, wxID_NONE, _( "Clarify Selection" ), KiBitmap( info_xpm ) );
             selectMenu.AppendSeparator();
 
             for( int i = 0;  i < m_collectedItems.GetCount() && i < MAX_SELECT_ITEM_IDS;  i++ )
@@ -232,6 +249,7 @@ bool SCH_EDIT_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPosition, EDA_KE
         return false;
     }
 
+
     // when moving mouse, use the "magnetic" grid, unless the shift+ctrl keys is pressed
     // for next cursor position
     // ( shift or ctrl key down are PAN command with mouse wheel)
@@ -245,12 +263,17 @@ bool SCH_EDIT_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPosition, EDA_KE
         snapToGrid = true;
 
     wxPoint pos = aPosition;
-    wxPoint oldpos = GetCrossHairPosition();
     bool keyHandled = GeneralControlKeyMovement( aHotKey, &pos, snapToGrid );
 
-    // Update cursor position.
+    if( GetToolId() == ID_NO_TOOL_SELECTED )
+        m_canvas->CrossHairOff( aDC );
+    else
+        m_canvas->CrossHairOn( aDC );
+
     SetCrossHairPosition( pos, snapToGrid );
-    RefreshCrossHair( oldpos, aPosition, aDC );
+
+    if( m_canvas->IsMouseCaptured() )
+        m_canvas->CallMouseCapture( aDC, aPosition, true );
 
     if( aHotKey )
     {
@@ -271,48 +294,6 @@ bool SCH_EDIT_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPosition, EDA_KE
     return keyHandled;
 }
 
-
-bool LIB_EDIT_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPosition, EDA_KEY aHotKey )
-{
-    // Filter out the 'fake' mouse motion after a keyboard movement
-    if( !aHotKey && m_movingCursorWithKeyboard )
-    {
-        m_movingCursorWithKeyboard = false;
-        return false;
-    }
-
-    // when moving mouse, use the "magnetic" grid, unless the shift+ctrl keys is pressed
-    // for next cursor position
-    // ( shift or ctrl key down are PAN command with mouse wheel)
-    bool snapToGrid = true;
-
-    if( !aHotKey && wxGetKeyState( WXK_SHIFT ) && wxGetKeyState( WXK_CONTROL ) )
-        snapToGrid = false;
-
-    // Cursor is left off grid only if no block in progress
-    if( GetScreen()->m_BlockLocate.GetState() != STATE_NO_BLOCK )
-        snapToGrid = true;
-
-    wxPoint pos = aPosition;
-    wxPoint oldpos = GetCrossHairPosition();
-    bool keyHandled = GeneralControlKeyMovement( aHotKey, &pos, snapToGrid );
-
-    // Update the cursor position.
-    SetCrossHairPosition( pos, snapToGrid );
-    RefreshCrossHair( oldpos, aPosition, aDC );
-
-    if( aHotKey && OnHotKey( aDC, aHotKey, aPosition, NULL ) )
-    {
-        keyHandled = true;
-    }
-
-    // Make sure current-part highlighting doesn't get lost in selection highlighting
-    ClearSearchTreeSelection();
-
-    UpdateStatusBar();
-
-    return keyHandled;
-}
 
 
 bool LIB_VIEW_FRAME::GeneralControl( wxDC* aDC, const wxPoint& aPosition, EDA_KEY aHotKey )

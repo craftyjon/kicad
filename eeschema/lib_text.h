@@ -51,7 +51,7 @@ class LIB_TEXT : public LIB_ITEM, public EDA_TEXT
                       COLOR4D aColor, GR_DRAWMODE aDrawMode, void* aData,
                       const TRANSFORM& aTransform ) override;
 
-    void calcEdit( const wxPoint& aPosition ) override;
+    void CalcEdit( const wxPoint& aPosition ) override;
 
 public:
     LIB_TEXT( LIB_PART * aParent );
@@ -69,6 +69,8 @@ public:
     {
         return _( "Text" );
     }
+
+    void ViewGetLayers( int aLayers[], int& aCount ) const override;
 
     /**
      * Sets the text item string to \a aText.

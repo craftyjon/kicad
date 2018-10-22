@@ -24,8 +24,12 @@
 
 #include <base_units.h>
 #include <kiway.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
+#include <sch_view.h>
+#include <sch_painter.h>
+#include <gal/graphics_abstraction_layer.h>
 #include <confirm.h>
+#include <preview_items/selection_area.h>
 #include <class_library.h>
 #include <eeschema_id.h>
 #include <lib_edit_frame.h>
@@ -78,7 +82,7 @@ LIB_PART* SchGetLibPart( const LIB_ID& aLibId, SYMBOL_LIB_TABLE* aLibTable, PART
 }
 
 
-// Sttaic members:
+// Static members:
 
 SCH_BASE_FRAME::SCH_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent,
         FRAME_T aWindowType, const wxString& aTitle,
@@ -87,6 +91,8 @@ SCH_BASE_FRAME::SCH_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent,
     EDA_DRAW_FRAME( aKiway, aParent, aWindowType, aTitle, aPosition,
             aSize, aStyle, aFrameName )
 {
+    createCanvas();
+
     m_zoomLevelCoeff = 11.0;    // Adjusted to roughly displays zoom level = 1
                                 // when the screen shows a 1:1 image
                                 // obviously depends on the monitor,
@@ -96,9 +102,47 @@ SCH_BASE_FRAME::SCH_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent,
 }
 
 
-
 SCH_BASE_FRAME::~SCH_BASE_FRAME()
 {
+}
+
+
+void SCH_BASE_FRAME::OnUpdateSwitchCanvas( wxUpdateUIEvent& aEvent )
+{
+    wxMenuBar* menuBar = GetMenuBar();
+    EDA_DRAW_PANEL_GAL* gal_canvas = GetGalCanvas();
+    EDA_DRAW_PANEL_GAL::GAL_TYPE canvasType = gal_canvas->GetBackend();
+
+    struct { int menuId; int galType; } menuList[] =
+    {
+        { ID_MENU_CANVAS_OPENGL,    EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL },
+        { ID_MENU_CANVAS_CAIRO,     EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO },
+    };
+
+    for( auto ii: menuList )
+    {
+        wxMenuItem* item = menuBar->FindItem( ii.menuId );
+        if( ii.galType == canvasType )
+        {
+            item->Check( true );
+        }
+    }
+}
+
+
+void SCH_BASE_FRAME::OnSwitchCanvas( wxCommandEvent& aEvent )
+{
+    auto new_type = EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL;
+
+    if( aEvent.GetId() == ID_MENU_CANVAS_CAIRO )
+        new_type = EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO;
+
+    if( m_canvasType == new_type )
+        return;
+
+    GetGalCanvas()->SwitchBackend( new_type );
+    m_canvasTypeDirty = true;   // force saving new canvas type in config
+    m_canvasType = new_type;
 }
 
 
@@ -114,23 +158,6 @@ void SCH_BASE_FRAME::OnOpenLibraryViewer( wxCommandEvent& event )
 
     viewlibFrame->Show( true );
     viewlibFrame->Raise();
-}
-
-
-// Virtual from EDA_DRAW_FRAME
-COLOR4D SCH_BASE_FRAME::GetDrawBgColor() const
-{
-    return GetLayerColor( LAYER_SCHEMATIC_BACKGROUND );
-}
-
-
-void SCH_BASE_FRAME::SetDrawBgColor( COLOR4D aColor )
-{
-    m_drawBgColor= aColor;
-    SetLayerColor( aColor, LAYER_SCHEMATIC_BACKGROUND );
-
-    if( m_auimgr.GetManagedWindow() )
-        m_auimgr.Update();
 }
 
 
@@ -329,4 +356,324 @@ bool SCH_BASE_FRAME::saveSymbolLibTables( bool aGlobal, bool aProject )
     }
 
     return success;
+}
+
+
+// Set the zoom level to show the contents of the view.
+void SCH_BASE_FRAME::Zoom_Automatique( bool aWarpPointer )
+{
+    EDA_DRAW_PANEL_GAL* galCanvas = GetGalCanvas();
+    KIGFX::VIEW* view = GetGalCanvas()->GetView();
+
+    BOX2I bBox = GetDocumentExtents();
+
+    VECTOR2D scrollbarSize = VECTOR2D( galCanvas->GetSize() - galCanvas->GetClientSize() );
+    VECTOR2D screenSize = view->ToWorld( galCanvas->GetClientSize(), false );
+
+    if( bBox.GetWidth() == 0 || bBox.GetHeight() == 0 )
+    {
+        bBox = galCanvas->GetDefaultViewBBox();
+    }
+
+    VECTOR2D vsize = bBox.GetSize();
+    double scale = view->GetScale() / std::max( fabs( vsize.x / screenSize.x ),
+                                                fabs( vsize.y / screenSize.y ) );
+
+    // Reserve a 10% margin around component bounding box.
+    double margin_scale_factor = 1.1;
+
+    // Leave 20% for library editors & viewers
+    if( IsType( FRAME_PCB_MODULE_VIEWER ) || IsType( FRAME_PCB_MODULE_VIEWER_MODAL )
+            || IsType( FRAME_SCH_VIEWER ) || IsType( FRAME_SCH_VIEWER_MODAL )
+            || IsType( FRAME_SCH_LIB_EDITOR ) || IsType( FRAME_PCB_MODULE_EDITOR ) )
+    {
+        margin_scale_factor = 1.2;
+    }
+
+    scale /= margin_scale_factor;
+
+    GetScreen()->SetScalingFactor( 1 / scale );
+
+    view->SetScale( scale );
+    view->SetCenter( bBox.Centre() );
+
+    // Take scrollbars into account
+    VECTOR2D worldScrollbarSize = view->ToWorld( scrollbarSize, false );
+    view->SetCenter( view->GetCenter() + worldScrollbarSize / 2.0 );
+    galCanvas->Refresh();
+}
+
+
+// Set the zoom level to show the area of aRect
+void SCH_BASE_FRAME::Window_Zoom( EDA_RECT& aRect )
+{
+    KIGFX::VIEW* view = GetGalCanvas()->GetView();
+    BOX2I selectionBox ( aRect.GetPosition(), aRect.GetSize() );
+
+    VECTOR2D screenSize = view->ToWorld( GetGalCanvas()->GetClientSize(), false );
+
+    if( selectionBox.GetWidth() == 0 || selectionBox.GetHeight() == 0 )
+        return;
+
+    VECTOR2D vsize = selectionBox.GetSize();
+    double scale;
+    double ratio = std::max( fabs( vsize.x / screenSize.x ),
+                             fabs( vsize.y / screenSize.y ) );
+
+    scale = view->GetScale() / ratio;
+
+    GetScreen()->SetScalingFactor( 1 / scale );
+
+    view->SetScale( scale );
+    view->SetCenter( selectionBox.Centre() );
+    GetGalCanvas()->Refresh();
+}
+
+
+void SCH_BASE_FRAME::RedrawScreen( const wxPoint& aCenterPoint, bool aWarpPointer )
+{
+    KIGFX::GAL* gal = GetCanvas()->GetGAL();
+
+    double selectedZoom = GetScreen()->GetZoom();
+    double zoomFactor = gal->GetWorldScale() / gal->GetZoomFactor();
+    double scale = 1.0 / ( zoomFactor * selectedZoom );
+
+    if( aCenterPoint != wxPoint( 0, 0 ) )
+        GetCanvas()->GetView()->SetScale( scale, aCenterPoint );
+    else
+        GetCanvas()->GetView()->SetScale( scale );
+
+    if( aWarpPointer )
+        GetCanvas()->GetViewControls()->CenterOnCursor();
+
+    GetCanvas()->Refresh();
+}
+
+
+void SCH_BASE_FRAME::RedrawScreen2( const wxPoint& posBefore )
+{
+    KIGFX::GAL* gal = GetCanvas()->GetGAL();
+
+    double selectedZoom = GetScreen()->GetZoom();
+    double zoomFactor = gal->GetWorldScale() / gal->GetZoomFactor();
+    double scale = 1.0 / ( zoomFactor * selectedZoom );
+
+    GetCanvas()->GetView()->SetScale( scale );
+
+    GetGalCanvas()->Refresh();
+}
+
+
+void SCH_BASE_FRAME::CenterScreen( const wxPoint& aCenterPoint, bool aWarpPointer )
+{
+    GetCanvas()->GetView()->SetCenter( aCenterPoint );
+
+    if( aWarpPointer )
+        GetCanvas()->GetViewControls()->WarpCursor( aCenterPoint );
+
+    GetGalCanvas()->Refresh();
+}
+
+
+void SCH_BASE_FRAME::HardRedraw()
+{
+    // Currently: just refresh the screen
+    GetCanvas()->Refresh();
+}
+
+
+SCH_DRAW_PANEL* SCH_BASE_FRAME::GetCanvas() const
+{
+    return static_cast<SCH_DRAW_PANEL*>( GetGalCanvas() );
+}
+
+
+KIGFX::SCH_RENDER_SETTINGS* SCH_BASE_FRAME::GetRenderSettings()
+{
+    KIGFX::PAINTER* painter = GetGalCanvas()->GetView()->GetPainter();
+    return static_cast<KIGFX::SCH_RENDER_SETTINGS*>( painter->GetSettings() );
+}
+
+
+bool SCH_BASE_FRAME::HandleBlockBegin( wxDC* aDC, EDA_KEY aKey, const wxPoint& aPosition,
+       int aExplicitCommand )
+{
+    BLOCK_SELECTOR* block = &GetScreen()->m_BlockLocate;
+
+    if( ( block->GetCommand() != BLOCK_IDLE ) || ( block->GetState() != STATE_NO_BLOCK ) )
+        return false;
+
+    if( aExplicitCommand == 0 )
+        block->SetCommand( (BLOCK_COMMAND_T) BlockCommand( aKey ) );
+    else
+        block->SetCommand( (BLOCK_COMMAND_T) aExplicitCommand );
+
+    if( block->GetCommand() == 0 )
+        return false;
+
+    switch( block->GetCommand() )
+    {
+    case BLOCK_IDLE:
+        break;
+
+    case BLOCK_MOVE:                // Move
+    case BLOCK_DRAG:                // Drag (block defined)
+    case BLOCK_DRAG_ITEM:           // Drag from a drag item command
+    case BLOCK_DUPLICATE:           // Duplicate
+    case BLOCK_DUPLICATE_AND_INCREMENT: // Duplicate and increment relevant references
+    case BLOCK_DELETE:              // Delete
+    case BLOCK_COPY:                // Copy
+    case BLOCK_FLIP:                // Flip
+    case BLOCK_ZOOM:                // Window Zoom
+    case BLOCK_MIRROR_X:
+    case BLOCK_MIRROR_Y:            // mirror
+    case BLOCK_PRESELECT_MOVE:      // Move with preselection list
+        block->InitData( m_canvas, aPosition );
+        GetCanvas()->GetView()->ShowSelectionArea();
+        break;
+
+    case BLOCK_PASTE:
+    {
+        block->InitData( m_canvas, aPosition );
+        InitBlockPasteInfos();
+
+        KIGFX::PREVIEW::SELECTION_AREA* sel = GetCanvas()->GetView()->GetSelectionArea();
+        VECTOR2I offsetToCenter = GetCanvas()->GetGAL()->GetGridPoint(
+                ( sel->GetOrigin() - sel->GetEnd() ) / 2 );
+        block->SetLastCursorPosition( wxPoint( offsetToCenter.x, offsetToCenter.y ) );
+
+        if( block->GetCount() == 0 )      // No data to paste
+        {
+            DisplayError( this, _( "Nothing to paste" ), 20 );
+            GetScreen()->m_BlockLocate.SetCommand( BLOCK_IDLE );
+            m_canvas->SetMouseCaptureCallback( NULL );
+            block->SetState( STATE_NO_BLOCK );
+            block->SetMessageBlock( this );
+            return true;
+        }
+
+        if( !m_canvas->IsMouseCaptured() )
+        {
+            block->ClearItemsList();
+            wxFAIL_MSG( "SCH_BASE_FRAME::HandleBlockBegin() error: m_mouseCaptureCallback NULL" );
+            block->SetState( STATE_NO_BLOCK );
+            block->SetMessageBlock( this );
+            return true;
+        }
+
+        block->SetState( STATE_BLOCK_MOVE );
+        block->SetFlags( IS_MOVED );
+        m_canvas->CallMouseCapture( aDC, aPosition, false );
+        m_canvas->Refresh();
+    }
+        break;
+
+    default:
+        wxFAIL_MSG( wxString::Format( "SCH_BASE_FRAME::HandleBlockBegin() unknown command: %s",
+                                      block->GetCommand() ) );
+        break;
+    }
+
+    block->SetMessageBlock( this );
+    return true;
+}
+
+void SCH_BASE_FRAME::createCanvas()
+{
+    m_canvasType = LoadCanvasTypeSetting();
+
+    // Allows only a CAIRO or OPENGL canvas:
+    if( m_canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL &&
+        m_canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO )
+        m_canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL;
+
+    m_canvas = new SCH_DRAW_PANEL( this, wxID_ANY, wxPoint( 0, 0 ), m_FrameSize,
+                                   GetGalDisplayOptions(), m_canvasType );
+
+    m_useSingleCanvasPane = true;
+
+    SetGalCanvas( static_cast<SCH_DRAW_PANEL*> (m_canvas) );
+    UseGalCanvas( true );
+}
+
+
+void SCH_BASE_FRAME::RefreshItem( SCH_ITEM* aItem, bool isAddOrDelete )
+{
+    EDA_ITEM* parent = aItem->GetParent();
+
+    if( aItem->Type() == SCH_SHEET_PIN_T )
+    {
+        // Sheet pins aren't in the view.  Refresh their parent.
+        if( parent )
+            GetCanvas()->GetView()->Update( parent );
+    }
+    else
+    {
+        if( !isAddOrDelete )
+            GetCanvas()->GetView()->Update( aItem );
+
+        // Component children are drawn from their parents.  Mark them for re-paint.
+        if( parent && parent->Type() == SCH_COMPONENT_T )
+            GetCanvas()->GetView()->Update( parent, KIGFX::REPAINT );
+    }
+
+    GetCanvas()->Refresh();
+}
+
+
+void SCH_BASE_FRAME::AddToScreen( SCH_ITEM* aItem, SCH_SCREEN* aScreen )
+{
+    if( aScreen == nullptr )
+    {
+        aScreen = GetScreen();
+        GetCanvas()->GetView()->Add( aItem );
+        RefreshItem( aItem, true );           // handle any additional parent semantics
+    }
+
+    aScreen->Append( aItem );
+}
+
+
+void SCH_BASE_FRAME::AddToScreen( DLIST<SCH_ITEM>& aItems, SCH_SCREEN* aScreen )
+{
+    if( aScreen == nullptr )
+    {
+        aScreen = GetScreen();
+
+        for( SCH_ITEM* item = aItems.begin(); item; item = item->Next() )
+        {
+            GetCanvas()->GetView()->Add( item );
+            RefreshItem( item, true );        // handle any additional parent semantics
+        }
+    }
+
+    aScreen->Append( aItems );
+}
+
+
+void SCH_BASE_FRAME::RemoveFromScreen( SCH_ITEM* aItem, SCH_SCREEN* aScreen )
+{
+    if( aScreen == nullptr )
+    {
+        aScreen = GetScreen();
+        GetCanvas()->GetView()->Remove( aItem );
+    }
+
+    aScreen->Remove( aItem );
+    RefreshItem( aItem, true );           // handle any additional parent semantics
+}
+
+
+void SCH_BASE_FRAME::SyncView()
+{
+    auto screen = GetScreen();
+    auto gal = GetGalCanvas()->GetGAL();
+
+    auto gs = screen->GetGridSize();
+
+    gal->SetGridSize( VECTOR2D( gs.x, gs.y ));
+
+    DBG(printf("SyncView: grid %d %d\n", (int)gs.x, (int)gs.y );)
+
+    GetGalCanvas()->GetView()->UpdateAllItems( KIGFX::ALL );
 }

@@ -28,7 +28,7 @@
  */
 
 #include <fctsys.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <sch_edit_frame.h>
 
 #include <general.h>
@@ -41,7 +41,7 @@
 #include <sch_component.h>
 #include <sch_sheet.h>
 #include <sch_bitmap.h>
-
+#include <sch_view.h>
 
 /* Functions to undo and redo edit commands.
  *  commands to undo are stored in CurrentScreen->m_UndoList
@@ -267,66 +267,76 @@ void SCH_EDIT_FRAME::SaveCopyInUndoList( const PICKED_ITEMS_LIST& aItemsList,
 void SCH_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList, bool aRedoCommand )
 {
     SCH_ITEM* item;
+    SCH_ITEM* next_item;
     SCH_ITEM* alt_item;
 
     // Exchange the current wires, buses, and junctions with the copy save by the last edit.
     if( aList->m_Status == UR_WIRE_IMAGE )
     {
-        DLIST< SCH_ITEM > oldWires;
-
-        // Prevent items from being deleted when the DLIST goes out of scope.
-        oldWires.SetOwnership( false );
+        PICKED_ITEMS_LIST oldItems;
+        oldItems.m_Status = UR_WIRE_IMAGE;
 
         // Remove all of the wires, buses, and junctions from the current screen.
-        GetScreen()->ExtractWires( oldWires, false );
+        for( item = GetScreen()->GetDrawItems(); item; item = next_item )
+        {
+            next_item = item->Next();
+
+            if( item->Type() == SCH_JUNCTION_T || item->Type() == SCH_LINE_T )
+            {
+                GetScreen()->Remove( item );
+                GetCanvas()->GetView()->Remove( item );
+
+                oldItems.PushItem( ITEM_PICKER( item, UR_WIRE_IMAGE ) );
+            }
+        }
 
         // Copy the saved wires, buses, and junctions to the current screen.
         for( unsigned int i = 0;  i < aList->GetCount();  i++ )
-            GetScreen()->Append( (SCH_ITEM*) aList->GetPickedItem( i ) );
+        {
+            item = static_cast<SCH_ITEM*>( aList->GetPickedItem( i ) );
 
-        aList->ClearItemsList();
+            AddToScreen( item );
+        }
 
         // Copy the previous wires, buses, and junctions to the picked item list for the
         // redo operation.
-        while( oldWires.GetCount() != 0 )
-        {
-            ITEM_PICKER picker = ITEM_PICKER( oldWires.PopFront(), UR_WIRE_IMAGE );
-            aList->PushItem( picker );
-        }
+        *aList = oldItems;
 
         return;
     }
 
     // Undo in the reverse order of list creation: (this can allow stacked changes like the
     // same item can be changes and deleted in the same complex command.
-    for( int ii = aList->GetCount() - 1; ii >= 0; ii--  )
+    for( int ii = aList->GetCount() - 1; ii >= 0; ii-- )
     {
-        item = (SCH_ITEM*) aList->GetPickedItem( ii );
+        item = (SCH_ITEM*) aList->GetPickedItem( (unsigned) ii );
         wxASSERT( item );
 
         item->ClearFlags();
 
-        SCH_ITEM* image = (SCH_ITEM*) aList->GetPickedItemLink( ii );
+        SCH_ITEM* image = (SCH_ITEM*) aList->GetPickedItemLink( (unsigned) ii );
 
-        switch( aList->GetPickedItemStatus( ii ) )
+        switch( aList->GetPickedItemStatus( (unsigned) ii ) )
         {
         case UR_CHANGED: /* Exchange old and new data for each item */
             item->SwapData( image );
             break;
 
         case UR_NEW:     /* new items are deleted */
-            aList->SetPickedItemStatus( UR_DELETED, ii );
-            GetScreen()->Remove( item );
+            aList->SetPickedItemStatus( UR_DELETED, (unsigned) ii );
+            RemoveFromScreen( item );
+
+            //schprintf("UndoRemFroMscreen %p %s\n", item, (const char *)item->GetClass().c_str() );
             break;
 
         case UR_DELETED: /* deleted items are put in the draw item list, as new items */
-            aList->SetPickedItemStatus( UR_NEW, ii );
-            GetScreen()->Append( item );
+            aList->SetPickedItemStatus( UR_NEW, (unsigned) ii );
+            AddToScreen( item );
             break;
 
         case UR_MOVED:
             item->ClearFlags();
-            item->SetFlags( aList->GetPickerFlags( ii ) );
+            item->SetFlags( aList->GetPickerFlags( (unsigned) ii ) );
             item->Move( aRedoCommand ? aList->m_TransformPoint : -aList->m_TransformPoint );
             item->ClearFlags();
             break;
@@ -353,21 +363,29 @@ void SCH_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList, bool aRed
             break;
 
         case UR_EXCHANGE_T:
-            alt_item = (SCH_ITEM*) aList->GetPickedItemLink( ii );
+            alt_item = (SCH_ITEM*) aList->GetPickedItemLink( (unsigned) ii );
             alt_item->SetNext( NULL );
             alt_item->SetBack( NULL );
-            GetScreen()->Remove( item );
-            GetScreen()->Append( alt_item );
-            aList->SetPickedItem( alt_item, ii );
-            aList->SetPickedItemLink( item, ii );
+
+            RemoveFromScreen( item );
+            AddToScreen( alt_item );
+
+            aList->SetPickedItem( alt_item, (unsigned) ii );
+            aList->SetPickedItemLink( item, (unsigned) ii );
             break;
 
         default:
             wxFAIL_MSG( wxString::Format( wxT( "Unknown undo/redo command %d" ),
-                                          aList->GetPickedItemStatus( ii ) ) );
+                                          aList->GetPickedItemStatus( (unsigned) ii ) ) );
             break;
         }
     }
+
+    // Bitmaps are cached in Opengl: clear the cache, because
+    // the cache data can be invalid
+    GetCanvas()->GetGAL()->ClearCache();
+
+    GetCanvas()->GetView()->UpdateAllItems( KIGFX::ALL );
 }
 
 
@@ -386,11 +404,13 @@ void SCH_EDIT_FRAME::GetSchematicFromUndoList( wxCommandEvent& event )
     List->ReversePickersListOrder();
     GetScreen()->PushCommandToRedoList( List );
 
-    OnModify();
     SetSheetNumberAndCount();
 
-    GetScreen()->TestDanglingEnds();
-    m_canvas->Refresh();
+    TestDanglingEnds();
+
+    SyncView();
+    GetCanvas()->Refresh();
+    OnModify();
 }
 
 
@@ -409,9 +429,11 @@ void SCH_EDIT_FRAME::GetSchematicFromRedoList( wxCommandEvent& event )
     List->ReversePickersListOrder();
     GetScreen()->PushCommandToUndoList( List );
 
-    OnModify();
     SetSheetNumberAndCount();
 
-    GetScreen()->TestDanglingEnds();
-    m_canvas->Refresh();
+    TestDanglingEnds();
+
+    SyncView();
+    GetCanvas()->Refresh();
+    OnModify();
 }

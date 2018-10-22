@@ -67,19 +67,20 @@ class EDA_DRAW_FRAME : public KIWAY_PLAYER
     friend class EDA_DRAW_PANEL;
 
     ///< Id of active button on the vertical toolbar.
-    int         m_toolId;
+    int                 m_toolId;
 
-    BASE_SCREEN*    m_currentScreen;            ///< current used SCREEN
+    BASE_SCREEN*        m_currentScreen;      ///< current used SCREEN
 
-    bool        m_snapToGrid;                   ///< Indicates if cursor should be snapped to grid.
-    bool        m_galCanvasActive;              ///< whether to use new GAL engine
+    bool                m_snapToGrid;         ///< Indicates if cursor should be snapped to grid.
 
     EDA_DRAW_PANEL_GAL* m_galCanvas;
 
     ///< GAL display options - this is the frame's interface to setting GAL display options
-    std::unique_ptr<KIGFX::GAL_DISPLAY_OPTIONS> m_galDisplayOptions;
+    KIGFX::GAL_DISPLAY_OPTIONS  m_galDisplayOptions;
 
 protected:
+    bool m_galCanvasActive;    ///< whether to use new GAL engine
+    bool m_useSingleCanvasPane;
 
     wxSocketServer*                          m_socketServer;
     std::vector<wxSocketBase*>               m_sockets;         ///< interprocess communication
@@ -162,7 +163,7 @@ protected:
     /// The current canvas type
     EDA_DRAW_PANEL_GAL::GAL_TYPE    m_canvasType;
 
-    void SetScreen( BASE_SCREEN* aScreen )  { m_currentScreen = aScreen; }
+    virtual void SetScreen( BASE_SCREEN* aScreen )  { m_currentScreen = aScreen; }
 
     double bestZoom( double sizeX, double sizeY, double scaleFactor, wxPoint centre );
 
@@ -371,7 +372,7 @@ public:
     bool ShowPageLimits() const { return m_showPageLimits; }
     void SetShowPageLimits( bool aShow ) { m_showPageLimits = aShow; }
 
-    EDA_DRAW_PANEL* GetCanvas() { return m_canvas; }
+    virtual EDA_DRAW_PANEL* GetCanvas() const { return m_canvas; }
 
     virtual wxString GetScreenDesc() const;
 
@@ -648,10 +649,26 @@ public:
     void SetNextZoom();
 
     /**
+     * changes the zoom to the next one available redraws the screen
+     * and warp the mouse pointer on request.
+     * @param aCenterPoint is the reference point for zooming
+     * @param aWarpPointer = true to move the pointer to the aCenterPoint
+     */
+    void SetNextZoomAndRedraw( const wxPoint& aCenterPoint, bool aWarpPointer );
+
+    /**
      * Function SetPrevZoom()
      * changes the zoom to the previous one available.
      */
     void SetPrevZoom();
+
+    /**
+     * changes the zoom to the previous one available redraws the screen
+     * and warp the mouse pointer on request.
+     * @param aCenterPoint is the reference point for zooming
+     * @param aWarpPointer = true to move the pointer to the aCenterPoint
+     */
+    void SetPreviousZoomAndRedraw( const wxPoint& aCenterPoint, bool aWarpPointer );
 
     /**
      * Function SetPresetZoom()
@@ -667,24 +684,30 @@ public:
      * @param aCenterPoint The position in logical units to center the scroll bars.
      * @param aWarpPointer Moves the mouse cursor to \a aCenterPoint if true.
      */
-    void RedrawScreen( const wxPoint& aCenterPoint, bool aWarpPointer );
+    virtual void RedrawScreen( const wxPoint& aCenterPoint, bool aWarpPointer );
 
     /**
      * Function RedrawScreen2
      * puts the crosshair back to the screen position it had before zooming
      * @param posBefore screen position of the crosshair before zooming
      */
-    void RedrawScreen2( const wxPoint& posBefore );
+    virtual void RedrawScreen2( const wxPoint& posBefore );
+
+    /**
+     * Function HardRedraw
+     * rebuilds the GAL and redraws the screen.  Call when something went wrong.
+     */
+    virtual void HardRedraw();
 
     /**
      * Function Zoom_Automatique
      * redraws the screen with best zoom level and the best centering
      * that shows all the page or the board
      */
-    void Zoom_Automatique( bool aWarpPointer );
+    virtual void Zoom_Automatique( bool aWarpPointer );
 
     /* Set the zoom level to show the area Rect */
-    void Window_Zoom( EDA_RECT& Rect );
+    virtual void Window_Zoom( EDA_RECT& Rect );
 
     /** Return the zoom level which displays the full page on screen */
     virtual double BestZoom() = 0;
@@ -919,7 +942,7 @@ public:
      * Function GetGalDisplayOptions
      * Returns a reference to the gal rendering options used by GAL for rendering.
      */
-    KIGFX::GAL_DISPLAY_OPTIONS& GetGalDisplayOptions() { return *m_galDisplayOptions; }
+    KIGFX::GAL_DISPLAY_OPTIONS& GetGalDisplayOptions() { return m_galDisplayOptions; }
 
     /**
      * Function SyncMenusAndToolbars
@@ -927,6 +950,12 @@ public:
      * with the current controller state
      */
     virtual void SyncMenusAndToolbars( wxEvent& aEvent ) {};
+
+    bool GetShowAxis() const { return m_showAxis; }
+    bool GetShowGridAxis() const { return m_showGridAxis; }
+    bool GetShowOriginAxis() const { return m_showOriginAxis; }
+
+    virtual const BOX2I GetDocumentExtents() const;
 
     DECLARE_EVENT_TABLE()
 };

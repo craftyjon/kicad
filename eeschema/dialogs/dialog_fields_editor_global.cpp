@@ -271,16 +271,26 @@ public:
         if( aCol == REFERENCE || aCol == QUANTITY_COLUMN )
         {
             // Remove duplicates (other units of multi-unit parts)
-            auto logicalEnd = std::unique( references.begin(), references.end(),
-                    []( const SCH_REFERENCE& l, const SCH_REFERENCE& r )
-                    {
-                        // If unannotated then we can't tell what units belong together
-                        // so we have to leave them all
-                        if( l.GetRefNumber() == wxT( "?" ) )
-                            return false;
+            std::sort( references.begin(), references.end(),
+                       []( const SCH_REFERENCE& l, const SCH_REFERENCE& r ) -> bool
+                       {
+                           wxString l_ref( l.GetRef() << l.GetRefNumber() );
+                           wxString r_ref( r.GetRef() << r.GetRefNumber() );
+                           return RefDesStringCompare( l_ref, r_ref ) < 0;
+                       } );
 
-                        return( l.GetRef() == r.GetRef() && l.GetRefNumber() == r.GetRefNumber() );
-                    } );
+            auto logicalEnd = std::unique( references.begin(), references.end(),
+                       []( const SCH_REFERENCE& l, const SCH_REFERENCE& r ) -> bool
+                       {
+                           // If unannotated then we can't tell what units belong together
+                           // so we have to leave them all
+                           if( l.GetRefNumber() == wxT( "?" ) )
+                               return false;
+
+                           wxString l_ref( l.GetRef() << l.GetRefNumber() );
+                           wxString r_ref( r.GetRef() << r.GetRefNumber() );
+                           return l_ref == r_ref;
+                       } );
             references.erase( logicalEnd, references.end() );
         }
 
@@ -679,7 +689,9 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
     m_dataModel->RebuildRows( m_groupComponentsBox, m_fieldsCtrl );
     m_dataModel->Sort( 0, true );
 
-    m_grid->UseNativeColHeader( true );
+    // wxGrid's column moving is buggy with native headers and this is one dialog where you'd
+    // really like to be able to rearrange columns.
+    m_grid->UseNativeColHeader( false );
     m_grid->SetTable( m_dataModel, true );
 
     // sync m_grid's column visiblities to Show checkboxes in m_fieldsCtrl
@@ -721,13 +733,18 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
     m_grid->AutoSizeColumns( false );
     for( int col = 0; col < m_grid->GetNumberCols(); ++ col )
     {
-        int textWidth = m_dataModel->GetDataWidth( col ) + COLUMN_MARGIN;
-        int maxWidth = defaultDlgSize.x / 3;
+        // Columns are hidden by setting their width to 0 so if we resize them they will
+        // become unhidden.
+        if( m_grid->IsColShown( col ) )
+        {
+            int textWidth = m_dataModel->GetDataWidth( col ) + COLUMN_MARGIN;
+            int maxWidth = defaultDlgSize.x / 3;
 
-        if( col == m_grid->GetNumberCols() - 1 )
-            m_grid->SetColSize( col, std::min( std::max( 50, textWidth ), maxWidth ) );
-        else
-            m_grid->SetColSize( col, std::min( std::max( 100, textWidth ), maxWidth ) );
+            if( col == m_grid->GetNumberCols() - 1 )
+                m_grid->SetColSize( col, std::min( std::max( 50, textWidth ), maxWidth ) );
+            else
+                m_grid->SetColSize( col, std::min( std::max( 100, textWidth ), maxWidth ) );
+        }
     }
 
     m_grid->SetGridCursor( 0, 1 );
@@ -767,6 +784,7 @@ bool DIALOG_FIELDS_EDITOR_GLOBAL::TransferDataFromWindow()
     SCH_SHEET_PATH currentSheet = m_parent->GetCurrentSheet();
 
     m_dataModel->ApplyData();
+    m_parent->SyncView();
     m_parent->OnModify();
 
     // Reset the view to where we left the user

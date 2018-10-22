@@ -31,7 +31,7 @@
 #include <eeschema_id.h>
 #include <hotkeys.h>
 #include <sch_edit_frame.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 
 #include <general.h>
 #include <lib_edit_frame.h>
@@ -245,6 +245,19 @@ static EDA_HOTKEY HkEditCut( _HKI( "Cut" ), HK_EDIT_CUT, GR_KB_CTRL + 'X', (int)
 static EDA_HOTKEY HkEditCopy( _HKI( "Copy" ), HK_EDIT_COPY, GR_KB_CTRL + 'C', (int) wxID_COPY );
 static EDA_HOTKEY HkEditPaste( _HKI( "Paste" ), HK_EDIT_PASTE, GR_KB_CTRL + 'V', (int) wxID_PASTE );
 
+static EDA_HOTKEY HkCanvasOpenGL( _HKI( "Switch to Modern Toolset with hardware-accelerated graphics (recommended)" ),
+                                  HK_CANVAS_OPENGL,
+#ifdef __WXMAC__
+                                  GR_KB_ALT +
+#endif
+                                  WXK_F11, ID_MENU_CANVAS_OPENGL );
+static EDA_HOTKEY HkCanvasCairo( _HKI( "Switch to Modern Toolset with software graphics (fall-back)" ),
+                                 HK_CANVAS_CAIRO,
+#ifdef __WXMAC__
+                                 GR_KB_ALT +
+#endif
+                                 WXK_F12, ID_MENU_CANVAS_CAIRO );
+
 // List of common hotkey descriptors
 static EDA_HOTKEY* common_Hotkey_List[] =
 {
@@ -323,6 +336,8 @@ static EDA_HOTKEY* schematic_Hotkey_List[] =
     &HkDeleteNode,
     &HkHighlightConnection,
     &HkUnfoldBus,
+    &HkCanvasCairo,
+    &HkCanvasOpenGL,
     NULL
 };
 
@@ -469,10 +484,11 @@ bool SCH_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
         }
         else if( screen->m_BlockLocate.GetState() == STATE_NO_BLOCK )
         {
-            OnLeftClick( aDC, aPosition );
+            auto pos = GetCrossHairPosition();
+            OnLeftClick( aDC, pos );
 
             if( hotKey->m_Idcommand == HK_LEFT_DCLICK )
-                OnLeftDClick( aDC, aPosition );
+                OnLeftDClick( aDC, pos );
         }
         break;
 
@@ -497,12 +513,12 @@ bool SCH_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
             GetEventHandler()->ProcessEvent( cmd );
         }
         else if( notBusy )
-            DeleteItemAtCrossHair( aDC );
+            DeleteItemAtCrossHair();
         break;
 
     case HK_REPEAT_LAST:
         if( notBusy )
-            RepeatDrawItem( aDC );
+            RepeatDrawItem();
         break;
 
     case HK_END_CURR_LINEWIREBUS:
@@ -628,12 +644,15 @@ bool SCH_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     case HK_EDIT_COMPONENT_WITH_LIBEDIT:    // Call Libedit and load the current component
     case HK_AUTOPLACE_FIELDS:               // Autoplace all fields around component
     case HK_UNFOLD_BUS:                     // Unfold a bus wire
+    case HK_CANVAS_CAIRO:
+    case HK_CANVAS_OPENGL:
         {
-            // force a new item search on hot keys at current position,
+           // force a new item search on hot keys at current position,
             // if there is no currently edited item,
             // to avoid using a previously selected item
             if( ! itemInEdit )
                 screen->SetCurItem( NULL );
+
             EDA_HOTKEY_CLIENT_DATA data( aPosition );
             cmd.SetInt( hotKey->m_Idcommand );
             cmd.SetClientObject( &data );
@@ -773,21 +792,13 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
         break;
 
     case HK_ROTATE:
-        if( blocInProgress )
-        {
-            GetScreen()->m_BlockLocate.SetCommand( BLOCK_ROTATE );
-            HandleBlockPlace( aDC );
-        }
-        else
-        {
-            if ( !itemInEdit )
-                SetDrawItem( LocateItemUsingCursor( aPosition ) );
+        if ( !itemInEdit && !blocInProgress )
+            SetDrawItem( LocateItemUsingCursor( aPosition ) );
 
-            if( GetDrawItem() )
-            {
-                cmd.SetId( ID_LIBEDIT_ROTATE_ITEM );
-                GetEventHandler()->ProcessEvent( cmd );
-            }
+        if( blocInProgress || GetDrawItem() )
+        {
+            cmd.SetId( ID_LIBEDIT_ROTATE_ITEM );
+            OnRotate( cmd );
         }
         break;
 
@@ -851,7 +862,7 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
         if( blocInProgress || GetDrawItem() )
         {
             cmd.SetId( ID_LIBEDIT_MIRROR_Y );
-            GetEventHandler()->ProcessEvent( cmd );
+            OnOrient( cmd );
         }
         break;
 
@@ -862,7 +873,7 @@ bool LIB_EDIT_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
         if( blocInProgress || GetDrawItem() )
         {
             cmd.SetId( ID_LIBEDIT_MIRROR_X );
-            GetEventHandler()->ProcessEvent( cmd );
+            OnOrient( cmd );
         }
         break;
     }

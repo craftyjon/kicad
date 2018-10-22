@@ -191,6 +191,10 @@ void prepareViewMenu( wxMenu* aParentMenu )
                  _( "Show &Grid" ), wxEmptyString,
                  KiBitmap( grid_xpm ), wxITEM_CHECK );
 
+    AddMenuItem( aParentMenu, ID_GRID_SETTINGS,
+                 _( "Grid Settings..." ), wxEmptyString,
+                 KiBitmap( grid_xpm ) );
+
     // Units submenu
     wxMenu* unitsSubMenu = new wxMenu;
     AddMenuItem( unitsSubMenu, ID_TB_OPTIONS_SELECT_UNIT_INCH,
@@ -646,6 +650,20 @@ static void preparePreferencesMenu( SCH_EDIT_FRAME* aFrame, wxMenu* aParentMenu 
 
     // Language submenu
     Pgm().AddMenuLanguageList( aParentMenu );
+
+    aParentMenu->AppendSeparator();
+
+    wxString text = AddHotkeyName( _( "Modern Toolset (&Accelerated)" ), g_Eeschema_Hokeys_Descr,
+                          HK_CANVAS_OPENGL );
+    AddMenuItem( aParentMenu, ID_MENU_CANVAS_OPENGL, text,
+                 _( "Use Modern Toolset with hardware-accelerated graphics (recommended)" ),
+                 KiBitmap( tools_xpm ), wxITEM_RADIO );
+
+    text = AddHotkeyName( _( "Modern Toolset (Fallba&ck)" ), g_Eeschema_Hokeys_Descr,
+                          HK_CANVAS_CAIRO );
+    AddMenuItem( aParentMenu, ID_MENU_CANVAS_CAIRO, text,
+                 _( "Use Modern Toolset with software graphics (fall-back)" ),
+                 KiBitmap( tools_xpm ), wxITEM_RADIO );
 
     aParentMenu->AppendSeparator();
 

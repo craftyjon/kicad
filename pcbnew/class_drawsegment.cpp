@@ -56,8 +56,7 @@ DRAWSEGMENT::DRAWSEGMENT( BOARD_ITEM* aParent, KICAD_T idtype ) :
     m_Angle = 0;
     m_Flags = 0;
     m_Shape = S_SEGMENT;
-    // Gives a decent pen size to draw shape:
-    m_Width = m_Shape == S_POLYGON ? 0 : Millimeter2iu( 0.15 );
+    m_Width = Millimeter2iu( DEFAULT_LINE_WIDTH );
 }
 
 
@@ -643,14 +642,9 @@ bool DRAWSEGMENT::HitTest( const wxPoint& aPosition ) const
     case S_POLYGON:     // not yet handled
         {
             #define MAX_DIST_IN_MM 0.25
-            int distmax = Millimeter2iu( 0.25 );
-            SHAPE_POLY_SET::VERTEX_INDEX dummy;
-            auto poly = m_Poly;
+            int distmax = std::max( m_Width, Millimeter2iu( MAX_DIST_IN_MM ) );
 
-            if( poly.CollideVertex( VECTOR2I( aPosition ), dummy, distmax ) )
-                return true;
-
-            if( poly.CollideEdge( VECTOR2I( aPosition ), dummy, distmax ) )
+            if( m_Poly.Collide( VECTOR2I( aPosition ), distmax ) )
                 return true;
         }
         break;

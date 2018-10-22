@@ -29,7 +29,7 @@
 #include <algorithm>
 
 #include <fctsys.h>
-#include <class_drawpanel.h>
+#include <sch_draw_panel.h>
 #include <confirm.h>
 #include <reporter.h>
 #include <sch_edit_frame.h>
@@ -72,6 +72,8 @@ void SCH_EDIT_FRAME::DeleteAnnotation( bool aCurrentSheetOnly )
 
     // Update the references for the sheet that is currently being displayed.
     g_CurrentSheet->UpdateAllScreenReferences();
+
+    SyncView();
     GetCanvas()->Refresh();
     OnModify();
 }
@@ -230,13 +232,13 @@ void SCH_EDIT_FRAME::AnnotateComponents( bool              aAnnotateSchematic,
     if( !CheckAnnotate( aReporter, !aAnnotateSchematic ) )
         aReporter.ReportTail( _( "Annotation complete." ), REPORTER::RPT_ACTION );
 
-    OnModify();
-
     // Update on screen references, that can be modified by previous calculations:
     g_CurrentSheet->UpdateAllScreenReferences();
     SetSheetNumberAndCount();
 
-    m_canvas->Refresh( true );
+    SyncView();
+    GetCanvas()->Refresh();
+    OnModify();
 }
 
 

@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2014-2017 CERN
- * Copyright (C) 2014-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2014-2018 KiCad Developers, see AUTHORS.txt for contributors.
  * @author Maciej Suminski <maciej.suminski@cern.ch>
  *
  * This program is free software; you can redistribute it and/or
@@ -28,7 +28,7 @@
 
 #include <class_zone.h>
 #include <class_module.h>
-#include <connectivity_data.h>
+#include <connectivity/connectivity_data.h>
 #include <board_commit.h>
 
 #include <widgets/progress_reporter.h>
@@ -101,6 +101,8 @@ int ZONE_FILLER_TOOL::ZoneFill( const TOOL_EVENT& aEvent )
     filler.SetProgressReporter( progressReporter.get() );
     filler.Fill( toFill );
 
+    getEditFrame<PCB_EDIT_FRAME>()->Refresh();
+
     return 0;
 }
 
@@ -126,6 +128,8 @@ int ZONE_FILLER_TOOL::ZoneFillAll( const TOOL_EVENT& aEvent )
     if( filler.Fill( toFill ) )
         frame()->m_ZoneFillsDirty = false;
 
+    getEditFrame<PCB_EDIT_FRAME>()->Refresh();
+
     return 0;
 }
 
@@ -147,6 +151,7 @@ int ZONE_FILLER_TOOL::ZoneUnfill( const TOOL_EVENT& aEvent )
     }
 
     commit.Push( _( "Unfill Zone" ) );
+    getEditFrame<PCB_EDIT_FRAME>()->Refresh();
 
     return 0;
 }
@@ -174,6 +179,7 @@ int ZONE_FILLER_TOOL::SegzoneDeleteFill( const TOOL_EVENT& aEvent )
     }
 
     commit.Push( _( "Delete Zone Filling" ) );
+    getEditFrame<PCB_EDIT_FRAME>()->Refresh();
 
     return 0;
 }
@@ -192,6 +198,7 @@ int ZONE_FILLER_TOOL::ZoneUnfillAll( const TOOL_EVENT& aEvent )
     }
 
     commit.Push( _( "Unfill All Zones" ) );
+    getEditFrame<PCB_EDIT_FRAME>()->Refresh();
 
     return 0;
 }
@@ -203,5 +210,6 @@ void ZONE_FILLER_TOOL::setTransitions()
     Go( &ZONE_FILLER_TOOL::ZoneFill, PCB_ACTIONS::zoneFill.MakeEvent() );
     Go( &ZONE_FILLER_TOOL::ZoneFillAll, PCB_ACTIONS::zoneFillAll.MakeEvent() );
     Go( &ZONE_FILLER_TOOL::ZoneUnfill, PCB_ACTIONS::zoneUnfill.MakeEvent() );
+    Go( &ZONE_FILLER_TOOL::ZoneUnfillAll, PCB_ACTIONS::zoneUnfillAll.MakeEvent() );
     Go( &ZONE_FILLER_TOOL::SegzoneDeleteFill, PCB_ACTIONS::zoneDeleteSegzone.MakeEvent() );
 }

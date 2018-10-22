@@ -109,8 +109,8 @@
                 <property name="permission">none</property>
                 <object class="sizeritem" expanded="1">
                     <property name="border">5</property>
-                    <property name="flag">wxALL|wxEXPAND</property>
-                    <property name="proportion">1</property>
+                    <property name="flag">wxEXPAND|wxTOP|wxBOTTOM</property>
+                    <property name="proportion">0</property>
                     <object class="wxHtmlWindow" expanded="1">
                         <property name="BottomDockable">1</property>
                         <property name="LeftDockable">1</property>
@@ -121,7 +121,7 @@
                         <property name="aui_position"></property>
                         <property name="aui_row"></property>
                         <property name="best_size"></property>
-                        <property name="bg"></property>
+                        <property name="bg">wxSYS_COLOUR_BTNFACE</property>
                         <property name="caption"></property>
                         <property name="caption_visible">1</property>
                         <property name="center_pane">0</property>
@@ -144,7 +144,7 @@
                         <property name="maximum_size"></property>
                         <property name="min_size"></property>
                         <property name="minimize_button">0</property>
-                        <property name="minimum_size"></property>
+                        <property name="minimum_size">-1,80</property>
                         <property name="moveable">1</property>
                         <property name="name">m_htmlPrompt</property>
                         <property name="pane_border">1</property>
@@ -199,7 +199,7 @@
                     </object>
                 </object>
                 <object class="sizeritem" expanded="1">
-                    <property name="border">5</property>
+                    <property name="border">10</property>
                     <property name="flag">wxLEFT|wxRIGHT</property>
                     <property name="proportion">0</property>
                     <object class="wxStaticText" expanded="1">
@@ -290,9 +290,9 @@
                     </object>
                 </object>
                 <object class="sizeritem" expanded="1">
-                    <property name="border">5</property>
+                    <property name="border">10</property>
                     <property name="flag">wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT</property>
-                    <property name="proportion">2</property>
+                    <property name="proportion">3</property>
                     <object class="wxDataViewListCtrl" expanded="1">
                         <property name="bg"></property>
                         <property name="context_help"></property>
@@ -365,8 +365,8 @@
                     </object>
                 </object>
                 <object class="sizeritem" expanded="1">
-                    <property name="border">5</property>
-                    <property name="flag">wxTOP|wxRIGHT|wxLEFT</property>
+                    <property name="border">10</property>
+                    <property name="flag">wxRIGHT|wxLEFT</property>
                     <property name="proportion">0</property>
                     <object class="wxStaticText" expanded="1">
                         <property name="BottomDockable">1</property>
@@ -456,9 +456,9 @@
                     </object>
                 </object>
                 <object class="sizeritem" expanded="1">
-                    <property name="border">5</property>
+                    <property name="border">10</property>
                     <property name="flag">wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT</property>
-                    <property name="proportion">1</property>
+                    <property name="proportion">2</property>
                     <object class="wxDataViewListCtrl" expanded="1">
                         <property name="bg"></property>
                         <property name="context_help"></property>
@@ -531,12 +531,12 @@
                     </object>
                 </object>
                 <object class="sizeritem" expanded="1">
-                    <property name="border">5</property>
-                    <property name="flag">wxEXPAND</property>
-                    <property name="proportion">2</property>
+                    <property name="border">10</property>
+                    <property name="flag">wxEXPAND|wxRIGHT|wxLEFT</property>
+                    <property name="proportion">3</property>
                     <object class="wxBoxSizer" expanded="1">
                         <property name="minimum_size"></property>
-                        <property name="name">bSizerView</property>
+                        <property name="name">bSizerPreviews</property>
                         <property name="orient">wxHORIZONTAL</property>
                         <property name="permission">none</property>
                         <object class="sizeritem" expanded="1">
@@ -545,12 +545,12 @@
                             <property name="proportion">1</property>
                             <object class="wxBoxSizer" expanded="1">
                                 <property name="minimum_size"></property>
-                                <property name="name">bSizer6</property>
+                                <property name="name">bSizerLeftPreview</property>
                                 <property name="orient">wxVERTICAL</property>
                                 <property name="permission">none</property>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxTOP|wxRIGHT|wxLEFT</property>
+                                    <property name="flag"></property>
                                     <property name="proportion">0</property>
                                     <object class="wxStaticText" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -589,7 +589,7 @@
                                         <property name="minimize_button">0</property>
                                         <property name="minimum_size"></property>
                                         <property name="moveable">1</property>
-                                        <property name="name">m_staticText2</property>
+                                        <property name="name">m_previewOldLabel</property>
                                         <property name="pane_border">1</property>
                                         <property name="pane_position"></property>
                                         <property name="pane_size"></property>
@@ -641,7 +641,7 @@
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT</property>
+                                    <property name="flag">wxEXPAND | wxALL</property>
                                     <property name="proportion">1</property>
                                     <object class="wxPanel" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -676,9 +676,9 @@
                                         <property name="maximum_size"></property>
                                         <property name="min_size"></property>
                                         <property name="minimize_button">0</property>
-                                        <property name="minimum_size">150,150</property>
+                                        <property name="minimum_size"></property>
                                         <property name="moveable">1</property>
-                                        <property name="name">m_componentViewOld</property>
+                                        <property name="name">m_previewOldPanel</property>
                                         <property name="pane_border">1</property>
                                         <property name="pane_position"></property>
                                         <property name="pane_size"></property>
@@ -688,12 +688,12 @@
                                         <property name="resize">Resizable</property>
                                         <property name="show">1</property>
                                         <property name="size"></property>
-                                        <property name="subclass"></property>
+                                        <property name="subclass">; forward_declare</property>
                                         <property name="toolbar_pane">0</property>
                                         <property name="tooltip"></property>
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
-                                        <property name="window_style">wxBORDER_SIMPLE|wxFULL_REPAINT_ON_RESIZE</property>
+                                        <property name="window_style">wxTAB_TRAVERSAL</property>
                                         <event name="OnAux1DClick"></event>
                                         <event name="OnAux1Down"></event>
                                         <event name="OnAux1Up"></event>
@@ -717,13 +717,19 @@
                                         <event name="OnMotion"></event>
                                         <event name="OnMouseEvents"></event>
                                         <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint">OnHandleCachePreviewRepaint</event>
+                                        <event name="OnPaint"></event>
                                         <event name="OnRightDClick"></event>
                                         <event name="OnRightDown"></event>
                                         <event name="OnRightUp"></event>
                                         <event name="OnSetFocus"></event>
                                         <event name="OnSize"></event>
                                         <event name="OnUpdateUI"></event>
+                                        <object class="wxBoxSizer" expanded="1">
+                                            <property name="minimum_size"></property>
+                                            <property name="name">m_SizerOldPanel</property>
+                                            <property name="orient">wxVERTICAL</property>
+                                            <property name="permission">protected</property>
+                                        </object>
                                     </object>
                                 </object>
                             </object>
@@ -734,12 +740,12 @@
                             <property name="proportion">1</property>
                             <object class="wxBoxSizer" expanded="1">
                                 <property name="minimum_size"></property>
-                                <property name="name">bSizer7</property>
+                                <property name="name">bSizerRightPreview</property>
                                 <property name="orient">wxVERTICAL</property>
                                 <property name="permission">none</property>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxTOP|wxRIGHT|wxLEFT</property>
+                                    <property name="flag"></property>
                                     <property name="proportion">0</property>
                                     <object class="wxStaticText" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -778,7 +784,7 @@
                                         <property name="minimize_button">0</property>
                                         <property name="minimum_size"></property>
                                         <property name="moveable">1</property>
-                                        <property name="name">m_staticText3</property>
+                                        <property name="name">m_previewNewLabel</property>
                                         <property name="pane_border">1</property>
                                         <property name="pane_position"></property>
                                         <property name="pane_size"></property>
@@ -830,7 +836,7 @@
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT</property>
+                                    <property name="flag">wxEXPAND | wxALL</property>
                                     <property name="proportion">1</property>
                                     <object class="wxPanel" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -865,9 +871,9 @@
                                         <property name="maximum_size"></property>
                                         <property name="min_size"></property>
                                         <property name="minimize_button">0</property>
-                                        <property name="minimum_size">150,150</property>
+                                        <property name="minimum_size"></property>
                                         <property name="moveable">1</property>
-                                        <property name="name">m_componentViewNew</property>
+                                        <property name="name">m_previewNewPanel</property>
                                         <property name="pane_border">1</property>
                                         <property name="pane_position"></property>
                                         <property name="pane_size"></property>
@@ -877,12 +883,12 @@
                                         <property name="resize">Resizable</property>
                                         <property name="show">1</property>
                                         <property name="size"></property>
-                                        <property name="subclass"></property>
+                                        <property name="subclass">; forward_declare</property>
                                         <property name="toolbar_pane">0</property>
                                         <property name="tooltip"></property>
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
-                                        <property name="window_style">wxBORDER_SIMPLE|wxFULL_REPAINT_ON_RESIZE</property>
+                                        <property name="window_style">wxTAB_TRAVERSAL</property>
                                         <event name="OnAux1DClick"></event>
                                         <event name="OnAux1Down"></event>
                                         <event name="OnAux1Up"></event>
@@ -906,13 +912,19 @@
                                         <event name="OnMotion"></event>
                                         <event name="OnMouseEvents"></event>
                                         <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint">OnHandleLibraryPreviewRepaint</event>
+                                        <event name="OnPaint"></event>
                                         <event name="OnRightDClick"></event>
                                         <event name="OnRightDown"></event>
                                         <event name="OnRightUp"></event>
                                         <event name="OnSetFocus"></event>
                                         <event name="OnSize"></event>
                                         <event name="OnUpdateUI"></event>
+                                        <object class="wxBoxSizer" expanded="1">
+                                            <property name="minimum_size"></property>
+                                            <property name="name">m_SizerNewPanel</property>
+                                            <property name="orient">wxVERTICAL</property>
+                                            <property name="permission">protected</property>
+                                        </object>
                                     </object>
                                 </object>
                             </object>
@@ -929,8 +941,8 @@
                         <property name="orient">wxHORIZONTAL</property>
                         <property name="permission">none</property>
                         <object class="sizeritem" expanded="1">
-                            <property name="border">5</property>
-                            <property name="flag">wxALIGN_CENTER_VERTICAL|wxALL</property>
+                            <property name="border">10</property>
+                            <property name="flag">wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT</property>
                             <property name="proportion">0</property>
                             <object class="wxButton" expanded="1">
                                 <property name="BottomDockable">1</property>

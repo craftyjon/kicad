@@ -74,6 +74,10 @@ option( KICAD_SCRIPTING_MODULES
     "Build native portion of the pcbnew Python module: _pcbnew.{pyd,so} for OS command line use of Python."
     ON )
 
+option( KICAD_SCRIPTING_PYTHON3
+    "Build for Python 3 instead of 2 (default OFF)."
+    OFF )
+
 option( KICAD_SCRIPTING_WXPYTHON
     "Build wxPython implementation for wx interface building in Python and py.shell (default ON)."
     ON )
@@ -204,6 +208,13 @@ if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
     if(COMPILER_SUPPORTS_WSUGGEST_OVERRIDE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wsuggest-override")
     endif()
+
+    CHECK_CXX_COMPILER_FLAG("-Wvla" COMPILER_SUPPORTS_WVLA)
+
+    if(COMPILER_SUPPORTS_WVLA)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=vla")
+    endif()
+
 endif()
 
 
@@ -368,6 +379,10 @@ endif()
 
 if( KICAD_SCRIPTING_MODULES )
     add_definitions( -DKICAD_SCRIPTING_MODULES )
+endif()
+
+if( KICAD_SCRIPTING_PYTHON3 )
+    add_definitions( -DKICAD_SCRIPTING_PYTHON3 )
 endif()
 
 if( KICAD_SCRIPTING_WXPYTHON )
@@ -678,22 +693,27 @@ if( KICAD_SCRIPTING OR KICAD_SCRIPTING_MODULES )
     find_package( SWIG 3.0 REQUIRED )
     include( ${SWIG_USE_FILE} )
 
-    # force a python version < 3.0
-    set( PythonInterp_FIND_VERSION 2.6 )
-    set( PythonLibs_FIND_VERSION 2.6 )
+    if( KICAD_SCRIPTING_PYTHON3 )
+        set( PythonInterp_FIND_VERSION 3.3 )
+        set( PythonLibs_FIND_VERSION 3.3 )
+    else()
+        # force a python version < 3.0
+        set( PythonInterp_FIND_VERSION 2.6 )
+        set( PythonLibs_FIND_VERSION 2.6 )
+    endif()
 
     find_package( PythonInterp )
 
     check_find_package_result( PYTHONINTERP_FOUND "Python Interpreter" )
 
-    if( NOT PYTHON_VERSION_MAJOR EQUAL 2 )
+    if( NOT KICAD_SCRIPTING_PYTHON3 AND NOT PYTHON_VERSION_MAJOR EQUAL 2 )
         message( FATAL_ERROR "Python 2.x is required." )
     endif()
 
     # Get the correct Python site package install path from the Python interpreter found by
     # FindPythonInterp unless the user specifically defined a custom path.
     if( NOT PYTHON_SITE_PACKAGE_PATH )
-        execute_process( COMMAND ${PYTHON_EXECUTABLE} -c "import distutils.sysconfig;print\"%s\"%distutils.sysconfig.get_python_lib(plat_specific=0, standard_lib=0, prefix='')"
+        execute_process( COMMAND ${PYTHON_EXECUTABLE} -c "import distutils.sysconfig;print(\"%s\"%distutils.sysconfig.get_python_lib(plat_specific=0, standard_lib=0, prefix=''))"
             OUTPUT_VARIABLE PYTHON_SITE_PACKAGE_PATH
             OUTPUT_STRIP_TRAILING_WHITESPACE
             )
@@ -718,13 +738,17 @@ if( KICAD_SCRIPTING OR KICAD_SCRIPTING_MODULES )
     mark_as_advanced( PYTHON_DEST )
     message( STATUS "Python module install path: ${PYTHON_DEST}" )
 
-    find_package( PythonLibs 2.6 )
+    if( KICAD_SCRIPTING_PYTHON3 )
+        find_package( PythonLibs 3.3 REQUIRED )
+    else()
+        find_package( PythonLibs 2.6 REQUIRED )
+    endif()
 
     if( KICAD_SCRIPTING_WXPYTHON )
         # Check to see if the correct version of wxPython is installed based on the version of
         # wxWidgets found.  At least the major an minor version should match.
         set( _wxpy_version "${wxWidgets_VERSION_MAJOR}.${wxWidgets_VERSION_MINOR}" )
-        set( _py_cmd "import wxversion;print wxversion.checkInstalled('${_wxpy_version}')" )
+        set( _py_cmd "import wxversion;print(wxversion.checkInstalled('${_wxpy_version}'))" )
 
         # Add user specified Python site package path.
         if( PYTHON_SITE_PACKAGE_PATH )

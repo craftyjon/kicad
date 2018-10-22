@@ -331,8 +331,9 @@ private:
      * Tries to guess best selection candidates in case multiple items are clicked, by
      * doing some braindead heuristics.
      * @param aCollector is the collector that has a list of items to be queried.
+     * @param aWhere is the selection point to consider
      */
-    void guessSelectionCandidates( GENERAL_COLLECTOR& aCollector ) const;
+    void guessSelectionCandidates( GENERAL_COLLECTOR& aCollector, const VECTOR2I& aWhere ) const;
 
     /**
      * Event handler to update the selection VIEW_ITEM.
@@ -355,6 +356,9 @@ private:
 
     /// Flag saying if multiple selection mode is active.
     bool m_multiple;
+
+    /// Flag saying that heuristics should be skipped while choosing selection
+    bool m_skip_heuristics;
 
     /// Can other tools modify locked items.
     bool m_locked;

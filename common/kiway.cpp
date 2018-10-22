@@ -448,9 +448,7 @@ void KIWAY::CommonSettingsChanged()
         KIWAY_PLAYER* frame = GetPlayerFrame( ( FRAME_T )i );
 
         if( frame )
-        {
             frame->CommonSettingsChanged();
-        }
     }
 }
 
