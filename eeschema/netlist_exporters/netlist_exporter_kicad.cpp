@@ -100,6 +100,8 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
                 }
             }
 
+            bool found = false;
+
             // Yes this is slow, but it's a temporary debugging thing.
             for( auto kid = old_nets->GetChildren(); kid; kid = kid->GetNext() )
             {
@@ -107,6 +109,8 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
                 {
                     if( attr->GetName() == "name" && attr->GetValue() == net_name )
                     {
+                        found = true;
+
                         // Check members of this net
                         std::set<wxString> old_net_pins;
 
@@ -147,6 +151,11 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
                         }
                     }
                 }
+            }
+
+            if( !found )
+            {
+                std::cout << "Net " << net_name << " not found in old algorithm" << std::endl;
             }
         }
 
