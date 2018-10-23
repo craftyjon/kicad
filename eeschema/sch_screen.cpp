@@ -1293,7 +1293,7 @@ void SCH_SCREEN::Show( int nestLevel, std::ostream& os ) const
 /**
  * Sort a list of schematic items by time stamp and type.
  */
-        static bool SortByTimeStamp( const EDA_ITEM* item1, const EDA_ITEM* item2 )
+static bool SortByTimeStamp( const EDA_ITEM* item1, const EDA_ITEM* item2 )
 {
     int ii = item1->GetTimeStamp() - item2->GetTimeStamp();
 
@@ -1541,11 +1541,8 @@ void SCH_SCREENS::UpdateSymbolLinks( bool aForce )
 
 void SCH_SCREENS::TestDanglingEnds()
 {
-#ifdef USE_OPENMP
-    #pragma omp parallel for
-#endif
-    for( auto it = m_screens.begin(); it < m_screens.end(); it++ )
-        ( *it )->TestDanglingEnds();
+    for( SCH_SCREEN* screen = GetFirst(); screen; screen = GetNext() )
+        screen->TestDanglingEnds();
 }
 
 

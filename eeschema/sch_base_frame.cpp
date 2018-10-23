@@ -624,22 +624,25 @@ void SCH_BASE_FRAME::RefreshItem( SCH_ITEM* aItem, bool isAddOrDelete )
 void SCH_BASE_FRAME::AddToScreen( SCH_ITEM* aItem, SCH_SCREEN* aScreen )
 {
     if( aScreen == nullptr )
-    {
         aScreen = GetScreen();
+
+    aScreen->Append( aItem );
+
+    if( aScreen == GetScreen() )
+    {
         GetCanvas()->GetView()->Add( aItem );
         RefreshItem( aItem, true );           // handle any additional parent semantics
     }
-
-    aScreen->Append( aItem );
 }
 
 
 void SCH_BASE_FRAME::AddToScreen( DLIST<SCH_ITEM>& aItems, SCH_SCREEN* aScreen )
 {
     if( aScreen == nullptr )
-    {
         aScreen = GetScreen();
 
+    if( aScreen == GetScreen() )
+    {
         for( SCH_ITEM* item = aItems.begin(); item; item = item->Next() )
         {
             GetCanvas()->GetView()->Add( item );
@@ -653,18 +656,15 @@ void SCH_BASE_FRAME::AddToScreen( DLIST<SCH_ITEM>& aItems, SCH_SCREEN* aScreen )
 
 void SCH_BASE_FRAME::RemoveFromScreen( SCH_ITEM* aItem, SCH_SCREEN* aScreen )
 {
-    bool refresh = false;
-
     if( aScreen == nullptr )
-    {
         aScreen = GetScreen();
+
+    if( aScreen == GetScreen() )
         GetCanvas()->GetView()->Remove( aItem );
-        refresh = true;
-    }
 
     aScreen->Remove( aItem );
 
-    if( refresh )
+    if( aScreen == GetScreen() )
         RefreshItem( aItem, true );           // handle any additional parent semantics
 }
 
