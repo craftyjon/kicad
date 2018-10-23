@@ -653,14 +653,19 @@ void SCH_BASE_FRAME::AddToScreen( DLIST<SCH_ITEM>& aItems, SCH_SCREEN* aScreen )
 
 void SCH_BASE_FRAME::RemoveFromScreen( SCH_ITEM* aItem, SCH_SCREEN* aScreen )
 {
+    bool refresh = false;
+
     if( aScreen == nullptr )
     {
         aScreen = GetScreen();
         GetCanvas()->GetView()->Remove( aItem );
+        refresh = true;
     }
 
     aScreen->Remove( aItem );
-    RefreshItem( aItem, true );           // handle any additional parent semantics
+
+    if( refresh )
+        RefreshItem( aItem, true );           // handle any additional parent semantics
 }
 
 
