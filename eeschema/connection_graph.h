@@ -224,6 +224,8 @@ private:
     // Needed for m_UserUnits for now; maybe refactor later
     SCH_EDIT_FRAME* m_frame;
 
+    int assignNewNetCode( SCH_CONNECTION& aConnection );
+
     /**
      * Checks one subgraph for conflicting connections between net and bus labels
      *

@@ -601,17 +601,7 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
         }
         else
         {
-            try
-            {
-                code = m_net_name_to_code_map.at( name );
-            }
-            catch( const std::out_of_range& oor )
-            {
-                code = m_last_net_code++;
-                m_net_name_to_code_map[ name ] = code;
-            }
-
-            connection->SetNetCode( code );
+            assignNewNetCode( *connection );
 
             if( debug )
             {
@@ -714,8 +704,18 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             connections_to_check.push_back( std::make_shared<SCH_CONNECTION>( *connection ) );
         }
 
-        for( auto member : connections_to_check )
+        for( unsigned i = 0; i < connections_to_check.size(); i++ )
         {
+            auto member = connections_to_check[i];
+
+            if( member->IsBus() )
+            {
+                connections_to_check.insert( connections_to_check.end(),
+                                             member->Members().begin(),
+                                             member->Members().end() );
+                continue;
+            }
+
             for( auto candidate : candidate_subgraphs )
             {
                 if( candidate->m_sheet != sheet || !candidate->m_driver || candidate == subgraph )
@@ -839,29 +839,20 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
             // code, so generate new ones as needed.
             for( auto& member : connection->Members() )
             {
-                if( member->NetCode() == 0 )
+                if( member->IsNet() && member->NetCode() == 0 )
                 {
-                    int code;
-
-                    try
+                    assignNewNetCode( *member );
+                }
+                else if( member->IsBus() )
+                {
+                    for( auto& sub_member : member->Members() )
                     {
-                        code = m_net_name_to_code_map.at( member->Name() );
+                        if( sub_member->NetCode() == 0 )
+                            assignNewNetCode( *sub_member );
                     }
-                    catch( const std::out_of_range& oor )
-                    {
-                        code = m_last_net_code++;
-                        m_net_name_to_code_map[ member->Name() ] = code;
-                    }
-
-                    //std::cout << "setting new net code " << code << " for anonymous bus member " << member->Name() << std::endl;
-
-                    member->SetNetCode( code );
                 }
             }
         }
-
-        // Now go to each subsheet and broadcast the new net codes
-        // TODO(JE) add actual recursion
 
         /**
          * The general plan:
@@ -943,9 +934,20 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
                                     // Bus group: match parent by name
                                     for( auto parent_member : connection->Members() )
                                     {
-                                        if( parent_member->Name( true ) == member->Name( true ) )
+                                        if( parent_member->IsNet() &&
+                                            parent_member->Name( true ) == member->Name( true ) )
                                         {
                                             top_level_conn = parent_member;
+                                        }
+                                        else if( parent_member->IsBus() )
+                                        {
+                                            for( auto& sub_member : parent_member->Members() )
+                                            {
+                                                if( sub_member->Name( true ) == member->Name( true ) )
+                                                {
+                                                    top_level_conn = sub_member;
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1011,6 +1013,26 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
     phase2.Stop();
     std::cout << "BuildConnectionGraph() " <<  phase2.msecs() << " ms" << std::endl;
+}
+
+
+int CONNECTION_GRAPH::assignNewNetCode( SCH_CONNECTION& aConnection )
+{
+    int code;
+
+    try
+    {
+        code = m_net_name_to_code_map.at( aConnection.Name() );
+    }
+    catch( const std::out_of_range& oor )
+    {
+        code = m_last_net_code++;
+        m_net_name_to_code_map[ aConnection.Name() ] = code;
+    }
+
+    aConnection.SetNetCode( code );
+
+    return code;
 }
 
 
