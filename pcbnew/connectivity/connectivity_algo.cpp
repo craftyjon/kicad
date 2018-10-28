@@ -28,6 +28,8 @@
 
 #include <thread>
 #include <mutex>
+#include <algorithm>
+#include <future>
 
 #ifdef PROFILE
 #include <profile.h>
@@ -218,43 +220,51 @@ void CN_CONNECTIVITY_ALGO::searchConnections()
 
     if( m_itemList.IsDirty() )
     {
+        size_t parallelThreadCount = std::min<size_t>( std::thread::hardware_concurrency(),
+                ( dirtyItems.size() + 7 ) / 8 );
+
         std::atomic<size_t> nextItem( 0 );
-        std::atomic<size_t> threadsFinished( 0 );
+        std::vector<std::future<size_t>> returns( parallelThreadCount );
 
-        size_t parallelThreadCount = std::min<size_t>(
-                std::max<size_t>( std::thread::hardware_concurrency(), 2 ),
-                dirtyItems.size() );
-
-        for( size_t ii = 0; ii < parallelThreadCount; ++ii )
+        auto conn_lambda = [&nextItem, &dirtyItems]
+                            ( CN_LIST* aItemList, PROGRESS_REPORTER* aReporter) -> size_t
         {
-            std::thread t = std::thread( [&nextItem, &threadsFinished, &dirtyItems, this]()
+            for( size_t i = nextItem++; i < dirtyItems.size(); i = nextItem++ )
             {
-                for( size_t i = nextItem.fetch_add( 1 );
-                            i < dirtyItems.size();
-                            i = nextItem.fetch_add( 1 ) )
-                {
-                    CN_VISITOR visitor( dirtyItems[i] );
-                    m_itemList.FindNearby( dirtyItems[i], visitor );
+                CN_VISITOR visitor( dirtyItems[i] );
+                aItemList->FindNearby( dirtyItems[i], visitor );
 
-                    if( m_progressReporter )
-                        m_progressReporter->AdvanceProgress();
-                }
+                if( aReporter )
+                    aReporter->AdvanceProgress();
+            }
 
-                threadsFinished++;
-            } );
+            return 1;
+        };
 
-            t.detach();
-        }
-
-        // Finalize the connectivity threads
-        while( threadsFinished < parallelThreadCount )
+        if( parallelThreadCount <= 1 )
+            conn_lambda( &m_itemList, m_progressReporter );
+        else
         {
-            if( m_progressReporter )
-                m_progressReporter->KeepRefreshing();
+            for( size_t ii = 0; ii < parallelThreadCount; ++ii )
+                returns[ii] = std::async( std::launch::async, conn_lambda,
+                        &m_itemList, m_progressReporter );
 
-            // This routine is called every click while routing so keep the sleep time minimal
-            std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
+            for( size_t ii = 0; ii < parallelThreadCount; ++ii )
+            {
+                // Here we balance returns with a 10ms timeout to allow UI updating
+                std::future_status status;
+                do
+                {
+                    if( m_progressReporter )
+                        m_progressReporter->KeepRefreshing();
+
+                    status = returns[ii].wait_for( std::chrono::milliseconds( 10 ) );
+                } while( status != std::future_status::ready );
+            }
         }
+
+        if( m_progressReporter )
+            m_progressReporter->KeepRefreshing();
     }
 
 #ifdef PROFILE

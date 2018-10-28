@@ -755,6 +755,7 @@ static void moveItemWithMouseCursor( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
     SCH_SCREEN* screen = (SCH_SCREEN*) aPanel->GetScreen();
     SCH_ITEM*   item   = screen->GetCurItem();
     auto panel = static_cast<SCH_DRAW_PANEL*>( aPanel );
+    auto view = panel->GetView();
 
     wxCHECK_RET( (item != NULL), wxT( "Cannot move invalid schematic item." ) );
 
@@ -763,12 +764,9 @@ static void moveItemWithMouseCursor( EDA_DRAW_PANEL* aPanel, wxDC* aDC,
 
     item->SetPosition( cpos );
 
-    // Draw the item at it's new position.
-    item->SetWireImage();  // While moving, the item may choose to render differently
-
-    auto view = panel->GetView();
+    view->Hide( item );
     view->ClearPreview();
-    view->AddToPreview( item, false );
+    view->AddToPreview( item->Clone() );
 
     // Needed when moving a bitmap image to avoid ugly rendering and artifacts,
     // because a bitmap is drawn only as non cached
@@ -819,11 +817,13 @@ static void abortMoveItem( EDA_DRAW_PANEL* aPanel, wxDC* aDC )
         // Never delete existing item, because it can be referenced by an undo/redo command
         // Just restore its data
         currentItem->SwapData( oldItem );
-
-        // Erase the wire representation before the 'normal' view is drawn.
         view->Hide( item, false );
-
         item->ClearFlags();
+
+        // for items managed by their parent, we have to refresh
+        // the parent drawings (scheet or symbol)
+        if( currentItem != item )
+            parent->RefreshItem( currentItem );
     }
 
     aPanel->Refresh();
@@ -844,6 +844,8 @@ void SCH_EDIT_FRAME::PrepareMoveItem( SCH_ITEM* aItem )
             SetUndoItem( aItem );
     }
 
+    aItem->SetFlags( IS_MOVED );
+
     if( aItem->Type() == SCH_FIELD_T && aItem->GetParent()->Type() == SCH_COMPONENT_T )
     {
         // Now that we're moving a field, they're no longer autoplaced.
@@ -851,7 +853,9 @@ void SCH_EDIT_FRAME::PrepareMoveItem( SCH_ITEM* aItem )
         parent->ClearFieldsAutoplaced();
     }
 
-    aItem->SetFlags( IS_MOVED );
+    // These are owned by their parent, and so their parent must erase them
+    if( aItem->Type() == SCH_SHEET_PIN_T || aItem->Type() == SCH_FIELD_T )
+        RefreshItem( aItem );
 
     // For some items, moving the cursor to anchor is not good
     // (for instance large hierarchical sheets od componants can have
@@ -1026,6 +1030,9 @@ void SCH_EDIT_FRAME::OnRotate( wxCommandEvent& aEvent )
     }
 
     RefreshItem( item );
+
+    if( item->IsMoving() )
+        m_canvas->CallMouseCapture( nullptr, wxDefaultPosition, false );
 
     if( item->GetFlags() == 0 )
         screen->SetCurItem( NULL );
@@ -1384,6 +1391,9 @@ void SCH_EDIT_FRAME::OnOrient( wxCommandEvent& aEvent )
     }
 
     RefreshItem( item );
+
+    if( item->IsMoving() )
+        m_canvas->CallMouseCapture( nullptr, wxDefaultPosition, false );
 
     if( item->GetFlags() == 0 )
         screen->SetCurItem( NULL );

@@ -297,7 +297,7 @@ bool SCH_PAINTER::setColors( const LIB_ITEM* aItem, int aLayer )
     {
         COLOR4D color = m_schSettings.GetLayerColor( LAYER_DEVICE_BACKGROUND );
 
-        if( aItem->IsMoving() )
+        if( aItem->IsMoving() || aItem->GetParent()->IsMoving() )
             color = selectedBrightening( color );
 
         m_gal->SetIsFill( true );
@@ -310,7 +310,7 @@ bool SCH_PAINTER::setColors( const LIB_ITEM* aItem, int aLayer )
     {
         COLOR4D color = m_schSettings.GetLayerColor( LAYER_DEVICE );
 
-        if( aItem->IsMoving() )
+        if( aItem->IsMoving() || aItem->GetParent()->IsMoving() )
             color = selectedBrightening( color );
 
         m_gal->SetIsStroke( true );
@@ -399,7 +399,7 @@ void SCH_PAINTER::draw( LIB_FIELD *aField, int aLayer )
 
     COLOR4D color = aField->GetDefaultColor();
 
-    if( aField->IsMoving() )
+    if( aField->IsMoving() || aField->GetParent()->IsMoving() )
         color = selectedBrightening( color );
 
     if( !aField->IsVisible() )
@@ -430,6 +430,14 @@ void SCH_PAINTER::draw( LIB_FIELD *aField, int aLayer )
     double orient = aField->GetTextAngleRadians();
 
     m_gal->StrokeText( aField->GetText(), pos, orient );
+
+    // Draw the umbilical line
+    if( aField->IsMoving() )
+    {
+        m_gal->SetLineWidth( m_schSettings.m_outlineWidth );
+        m_gal->SetStrokeColor( COLOR4D( 0.0, 0.0, 1.0, 1.0 ) );
+        m_gal->DrawLine( pos, wxPoint( 0, 0 ) );
+    }
 }
 
 
@@ -440,7 +448,7 @@ void SCH_PAINTER::draw( LIB_TEXT *aText, int aLayer )
 
     COLOR4D color = m_schSettings.GetLayerColor( LAYER_NOTES );
 
-    if( aText->IsMoving() )
+    if( aText->IsMoving() || aText->GetParent()->IsMoving() )
         color = selectedBrightening( color );
 
     if( !aText->IsVisible() )
@@ -1071,9 +1079,6 @@ void SCH_PAINTER::draw( SCH_COMPONENT *aComp, int aLayer )
 
     for( auto& item : temp->GetDrawItems() )
     {
-        if( aComp->IsMoving() )
-            item.SetFlags( IS_MOVED );
-
         auto rp = aComp->GetPosition();
         auto ip = item.GetPosition();
         item.Move( wxPoint( rp.x + ip.x, ip.y - rp.y ) );
@@ -1087,11 +1092,9 @@ void SCH_PAINTER::draw( SCH_COMPONENT *aComp, int aLayer )
     std::vector<SCH_FIELD*> fields;
     aComp->GetFields( fields, false );
 
-    m_gal->AdvanceDepth();
-
     for( SCH_FIELD* field : fields )
     {
-        if( field->GetId() == REFERENCE || !field->IsMoving() )
+        if( !field->IsMoving() )
             draw( field, aLayer );
     }
 }
@@ -1168,6 +1171,14 @@ void SCH_PAINTER::draw( SCH_FIELD *aField, int aLayer )
     m_gal->SetTextMirrored( aField->IsMirrored() );
     m_gal->SetLineWidth( lineWidth );
     m_gal->StrokeText( aField->GetFullyQualifiedText(), textpos, orient == TEXT_ANGLE_VERT ? M_PI/2 : 0 );
+
+    // Draw the umbilical line
+    if( aField->IsMoving() )
+    {
+        m_gal->SetLineWidth( m_schSettings.m_outlineWidth );
+        m_gal->SetStrokeColor( COLOR4D( 0.0, 0.0, 1.0, 1.0 ) );
+        m_gal->DrawLine( textpos, parentComponent->GetPosition() );
+    }
 }
 
 
@@ -1256,6 +1267,7 @@ void SCH_PAINTER::draw( SCH_SHEET *aSheet, int aLayer )
         m_gal->SetIsStroke( true );
 
         m_gal->SetIsFill( false );
+        m_gal->SetLineWidth( aSheet->GetPenSize() );
 
         m_gal->DrawRectangle( pos, pos + size );
 
@@ -1290,7 +1302,10 @@ void SCH_PAINTER::draw( SCH_SHEET *aSheet, int aLayer )
         m_gal->StrokeText( text, pos_filename, nameAngle );
 
         for( auto& sheetPin : aSheet->GetPins() )
-            draw( static_cast<SCH_HIERLABEL*>( &sheetPin ), aLayer );
+        {
+            if( !sheetPin.IsMoving() )
+                draw( static_cast<SCH_HIERLABEL*>( &sheetPin ), aLayer );
+        }
     }
 }
 

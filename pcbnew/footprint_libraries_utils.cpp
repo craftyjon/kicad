@@ -948,10 +948,25 @@ bool FOOTPRINT_EDIT_FRAME::SaveFootprintAs( MODULE* aModule )
 
     bool module_exists = tbl->FootprintExists( libraryName, footprintName );
 
+    if( module_exists )
+    {
+        wxString msg = wxString::Format( _( "Footprint %s already exists in %s." ),
+                                         footprintName,
+                                         libraryName );
+        KIDIALOG chkdlg( this, msg, _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
+        chkdlg.SetOKLabel( _( "Overwrite" ) );
+
+        if( chkdlg.ShowModal() == wxID_CANCEL )
+            return false;
+    }
+
     if( !saveFootprintInLibrary( aModule, libraryName ) )
         return false;
 
     m_footprintNameWhenLoaded = footprintName;
+
+    // Once saved-as a board footprint is no longer a board footprint
+    aModule->SetLink( 0 );
 
     wxString fmt = module_exists ? _( "Component \"%s\" replaced in \"%s\"" ) :
                                    _( "Component \"%s\" added in  \"%s\"" );

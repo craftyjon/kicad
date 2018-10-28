@@ -28,6 +28,7 @@
 
 #include <thread>
 #include <algorithm>
+#include <future>
 
 #include <connectivity/connectivity_data.h>
 #include <connectivity/connectivity_algo.h>
@@ -36,6 +37,13 @@
 CONNECTIVITY_DATA::CONNECTIVITY_DATA()
 {
     m_connAlgo.reset( new CN_CONNECTIVITY_ALGO );
+    m_progressReporter = nullptr;
+}
+
+
+CONNECTIVITY_DATA::CONNECTIVITY_DATA( const std::vector<BOARD_ITEM*>& aItems )
+{
+    Build( aItems );
     m_progressReporter = nullptr;
 }
 
@@ -93,42 +101,36 @@ void CONNECTIVITY_DATA::updateRatsnest()
     std::vector<RN_NET*> dirty_nets;
 
     // Start with net 1 as net 0 is reserved for not-connected
+    // Nets without nodes are also ignored
     std::copy_if( m_nets.begin() + 1, m_nets.end(), std::back_inserter( dirty_nets ),
-            [] ( RN_NET* aNet ) { return aNet->IsDirty(); } );
-
-    std::atomic<size_t> nextNet( 0 );
-    std::atomic<size_t> threadsFinished( 0 );
-
-    auto update_lambda = [&nextNet, &threadsFinished, &dirty_nets, this]()
-    {
-        for( size_t i = nextNet.fetch_add( 1 ); i < dirty_nets.size(); i = nextNet.fetch_add( 1 ) )
-        {
-            dirty_nets[i]->Update();
-        }
-
-        threadsFinished++;
-    };
+            [] ( RN_NET* aNet ) { return aNet->IsDirty() && aNet->GetNodeCount() > 0; } );
 
     // We don't want to spin up a new thread for fewer than 8 nets (overhead costs)
-    size_t parallelThreadCount = std::min<size_t>(
-            std::max<size_t>( std::thread::hardware_concurrency(), 2 ),
+    size_t parallelThreadCount = std::min<size_t>( std::thread::hardware_concurrency(),
             ( dirty_nets.size() + 7 ) / 8 );
 
-    // This prevents generating a thread for point while routing as we are only
-    // updating the ratsnest on a single net
+    std::atomic<size_t> nextNet( 0 );
+    std::vector<std::future<size_t>> returns( parallelThreadCount );
+
+    auto update_lambda = [&nextNet, &dirty_nets]() -> size_t
+    {
+        for( size_t i = nextNet++; i < dirty_nets.size(); i = nextNet++ )
+            dirty_nets[i]->Update();
+
+        return 1;
+    };
+
     if( parallelThreadCount == 1 )
         update_lambda();
     else
     {
         for( size_t ii = 0; ii < parallelThreadCount; ++ii )
-        {
-            std::thread( update_lambda ).detach();
-        }
-    }
+            returns[ii] = std::async( std::launch::async, update_lambda );
 
-    // Finalize the ratsnest threads
-    while( threadsFinished < parallelThreadCount )
-        std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
+        // Finalize the ratsnest threads
+        for( size_t ii = 0; ii < parallelThreadCount; ++ii )
+            returns[ii].wait();
+    }
 
     #ifdef PROFILE
     rnUpdate.Show();
@@ -241,25 +243,22 @@ void CONNECTIVITY_DATA::FindIsolatedCopperIslands( std::vector<CN_ZONE_ISOLATED_
 
 void CONNECTIVITY_DATA::ComputeDynamicRatsnest( const std::vector<BOARD_ITEM*>& aItems )
 {
+    m_dynamicRatsnest.clear();
+
     if( std::none_of( aItems.begin(), aItems.end(), []( const BOARD_ITEM* aItem )
             { return( aItem->Type() == PCB_TRACE_T || aItem->Type() == PCB_PAD_T ||
-                       aItem->Type() == PCB_ZONE_AREA_T || aItem->Type() == PCB_MODULE_T ||
-                       aItem->Type() == PCB_VIA_T ); } ) )
+                      aItem->Type() == PCB_ZONE_AREA_T || aItem->Type() == PCB_MODULE_T ||
+                      aItem->Type() == PCB_VIA_T ); } ) )
     {
-        m_dynamicRatsnest.clear();
         return ;
     }
 
-    m_dynamicConnectivity.reset( new CONNECTIVITY_DATA );
-    m_dynamicConnectivity->Build( aItems );
-
-    m_dynamicRatsnest.clear();
-
+    CONNECTIVITY_DATA connData( aItems );
     BlockRatsnestItems( aItems );
 
-    for( unsigned int nc = 1; nc < m_dynamicConnectivity->m_nets.size(); nc++ )
+    for( unsigned int nc = 1; nc < connData.m_nets.size(); nc++ )
     {
-        auto dynNet = m_dynamicConnectivity->m_nets[nc];
+        auto dynNet = connData.m_nets[nc];
 
         if( dynNet->GetNodeCount() != 0 )
         {
@@ -278,7 +277,7 @@ void CONNECTIVITY_DATA::ComputeDynamicRatsnest( const std::vector<BOARD_ITEM*>& 
         }
     }
 
-    for( auto net : m_dynamicConnectivity->m_nets )
+    for( auto net : connData.m_nets )
     {
         if( !net )
             continue;
@@ -312,7 +311,6 @@ void CONNECTIVITY_DATA::ClearDynamicRatsnest()
 
 void CONNECTIVITY_DATA::HideDynamicRatsnest()
 {
-    m_dynamicConnectivity.reset();
     m_dynamicRatsnest.clear();
 }
 
