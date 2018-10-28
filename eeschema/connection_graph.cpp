@@ -19,6 +19,7 @@
  */
 
 #include <list>
+#include <thread>
 #include <unordered_map>
 #include <profile.h>
 
@@ -189,11 +190,40 @@ void CONNECTION_GRAPH::Reset()
 }
 
 
-void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH aSheet,
-                                               vector<SCH_ITEM*> aItemList )
+void CONNECTION_GRAPH::Recalculate( SCH_SHEET_LIST aSheetList )
 {
     PROF_COUNTER phase1;
 
+    for( const auto& sheet : aSheetList )
+    {
+        std::vector<SCH_ITEM*> items;
+
+        for( auto item = sheet.LastScreen()->GetDrawItems();
+             item; item = item->Next() )
+        {
+            if( item->IsConnectable() )
+            {
+                items.push_back( item );
+            }
+        }
+
+        updateItemConnectivity( sheet, items );
+    }
+
+    phase1.Stop();
+    std::cout << "UpdateItemConnectivity() " << phase1.msecs() << " ms" << std::endl;
+
+    // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
+    SCH_SCREENS schematic;
+    schematic.TestDanglingEnds();
+
+    buildConnectionGraph();
+}
+
+
+void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
+                                               vector<SCH_ITEM*> aItemList )
+{
     unordered_map< wxPoint, vector<SCH_ITEM*> > connection_map;
 
     for( auto item : aItemList )
@@ -371,9 +401,6 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH aSheet,
             }
         }
     }
-
-    phase1.Stop();
-    std::cout << "UpdateItemConnectivity() " << phase1.msecs() << " ms" << std::endl;
 }
 
 
@@ -389,7 +416,7 @@ void CONNECTION_GRAPH::UpdateItemConnectivity( SCH_SHEET_PATH aSheet,
 //     on some portion of the items.
 
 
-void CONNECTION_GRAPH::BuildConnectionGraph()
+void CONNECTION_GRAPH::buildConnectionGraph()
 {
     bool debug = false;
     PROF_COUNTER phase2;
@@ -511,61 +538,77 @@ void CONNECTION_GRAPH::BuildConnectionGraph()
 
     // Resolve drivers for subgraphs and propagate connectivity info
 
-#ifdef USE_OPENMP
-    #pragma omp parallel for schedule(dynamic)
-#endif
-    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
+    std::atomic<size_t> nextSubgraph( 0 );
+    std::atomic<size_t> threadsFinished( 0 );
+    size_t parallelThreadCount = std::max<size_t>( std::thread::hardware_concurrency(), 2 );
+
+    for( size_t ii = 0; ii < parallelThreadCount; ++ii )
     {
-        auto subgraph = *it;
-
-        if( !subgraph->m_dirty )
-            continue;
-
-        if( !subgraph->ResolveDrivers() )
+        auto t = std::thread( [&]()
         {
-            subgraph->m_dirty = false;
-        }
-        else
-        {
-            // Now the subgraph has only one driver
-            auto driver = subgraph->m_driver;
-            auto sheet = subgraph->m_sheet;
-            auto connection = driver->Connection( sheet );
+            for( size_t subgraphId = nextSubgraph.fetch_add( 1 );
+                        subgraphId < static_cast<size_t>( m_subgraphs.size() );
+                        subgraphId = nextSubgraph.fetch_add( 1 ) )
+            {
+                auto subgraph = m_subgraphs[subgraphId];
 
-            // TODO(JE) This should live in SCH_CONNECTION probably
-            switch( driver->Type() )
-            {
-            case SCH_LABEL_T:
-            case SCH_GLOBAL_LABEL_T:
-            case SCH_HIERARCHICAL_LABEL_T:
-            case SCH_PIN_CONNECTION_T:
-            case SCH_SHEET_PIN_T:
-            case SCH_SHEET_T:
-            {
-                if( driver->Type() == SCH_PIN_CONNECTION_T )
+                if( !subgraph->m_dirty )
+                    continue;
+
+                if( !subgraph->ResolveDrivers() )
                 {
-                    auto pin = static_cast<SCH_PIN_CONNECTION*>( driver );
-
-                    // NOTE(JE) GetDefaultNetName is not thread-safe.
-                    connection->ConfigureFromLabel( pin->GetDefaultNetName( sheet ) );
+                    subgraph->m_dirty = false;
                 }
                 else
                 {
-                    auto text = static_cast<SCH_TEXT*>( driver );
-                    connection->ConfigureFromLabel( text->GetText() );
+                    // Now the subgraph has only one driver
+                    auto driver = subgraph->m_driver;
+                    auto sheet = subgraph->m_sheet;
+                    auto connection = driver->Connection( sheet );
+
+                    // TODO(JE) This should live in SCH_CONNECTION probably
+                    switch( driver->Type() )
+                    {
+                    case SCH_LABEL_T:
+                    case SCH_GLOBAL_LABEL_T:
+                    case SCH_HIERARCHICAL_LABEL_T:
+                    case SCH_PIN_CONNECTION_T:
+                    case SCH_SHEET_PIN_T:
+                    case SCH_SHEET_T:
+                    {
+                        if( driver->Type() == SCH_PIN_CONNECTION_T )
+                        {
+                            auto pin = static_cast<SCH_PIN_CONNECTION*>( driver );
+
+                            // NOTE(JE) GetDefaultNetName is not thread-safe.
+                            connection->ConfigureFromLabel( pin->GetDefaultNetName( sheet ) );
+                        }
+                        else
+                        {
+                            auto text = static_cast<SCH_TEXT*>( driver );
+                            connection->ConfigureFromLabel( text->GetText() );
+                        }
+
+                        connection->SetDriver( driver );
+                        connection->ClearDirty();
+                        break;
+                    }
+                    default:
+                        break;
+                    }
+
+                    subgraph->m_dirty = false;
                 }
-
-                connection->SetDriver( driver );
-                connection->ClearDirty();
-                break;
-            }
-            default:
-                break;
             }
 
-            subgraph->m_dirty = false;
-        }
+            threadsFinished++;
+        } );
+
+        t.detach();
     }
+
+    while( threadsFinished < parallelThreadCount )
+        std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
 
     // Generate net codes
 

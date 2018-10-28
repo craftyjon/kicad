@@ -21,6 +21,7 @@
 #ifndef _CONNECTION_GRAPH_H
 #define _CONNECTION_GRAPH_H
 
+#include <mutex>
 #include <vector>
 
 #include <common.h>
@@ -114,49 +115,11 @@ public:
     void Reset();
 
     /**
-     * Updates the graphical connectivity between items (i.e. where they touch)
-     * The items passed in must be on the same sheet.
+     * Updates the connection graph for the given list of sheets.
      *
-     * In the first phase, all items in aItemList have their connections
-     * initialized for the given sheet (since they may have connections on more
-     * than one sheet, and each needs to be calculated individually).  The
-     * graphical connection points for the item are added to a map that stores
-     * (x, y) -> [list of items].
-     *
-     * Any item that is stored in the list of items that have a connection point
-     * at a given (x, y) location will eventually be electrically connected.
-     * This means that we can't store SCH_COMPONENTs in this map -- we must store
-     * a structure that links a specific pin on a component back to that
-     * component: a SCH_PIN_CONNECTION.  This wrapper class is a convenience for
-     * linking a pin and component to a specific (x, y) point.
-     *
-     * In the second phase, we iterate over each value in the map, which is a
-     * vector of items that have overlapping connection points.  After some
-     * checks to ensure that the items should actually connect, the items are
-     * linked together using ConnectedItems().
-     *
-     * As a side effect, items are loaded into m_items for BuildConnectionGraph()
-     *
-     * @param aSheet is the path to the sheet of all items in the list
-     * @param aItemList is a list of items to consider
+     * @param aSheetList should be the whole schematic for now
      */
-    void UpdateItemConnectivity( SCH_SHEET_PATH aSheet,
-                                 std::vector<SCH_ITEM*> aItemList );
-
-    /**
-     * Generates the connection graph (after all item connectivity has been updated)
-     *
-     * In the first phase, the algorithm iterates over all items, and then over
-     * all items that are connected (graphically) to each item, placing them into
-     * CONNECTION_SUBGRAPHs.  Items that can potentially drive connectivity (i.e.
-     * labels, pins, etc.) are added to the m_drivers vector of the subgraph.
-     *
-     * In the second phase, each subgraph is resolved.  To resolve a subgraph,
-     * the driver is first selected by CONNECTION_SUBGRAPH::ResolveDrivers(),
-     * and then the connection for the chosen driver is propagated to all the
-     * other items in the subgraph.
-     */
-    void BuildConnectionGraph();
+    void Recalculate( SCH_SHEET_LIST aSheetList );
 
     /**
      * Updates the connectivity graph based on a single item
@@ -221,9 +184,61 @@ private:
 
     int m_last_bus_code;
 
+    std::mutex m_item_mutex;
+
     // Needed for m_UserUnits for now; maybe refactor later
     SCH_EDIT_FRAME* m_frame;
 
+    /**
+     * Updates the graphical connectivity between items (i.e. where they touch)
+     * The items passed in must be on the same sheet.
+     *
+     * In the first phase, all items in aItemList have their connections
+     * initialized for the given sheet (since they may have connections on more
+     * than one sheet, and each needs to be calculated individually).  The
+     * graphical connection points for the item are added to a map that stores
+     * (x, y) -> [list of items].
+     *
+     * Any item that is stored in the list of items that have a connection point
+     * at a given (x, y) location will eventually be electrically connected.
+     * This means that we can't store SCH_COMPONENTs in this map -- we must store
+     * a structure that links a specific pin on a component back to that
+     * component: a SCH_PIN_CONNECTION.  This wrapper class is a convenience for
+     * linking a pin and component to a specific (x, y) point.
+     *
+     * In the second phase, we iterate over each value in the map, which is a
+     * vector of items that have overlapping connection points.  After some
+     * checks to ensure that the items should actually connect, the items are
+     * linked together using ConnectedItems().
+     *
+     * As a side effect, items are loaded into m_items for BuildConnectionGraph()
+     *
+     * @param aSheet is the path to the sheet of all items in the list
+     * @param aItemList is a list of items to consider
+     */
+    void updateItemConnectivity( SCH_SHEET_PATH aSheet,
+                                 std::vector<SCH_ITEM*> aItemList );
+
+    /**
+     * Generates the connection graph (after all item connectivity has been updated)
+     *
+     * In the first phase, the algorithm iterates over all items, and then over
+     * all items that are connected (graphically) to each item, placing them into
+     * CONNECTION_SUBGRAPHs.  Items that can potentially drive connectivity (i.e.
+     * labels, pins, etc.) are added to the m_drivers vector of the subgraph.
+     *
+     * In the second phase, each subgraph is resolved.  To resolve a subgraph,
+     * the driver is first selected by CONNECTION_SUBGRAPH::ResolveDrivers(),
+     * and then the connection for the chosen driver is propagated to all the
+     * other items in the subgraph.
+     */
+    void buildConnectionGraph();
+
+    /**
+     * Helper to assign a new net code to a connection
+     *
+     * @return the assigned code
+     */
     int assignNewNetCode( SCH_CONNECTION& aConnection );
 
     /**

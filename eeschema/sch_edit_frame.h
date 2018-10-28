@@ -1542,13 +1542,6 @@ public:
     void RecalculateConnections();
 
     /**
-     * Generates the connection data for a portion of the schematic
-     *
-     * @param aSheetList is a list of sheets to recalculate
-     */
-    void RecalculateConnections( SCH_SHEET_LIST aSheetList );
-
-    /**
      * Updates netlist and sends it to pcbnew.
      * @param aUpdateOptions is a string defining update options:
      * - "no-annotate" does not perform schematic annotation

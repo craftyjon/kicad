@@ -1538,37 +1538,13 @@ void SCH_EDIT_FRAME::UpdateTitle()
 void SCH_EDIT_FRAME::RecalculateConnections()
 {
     SCH_SHEET_LIST list( g_RootSheet );
-    g_ConnectionGraph->Reset();
-    RecalculateConnections( list );
-}
 
-
-void SCH_EDIT_FRAME::RecalculateConnections( SCH_SHEET_LIST aSheetList )
-{
-    for( const auto& sheet : aSheetList )
-    {
-        // Ensure schematic graph is accurate
+    // Ensure schematic graph is accurate
+    for( const auto& sheet : list )
         SchematicCleanUp( true, sheet.LastScreen() );
 
-        std::vector<SCH_ITEM*> items;
-
-        for( auto item = sheet.LastScreen()->GetDrawItems();
-             item; item = item->Next() )
-        {
-            if( item->IsConnectable() )
-            {
-                items.push_back( item );
-            }
-        }
-
-        g_ConnectionGraph->UpdateItemConnectivity( sheet, items );
-    }
-
-    // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
-    SCH_SCREENS schematic;
-    schematic.TestDanglingEnds();
-
-    g_ConnectionGraph->BuildConnectionGraph();
+    g_ConnectionGraph->Reset();
+    g_ConnectionGraph->Recalculate( list );
 }
 
 
