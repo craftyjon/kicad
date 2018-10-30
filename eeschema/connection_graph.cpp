@@ -37,10 +37,6 @@
 
 #include <connection_graph.h>
 
-#ifdef USE_OPENMP
-#include <omp.h>
-#endif
-
 using std::map;
 using std::unordered_map;
 using std::unordered_set;
@@ -672,53 +668,8 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
         // Reset the flag for the next loop below
         subgraph->m_dirty = true;
-    }
-
-    // Collapse net codes between hierarchical sheets
-
-    /**
-     * [JE] Temporary notes to self on what's going on here
-     *
-     * Each bus subgraph needs to be able to quickly lookup all net subgraphs that
-     * are bus members on the same sheet (maybe this should be cached earlier).
-     * There can be more than one net subgraph for each bus member!  They don't
-     * necessarily connect via bus entry symbols!
-     *
-     * For example on motherboard, the bus ECD[0..7] should know that member 0 is
-     * called ECD0 and point to that subgraph if it exists (only ECD[0..3]
-     * actually exist on that sheet)
-     *
-     * Then we do a recursive search to all sheet pin connections on the bus.
-     * On subsheets, we first identify target nets based on what they would be
-     * called in isolation (i.e. without the parent sheet renaming the bus).
-     * We then can rename all the target nets and the target bus.
-     *
-     * For example on the motherboard, in LIMB sheet, we have D[0..7] and nets
-     * D0, D1, etc which *aren't physically connected to each other by bus
-     * entries*.  The earlier pass should successfully link the bus to the nets
-     * so we can iterate over the nets by bus member ID and rename them.
-     *
-     * For bus groups the logic is similar, except we match between sheets
-     * according to the name of the bus member rather than the vector index.
-     *
-     *
-     */
-
-
-    // Build cache of subgraphs per-sheet pointing from buses to bus member nets
-    // TODO(JE) where should this actually go / is this most efficient?
-#ifdef USE_OPENMP
-    #pragma omp parallel for schedule(dynamic)
-#endif
-    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
-    {
-        auto subgraph = *it;
-
-        if( !subgraph->m_driver )
-            continue;
 
         auto sheet = subgraph->m_sheet;
-        auto connection = subgraph->m_driver->Connection( sheet );
 
         auto candidate_subgraphs( m_subgraphs );
         auto connections_to_check( connection->Members() );
@@ -779,35 +730,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         }
     }
 
-    /*
-
-    Next question: how do we keep track of bus member netcodes so that we can
-    propagate them down?
-
-    (a) we could start at the root sheet, propagate all buses down as far as
-        they go, and then do a breadth-first descent into all subsheets to repeat
-        the process.  This would require adding some easy way of accessing
-        subgraphs by sheet
-
-    (b) we could start with any subgraph, and assume that if it has only hier
-        sheet pin connections then it is the top level and propagate down, or
-        if it has hier label connections then it is not a top level and we should
-        not propagate it.  This doesn't require any new data organization for
-        subgraphs, but would it work 100% of the time?
-
-    */
-
-    // TODO(JE) Just for testing purposes; this can be folded up later
-#ifdef USE_OPENMP
-    #pragma omp parallel for schedule(dynamic)
-#endif
-    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
-    {
-        auto subgraph = *it;
-
-        if( subgraph->m_driver )
-            subgraph->m_dirty = true;
-    }
+    // Collapse net codes between hierarchical sheets
 
     for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
     {
@@ -916,9 +839,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
          *     3)  Recurse down onto any subsheets connected to the SSSG.
          */
 
-        #ifdef USE_OPENMP
-            #pragma omp parallel for schedule(dynamic)
-        #endif
         for( auto item : subgraph->m_items )
         {
             if( item->Type() == SCH_SHEET_PIN_T )
