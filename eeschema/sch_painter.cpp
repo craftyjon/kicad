@@ -880,6 +880,10 @@ static void drawDanglingSymbol( GAL* aGal, const wxPoint& aPos )
 void SCH_PAINTER::draw( SCH_JUNCTION *aJct, int aLayer )
 {
     COLOR4D color = m_schSettings.GetLayerColor( LAYER_JUNCTION );
+    auto    conn = aJct->Connection( *g_CurrentSheet );
+
+    if( conn && conn->IsBus() )
+        color = m_schSettings.GetLayerColor( LAYER_BUS );
 
     if( aJct->GetState( BRIGHTENED ) )
         color = m_schSettings.GetLayerColor( LAYER_BRIGHTENED );
@@ -979,6 +983,13 @@ void SCH_PAINTER::draw( SCH_TEXT *aText, int aLayer )
     case SCH_LABEL_T:              color = m_schSettings.GetLayerColor( LAYER_LOCLABEL );   break;
     default:                       color = m_schSettings.GetLayerColor( LAYER_NOTES );      break;
     }
+
+    auto conn = aText->Connection( *g_CurrentSheet );
+
+    if( conn && conn->IsBus() &&
+        ( aText->Type() == SCH_SHEET_PIN_T ||
+          aText->Type() == SCH_HIERARCHICAL_LABEL_T ) )
+        color = m_schSettings.GetLayerColor( LAYER_BUS );
 
     if( aText->GetState( BRIGHTENED ) )
         color = m_schSettings.GetLayerColor( LAYER_BRIGHTENED );
@@ -1214,7 +1225,10 @@ void SCH_PAINTER::draw( SCH_HIERLABEL *aLabel, int aLayer )
 {
     COLOR4D color = m_schSettings.GetLayerColor( LAYER_SHEETLABEL );
     int     width = aLabel->GetThickness() ? aLabel->GetThickness() : GetDefaultLineThickness();
+    auto    conn = aLabel->Connection( *g_CurrentSheet );
 
+    if( conn && conn->IsBus() )
+        color = m_schSettings.GetLayerColor( LAYER_BUS );
     if( aLabel->GetState( BRIGHTENED ) )
         color = m_schSettings.GetLayerColor( LAYER_BRIGHTENED );
     if( aLabel->IsMoving() )
