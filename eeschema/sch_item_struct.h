@@ -327,7 +327,7 @@ public:
     /**
      * Retrieves the connection associated with this object in the given sheet
      */
-    SCH_CONNECTION* Connection( SCH_SHEET_PATH aPath );
+    SCH_CONNECTION* Connection( const SCH_SHEET_PATH& aPath ) const;
 
     /**
      * Retrieves the set of items connected to this item (schematic only)
@@ -344,7 +344,7 @@ public:
      *
      * @param aPath is the sheet path to initialize
      */
-    void InitializeConnection( SCH_SHEET_PATH aPath );
+    void InitializeConnection( const SCH_SHEET_PATH& aPath );
 
     /**
      * Returns true if this item should propagate connection info to aItem
