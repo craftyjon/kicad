@@ -1537,7 +1537,7 @@ public:
     wxString GetNetListerCommand() const { return m_netListerCommand; }
 
     /**
-     * Generates the connection data for the entire schematic heirarchy.
+     * Generates the connection data for the entire schematic hierarchy.
      */
     void RecalculateConnections();
 

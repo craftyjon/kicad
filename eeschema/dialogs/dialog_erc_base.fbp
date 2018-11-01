@@ -1983,7 +1983,7 @@
                                                     <property name="gripper">0</property>
                                                     <property name="hidden">0</property>
                                                     <property name="id">wxID_ANY</property>
-                                                    <property name="label">Check that bus wires are not connected to heirarchical net pins and vice versa</property>
+                                                    <property name="label">Check that bus wires are not connected to hierarchical net pins and vice versa</property>
                                                     <property name="max_size"></property>
                                                     <property name="maximize_button">0</property>
                                                     <property name="maximum_size"></property>

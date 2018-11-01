@@ -824,7 +824,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
          * The general plan:
          *
          * Find subsheet subgraphs that match this one (because the driver is a
-         * heirarchical label with the same name as a sheet pin on this one).
+         * hierarchical label with the same name as a sheet pin on this one).
          *
          * Iterate over the bus members of the subsheet subgraph:
          *
