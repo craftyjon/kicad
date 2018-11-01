@@ -416,12 +416,9 @@ void DIALOG_BUS_MANAGER::OnRemoveBus( wxCommandEvent& aEvent )
 
 void DIALOG_BUS_MANAGER::OnAddSignal( wxCommandEvent& aEvent )
 {
-    // We should only get here if there is an active alias
-    wxASSERT( m_active_alias );
-
     auto name_list = m_signal_edit->GetValue();
 
-    if( name_list.Length() == 0 )
+    if( !m_active_alias || name_list.Length() == 0 )
     {
         return;
     }
