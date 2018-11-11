@@ -443,6 +443,8 @@ void SCH_BASE_FRAME::RedrawScreen( const wxPoint& aCenterPoint, bool aWarpPointe
     else
         GetCanvas()->GetView()->SetScale( scale );
 
+    GetCanvas()->GetView()->SetCenter( aCenterPoint );
+
     if( aWarpPointer )
         GetCanvas()->GetViewControls()->CenterOnCursor();
 
