@@ -535,12 +535,8 @@ void DIALOG_ERC::TestErc( REPORTER& aReporter )
     // Reset the connection type indicator
     objectsConnectedList->ResetConnectionsType();
 
-    // TODO(JE) Remove once working in the new system
     unsigned lastItemIdx = 0;
-#if 0
-    unsigned nextItemIdx = lastItemIdx = 0;
-    int MinConn    = NOC;
-#endif
+
     /* Check that a pin appears in only one net.  This check is necessary
      * because multi-unit components that have shared pins can be wired to
      * different nets.
@@ -565,14 +561,7 @@ void DIALOG_ERC::TestErc( REPORTER& aReporter )
         auto net = item->GetNet();
 
         wxASSERT_MSG( lastNet <= net, wxT( "Netlist not correctly ordered" ) );
-#if 0
-        if( lastNet != net )
-        {
-            // New net found:
-            MinConn      = NOC;
-            nextItemIdx = itemIdx;
-        }
-#endif
+
         switch( item->m_Type )
         {
         // These items do not create erc problems
@@ -585,33 +574,6 @@ void DIALOG_ERC::TestErc( REPORTER& aReporter )
         case NET_PINLABEL:
         case NET_GLOBBUSLABELMEMBER:
             break;
-
-// TODO(JE) Remove once working in the new system
-#if 0
-        case NET_HIERLABEL:
-        case NET_HIERBUSLABELMEMBER:
-        case NET_SHEETLABEL:
-        case NET_SHEETBUSLABELMEMBER:
-            // ERC problems when pin sheets do not match hierarchical labels.
-            // Each pin sheet must match a hierarchical label
-            // Each hierarchical label must match a pin sheet
-            objectsConnectedList->TestforNonOrphanLabel( itemIdx, nextItemIdx );
-            break;
-        case NET_GLOBLABEL:
-            if( m_settings.check_unique_global_labels )
-                objectsConnectedList->TestforNonOrphanLabel( itemIdx, nextItemIdx );
-            break;
-
-        case NET_NOCONNECT:
-
-            // ERC problems when a noconnect symbol is connected to more than one pin.
-            MinConn = NET_NC;
-
-            if( objectsConnectedList->CountPinsInNet( nextItemIdx ) > 1 )
-                Diagnose( item, NULL, MinConn, UNC );
-
-            break;
-#endif
 
         // TODO(JE) Port this to the new system
         case NET_PIN:
