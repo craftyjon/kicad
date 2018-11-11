@@ -202,6 +202,9 @@ void SCH_SCREEN::DeleteItem( SCH_ITEM* aItem )
     }
     else
     {
+        if( GetCurItem() == aItem )
+            SetCurItem( nullptr );
+
         m_drawList.Remove( aItem );
         delete aItem;
     }
