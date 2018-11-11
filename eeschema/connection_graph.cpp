@@ -640,7 +640,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         }
         else
         {
-            assignNewNetCode( *connection );
+            code = assignNewNetCode( *connection );
 
             if( debug )
             {
