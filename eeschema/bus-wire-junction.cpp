@@ -54,7 +54,6 @@ static void ComputeBreakPoint( SCH_SCREEN* aScreen, SCH_LINE* aSegment, wxPoint&
 static DLIST< SCH_ITEM > s_wires;       // when creating a new set of wires,
                                         // stores here the new wires.
 
-
 /**
  * In a contiguous list of wires, remove wires that backtrack over the previous
  * wire. Example:
@@ -734,8 +733,6 @@ bool SCH_EDIT_FRAME::SchematicCleanUp( bool aAppend, SCH_SCREEN* aScreen )
             RemoveFromScreen( item, aScreen );
     }
 
-    SaveCopyInUndoList( itemList, UR_CHANGED, aAppend );
-
     return itemList.GetCount() > 0;
 }
 
@@ -751,9 +748,7 @@ bool SCH_EDIT_FRAME::BreakSegment( SCH_LINE* aSegment, const wxPoint& aPoint,
     if( aScreen == nullptr )
         aScreen = GetScreen();
 
-    SaveCopyInUndoList( aSegment, UR_CHANGED, aAppend );
     SCH_LINE* newSegment = new SCH_LINE( *aSegment );
-    SaveCopyInUndoList( newSegment, UR_NEW, true );
 
     newSegment->SetStartPoint( aPoint );
     AddToScreen( newSegment, aScreen );
