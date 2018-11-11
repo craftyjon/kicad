@@ -942,7 +942,7 @@ bool SCH_SCREEN::TestDanglingEnds()
 
     for( item = m_drawList.begin(); item; item = item->Next() )
     {
-        if( item->IsDanglingStateChanged( endPoints ) )
+        if( item->UpdateDanglingState( endPoints ) )
         {
             hasStateChanged = true;
         }

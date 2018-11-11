@@ -977,6 +977,9 @@ void DRC::testCopperTextAndGraphics()
         if( IsCopperLayer( module->Value().GetLayer() ) )
             testCopperTextItem( &module->Value());
 
+        if( module->IsNetTie() )
+            continue;
+
         for( BOARD_ITEM* item = module->GraphicalItemsList();  item;  item = item->Next() )
         {
             if( IsCopperLayer( item->GetLayer() ) )
@@ -1074,10 +1077,6 @@ void DRC::testCopperDrawItem( DRAWSEGMENT* aItem )
         if( !pad->IsOnLayer( aItem->GetLayer() ) )
             continue;
 
-        // Graphic items are allowed to act as net-ties within their own footprint
-        if( pad->GetParent() == aItem->GetParent() )
-            continue;
-
         const int      segmentCount = 18;
         double         correctionFactor = GetCircletoPolyCorrectionFactor( segmentCount );
         SHAPE_POLY_SET padOutline;
@@ -1140,12 +1139,6 @@ void DRC::testCopperTextItem( BOARD_ITEM* aTextItem )
         if( !pad->IsOnLayer( aTextItem->GetLayer() ) )
             continue;
 
-        // Graphic items are allowed to act as net-ties within their own footprint
-        // This probably isn't required for text, but someone will no doubt want to
-        // use an 'x' or '<' or something.
-        if( pad->GetParent() == aTextItem->GetParent() )
-            continue;
-
         const int      segmentCount = 18;
         double         correctionFactor = GetCircletoPolyCorrectionFactor( segmentCount );
         SHAPE_POLY_SET padOutline;
@@ -1173,6 +1166,9 @@ void DRC::testDisabledLayers()
     BOARD* board = m_pcbEditorFrame->GetBoard();
     wxCHECK( board, /*void*/ );
     LSET disabledLayers = board->GetEnabledLayers().flip();
+
+    // Perform the test only for copper layers
+    disabledLayers &= LSET::AllCuMask();
 
     auto createMarker = [&]( BOARD_ITEM* aItem )
     {

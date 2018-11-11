@@ -136,6 +136,14 @@ public:
         m_sketchBoardGfx = aEnabled;
     }
 
+    /**
+     * Turns on/off drawing outline and hatched lines for zones.
+     */
+    void EnableZoneOutlines( bool aEnabled )
+    {
+        m_zoneOutlines = aEnabled;
+    }
+
     inline bool IsBackgroundDark() const override
     {
         auto luma = m_layerColors[ LAYER_PCB_BACKGROUND ].GetBrightness();
@@ -144,6 +152,11 @@ public:
     }
 
     const COLOR4D& GetBackgroundColor() override { return m_layerColors[ LAYER_PCB_BACKGROUND ]; }
+
+    void SetBackgroundColor( const COLOR4D& aColor ) override
+    {
+        m_layerColors[ LAYER_PCB_BACKGROUND ] = aColor;
+    }
 
     const COLOR4D& GetGridColor() override { return m_layerColors[ LAYER_GRID ]; }
 
@@ -172,7 +185,10 @@ protected:
     bool    m_netNamesOnTracks;
 
     ///> Flag determining if net names should be visible for vias
-    bool    m_netNamesOnVias = true;
+    bool    m_netNamesOnVias;
+
+    ///> Flag determining if zones should have outlines drawn
+    bool    m_zoneOutlines;
 
     ///> Maximum font size for netnames (and other dynamically shown strings)
     static const double MAX_FONT_SIZE;
@@ -236,6 +252,21 @@ protected:
      * @return the thickness to draw
      */
     int getLineThickness( int aActualThickness ) const;
+
+    /**
+     * Return drill shape of a pad.
+     */
+    virtual int getDrillShape( const D_PAD* aPad ) const;
+
+    /**
+     * Return drill size for a pad (internal units).
+     */
+    virtual VECTOR2D getDrillSize( const D_PAD* aPad ) const;
+
+    /**
+     * Return drill diameter for a via (internal units).
+     */
+    virtual int getDrillSize( const VIA* aVia ) const;
 };
 } // namespace KIGFX
 

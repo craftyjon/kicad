@@ -65,8 +65,6 @@ public:
 
     typedef std::pair<VIEW_ITEM*, int> LAYER_ITEM_PAIR;
 
-    static const int VIEW_MAX_LAYERS = 512;      ///< maximum number of layers that may be shown
-
     /**
      * Constructor.
      * @param aIsDynamic decides whether we are creating a static or a dynamic VIEW.
@@ -411,7 +409,7 @@ public:
      */
     inline void SetLayerVisible( int aLayer, bool aVisible = true )
     {
-        wxASSERT( aLayer < (int) m_layers.size() );
+        wxCHECK( aLayer < (int) m_layers.size(), /*void*/ );
 
         if( m_layers[aLayer].visible != aVisible )
         {
@@ -428,15 +426,13 @@ public:
      */
     inline bool IsLayerVisible( int aLayer ) const
     {
-        wxASSERT( aLayer < (int) m_layers.size() );
-
+        wxCHECK( aLayer < (int) m_layers.size(), false );
         return m_layers.at( aLayer ).visible;
     }
 
     inline void SetLayerDisplayOnly( int aLayer, bool aDisplayOnly = true )
     {
-        wxASSERT( aLayer < (int) m_layers.size() );
-
+        wxCHECK( aLayer < (int) m_layers.size(), /*void*/ );
         m_layers[aLayer].displayOnly = aDisplayOnly;
     }
 
@@ -448,8 +444,7 @@ public:
      */
     inline void SetLayerTarget( int aLayer, RENDER_TARGET aTarget )
     {
-        wxASSERT( aLayer < (int) m_layers.size() );
-
+        wxCHECK( aLayer < (int) m_layers.size(), /*void*/ );
         m_layers[aLayer].target = aTarget;
     }
 
@@ -589,8 +584,7 @@ public:
      */
     bool IsTargetDirty( int aTarget ) const
     {
-        wxASSERT( aTarget < TARGETS_NUMBER );
-
+        wxCHECK( aTarget < TARGETS_NUMBER, false );
         return m_dirtyTargets[aTarget];
     }
 
@@ -601,15 +595,14 @@ public:
      */
     inline void MarkTargetDirty( int aTarget )
     {
-        wxASSERT( aTarget < TARGETS_NUMBER );
-
+        wxCHECK( aTarget < TARGETS_NUMBER, /* void */ );
         m_dirtyTargets[aTarget] = true;
     }
 
     /// Returns true if the layer is cached
     inline bool IsCached( int aLayer ) const
     {
-        wxASSERT( aLayer < (int) m_layers.size() );
+        wxCHECK( aLayer < (int) m_layers.size(), false );
 
         try
         {
@@ -658,8 +651,6 @@ public:
     void UpdateAllItemsConditionally( int aUpdateFlags,
                                       std::function<bool( VIEW_ITEM* )> aCondition );
 
-    const BOX2I CalculateExtents() ;
-
     /**
      * Function IsUsingDrawPriority()
      * @return true if draw priority is being respected while redrawing.
@@ -699,12 +690,20 @@ public:
 
     std::shared_ptr<VIEW_OVERLAY> MakeOverlay();
 
+    /**
+     * Returns a new VIEW object that shares the same set of VIEW_ITEMs and LAYERs.
+     * GAL, PAINTER and other properties are left uninitialized.
+     */
+    std::unique_ptr<VIEW> DataReference() const;
+
+    static constexpr int VIEW_MAX_LAYERS = 512;      ///< maximum number of layers that may be shown
+
 protected:
     struct VIEW_LAYER
     {
         bool                    visible;         ///< is the layer to be rendered?
         bool                    displayOnly;     ///< is the layer display only?
-        VIEW_RTREE*             items;           ///< R-tree indexing all items on this layer.
+        std::shared_ptr<VIEW_RTREE> items;       ///< R-tree indexing all items on this layer.
         int                     renderingOrder;  ///< rendering order of this layer
         int                     id;              ///< layer ID
         RENDER_TARGET           target;          ///< where the layer should be rendered
@@ -732,8 +731,7 @@ protected:
 
     inline void markTargetClean( int aTarget )
     {
-        wxASSERT( aTarget < TARGETS_NUMBER );
-
+        wxCHECK( aTarget < TARGETS_NUMBER, /* void */ );
         m_dirtyTargets[aTarget] = false;
     }
 
@@ -811,6 +809,9 @@ protected:
     /// Contains set of possible displayed layers and its properties
     LAYER_MAP m_layers;
 
+    /// Flat list of all items
+    std::shared_ptr<std::vector<VIEW_ITEM*>> m_allItems;
+
     /// Sorted list of pointers to members of m_layers
     LAYER_ORDER m_orderedLayers;
 
@@ -855,8 +856,6 @@ protected:
     static const int TOP_LAYER_MODIFIER;
 
     /// Flat list of all items
-    std::vector<VIEW_ITEM*> m_allItems;
-
     /// Flag to respect draw priority when drawing items
     bool m_useDrawPriority;
 
@@ -865,6 +864,8 @@ protected:
 
     /// Flag to reverse the draw order when using draw priority
     bool m_reverseDrawOrder;
+
+    VIEW( const VIEW& ) = delete;
 };
 } // namespace KIGFX
 

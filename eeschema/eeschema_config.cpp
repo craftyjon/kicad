@@ -471,6 +471,7 @@ void SCH_EDIT_FRAME::LoadSettings( wxConfigBase* aCfg )
     settings->m_ShowPinsElectricalType = false;
     settings->m_ShowHiddenText = false;
     settings->m_ShowHiddenPins = m_showAllPins;
+    settings->SetShowPageLimits( m_showPageLimits );
 }
 
 

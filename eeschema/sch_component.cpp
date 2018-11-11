@@ -1187,7 +1187,8 @@ bool SCH_COMPONENT::AddSheetPathReferenceEntryIfMissing( const wxString& aSheetP
 
     // The full component reference path is aSheetPathName + the component time stamp itself
     // full_AR_path is the alternate reference path to search
-    wxString full_AR_path = aSheetPathName + wxString::Format( "%8.8X", GetTimeStamp() );
+    wxString full_AR_path = aSheetPathName
+                                   + wxString::Format( "%8.8lX", (unsigned long) GetTimeStamp() );
 
     for( unsigned int ii = 0; ii < m_PathsAndReferences.GetCount(); ii++ )
     {
@@ -1640,7 +1641,7 @@ void SCH_COMPONENT::GetEndPoints( std::vector <DANGLING_END_ITEM>& aItemList )
 }
 
 
-bool SCH_COMPONENT::IsDanglingStateChanged( std::vector<DANGLING_END_ITEM>& aItemList )
+bool SCH_COMPONENT::UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList )
 {
     bool changed = false;
 

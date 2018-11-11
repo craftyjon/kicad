@@ -67,6 +67,7 @@ set( GAL_SRCS
     # Cairo GAL
     gal/cairo/cairo_gal.cpp
     gal/cairo/cairo_compositor.cpp
+    gal/cairo/cairo_print.cpp
     )
 
 set( LEGACY_GAL_SRCS
@@ -87,12 +88,14 @@ add_library( legacy_gal STATIC ${LEGACY_GAL_SRCS} )
 add_library( legacy_wx STATIC ${LEGACY_WX_SRCS} )
 
 target_include_directories( legacy_wx PUBLIC ../include/legacy_wx )
+target_include_directories( legacy_gal PUBLIC ../include/legacy_gal )
 
 target_link_libraries( gal
     ${GLEW_LIBRARIES}
     ${CAIRO_LIBRARIES}
     ${PIXMAN_LIBRARIES}
     ${OPENGL_LIBRARIES}
+    ${GDI_PLUS_LIBRARIES}
 )
 
 
@@ -186,6 +189,8 @@ set( COMMON_DLG_SRCS
     dialogs/dialog_list_selector_base.cpp
     dialogs/dialog_page_settings_base.cpp
     dialogs/dialog_text_entry_base.cpp
+    dialogs/dialog_print_generic.cpp
+    dialogs/dialog_print_generic_base.cpp
     dialogs/dialog_text_entry.cpp
     dialogs/panel_common_settings.cpp
     dialogs/panel_common_settings_base.cpp
@@ -266,6 +271,7 @@ set( COMMON_SRCS
     bin_mod.cpp
     bitmap.cpp
     bitmap_base.cpp
+    board_printout.cpp
     build_version.cpp
     colors_design_settings.cpp
     colors.cpp
@@ -320,6 +326,7 @@ set( COMMON_SRCS
     netlist_keywords.cpp
     observable.cpp
     prependpath.cpp
+    printout.cpp
     project.cpp
     properties.cpp
     ptree.cpp

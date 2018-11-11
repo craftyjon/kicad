@@ -121,6 +121,14 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
 
     fileMenu->AppendSeparator();
 
+    AddMenuItem( fileMenu,
+                 ID_MODEDIT_SAVE_PNG,
+                 _( "Export View as PN&G..." ),
+                 _( "Create a PNG file from the current view" ),
+                 KiBitmap( plot_xpm ) );
+
+    fileMenu->AppendSeparator();
+
     // Close editor
     AddMenuItem( fileMenu, wxID_EXIT,
                  _( "&Exit" ),
@@ -315,9 +323,14 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
                  _( "Select how items are displayed" ),
                  KiBitmap( contrast_mode_xpm ) );
 
-#ifdef __APPLE__
+    // Separator
     viewMenu->AppendSeparator();
-#endif
+
+    AddMenuItem( viewMenu,
+                 ID_MODEDIT_SHOW_HIDE_SEARCH_TREE,
+                 _( "&Search Tree" ),
+                 _( "Toggles the search tree visibility" ),
+                 KiBitmap( search_tree_xpm ), wxITEM_CHECK );
 
 
     //-------- Place menu --------------------

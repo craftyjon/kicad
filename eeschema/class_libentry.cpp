@@ -147,6 +147,15 @@ wxString LIB_ALIAS::GetUnitReference( int aUnit )
 }
 
 
+const EDA_RECT LIB_ALIAS::GetBoundingBox() const
+{
+    // a LIB_ALIAS does not really have a bounding box.
+    // return a 0 size rect.
+    EDA_RECT dummy;
+    return dummy;
+};
+
+
 wxString LIB_ALIAS::GetSearchText()
 {
     // Matches are scored by offset from front of string, so inclusion of this spacer
@@ -343,12 +352,7 @@ void LIB_PART::SetName( const wxString& aName )
     wxString validatedName = LIB_ID::FixIllegalChars( aName, LIB_ID::ID_SCH );
     m_libId.SetLibItemName( validatedName, false );
 
-    LIB_FIELD& valueField = GetValueField();
-
-    // LIB_FIELD::SetText() calls LIB_PART::SetName(),
-    // the following if-clause is to break an infinite loop
-    if( valueField.GetText() != validatedName )
-        valueField.SetText( validatedName );
+    GetValueField().SetText( validatedName );
 }
 
 

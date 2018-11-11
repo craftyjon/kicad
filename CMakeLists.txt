@@ -1,7 +1,7 @@
 #
 #  This program source code file is part of KICAD, a free EDA CAD application.
 #
-#  Copyright (C) 2007-2016 Kicad Developers, see AUTHORS.txt for contributors.
+#  Copyright (C) 2007-2018 Kicad Developers, see AUTHORS.txt for contributors.
 #
 #  This program is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License
@@ -237,6 +237,12 @@ if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
     endif()
 endif()
 
+if( WIN32 )
+    # define UNICODE and_UNICODE definition on Windows. KiCad uses unicode.
+    # Both definitions are required
+    add_definitions(-DUNICODE -D_UNICODE)
+endif()
+
 
 #================================================
 # Provide access to CCACHE
@@ -315,13 +321,6 @@ if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
 
     if( MINGW )
         set( CMAKE_EXE_LINKER_FLAGS_RELEASE "-s" )
-
-        # _UNICODE definition seems needed under mingw/gcc 4.8
-        # (KiCad uses unicode, and on Windows, wxWidgets >= 2.9.4 is mandatory
-        # and uses unicode)
-        if( GCC_VERSION VERSION_EQUAL 4.8.0 OR GCC_VERSION VERSION_GREATER 4.8.0 )
-            add_definitions(-D_UNICODE)
-        endif()
 
         # Since version 2.8.5, Cmake uses a response file (.rsp) to
         # pass the list of include paths to gcc
@@ -571,40 +570,6 @@ include( ExternalProject )
 include( CheckFindPackageResult )
 
 #
-# Find wxWidgets library, required
-#
-
-# Here you can define what libraries of wxWidgets you need for your
-# application. You can figure out what libraries you need here;
-# http://www.wxwidgets.org/manuals/2.8/wx_librarieslist.html
-
-# Turn on wxWidgets compatibility mode for some classes
-add_definitions( -DWX_COMPATIBILITY )
-
-# See line 49 of CMakeModules/FindwxWidgets.cmake
-set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --static=no )
-
-find_package( wxWidgets 3.0.0 COMPONENTS gl aui adv html core net base xml stc REQUIRED )
-
-# Include wxWidgets macros.
-include( ${wxWidgets_USE_FILE} )
-
-# Check the toolkit used to build wxWidgets
-execute_process(
-    COMMAND sh "${wxWidgets_CONFIG_EXECUTABLE}"
-        ${wxWidgets_CONFIG_OPTIONS} --query-toolkit
-    RESULT_VARIABLE wxWidgets_TOOLKIT_RESULT
-    OUTPUT_VARIABLE wxWidgets_TOOLKIT_FOUND
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-if( wxWidgets_TOOLKIT_FOUND STREQUAL "gtk3" )
-    message( WARNING "\nwxWidgets library has been built against GTK3, it causes a lot of problems in KiCad" )
-    add_definitions( -DUSE_WX_GRAPHICS_CONTEXT )
-    add_definitions( -DWXGTK3 )
-endif()
-
-#
 # Find OpenGL library, required
 #
 set( OpenGL_GL_PREFERENCE "LEGACY" )     # CMake 3.11+ setting; see 'cmake --help-policy CMP0072'
@@ -645,10 +610,16 @@ find_package( Boost 1.54.0 REQUIRED COMPONENTS regex )
 # Include MinGW resource compiler.
 include( MinGWResourceCompiler )
 
-# Find GDI+ on windows if wxGraphicsContext is available.
-if( MINGW AND USE_WX_GRAPHICS_CONTEXT )
-    find_package( GdiPlus )
-    check_find_package_result( GDI_PLUS_FOUND "GDI+" )
+# Find GDI+ on windows if wxGraphicsContext is available, and only link gdiplus library
+# if wxGraphicsContext not used, because the cairo printing system uses this library
+if( WIN32 )
+    if( USE_WX_GRAPHICS_CONTEXT )
+        find_package( GdiPlus )
+        check_find_package_result( GDI_PLUS_FOUND "GDI+" )
+    else()
+        # if WX_GRAPHICS_CONTEXT is not used we just need the gdiplus library for cairo printing
+        set( GDI_PLUS_LIBRARIES gdiplus )
+    endif()
 endif()
 
 # Find ngspice library, required for integrated circuit simulator
@@ -757,90 +728,75 @@ if( KICAD_SCRIPTING OR KICAD_SCRIPTING_MODULES )
     endif()
 
     if( KICAD_SCRIPTING_WXPYTHON )
-        # Check to see if the correct version of wxPython is installed based on the version of
-        # wxWidgets found.  At least the major an minor version should match.
-        if( KICAD_SCRIPTING_WXPYTHON_PHOENIX )
-            set( _py_cmd "import wx;print(wx.version())" )
-            execute_process( COMMAND ${PYTHON_EXECUTABLE} -c "${_py_cmd}"
-                RESULT_VARIABLE WXPYTHON_VERSION_RESULT
-                OUTPUT_VARIABLE WXPYTHON_VERSION_FOUND
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-            )
-            # Check to see if any version of wxPython is installed on the system.
-            if( WXPYTHON_VERSION_RESULT GREATER 0 )
-                message( FATAL_ERROR "wxPython does not appear to be installed on the system." )
-            endif()
-            set( _wxpy_version ${WXPYTHON_VERSION_FOUND} )
-            set( _py_cmd "import wx;import re;print(re.search('wxWidgets ${wxWidgets_VERSION_MAJOR}.${wxWidgets_VERSION_MINOR}', wx.wxWidgets_version) != None)" )
-        else()
-            set( _wxpy_version "${wxWidgets_VERSION_MAJOR}.${wxWidgets_VERSION_MINOR}" )
-            set( _py_cmd "import wxversion;print(wxversion.checkInstalled('${_wxpy_version}'))" )
-        endif()
-
-
-        # Add user specified Python site package path.
-        if( PYTHON_SITE_PACKAGE_PATH )
-            set( _py_cmd
-                "import sys;sys.path.insert(0, \"${PYTHON_SITE_PACKAGE_PATH}\");${_py_cmd}" )
-        endif()
-
-        execute_process( COMMAND ${PYTHON_EXECUTABLE} -c "${_py_cmd}"
-            RESULT_VARIABLE WXPYTHON_VERSION_RESULT
-            OUTPUT_VARIABLE WXPYTHON_VERSION_FOUND
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            )
-
-        # message( STATUS "WXPYTHON_VERSION_FOUND: ${WXPYTHON_VERSION_FOUND}" )
-        # message( STATUS "WXPYTHON_VERSION_RESULT: ${WXPYTHON_VERSION_RESULT}" )
-
-        # Check to see if any version of wxPython is installed on the system.
-        if( WXPYTHON_VERSION_RESULT GREATER 0 )
-            message( FATAL_ERROR "wxPython does not appear to be installed on the system." )
-        endif()
-
-        if( NOT WXPYTHON_VERSION_FOUND STREQUAL "True" )
-            message( FATAL_ERROR
-                "wxPython version ${_wxpy_version} does not appear to be installed on the system." )
-        endif()
-
-        set( WXPYTHON_VERSION ${_wxpy_version} CACHE STRING "wxPython version found." )
-        message( STATUS "wxPython version ${_wxpy_version} found." )
-
-
-        # Compare wxPython and wxWidgets toolkits
-        set( _py_cmd "import wx; print(wx.version().split(' ')[1])" )
-
-        # Add user specified Python site package path.
-        if( PYTHON_SITE_PACKAGE_PATH )
-            set( _py_cmd
-                "import sys;sys.path.insert(0, \"${PYTHON_SITE_PACKAGE_PATH}\");${_py_cmd}" )
-        endif()
-
-        execute_process( COMMAND ${PYTHON_EXECUTABLE} -c "${_py_cmd}"
-            RESULT_VARIABLE WXPYTHON_TOOLKIT_RESULT
-            OUTPUT_VARIABLE WXPYTHON_TOOLKIT_FOUND
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-
-        # Check if wxWidgets toolkits match, it is a Linux-only issue
-        if( UNIX AND NOT APPLE AND NOT wxWidgets_TOOLKIT_FOUND STREQUAL WXPYTHON_TOOLKIT_FOUND )
-            message( FATAL_ERROR "\nwxWidgets and wxPython use different toolkits "
-                "(${wxWidgets_TOOLKIT_FOUND} vs ${WXPYTHON_TOOLKIT_FOUND}). "
-                "It will result in a broken build. Please either install wxPython built using "
-                "${wxWidgets_TOOLKIT_FOUND} or add '-DKICAD_SCRIPTING_WXPYTHON=OFF' to cmake "
-                "parameters to disable wxPython support." )
-        endif()
+        find_package( wxPython REQUIRED )
+        message( STATUS "Found ${WXPYTHON_FLAVOR} "
+            "${WXPYTHON_VERSION}/${WXPYTHON_TOOLKIT} "
+            "(wxWidgets ${WXPYTHON_WXVERSION})" )
     endif()
-
-    #message( STATUS "PYTHON_INCLUDE_DIRS:${PYTHON_INCLUDE_DIRS}" )
 
     # Infrequently needed headers go at end of search paths, append to INC_AFTER which
     # although is used for all components, should be a harmless hit for something like eeschema
     # so long as unused search paths are at the end like this.
     set( INC_AFTER ${INC_AFTER} ${PYTHON_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/scripting )
-
-    #message( STATUS "/ INC_AFTER:${INC_AFTER}" )
 endif()
+
+#
+# Find wxWidgets library, required
+#
+
+# Turn on wxWidgets compatibility mode for some classes
+add_definitions( -DWX_COMPATIBILITY )
+
+if( KICAD_SCRIPTING_WXPYTHON )
+    # Check if '--toolkit=xxx' option has been passed
+    string( REGEX MATCH "--toolkit=([a-zA-Z0-9]+)"
+        WXWIDGETS_REQUESTED_TOOLKIT "${wxWidgets_CONFIG_OPTIONS}" )
+
+    if( WXWIDGETS_REQUESTED_TOOLKIT
+            AND NOT WXWIDGETS_REQUESTED_TOOLKIT STREQUAL "--toolkit=${WXPYTHON_TOOLKIT}" )
+        message( WARNING "wxWidgets and wxPython must be based on the same toolkit.\n"
+            "It will be fixed automatically if you skip the '--toolkit=xxx' "
+            "wxWidgets_CONFIG_OPTIONS parameter.")
+    else()
+        # Use the same toolkit as wxPython otherwise there will be a symbol conflict
+        set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=${WXPYTHON_TOOLKIT}" )
+    endif()
+
+    # Require the same wxWidgets version as is used by wxPython
+    set( wxWidgets_REQ_VERSION ${WXPYTHON_WXVERSION} )
+else()
+    # Require wxWidgets 3.0.0 as the minimum when wxPython is disabled
+    set( wxWidgets_REQ_VERSION 3.0.0 )
+endif()
+
+# See line 49 of CMakeModules/FindwxWidgets.cmake
+set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --static=no )
+
+find_package( wxWidgets ${wxWidgets_REQ_VERSION} COMPONENTS gl aui adv html core net base xml stc REQUIRED )
+
+# Include wxWidgets macros.
+include( ${wxWidgets_USE_FILE} )
+
+
+if( KICAD_SCRIPTING_WXPYTHON AND NOT KICAD_SCRIPTING_WXPYTHON_PHOENIX )
+    # wxPython appears to be installed and valid so make sure the headers are available.
+    foreach( path ${wxWidgets_INCLUDE_DIRS} )
+        #message( STATUS "Searching for wx/wxPython/wxPython.h in ${path}" )
+
+        find_path( wxPYTHON_INCLUDE_DIRS wx/wxPython/wxPython.h
+            PATHS "${path}" )
+
+        if( wxPYTHON_INCLUDE_DIRS )
+            message( STATUS "Found wxPython.h in ${path}/wx/wxPython" )
+            break()
+        endif()
+    endforeach()
+
+    if( NOT wxPYTHON_INCLUDE_DIRS )
+        message( FATAL_ERROR "Cannot find wxPython.h" )
+    endif()
+endif()
+
 
 if( APPLE )
     # Remove app bundles in ${KICAD_BIN} before installing anything new.

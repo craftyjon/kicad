@@ -1258,7 +1258,7 @@ void SCH_EDIT_FRAME::OnOpenLibraryEditor( wxCommandEvent& event )
         if( !entry )     // Should not occur
             return;
 
-        libeditFrame->LoadComponentAndSelectLib( id );
+        libeditFrame->LoadComponentAndSelectLib( id, component->GetUnit(), component->GetConvert() );
     }
 
     SchematicCleanUp();
@@ -1574,15 +1574,14 @@ void SCH_EDIT_FRAME::ShowChangedLanguage()
     UpdateMsgPanel();
 }
 
+
 void SCH_EDIT_FRAME::SetScreen( BASE_SCREEN* aScreen )
 {
     EDA_DRAW_FRAME::SetScreen( aScreen );
     auto c = static_cast<SCH_DRAW_PANEL*>(m_canvas);
     c->DisplaySheet( static_cast<SCH_SCREEN*>( aScreen ) );
-    auto bb = c->GetView()->CalculateExtents() ;
-    BOX2D bb2 ( bb.GetOrigin(), bb.GetSize() );
-    c->GetView()->SetViewport( bb2 );
 }
+
 
 const BOX2I SCH_EDIT_FRAME::GetDocumentExtents() const
 {

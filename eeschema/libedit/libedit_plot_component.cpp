@@ -5,7 +5,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -35,6 +35,7 @@
 #include <gestfich.h>
 #include <eeschema_id.h>
 #include <sch_screen.h>
+#include <wildcards_and_files_ext.h>
 
 #include <general.h>
 #include <lib_edit_frame.h>
@@ -59,102 +60,80 @@ void LIB_EDIT_FRAME::OnPlotCurrentComponent( wxCommandEvent& event )
     switch( event.GetId() )
     {
     case ID_LIBEDIT_GEN_PNG_FILE:
-        {
-            bool       fmt_is_jpeg = false; // could be selectable later. so keep this option.
+    {
+        mask = wxT( "*." ) + file_ext;
+        wxFileName fn( part->GetName() );
+        fn.SetExt( "png" );
 
-            file_ext = fmt_is_jpeg ? wxT( "jpg" ) : wxT( "png" );
-            mask     = wxT( "*." ) + file_ext;
-            wxFileName fn( part->GetName() );
-            fn.SetExt( file_ext );
+        wxString projectPath = wxPathOnly( Prj().GetProjectFullName() );
 
-            wxString pro_dir = wxPathOnly( Prj().GetProjectFullName() );
+        wxFileDialog dlg( this, _( "Image File Name" ), projectPath,
+                          fn.GetFullName(), PngFileWildcard(), wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
 
-            fullFileName = EDA_FILE_SELECTOR( _( "Filename:" ), pro_dir,
-                                             fn.GetFullName(), file_ext, mask, this,
-                                             wxFD_SAVE, true );
+        if( dlg.ShowModal() == wxID_CANCEL || dlg.GetPath().IsEmpty() )
+            return;
 
-            if( fullFileName.IsEmpty() )
-                return;
-
-            // calling wxYield is mandatory under Linux, after closing the file selector dialog
-            // to refresh the screen before creating the PNG or JPEG image from screen
-            wxYield();
-            CreatePNGorJPEGFile( fullFileName, fmt_is_jpeg );
-        }
+        // calling wxYield is mandatory under Linux, after closing the file selector dialog
+        // to refresh the screen before creating the PNG or JPEG image from screen
+        wxYield();
+        CreateImageFile( dlg.GetPath(), wxBITMAP_TYPE_PNG );
+    }
         break;
 
     case ID_LIBEDIT_GEN_SVG_FILE:
-        {
-            file_ext = wxT( "svg" );
-            mask     = wxT( "*." ) + file_ext;
-            wxFileName fn( part->GetName() );
-            fn.SetExt( file_ext );
+    {
+        file_ext = wxT( "svg" );
+        mask     = wxT( "*." ) + file_ext;
+        wxFileName fn( part->GetName() );
+        fn.SetExt( file_ext );
 
-            wxString pro_dir = wxPathOnly( Prj().GetProjectFullName() );
+        wxString pro_dir = wxPathOnly( Prj().GetProjectFullName() );
 
-            fullFileName = EDA_FILE_SELECTOR( _( "Filename:" ), pro_dir,
-                                              fn.GetFullName(), file_ext, mask, this,
-                                              wxFD_SAVE, true );
+        fullFileName = EDA_FILE_SELECTOR( _( "Filename:" ), pro_dir,
+                                          fn.GetFullName(), file_ext, mask, this,
+                                          wxFD_SAVE, true );
 
-            if( fullFileName.IsEmpty() )
-                return;
+        if( fullFileName.IsEmpty() )
+            return;
 
-            PAGE_INFO pageSave = GetScreen()->GetPageSettings();
-            PAGE_INFO pageTemp = pageSave;
+        PAGE_INFO pageSave = GetScreen()->GetPageSettings();
+        PAGE_INFO pageTemp = pageSave;
 
-            wxSize componentSize = part->GetUnitBoundingBox( m_unit, m_convert ).GetSize();
+        wxSize componentSize = part->GetUnitBoundingBox( m_unit, m_convert ).GetSize();
 
-            // Add a small margin to the plot bounding box
-            pageTemp.SetWidthMils(  int( componentSize.x * 1.2 ) );
-            pageTemp.SetHeightMils( int( componentSize.y * 1.2 ) );
+        // Add a small margin to the plot bounding box
+        pageTemp.SetWidthMils(  int( componentSize.x * 1.2 ) );
+        pageTemp.SetHeightMils( int( componentSize.y * 1.2 ) );
 
-            GetScreen()->SetPageSettings( pageTemp );
-            SVG_PlotComponent( fullFileName );
-            GetScreen()->SetPageSettings( pageSave );
-        }
+        GetScreen()->SetPageSettings( pageTemp );
+        SVG_PlotComponent( fullFileName );
+        GetScreen()->SetPageSettings( pageSave );
+    }
         break;
     }
 }
 
 
-void LIB_EDIT_FRAME::CreatePNGorJPEGFile( const wxString& aFileName, bool aFmt_jpeg )
+void LIB_EDIT_FRAME::CreateImageFile( const wxString& aFileName, wxBitmapType aBitmapType )
 {
-    wxSize     image_size;
-    //fixme-gal do it properly
-
-// = m_canvas->GetClientSize();
-#if 0
-    wxClientDC dc( m_canvas );
-    wxBitmap   bitmap( image_size.x, image_size.y );
-    wxMemoryDC memdc;
-
-    memdc.SelectObject( bitmap );
-    memdc.Blit( 0, 0, image_size.x, image_size.y, &dc, 0, 0 );
-    memdc.SelectObject( wxNullBitmap );
-
-    wxImage image = bitmap.ConvertToImage();
-
-    if( !image.SaveFile( aFileName, aFmt_jpeg ? wxBITMAP_TYPE_JPEG : wxBITMAP_TYPE_PNG ) )
+    if( !saveCanvasImageToFile( aFileName, aBitmapType ) )
     {
         wxString msg;
-        msg.Printf( _( "Can't save file \"%s\"" ), GetChars( aFileName ) );
+        msg.Printf( _( "Can't save file \"%s\"." ), aFileName );
         wxMessageBox( msg );
     }
-
-    image.Destroy();
-    #endif
 }
 
 
 void LIB_EDIT_FRAME::SVG_PlotComponent( const wxString& aFullFileName )
 {
-    const bool plotBW = false;
+    const bool plotColor = true;
     const PAGE_INFO& pageInfo = GetScreen()->GetPageSettings();
 
     SVG_PLOTTER* plotter = new SVG_PLOTTER();
     plotter->SetPageSettings( pageInfo );
     plotter->SetDefaultLineWidth( GetDefaultLineThickness() );
-    plotter->SetColorMode( plotBW );
+    plotter->SetColorMode( plotColor );
 
     wxPoint plot_offset;
     const double scale = 1.0;
@@ -195,7 +174,8 @@ void LIB_EDIT_FRAME::SVG_PlotComponent( const wxString& aFullFileName )
     delete plotter;
 }
 
-void LIB_EDIT_FRAME::PrintPage( wxDC* aDC, LSET aPrintMask, bool aPrintMirrorMode, void* aData)
+
+void LIB_EDIT_FRAME::PrintPage( wxDC* aDC, LSET aPrintMask, bool aPrintMirrorMode, void* aData )
 {
     LIB_PART*      part = GetCurPart();
 
@@ -209,8 +189,8 @@ void LIB_EDIT_FRAME::PrintPage( wxDC* aDC, LSET aPrintMask, bool aPrintMirrorMod
      * So we must plot it with an offset = pagesize/2.
      */
     wxPoint plot_offset;
-    plot_offset.x = pagesize.x/2;
-    plot_offset.y = pagesize.y/2;
+    plot_offset.x = pagesize.x / 2;
+    plot_offset.y = pagesize.y / 2;
 
     part->Draw( m_canvas, aDC, plot_offset, m_unit, m_convert, PART_DRAW_OPTIONS::Default() );
 }

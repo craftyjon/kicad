@@ -752,8 +752,9 @@ void CINFO3D_VISU::AddShapeWithClearanceToContainer( const DRAWSEGMENT* aDrawSeg
                                                      PCB_LAYER_ID aLayerId,
                                                      int aClearanceValue )
 {
-    // The full width of the lines to create:
-    const int linewidth = aDrawSegment->GetWidth() + (2 * aClearanceValue);
+    // The full width of the lines to create
+    // The extra 1 protects the inner/outer radius values from degeneracy
+    const int linewidth = aDrawSegment->GetWidth() + (2 * aClearanceValue) + 1;
 
     switch( aDrawSegment->GetShape() )
     {
@@ -870,10 +871,11 @@ void CINFO3D_VISU::AddSolidAreasShapesToContainer( const ZONE_CONTAINER* aZoneCo
 
             if( Is_segment_a_circle( start3DU, end3DU ) )
             {
-                aDstContainer->Add( new CFILLEDCIRCLE2D( start3DU,
-                                                         (aZoneContainer->GetMinThickness() / 2) *
-                                                         m_biuTo3Dunits,
-                                                         *aZoneContainer ) );
+                float radius = (aZoneContainer->GetMinThickness() / 2) * m_biuTo3Dunits;
+
+                if( radius > 0.0 )  // degenerated circles crash 3D viewer
+                    aDstContainer->Add( new CFILLEDCIRCLE2D( start3DU, radius ,
+                                                             *aZoneContainer ) );
             }
             else
             {
@@ -899,11 +901,12 @@ void CINFO3D_VISU::AddSolidAreasShapesToContainer( const ZONE_CONTAINER* aZoneCo
 
                 if( Is_segment_a_circle( start3DU, end3DU ) )
                 {
-                    aDstContainer->Add(
-                                new CFILLEDCIRCLE2D( start3DU,
-                                                     (aZoneContainer->GetMinThickness() / 2) *
-                                                     m_biuTo3Dunits,
-                                                     *aZoneContainer ) );
+                    float radius = (aZoneContainer->GetMinThickness() / 2) * m_biuTo3Dunits;
+
+                    if( radius > 0.0 )  // degenerated circles crash 3D viewer
+                        aDstContainer->Add(
+                                    new CFILLEDCIRCLE2D( start3DU, radius,
+                                                         *aZoneContainer ) );
                 }
                 else
                 {

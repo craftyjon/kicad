@@ -53,6 +53,7 @@ BEGIN_EVENT_TABLE( KICAD_MANAGER_FRAME, EDA_BASE_FRAME )
     EVT_MENU( wxID_EXIT, KICAD_MANAGER_FRAME::OnExit )
     EVT_MENU( ID_TO_TEXT_EDITOR, KICAD_MANAGER_FRAME::OnOpenTextEditor )
     EVT_MENU( ID_BROWSE_AN_SELECT_FILE, KICAD_MANAGER_FRAME::OnOpenFileInTextEditor )
+    EVT_MENU( ID_BROWSE_IN_FILE_EXPLORER, KICAD_MANAGER_FRAME::OnBrowseInFileExplorer )
     EVT_MENU( ID_PREFERENCES_CONFIGURE_PATHS, KICAD_MANAGER_FRAME::OnConfigurePaths )
     EVT_MENU( ID_EDIT_SYMBOL_LIBRARY_TABLE, KICAD_MANAGER_FRAME::OnEditSymLibTable )
     EVT_MENU( ID_EDIT_FOOTPRINT_LIBRARY_TABLE, KICAD_MANAGER_FRAME::OnEditFpLibTable )
@@ -319,6 +320,14 @@ void KICAD_MANAGER_FRAME::ReCreateMenuBar()
                  _( "Edit local file" ),
                  KiBitmap( browse_files_xpm ) );
 
+    // Browse in file explorer
+    browseMenu->AppendSeparator();
+    AddMenuItem( browseMenu,
+                ID_BROWSE_IN_FILE_EXPLORER,
+                _( "&Browse Project Files" ),
+                _( "Open project directory in file explorer" ),
+                KiBitmap( directory_browser_xpm ) );
+
     // Menu Preferences:
     wxMenu* preferencesMenu = new wxMenu;
 
@@ -498,6 +507,12 @@ void KICAD_MANAGER_FRAME::RecreateBaseHToolbar()
     m_mainToolBar->AddTool( ID_PROJECT_TREE_REFRESH, wxEmptyString,
                             KiScaledBitmap( reload_xpm, this ),
                             _( "Refresh project tree" ) );
+
+    // Acces to the system file manager
+    KiScaledSeparator( m_mainToolBar, this );
+    m_mainToolBar->AddTool( ID_BROWSE_IN_FILE_EXPLORER, wxEmptyString,
+                            KiScaledBitmap( directory_browser_xpm, this ),
+                            _( "Open project directory in file explorer" ) );
 
     // Create m_mainToolBar
     m_mainToolBar->Realize();

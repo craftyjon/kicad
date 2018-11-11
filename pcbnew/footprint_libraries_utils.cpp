@@ -428,8 +428,12 @@ wxString PCB_BASE_EDIT_FRAME::CreateNewLibrary(const wxString& aLibName )
     {
         fn = initialPath;
 
-        if( !LibraryFileBrowser( false, fn, KiCadFootprintLibPathWildcard(), KiCadFootprintLibPathExtension ) )
+        if( !LibraryFileBrowser( false, fn,
+                                 KiCadFootprintLibPathWildcard(), KiCadFootprintLibPathExtension,
+                                 true ) )
+        {
             return wxEmptyString;
+        }
 
         doAdd = true;
     }
@@ -509,8 +513,12 @@ bool PCB_BASE_EDIT_FRAME::AddLibrary( const wxString& aFilename )
 
     if( aFilename.IsEmpty() )
     {
-        if( !LibraryFileBrowser( true, fn, KiCadFootprintLibPathWildcard(), KiCadFootprintLibPathExtension ) )
+        if( !LibraryFileBrowser( true, fn,
+                                 KiCadFootprintLibPathWildcard(), KiCadFootprintLibPathExtension,
+                                 true ) )
+        {
             return false;
+        }
     }
 
     wxString libPath = fn.GetFullPath();
@@ -712,9 +720,17 @@ bool FOOTPRINT_EDIT_FRAME::SaveFootprint( MODULE* aModule )
         else
             return false;
     }
-
-    if( libraryName.IsEmpty() || footprintName.IsEmpty() )
-        return SaveFootprintAs( aModule );
+    else if( libraryName.IsEmpty() || footprintName.IsEmpty() )
+    {
+        if( SaveFootprintAs( aModule ) )
+        {
+            m_footprintNameWhenLoaded = footprintName;
+            SyncLibraryTree( true );
+            return true;
+        }
+        else
+            return false;
+    }
 
     FP_LIB_TABLE* tbl = Prj().PcbFootprintLibs();
 
@@ -963,8 +979,6 @@ bool FOOTPRINT_EDIT_FRAME::SaveFootprintAs( MODULE* aModule )
     if( !saveFootprintInLibrary( aModule, libraryName ) )
         return false;
 
-    m_footprintNameWhenLoaded = footprintName;
-
     // Once saved-as a board footprint is no longer a board footprint
     aModule->SetLink( 0 );
 
@@ -974,8 +988,6 @@ bool FOOTPRINT_EDIT_FRAME::SaveFootprintAs( MODULE* aModule )
     wxString msg = wxString::Format( fmt, footprintName.GetData(), libraryName.GetData() );
     SetStatusText( msg );
     updateTitle();
-
-    SyncLibraryTree( true );
 
     return true;
 }

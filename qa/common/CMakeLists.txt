@@ -19,11 +19,7 @@
 # or you may write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 
-find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 find_package( wxWidgets 3.0.0 COMPONENTS gl aui adv html core net base xml stc REQUIRED )
-
-
-add_definitions(-DBOOST_TEST_DYN_LINK)
 
 add_executable( qa_common
     # This is needed for the global mock objects
@@ -32,7 +28,16 @@ add_executable( qa_common
     # The main test entry points
     test_module.cpp
 
+    # stuff from common due to...units?
+    ../../common/eda_text.cpp
+
+    # stuff from common which is needed...why?
+    ../../common/colors.cpp
+    ../../common/observable.cpp
+
+    test_color4d.cpp
     test_hotkey_store.cpp
+    test_title_block.cpp
     test_utf8.cpp
 
     geometry/test_fillet.cpp
@@ -42,15 +47,23 @@ include_directories(
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/polygon
-    ${Boost_INCLUDE_DIR}
+    ${INC_AFTER}
 )
 
 target_link_libraries( qa_common
     common
+    legacy_gal
     polygon
     bitmaps
-    ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+    gal
+    qa_utils
+    unit_test_utils
     ${wxWidgets_LIBRARIES}
+)
+
+# we need to pretend to be something to appease the units code
+target_compile_definitions( qa_common
+    PRIVATE GERBVIEW
 )
 
 add_test( NAME common

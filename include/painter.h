@@ -195,6 +195,11 @@ public:
     virtual const COLOR4D& GetBackgroundColor() = 0;
 
     /**
+     * Sets the background color.
+     */
+    virtual void SetBackgroundColor( const COLOR4D& aColor ) = 0;
+
+    /**
      * Function GetGridColor
      * Returns current grid color settings.
      */
@@ -232,6 +237,16 @@ public:
     virtual bool IsBackgroundDark() const
     {
         return false;
+    }
+
+    /**
+     * Set line width used for drawing outlines.
+     *
+     * @param aWidth is the new width.
+     */
+    void SetOutlineWidth( float aWidth )
+    {
+        m_outlineWidth = aWidth;
     }
 
 protected:

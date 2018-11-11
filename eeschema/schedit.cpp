@@ -144,6 +144,7 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
 
     case wxID_PASTE:
+    case ID_POPUP_PASTE_BLOCK:
         HandleBlockBegin( nullptr, BLOCK_PASTE, GetCrossHairPosition() );
         break;
 
@@ -486,6 +487,8 @@ void SCH_EDIT_FRAME::OnMoveItem( wxCommandEvent& aEvent )
         if( (item == NULL) || (item->GetFlags() != 0) )
             return;
     }
+
+    GetCanvas()->GetViewControls()->WarpCursor( GetCrossHairPosition(), true );
 
     switch( item->Type() )
     {
@@ -844,6 +847,9 @@ void SCH_EDIT_FRAME::PrepareMoveItem( SCH_ITEM* aItem )
             SetUndoItem( aItem );
     }
 
+    std::vector<DANGLING_END_ITEM> emptySet;
+    aItem->UpdateDanglingState( emptySet );
+
     aItem->SetFlags( IS_MOVED );
 
     if( aItem->Type() == SCH_FIELD_T && aItem->GetParent()->Type() == SCH_COMPONENT_T )
@@ -925,9 +931,7 @@ void SCH_EDIT_FRAME::OnRotate( wxCommandEvent& aEvent )
     if( block.GetState() != STATE_NO_BLOCK )
     {
         // Compute the rotation center and put it on grid:
-        wxPoint rotationPoint = block.Centre();
-        rotationPoint = GetNearestGridPosition( rotationPoint );
-        SetCrossHairPosition( rotationPoint );
+        wxPoint rotationPoint = GetNearestGridPosition( block.Centre() );
 
         if( block.GetCommand() != BLOCK_DUPLICATE )
         {
@@ -1251,6 +1255,7 @@ void SCH_EDIT_FRAME::OnDragItem( wxCommandEvent& aEvent )
     case SCH_GLOBAL_LABEL_T:
     case SCH_HIERARCHICAL_LABEL_T:
     case SCH_SHEET_T:
+    case SCH_TEXT_T:
         m_canvas->MoveCursorToCrossHair();
 
         if( screen->m_BlockLocate.GetState() == STATE_NO_BLOCK )

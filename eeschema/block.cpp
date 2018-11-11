@@ -126,7 +126,7 @@ void SCH_EDIT_FRAME::HandleBlockPlace( wxDC* DC )
             m_canvas->CallMouseCapture( DC, wxDefaultPosition, false );
 
         // If the block wasn't changed, don't update the schematic
-        if( block->GetMoveVector() == wxPoint( 0, 0 ) )
+        if( block->GetMoveVector() == wxPoint( 0, 0 ) && !block->AppendUndo() )
         {
             // This calls the block-abort command routine on cleanup
             m_canvas->EndMouseCapture( GetToolId(), GetGalCanvas()->GetCurrentCursor() );
@@ -254,6 +254,24 @@ bool SCH_EDIT_FRAME::HandleBlockEnd( wxDC* aDC )
                 nextcmd = true;
                 block->SetState( STATE_BLOCK_MOVE );
 
+                if( block->GetCommand() != BLOCK_DRAG && block->GetCommand() != BLOCK_DRAG_ITEM )
+                {
+                    // Mark dangling pins at the edges of the block:
+                    std::vector<DANGLING_END_ITEM> internalPoints;
+
+                    for( unsigned i = 0; i < block->GetCount(); ++i )
+                    {
+                        auto item = static_cast<SCH_ITEM*>( block->GetItem( i ) );
+                        item->GetEndPoints( internalPoints );
+                    }
+
+                    for( unsigned i = 0; i < block->GetCount(); ++i )
+                    {
+                        auto item = static_cast<SCH_ITEM*>( block->GetItem( i ) );
+                        item->UpdateDanglingState( internalPoints );
+                    }
+                }
+
                 m_canvas->SetMouseCaptureCallback( DrawMovingBlockOutlines );
                 m_canvas->CallMouseCapture( aDC, wxDefaultPosition, false );
             }
@@ -369,6 +387,18 @@ void SCH_EDIT_FRAME::copyBlockItems( PICKED_ITEMS_LIST& aItemsList, const wxPoin
 {
     m_blockItems.ClearListAndDeleteItems();   // delete previous saved list, if exists
 
+    wxRect bounds;
+
+    if( aItemsList.GetCount() > 0 )
+        bounds = aItemsList.GetPickedItem( 0 )->GetBoundingBox();
+
+    for( unsigned i = 1; i < aItemsList.GetCount(); ++i )
+        bounds.Union( aItemsList.GetPickedItem( i )->GetBoundingBox() );
+
+    wxPoint center( ( bounds.GetLeft() + bounds.GetRight() ) / 2,
+                    ( bounds.GetTop() + bounds.GetBottom() ) / 2 );
+    center = GetNearestGridPosition( center );
+
     for( unsigned ii = 0; ii < aItemsList.GetCount(); ii++ )
     {
         // Clear m_Flag member of selected items:
@@ -378,7 +408,7 @@ void SCH_EDIT_FRAME::copyBlockItems( PICKED_ITEMS_LIST& aItemsList, const wxPoin
         SCH_ITEM* copy = DuplicateStruct( (SCH_ITEM*) aItemsList.GetPickedItem( ii ) );
         copy->SetParent( NULL );
         copy->SetFlags( copy->GetFlags() | UR_TRANSIENT );
-        copy->Move( aMoveVector );
+        copy->Move( -center );
         ITEM_PICKER item( copy, UR_NEW );
 
         m_blockItems.PushItem( item );

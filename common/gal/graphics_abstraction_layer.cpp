@@ -34,9 +34,6 @@
 using namespace KIGFX;
 
 
-const double GAL::METRIC_UNIT_LENGTH = 1e9;
-
-
 GAL::GAL( GAL_DISPLAY_OPTIONS& aDisplayOptions ) :
     options( aDisplayOptions ),
     strokeFont( this )
@@ -48,19 +45,22 @@ GAL::GAL( GAL_DISPLAY_OPTIONS& aDisplayOptions ) :
     SetStrokeColor( COLOR4D( 1.0, 1.0, 1.0, 1.0 ) );
     SetLookAtPoint( VECTOR2D( 0, 0 ) );
     SetZoomFactor( 1.0 );
-    SetWorldUnitLength( 1.0 / METRIC_UNIT_LENGTH * 2.54 );   // 1 inch in nanometers
-    SetScreenDPI( 106 );                                     // Display resolution setting
+    SetRotation( 0.0 );
+    SetWorldUnitLength( 1e-9 /* 1 nm */ / 0.0254 /* 1 inch in meters */ );
+    // wxDC::GetPPI() reports 96 DPI, but somehow this value
+    // is the closest match to the legacy renderer
+    SetScreenDPI( 91 );
     SetDepthRange( VECTOR2D( GAL::MIN_DEPTH, GAL::MAX_DEPTH ) );
     SetLayerDepth( 0.0 );
     SetFlip( false, false );
-    SetLineWidth( 1.0 );
+    SetLineWidth( 1.0f );
     computeWorldScale();
     SetAxesEnabled( false );
 
     // Set grid defaults
     SetGridVisibility( true );
     SetCoarseGrid( 10 );
-    gridLineWidth = 0.5;
+    gridLineWidth = 0.5f;
     gridStyle = GRID_STYLE::LINES;
     gridMinSpacing = 10;
 
@@ -178,18 +178,19 @@ void GAL::ComputeWorldScreenMatrix()
 {
     computeWorldScale();
 
-    worldScreenMatrix.SetIdentity();
-
     MATRIX3x3D translation;
     translation.SetIdentity();
     translation.SetTranslation( 0.5 * VECTOR2D( screenSize ) );
+
+    MATRIX3x3D rotate;
+    rotate.SetIdentity();
+    rotate.SetRotation( rotation );
 
     MATRIX3x3D scale;
     scale.SetIdentity();
     scale.SetScale( VECTOR2D( worldScale, worldScale ) );
 
     MATRIX3x3D flip;
-
     flip.SetIdentity();
     flip.SetScale( VECTOR2D( globalFlipX ? -1.0 : 1.0, globalFlipY ? -1.0 : 1.0 ) );
 
@@ -197,7 +198,7 @@ void GAL::ComputeWorldScreenMatrix()
     lookat.SetIdentity();
     lookat.SetTranslation( -lookAtPoint );
 
-    worldScreenMatrix = translation * flip * scale * lookat * worldScreenMatrix;
+    worldScreenMatrix = translation * rotate * flip * scale * lookat;
     screenWorldMatrix = worldScreenMatrix.Inverse();
 }
 
@@ -229,8 +230,8 @@ void GAL::DrawGrid()
     // Note: generic grids can't handle sub-pixel lines without
     // either losing fine/course distinction or having some dots
     // fail to render
-    double marker = std::max( 1.0, gridLineWidth ) / worldScale;
-    double doubleMarker = 2.0 * marker;
+    float marker = std::fmax( 1.0f, gridLineWidth ) / worldScale;
+    float doubleMarker = 2.0f * marker;
 
     // Draw axes if desired
     if( axesEnabled )

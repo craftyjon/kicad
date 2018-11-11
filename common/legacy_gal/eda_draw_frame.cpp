@@ -35,7 +35,7 @@
 #include <bitmaps.h>
 #include <macros.h>
 #include <id.h>
-#include <legacy_gal/class_drawpanel.h>
+#include <class_drawpanel.h>
 #include <base_screen.h>
 #include <msgpanel.h>
 #include <draw_frame.h>
@@ -77,16 +77,6 @@ static const wxString traceScrollSettings( wxT( "KicadScrollSettings" ) );
 
 ///@{
 /// \ingroup config
-
-/// User units
-static const wxString UserUnitsEntryKeyword( wxT( "Units" ) );
-static const wxString FpEditorUserUnitsEntryKeyword( wxT( "FpEditorUnits" ) );
-/// Nonzero to show grid (suffix)
-static const wxString ShowGridEntryKeyword( wxT( "ShowGrid" ) );
-/// Grid color ID (suffix)
-static const wxString GridColorEntryKeyword( wxT( "GridColor" ) );
-/// Most recently used grid size (suffix)
-static const wxString LastGridSizeIdKeyword( wxT( "_LastGridSize" ) );
 
 const wxChar EDA_DRAW_FRAME::CANVAS_TYPE_KEY[] = wxT( "canvas_type" );
 
@@ -283,6 +273,7 @@ void EDA_DRAW_FRAME::unitsChangeRefresh()
     UpdateMsgPanel();
 }
 
+
 void EDA_DRAW_FRAME::CommonSettingsChanged()
 {
     EDA_BASE_FRAME::CommonSettingsChanged();
@@ -357,6 +348,7 @@ void EDA_DRAW_FRAME::OnToggleGridState( wxCommandEvent& aEvent )
 
     m_canvas->Refresh();
 }
+
 
 bool EDA_DRAW_FRAME::GetToolToggled( int aToolId )
 {
@@ -473,7 +465,9 @@ bool EDA_DRAW_FRAME::OnHotKey( wxDC* aDC, int aHotKey, const wxPoint& aPosition,
     return false;
 }
 
-int EDA_DRAW_FRAME::WriteHotkeyConfig( struct EDA_HOTKEY_CONFIG* aDescList, wxString* aFullFileName )
+
+int EDA_DRAW_FRAME::WriteHotkeyConfig( struct EDA_HOTKEY_CONFIG* aDescList,
+                                       wxString* aFullFileName )
 {
     int result = EDA_BASE_FRAME::WriteHotkeyConfig( aDescList, aFullFileName );
 
@@ -482,6 +476,7 @@ int EDA_DRAW_FRAME::WriteHotkeyConfig( struct EDA_HOTKEY_CONFIG* aDescList, wxSt
 
     return result;
 }
+
 
 void EDA_DRAW_FRAME::ToolOnRightClick( wxCommandEvent& event )
 {
@@ -644,6 +639,7 @@ void EDA_DRAW_FRAME::SetNoToolSelected()
     SetToolID( ID_NO_TOOL_SELECTED, defaultCursor, wxEmptyString );
 }
 
+
 wxPoint EDA_DRAW_FRAME::GetGridPosition( const wxPoint& aPosition ) const
 {
     wxPoint pos = aPosition;
@@ -753,6 +749,7 @@ void EDA_DRAW_FRAME::UpdateStatusBar()
     DisplayUnitsMsg();
 }
 
+
 const wxString EDA_DRAW_FRAME::GetZoomLevelIndicator() const
 {
     wxString Line;
@@ -760,10 +757,7 @@ const wxString EDA_DRAW_FRAME::GetZoomLevelIndicator() const
 
     if( IsGalCanvasActive() )
     {
-        KIGFX::GAL* gal = m_galCanvas->GetGAL();
-        KIGFX::VIEW* view = m_galCanvas->GetView();
-        double zoomFactor = gal->GetWorldScale() / gal->GetZoomFactor();
-        level = m_zoomLevelCoeff * zoomFactor * view->GetScale();
+        level = m_galCanvas->GetGAL()->GetZoomFactor();
     }
     else if( BASE_SCREEN* screen = GetScreen() )
     {
@@ -886,6 +880,7 @@ void EDA_DRAW_FRAME::UpdateMsgPanel()
         SetMsgPanel( item );
 }
 
+
 // FIXME: There needs to be a better way for child windows to load preferences.
 //        This function pushes four preferences from a parent window to a child window
 //        i.e. from eeschema to the schematic symbol editor
@@ -894,6 +889,7 @@ void EDA_DRAW_FRAME::PushPreferences( const EDA_DRAW_PANEL* aParentCanvas )
     m_canvas->SetEnableZoomNoCenter( aParentCanvas->GetEnableZoomNoCenter() );
     m_canvas->SetEnableAutoPan( aParentCanvas->GetEnableAutoPan() );
 }
+
 
 bool EDA_DRAW_FRAME::HandleBlockBegin( wxDC* aDC, EDA_KEY aKey, const wxPoint& aPosition,
        int aExplicitCommand )
@@ -987,8 +983,7 @@ void EDA_DRAW_FRAME::AdjustScrollBars( const wxPoint& aCenterPositionIU )
 
 void EDA_DRAW_FRAME::UseGalCanvas( bool aEnable )
 {
-    KIGFX::VIEW* view = GetGalCanvas()->GetView();
-    KIGFX::GAL* gal = GetGalCanvas()->GetGAL();
+    EDA_DRAW_PANEL_GAL* galCanvas = GetGalCanvas();
 
     // Display the same view after canvas switching
     if( aEnable )
@@ -997,19 +992,19 @@ void EDA_DRAW_FRAME::UseGalCanvas( bool aEnable )
         if( !m_galCanvasActive )
         {
             // Set up viewport
-            double zoomFactor = gal->GetWorldScale() / gal->GetZoomFactor();
-            double zoom = 1.0 / ( zoomFactor * m_canvas->GetZoom() );
-            view->SetScale( zoom );
+            KIGFX::VIEW* view = galCanvas->GetView();
+            view->SetScale( GetZoomLevelCoeff() / m_canvas->GetZoom() );
             view->SetCenter( VECTOR2D( m_canvas->GetScreenCenterLogicalPosition() ) );
         }
 
         // Transfer EDA_DRAW_PANEL settings
-        GetGalCanvas()->GetViewControls()->EnableCursorWarping( !m_canvas->GetEnableZoomNoCenter() );
-        GetGalCanvas()->GetViewControls()->EnableMousewheelPan( m_canvas->GetEnableMousewheelPan() );
-        GetGalCanvas()->GetViewControls()->EnableAutoPan( m_canvas->GetEnableAutoPan() );
+        KIGFX::VIEW_CONTROLS* viewControls = galCanvas->GetViewControls();
+        viewControls->EnableCursorWarping( !m_canvas->GetEnableZoomNoCenter() );
+        viewControls->EnableMousewheelPan( m_canvas->GetEnableMousewheelPan() );
+        viewControls->EnableAutoPan( m_canvas->GetEnableAutoPan() );
     }
 
-    GetGalCanvas()->SetEvtHandlerEnabled( aEnable );
+    galCanvas->SetEvtHandlerEnabled( aEnable );
 
     // Reset current tool on switch();
     SetNoToolSelected();
@@ -1099,7 +1094,8 @@ wxPoint EDA_DRAW_FRAME::GetCursorPosition( bool aOnGrid, wxRealPoint* aGridSize 
 }
 
 
-wxPoint EDA_DRAW_FRAME::GetNearestGridPosition( const wxPoint& aPosition, wxRealPoint* aGridSize ) const
+wxPoint EDA_DRAW_FRAME::GetNearestGridPosition( const wxPoint& aPosition,
+                                                wxRealPoint* aGridSize ) const
 {
     BASE_SCREEN* screen = GetScreen();  // virtual call
     return screen->getNearestGridPosition( aPosition, GetGridOrigin(), aGridSize );
@@ -1169,6 +1165,7 @@ void EDA_DRAW_FRAME::RefreshCrossHair( const wxPoint &aOldPos,
     }
 #endif
 }
+
 
 bool EDA_DRAW_FRAME::GeneralControlKeyMovement( int aHotKey, wxPoint *aPos,
                                                 bool aSnapToGrid )
@@ -1279,10 +1276,12 @@ bool EDA_DRAW_FRAME::isBusy() const
            || ( screen->m_BlockLocate.GetState() != STATE_NO_BLOCK );
 }
 
+
 const BOX2I EDA_DRAW_FRAME::GetDocumentExtents() const
 {
     return BOX2I();
 }
+
 
 void EDA_DRAW_FRAME::RedrawScreen( const wxPoint& aCenterPoint, bool aWarpPointer )
 {
@@ -1555,6 +1554,7 @@ void EDA_DRAW_FRAME::AddMenuZoomAndGrid( wxMenu* MasterMenu )
     AddMenuItem( MasterMenu, ID_POPUP_CANCEL, _( "Close" ), KiBitmap( cancel_xpm ) );
 }
 
+
 static bool DrawPageOnClipboard( EDA_DRAW_FRAME* aFrame );
 
 
@@ -1752,28 +1752,46 @@ void EDA_DRAW_FRAME::DrawWorkSheet( wxDC* aDC, BASE_SCREEN* aScreen, int aLineWi
 
 wxString EDA_DRAW_FRAME::GetScreenDesc() const
 {
-    // Virtual function. In basic class, returns
-    // an empty string.
+    // Virtual function. Base class implementation returns an empty string.
     return wxEmptyString;
 }
 
 bool EDA_DRAW_FRAME::LibraryFileBrowser( bool doOpen, wxFileName& aFilename,
-                                         const wxString& wildcard, const wxString& ext )
+                                         const wxString& wildcard, const wxString& ext,
+                                         bool isDirectory )
 {
+    wxString prompt = doOpen ? _( "Select Library" ) : _( "New Library" );
     aFilename.SetExt( ext );
 
-    wxFileDialog dlg( this,
-                      doOpen ? _( "Select Library" ) : _( "New Library" ),
-                      Prj().GetProjectPath(),
-                      doOpen ? wxString( wxEmptyString ) : aFilename.GetFullName() ,
-                      wildcard,
-                      doOpen ? wxFD_OPEN | wxFD_FILE_MUST_EXIST : wxFD_SAVE | wxFD_CHANGE_DIR | wxFD_OVERWRITE_PROMPT );
+    if( isDirectory )
+    {
+        wxDirDialog dlg( this, prompt, Prj().GetProjectPath(),
+                         doOpen ? wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST : wxDD_DEFAULT_STYLE );
 
-    if( dlg.ShowModal() == wxID_CANCEL )
-        return false;
+        if( dlg.ShowModal() == wxID_CANCEL )
+            return false;
 
-    aFilename = dlg.GetPath();
-    aFilename.SetExt( ext );
+        aFilename = dlg.GetPath();
+        aFilename.SetExt( ext );
+    }
+    else
+    {
+        wxFileDialog dlg( this, prompt, Prj().GetProjectPath(), aFilename.GetFullName() ,
+                          wildcard, doOpen ? wxFD_OPEN | wxFD_FILE_MUST_EXIST
+                                           : wxFD_SAVE | wxFD_CHANGE_DIR | wxFD_OVERWRITE_PROMPT );
+
+        if( dlg.ShowModal() == wxID_CANCEL )
+            return false;
+
+        aFilename = dlg.GetPath();
+        aFilename.SetExt( ext );
+    }
 
     return true;
+}
+
+
+bool EDA_DRAW_FRAME::saveCanvasImageToFile( const wxString& aFileName, wxBitmapType aBitmapType )
+{
+    return SaveCanvasImageToFile( this, aFileName, aBitmapType );
 }

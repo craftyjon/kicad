@@ -99,6 +99,7 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_TOOL( ID_MODEDIT_SAVE_AS, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_REVERT_PART, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_OPEN_MODULE_VIEWER, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
+    EVT_TOOL( ID_MODEDIT_SAVE_PNG, FOOTPRINT_EDIT_FRAME::OnSaveFootprintAsPng )
 
     EVT_TOOL( ID_MODEDIT_CUT_PART, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_COPY_PART, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
@@ -133,6 +134,7 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
     // ID_TB_OPTIONS_SHOW_MODULE_TEXT_SKETCH id is managed in PCB_BASE_FRAME
     // ID_TB_OPTIONS_SHOW_MODULE_EDGE_SKETCH id is managed in PCB_BASE_FRAME
     EVT_TOOL( ID_TB_OPTIONS_SHOW_HIGH_CONTRAST_MODE, FOOTPRINT_EDIT_FRAME::OnSelectOptionToolbar )
+    EVT_TOOL( ID_MODEDIT_SHOW_HIDE_SEARCH_TREE, FOOTPRINT_EDIT_FRAME::OnToggleSearchTree )
 
     // Preferences and option menus
     EVT_MENU( ID_PREFERENCES_HOTKEY_SHOW_CURRENT_LIST,
@@ -199,6 +201,8 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
 
     // Option toolbar:
     EVT_UPDATE_UI( ID_TB_OPTIONS_SHOW_HIGH_CONTRAST_MODE,
+                   FOOTPRINT_EDIT_FRAME::OnUpdateOptionsToolbar )
+    EVT_UPDATE_UI( ID_MODEDIT_SHOW_HIDE_SEARCH_TREE,
                    FOOTPRINT_EDIT_FRAME::OnUpdateOptionsToolbar )
 
     EVT_UPDATE_UI( ID_GEN_IMPORT_DXF_FILE, FOOTPRINT_EDIT_FRAME::OnUpdateModuleSelected )
@@ -344,6 +348,21 @@ void FOOTPRINT_EDIT_FRAME::OnSwitchCanvas( wxCommandEvent& aEvent )
     // both layers and render columns, and and some settings dependent on the canvas.
     UpdateUserInterface();
 }
+
+
+void FOOTPRINT_EDIT_FRAME::OnToggleSearchTree( wxCommandEvent& event )
+{
+    auto& treePane = m_auimgr.GetPane( m_treePane );
+    treePane.Show( !IsSearchTreeShown() );
+    m_auimgr.Update();
+}
+
+
+bool FOOTPRINT_EDIT_FRAME::IsSearchTreeShown()
+{
+    return m_auimgr.GetPane( m_treePane ).IsShown();
+}
+
 
 BOARD_ITEM_CONTAINER* FOOTPRINT_EDIT_FRAME::GetModel() const
 {
@@ -575,6 +594,10 @@ void FOOTPRINT_EDIT_FRAME::OnUpdateOptionsToolbar( wxUpdateUIEvent& aEvent )
     {
     case ID_TB_OPTIONS_SHOW_HIGH_CONTRAST_MODE:
         state = displ_opts->m_ContrastModeDisplay;
+        break;
+
+    case ID_MODEDIT_SHOW_HIDE_SEARCH_TREE:
+        state = IsSearchTreeShown();
         break;
 
     default:
@@ -930,7 +953,8 @@ void FOOTPRINT_EDIT_FRAME::ProcessPreferences( wxCommandEvent& event )
         break;
 
     case wxID_PREFERENCES:
-        ShowPreferences( g_Pcbnew_Editor_Hotkeys_Descr, g_Module_Editor_Hotkeys_Descr, wxT( "pcbnew" ) );
+        ShowPreferences( g_Pcbnew_Editor_Hotkeys_Descr, g_Module_Editor_Hotkeys_Descr,
+                         wxT( "pcbnew" ) );
         break;
 
     default:
@@ -1040,3 +1064,32 @@ void FOOTPRINT_EDIT_FRAME::UpdateMsgPanel()
         ClearMsgPanel();
 }
 
+
+void FOOTPRINT_EDIT_FRAME::OnSaveFootprintAsPng( wxCommandEvent& event )
+{
+    wxString   fullFileName;
+
+    LIB_ID id = GetLoadedFPID();
+
+    if( id.empty() )
+    {
+        wxMessageBox( _( "No footprint selected." ) );
+        return;
+    }
+
+    wxFileName fn( id.GetLibItemName() );
+    fn.SetExt( "png" );
+
+    wxString projectPath = wxPathOnly( Prj().GetProjectFullName() );
+
+    wxFileDialog dlg( this, _( "Footprint Image File Name" ), projectPath,
+                      fn.GetFullName(), PngFileWildcard(), wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
+
+    if( dlg.ShowModal() == wxID_CANCEL || dlg.GetPath().IsEmpty() )
+        return;
+
+    // calling wxYield is mandatory under Linux, after closing the file selector dialog
+    // to refresh the screen before creating the PNG or JPEG image from screen
+    wxYield();
+    saveCanvasImageToFile( dlg.GetPath() );
+}

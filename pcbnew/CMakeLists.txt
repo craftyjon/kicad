@@ -129,10 +129,7 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_pns_settings_base.cpp
     dialogs/dialog_position_relative.cpp
     dialogs/dialog_position_relative_base.cpp
-    dialogs/dialog_print_for_modedit.cpp
-    dialogs/dialog_print_for_modedit_base.cpp
-    dialogs/dialog_print_using_printer.cpp
-    dialogs/dialog_print_using_printer_base.cpp
+    dialogs/dialog_print_pcbnew.cpp
     dialogs/dialog_select_net_from_list.cpp
     dialogs/dialog_select_net_from_list_base.cpp
     dialogs/dialog_set_grid.cpp
@@ -286,12 +283,11 @@ set( PCBNEW_CLASS_SRCS
 #    pcb_view.cpp
     pcb_edit_frame.cpp
     pcbnew_config.cpp
+    pcbnew_printout.cpp
     pcb_legacy_draw_utils.cpp
     pcbplot.cpp
     plot_board_layers.cpp
     plot_brditems_plotter.cpp
-    print_board_functions.cpp
-    printout_controler.cpp
     ratsnest.cpp
     specctra_import_export/specctra.cpp
     specctra_import_export/specctra_export.cpp

@@ -412,11 +412,6 @@ void SCH_PAINTER::draw( LIB_FIELD *aField, int aLayer )
 
     int linewidth = aField->GetPenSize();
 
-    if( aField->IsBold() )
-        linewidth = GetPenSizeForBold( aField->GetTextWidth() );
-
-    Clamp_Text_PenSize( linewidth, aField->GetTextSize(), aField->IsBold() );
-
     m_gal->SetLineWidth( linewidth );
     m_gal->SetIsFill( false );
     m_gal->SetIsStroke( true );
@@ -459,7 +454,7 @@ void SCH_PAINTER::draw( LIB_TEXT *aText, int aLayer )
             return;
     }
 
-    int w = aText->GetPenSize();
+    int linewidth = aText->GetPenSize();
     EDA_RECT bBox = aText->GetBoundingBox();
     bBox.RevertYAxis();
     VECTOR2D pos = mapCoords( bBox.Centre() );
@@ -467,7 +462,7 @@ void SCH_PAINTER::draw( LIB_TEXT *aText, int aLayer )
 
     m_gal->SetHorizontalJustify( GR_TEXT_HJUSTIFY_CENTER );
     m_gal->SetVerticalJustify( GR_TEXT_VJUSTIFY_CENTER );
-    m_gal->SetLineWidth( w );
+    m_gal->SetLineWidth( linewidth );
     m_gal->SetIsFill( false );
     m_gal->SetIsStroke( true );
     m_gal->SetStrokeColor( color );
@@ -530,7 +525,7 @@ void SCH_PAINTER::draw( LIB_PIN *aPin, int aLayer, bool isDangling, bool isMovin
         }
         else
         {
-            if( ( isDangling || isMoving ) && aPin->IsPowerConnection() )
+            if( isDangling && aPin->IsPowerConnection() )
                 drawPinDanglingSymbol( m_gal, pos, color );
 
             return;
@@ -652,7 +647,7 @@ void SCH_PAINTER::draw( LIB_PIN *aPin, int aLayer, bool isDangling, bool isMovin
                          pos + VECTOR2D( -1,  1 ) * TARGET_PIN_RADIUS );
     }
 
-    if( ( isDangling || isMoving ) && ( aPin->IsVisible() || aPin->IsPowerConnection() ) )
+    if( isDangling && ( aPin->IsVisible() || aPin->IsPowerConnection() ) )
         drawPinDanglingSymbol( m_gal, pos, color );
 
     // Draw the labels
@@ -1008,10 +1003,8 @@ void SCH_PAINTER::draw( SCH_TEXT *aText, int aLayer )
         drawDanglingSymbol( m_gal, aText->GetTextPos() );
 
     wxPoint  text_offset = aText->GetTextPos() + aText->GetSchematicTextOffset();
-    int      linewidth = aText->GetThickness() ? aText->GetThickness() : GetDefaultLineThickness();
+    int      linewidth = aText->GetPenSize();
     wxString shownText( aText->GetShownText() );
-
-    linewidth = Clamp_Text_PenSize( linewidth, aText->GetTextSize(), aText->IsBold() );
 
     if( !shownText.IsEmpty() )
     {
@@ -1113,11 +1106,8 @@ void SCH_PAINTER::draw( SCH_COMPONENT *aComp, int aLayer )
 
 void SCH_PAINTER::draw( SCH_FIELD *aField, int aLayer )
 {
-    int            orient;
     COLOR4D        color;
-    wxPoint        textpos;
     SCH_COMPONENT* parentComponent = (SCH_COMPONENT*) aField->GetParent();
-    int            lineWidth = aField->GetPenSize();
 
     switch( aField->GetId() )
     {
@@ -1126,7 +1116,7 @@ void SCH_PAINTER::draw( SCH_FIELD *aField, int aLayer )
     default:        color = m_schSettings.GetLayerColor( LAYER_FIELDS );        break;
     }
 
-    if( aField->IsMoving() )
+    if( aField->IsMoving() || ( aField->GetParent() && aField->GetParent()->IsMoving() ) )
         color = selectedBrightening( color );
 
     if( !aField->IsVisible() )
@@ -1140,14 +1130,8 @@ void SCH_PAINTER::draw( SCH_FIELD *aField, int aLayer )
     if( aField->IsVoid() )
         return;
 
-    if( aField->IsBold() )
-        lineWidth = GetPenSizeForBold( aField->GetTextWidth() );
-
-    // Clip pen size for small texts:
-    lineWidth = Clamp_Text_PenSize( lineWidth, aField->GetTextSize(), aField->IsBold() );
-
     // Calculate the text orientation according to the component orientation.
-    orient = (int) aField->GetTextAngle();
+    int orient = (int) aField->GetTextAngle();
 
     if( parentComponent->GetTransform().y1 )  // Rotate component 90 degrees.
     {
@@ -1169,7 +1153,8 @@ void SCH_PAINTER::draw( SCH_FIELD *aField, int aLayer )
      * and use GetBoundaryBox to know the text coordinate considered as centered
      */
     EDA_RECT boundaryBox = aField->GetBoundingBox();
-    textpos = boundaryBox.Centre();
+    wxPoint textpos = boundaryBox.Centre();
+    int lineWidth = aField->GetPenSize();
 
     m_gal->SetHorizontalJustify( GR_TEXT_HJUSTIFY_CENTER );
     m_gal->SetVerticalJustify( GR_TEXT_VJUSTIFY_CENTER );
