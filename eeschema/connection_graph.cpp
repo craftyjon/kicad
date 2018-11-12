@@ -774,6 +774,54 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         auto sheet = subgraph->m_sheet;
         auto connection = std::make_shared<SCH_CONNECTION>( *subgraph->m_driver->Connection( sheet ) );
 
+        // Collapse power nets that are shorted together
+        if( subgraph->m_multiple_power_ports )
+        {
+            // std::cout << "SG with multiple power ports: " << connection->Name() << std::endl;
+
+            for( auto obj : subgraph->m_drivers )
+            {
+                if( obj == subgraph->m_driver )
+                    continue;
+
+                auto power_object = dynamic_cast<SCH_PIN_CONNECTION*>( obj );
+
+                wxASSERT( power_object );
+
+                auto name = power_object->GetDefaultNetName( subgraph->m_sheet );
+                int code = -1;
+
+                try
+                {
+                    code = m_net_name_to_code_map.at( name );
+                }
+                catch( const std::out_of_range& oor )
+                {
+                    continue;
+                }
+
+                // std::cout << "Updating power net " << name << " with code " << code << std::endl;
+
+                for( auto subgraph_to_update : m_subgraphs )
+                {
+                    if( !subgraph_to_update->m_driver )
+                        continue;
+
+                    auto subsheet = subgraph_to_update->m_sheet;
+                    auto conn = subgraph_to_update->m_driver->Connection( subsheet );
+
+                    if( conn->IsBus() || conn->NetCode() != code )
+                        continue;
+
+                    for( auto item : subgraph_to_update->m_items )
+                    {
+                        auto item_conn = item->Connection( subsheet );
+                        item_conn->Clone( *connection );
+                    }
+                }
+            }
+        }
+
         /**
          * Is this bus in the highest level of hierarchy? That is, does it
          * contain no hierarchical ports to parent sheets?  If so, we process it
@@ -1013,61 +1061,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         }
 
         subgraph->m_dirty = false;
-    }
-
-    // Collapse power nets that are connected
-    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
-    {
-        auto subgraph = *it;
-        auto driver = subgraph->m_driver;
-        auto connection = driver->Connection( subgraph->m_sheet );
-
-        if( subgraph->m_multiple_power_ports )
-        {
-            // std::cout << "SG with multiple power ports: " << connection->Name() << std::endl;
-
-            for( auto obj : subgraph->m_drivers )
-            {
-                if( obj == subgraph->m_driver )
-                    continue;
-
-                auto power_object = dynamic_cast<SCH_PIN_CONNECTION*>( obj );
-
-                wxASSERT( power_object );
-
-                auto name = power_object->GetDefaultNetName( subgraph->m_sheet );
-                int code = -1;
-
-                try
-                {
-                    code = m_net_name_to_code_map.at( name );
-                }
-                catch( const std::out_of_range& oor )
-                {
-                    continue;
-                }
-
-                // std::cout << "Updating power net " << name << " with code " << code << std::endl;
-
-                for( auto subgraph_to_update : m_subgraphs )
-                {
-                    if( !subgraph_to_update->m_driver )
-                        continue;
-
-                    auto sheet = subgraph_to_update->m_sheet;
-                    auto conn = subgraph_to_update->m_driver->Connection( sheet );
-
-                    if( conn->IsBus() || conn->NetCode() != code )
-                        continue;
-
-                    for( auto item : subgraph_to_update->m_items )
-                    {
-                        auto item_conn = item->Connection( sheet );
-                        item_conn->Clone( *connection );
-                    }
-                }
-            }
-        }
     }
 
     m_net_code_to_subgraphs_map.clear();
