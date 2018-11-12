@@ -49,8 +49,8 @@ class CONNECTION_SUBGRAPH
 {
 public:
     CONNECTION_SUBGRAPH( SCH_EDIT_FRAME* aFrame ) :
-        m_dirty( false ), m_code( -1 ), m_no_connect( nullptr ),
-        m_driver( nullptr ), m_frame( aFrame )
+        m_dirty( false ), m_code( -1 ), m_multiple_power_ports( false ),
+        m_no_connect( nullptr ), m_driver( nullptr ), m_frame( aFrame )
     {}
     /**
      * Determines which potential driver should drive the subgraph.
@@ -74,6 +74,9 @@ public:
     bool m_dirty;
 
     long m_code;
+
+    /// True if this subgraph contains multiple power ports to join in one net
+    bool m_multiple_power_ports;
 
     /// No-connect item in graph, if any
     SCH_ITEM* m_no_connect;

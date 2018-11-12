@@ -108,7 +108,19 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
         m_driver = candidates[0];
     }
 
-    if( aCreateMarkers && candidates.size() > 1 && highest_priority > 1 )
+    // For power connections, we allow multiple drivers
+    if( highest_priority == 5 && candidates.size() > 1 &&
+        candidates[0]->Type() == SCH_PIN_CONNECTION_T )
+    {
+        auto pc = static_cast<SCH_PIN_CONNECTION*>( candidates[0] );
+
+        wxASSERT( pc->m_pin->IsPowerConnection() );
+
+        m_multiple_power_ports = true;
+    }
+
+    if( aCreateMarkers && !m_multiple_power_ports &&
+        candidates.size() > 1 && highest_priority > 1 )
     {
         wxString msg;
         msg.Printf( _( "%s and %s are both attached to the same wires. "
@@ -142,6 +154,14 @@ wxString CONNECTION_SUBGRAPH::GetNetName()
 {
     if( !m_driver || m_dirty )
         return "";
+
+    if( !m_driver->Connection( m_sheet ) )
+    {
+        std::cout << "Warning: no connection for "
+                  << m_driver->GetSelectMenuText( MILLIMETRES ) << " on sheet "
+                  << m_sheet.PathHumanReadable() << std::endl;
+        return "";
+    }
 
     return m_driver->Connection( m_sheet )->Name();
 }
@@ -222,6 +242,8 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
 {
     unordered_map< wxPoint, vector<SCH_ITEM*> > connection_map;
 
+    std::cout << "updateItemConnectivity " << aSheet.PathHumanReadable() << std::endl;
+
     for( auto item : aItemList )
     {
         vector< wxPoint > points;
@@ -261,6 +283,7 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
 
                 // because calling the first time is not thread-safe
                 pin_connection->GetDefaultNetName( aSheet );
+                pin_connection->ConnectedItems().clear();
 
                 connection_map[ pos ].push_back( pin_connection );
                 m_items.push_back( pin_connection );
@@ -307,7 +330,7 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
         }
     }
 
-    for( auto& it : connection_map )
+    for( auto it : connection_map )
     {
         auto connection_vec = it.second;
         SCH_ITEM* junction = nullptr;
@@ -435,10 +458,16 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
     for( auto item : m_items )
     {
+        if(debug)
+            std::cout << "processing " << item->GetSelectMenuText(MILLIMETRES) << std::endl;
+
         for( auto it : item->m_connection_map )
         {
             const auto sheet = it.first;
             auto connection = it.second;
+
+            if(debug)
+                std::cout << "sheet: " << sheet.PathHumanReadable() << " connection " << connection->Name() << std::endl;
 
             if( connection->SubgraphCode() == 0 )
             {
@@ -479,6 +508,9 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
                 for( auto connected_item : members )
                 {
+                    if( debug )
+                        std::cout << "testing connected item: " << connected_item->GetSelectMenuText( MILLIMETRES ) << std::endl;
+
                     if( !connected_item->Connection( sheet ) )
                         connected_item->InitializeConnection( sheet );
 
@@ -495,7 +527,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                         subgraph->m_items.push_back( connected_item );
 
                         if( debug )
-                            std::cout << "   +" << connected_item << " " << connected_item->GetSelectMenuText( m_frame->GetUserUnits() ) << std::endl;
+                            std::cout << "   +" << connected_item << " " << connected_item->GetSelectMenuText( MILLIMETRES ) << std::endl;
 
                         if( connected_conn->IsDriver() )
                             subgraph->m_drivers.push_back( connected_item );
@@ -839,12 +871,15 @@ void CONNECTION_GRAPH::buildConnectionGraph()
          *     3)  Recurse down onto any subsheets connected to the SSSG.
          */
 
+        if( debug )
+        {
+            std::cout << "Propagating connections to subsheets for " << connection->Name() << std::endl;
+        }
+
         for( auto item : subgraph->m_items )
         {
             if( item->Type() == SCH_SHEET_PIN_T )
             {
-                subgraph->m_dirty = false;
-
                 auto sp = static_cast<SCH_SHEET_PIN*>( item );
                 auto sp_name = sp->GetText();
                 auto subsheet = sheet;
@@ -865,6 +900,12 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                             // We found a subgraph that is a subsheet child of
                             // our top-level subgraph, so let's mark it
 
+                            if( debug )
+                            {
+                                std::cout << "Processing " << driver->Connection( subsheet )->Name()
+                                    << " on " << subsheet.PathHumanReadable() << std::endl;
+                            }
+
                             candidate->m_dirty = false;
 
                             auto type = driver->Connection( subsheet )->Type();
@@ -883,7 +924,17 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                                     continue;
                                 }
 
+                                if( debug )
+                                {
+                                    std::cout << "Updating SG member " << c_item->GetSelectMenuText( MILLIMETRES ) << std::endl;
+                                }
+
                                 c->Clone( *connection );
+                            }
+
+                            if( debug )
+                            {
+                                std::cout << "SG neighbor count: " << candidate->m_neighbor_map.size() << std::endl;
                             }
 
                             // Now propagate to subsheet neighbors
@@ -932,6 +983,12 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
                                 wxASSERT( top_level_conn );
 
+                                if( debug )
+                                {
+                                    std::cout << "Member " << member->Name()
+                                        << " mapped to " << top_level_conn->Name() << std::endl;
+                                }
+
                                 for( auto neighbor : kv.second )
                                 {
                                     for( auto n_item : neighbor->m_items )
@@ -939,6 +996,11 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                                         auto c = n_item->Connection( subsheet );
 
                                         wxASSERT( c );
+
+                                        if( debug )
+                                        {
+                                            std::cout << "Updating sg neighbor " << n_item->GetSelectMenuText( MILLIMETRES ) << std::endl;
+                                        }
 
                                         c->Clone( *top_level_conn );
                                     }
@@ -953,6 +1015,61 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         subgraph->m_dirty = false;
     }
 
+    // Collapse power nets that are connected
+    for( auto it = m_subgraphs.begin(); it < m_subgraphs.end(); it++ )
+    {
+        auto subgraph = *it;
+        auto driver = subgraph->m_driver;
+        auto connection = driver->Connection( subgraph->m_sheet );
+
+        if( subgraph->m_multiple_power_ports )
+        {
+            // std::cout << "SG with multiple power ports: " << connection->Name() << std::endl;
+
+            for( auto obj : subgraph->m_drivers )
+            {
+                if( obj == subgraph->m_driver )
+                    continue;
+
+                auto power_object = dynamic_cast<SCH_PIN_CONNECTION*>( obj );
+
+                wxASSERT( power_object );
+
+                auto name = power_object->GetDefaultNetName( subgraph->m_sheet );
+                int code = -1;
+
+                try
+                {
+                    code = m_net_name_to_code_map.at( name );
+                }
+                catch( const std::out_of_range& oor )
+                {
+                    continue;
+                }
+
+                // std::cout << "Updating power net " << name << " with code " << code << std::endl;
+
+                for( auto subgraph_to_update : m_subgraphs )
+                {
+                    if( !subgraph_to_update->m_driver )
+                        continue;
+
+                    auto sheet = subgraph_to_update->m_sheet;
+                    auto conn = subgraph_to_update->m_driver->Connection( sheet );
+
+                    if( conn->IsBus() || conn->NetCode() != code )
+                        continue;
+
+                    for( auto item : subgraph_to_update->m_items )
+                    {
+                        auto item_conn = item->Connection( sheet );
+                        item_conn->Clone( *connection );
+                    }
+                }
+            }
+        }
+    }
+
     m_net_code_to_subgraphs_map.clear();
 
     for( auto subgraph : m_subgraphs )
@@ -960,11 +1077,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         if( !subgraph->m_driver )
             continue;
 
-        // TODO(JE) ERC error?
         if( subgraph->m_dirty )
         {
-            std::cout << "subgraph is still dirty after bus propagation!" << std::endl;
-            //wxASSERT(false);
+            std::cout << "subgraph " << subgraph->m_code << " is still dirty after bus propagation!" << std::endl;
+            subgraph->m_dirty = false;
         }
 
         if( subgraph->m_driver->Connection( subgraph->m_sheet )->IsBus() )

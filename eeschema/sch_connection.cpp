@@ -211,7 +211,7 @@ void SCH_CONNECTION::Clone( SCH_CONNECTION& aOther )
     m_members = aOther.Members();
     m_net_code = aOther.NetCode();
     m_bus_code = aOther.BusCode();
-    m_subgraph_code = aOther.SubgraphCode();
+    //m_subgraph_code = aOther.SubgraphCode();
     m_vector_start = aOther.VectorStart();
     m_vector_end = aOther.VectorEnd();
     m_vector_index = aOther.VectorIndex();
