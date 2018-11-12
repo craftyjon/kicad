@@ -415,11 +415,6 @@ bool SCH_TEXT::UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList )
                 AddConnectionTo( sch_item );
                 sch_item->AddConnectionTo( this );
             }
-            else
-            {
-                m_connectionType = CONNECTION_NONE;
-                m_connected_items.clear();
-            }
         }
             break;
 
@@ -430,6 +425,9 @@ bool SCH_TEXT::UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList )
         if( !m_isDangling )
             break;
     }
+
+    if( m_isDangling )
+        m_connectionType = CONNECTION_NONE;
 
     return previousState != m_isDangling;
 }
