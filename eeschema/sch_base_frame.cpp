@@ -471,7 +471,7 @@ void SCH_BASE_FRAME::CenterScreen( const wxPoint& aCenterPoint, bool aWarpPointe
     GetCanvas()->GetView()->SetCenter( aCenterPoint );
 
     if( aWarpPointer )
-        GetCanvas()->GetViewControls()->WarpCursor( aCenterPoint );
+        GetCanvas()->GetViewControls()->WarpCursor( aCenterPoint, true );
 
     GetGalCanvas()->Refresh();
 }
