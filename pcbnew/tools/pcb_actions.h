@@ -389,6 +389,9 @@ public:
     static TOOL_ACTION autoplaceOffboardComponents;
     static TOOL_ACTION autoplaceSelectedComponents;
 
+    // convert tool
+    static TOOL_ACTION convertLinesToPoly;
+
     ///> @copydoc COMMON_ACTIONS::TranslateLegacyId()
     virtual OPT<TOOL_EVENT> TranslateLegacyId( int aId ) override;
 
