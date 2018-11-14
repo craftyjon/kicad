@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2013 Wayne Stambaugh <stambaughw@verizon.net>
  * Copyright (C) 2004-2013 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2018 CERN
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
