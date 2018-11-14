@@ -829,6 +829,7 @@ static void abortMoveItem( EDA_DRAW_PANEL* aPanel, wxDC* aDC )
             parent->RefreshItem( currentItem );
     }
 
+    screen->TestDanglingEnds();
     aPanel->Refresh();
 }
 
