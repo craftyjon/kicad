@@ -1029,7 +1029,16 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                                     top_level_conn = connection;
                                 }
 
-                                wxASSERT( top_level_conn );
+                                // If top_level_conn was not found, probably it's
+                                // an ERC error and will be caught by ERC
+
+                                if( !top_level_conn )
+                                {
+                                    if( debug )
+                                        std::cout << "No top level connection found" << std::endl;
+
+                                    continue;
+                                }
 
                                 if( debug )
                                 {
