@@ -22,13 +22,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <set>
-
 #include <bitmaps.h>
 #include <board_commit.h>
 #include <class_board.h>
 #include <class_drawsegment.h>
 #include <class_zone.h>
+#include <collectors.h>
 #include <confirm.h>
 #include <menus_helpers.h>
 #include <tool/tool_manager.h>
@@ -41,11 +40,24 @@
 
 #include "convert_tool.h"
 
+/**
+ * Conversions to support:
+ *
+ * Lines, tracks to (graphic) polygon, zone, keepout
+ *
+ * Polygon/zone/keepout to lines, tracks
+ *
+ * Graphic arc, graphic circle to tracks (approximation)
+ *
+ * Graphic circle to zone/keepout (approximation) maybe?
+ * Or just add support for round zones/keepouts
+ */
+
 // TODO: Icons
 TOOL_ACTION PCB_ACTIONS::convertLinesToPoly( "pcbnew.Convert.convertLinesToPoly",
         AS_GLOBAL, 0,
         _( "Lines to Polygon" ),
-        _( "Converts selcted lines to a polygon" ), align_items_top_xpm );
+        _( "Converts selcted lines to a polygon" ), add_graphical_polygon_xpm );
 
 CONVERT_TOOL::CONVERT_TOOL() :
     TOOL_INTERACTIVE( "pcbnew.Convert" ), m_selectionTool( NULL ),
@@ -92,35 +104,81 @@ int CONVERT_TOOL::LinesToPoly( const TOOL_EVENT& aEvent )
         {
             EditToolSelectionFilter( aCollector,
                                      EXCLUDE_LOCKED | EXCLUDE_TRANSIENTS );
+
+
+            for( int i = aCollector.GetCount() - 1; i >= 0; --i )
+            {
+                auto item = aCollector[i];
+
+                if( item->Type() != PCB_LINE_T )
+                    aCollector.Remove( item );
+            }
         } );
 
     BOARD_COMMIT commit( m_frame );
-
-    std::set<wxPoint> points;
-
-    // TODO: smart point order sorting
-    for( auto item : selection.GetItems() )
-    {
-        if( auto line = dynamic_cast<DRAWSEGMENT*>( item ) )
-        {
-            points.insert( line->GetStart() );
-            points.insert( line->GetEnd() );
-
-            commit.Remove( line );
-        }
-    }
-
-    // TODO: smarter layer selection?
-    PCB_LAYER_ID layer = m_frame->GetActiveLayer();
 
     SHAPE_POLY_SET polySet;
 
     polySet.NewOutline();
 
-    for( auto point : points )
+    auto items = selection.GetItems();
+
+    while( !items.empty() )
     {
-        polySet.Append( VECTOR2I( point ) );
+        if( polySet.VertexCount() == 0 )
+        {
+            auto line = static_cast<DRAWSEGMENT*>( items.back() );
+            items.pop_back();
+
+            polySet.Append( VECTOR2I( line->GetStart() ) );
+            polySet.Append( VECTOR2I( line->GetEnd() ) );
+
+            commit.Remove( line );
+        }
+        else
+        {
+            auto testPoint = polySet.Vertex( polySet.VertexCount() - 1 );
+            bool found = false;
+            BOARD_ITEM* toRemove = nullptr;
+
+            for( auto next : items )
+            {
+                auto nextLine = static_cast<DRAWSEGMENT*>( next );
+
+                if( testPoint == nextLine->GetStart() )
+                    polySet.Append( VECTOR2I( nextLine->GetEnd() ) );
+                else if( testPoint == nextLine->GetEnd() )
+                    polySet.Append( VECTOR2I( nextLine->GetStart() ) );
+                else
+                    continue;
+
+                found = true;
+                commit.Remove( nextLine );
+                toRemove = nextLine;
+            }
+
+            if( toRemove )
+                items.erase( std::remove( items.begin(), items.end(), toRemove ), items.end() );
+
+            if( !found )
+                break;
+        }
     }
+
+    if( polySet.Vertex( polySet.VertexCount() - 1 ) == polySet.Vertex( 0 ) )
+        polySet.RemoveVertex( polySet.VertexCount() - 1 );
+
+    if( polySet.VertexCount() < 3 )
+    {
+        commit.Revert();
+
+        // TODO(JE) some kind of error feedback to the user
+
+        return 0;
+    }
+
+    // TODO: smarter layer selection?
+    PCB_LAYER_ID layer = m_frame->GetActiveLayer();
 
     auto poly = new DRAWSEGMENT;
 
