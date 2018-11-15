@@ -157,9 +157,10 @@ wxString CONNECTION_SUBGRAPH::GetNetName()
 
     if( !m_driver->Connection( m_sheet ) )
     {
-        std::cout << "Warning: no connection for "
-                  << m_driver->GetSelectMenuText( MILLIMETRES ) << " on sheet "
-                  << m_sheet.PathHumanReadable() << std::endl;
+        #ifdef CONNECTIVITY_DEBUG
+        wxASSERT_MSG( false, "Tried to get the net name of an item with no connection" );
+        #endif
+
         return "";
     }
 
@@ -208,7 +209,9 @@ void CONNECTION_GRAPH::Reset()
 
 void CONNECTION_GRAPH::Recalculate( SCH_SHEET_LIST aSheetList )
 {
+#ifdef CONNECTIVITY_DEBUG
     PROF_COUNTER phase1;
+#endif
 
     for( const auto& sheet : aSheetList )
     {
@@ -226,8 +229,10 @@ void CONNECTION_GRAPH::Recalculate( SCH_SHEET_LIST aSheetList )
         updateItemConnectivity( sheet, items );
     }
 
+#ifdef CONNECTIVITY_DEBUG
     phase1.Stop();
     std::cout << "UpdateItemConnectivity() " << phase1.msecs() << " ms" << std::endl;
+#endif
 
     // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
     SCH_SCREENS schematic;
@@ -241,8 +246,6 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
                                                vector<SCH_ITEM*> aItemList )
 {
     unordered_map< wxPoint, vector<SCH_ITEM*> > connection_map;
-
-    std::cout << "updateItemConnectivity " << aSheet.PathHumanReadable() << std::endl;
 
     for( auto item : aItemList )
     {
@@ -437,8 +440,9 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
 
 void CONNECTION_GRAPH::buildConnectionGraph()
 {
-    bool debug = false;
+#ifdef CONNECTIVITY_DEBUG
     PROF_COUNTER phase2;
+#endif
 
     // Recache all bus aliases for later use
 
@@ -458,16 +462,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
     for( auto item : m_items )
     {
-        if(debug)
-            std::cout << "processing " << item->GetSelectMenuText(MILLIMETRES) << std::endl;
-
         for( auto it : item->m_connection_map )
         {
             const auto sheet = it.first;
             auto connection = it.second;
-
-            if(debug)
-                std::cout << "sheet: " << sheet.PathHumanReadable() << " connection " << connection->Name() << std::endl;
 
             if( connection->SubgraphCode() == 0 )
             {
@@ -477,14 +475,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                 subgraph->m_sheet = sheet;
 
                 subgraph->m_items.push_back( item );
-
-                if( debug )
-                {
-                    std::cout << "SG " << subgraph->m_code << " started with "
-                              << item << " "
-                              << item->GetSelectMenuText( m_frame->GetUserUnits() )
-                              << std::endl;
-                }
 
                 if( connection->IsDriver() )
                     subgraph->m_drivers.push_back( item );
@@ -508,9 +498,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
                 for( auto connected_item : members )
                 {
-                    if( debug )
-                        std::cout << "testing connected item: " << connected_item->GetSelectMenuText( MILLIMETRES ) << std::endl;
-
                     if( !connected_item->Connection( sheet ) )
                         connected_item->InitializeConnection( sheet );
 
@@ -525,9 +512,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                     {
                         connected_conn->SetSubgraphCode( subgraph->m_code );
                         subgraph->m_items.push_back( connected_item );
-
-                        if( debug )
-                            std::cout << "   +" << connected_item << " " << connected_item->GetSelectMenuText( MILLIMETRES ) << std::endl;
 
                         if( connected_conn->IsDriver() )
                             subgraph->m_drivers.push_back( connected_item );
@@ -662,23 +646,11 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                 m_bus_name_to_code_map[ name ] = code;
             }
 
-            if( debug )
-            {
-                std::cout << "SG " << subgraph->m_code << " got buscode " << code
-                          << " with name " << name << std::endl;
-            }
-
             connection->SetBusCode( code );
         }
         else
         {
-            code = assignNewNetCode( *connection );
-
-            if( debug )
-            {
-                std::cout << "SG " << subgraph->m_code << " got netcode " << code
-                          << " with name " << name << std::endl;
-            }
+            assignNewNetCode( *connection );
         }
 
         for( auto item : subgraph->m_items )
@@ -753,11 +725,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                     continue;
 
                 if( candidate_connection->Name( false ) == member->Name( false ) )
-                {
-                    // std::cout << member->Name() << ": adding link from SG" <<
-                    //     subgraph->m_code << " to " << candidate->m_code << std::endl;
                     subgraph->m_neighbor_map[ member ].push_back( candidate );
-                }
             }
         }
     }
@@ -777,8 +745,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         // Collapse power nets that are shorted together
         if( subgraph->m_multiple_power_ports )
         {
-            // std::cout << "SG with multiple power ports: " << connection->Name() << std::endl;
-
             for( auto obj : subgraph->m_drivers )
             {
                 if( obj == subgraph->m_driver )
@@ -799,8 +765,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                 {
                     continue;
                 }
-
-                // std::cout << "Updating power net " << name << " with code " << code << std::endl;
 
                 for( auto subgraph_to_update : m_subgraphs )
                 {
@@ -870,11 +834,17 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                         if( candidate_net_code == 0 )
                             candidate_net_code = c;
                         else
-                            std::cout << "More than one net code for a neighbor!" << neighbor_conn->Name() << std::endl;
+                        {
+                            #ifdef CONNECTIVITY_DEBUG
+                            wxASSERT_MSG( false, "More than one net code for a neighbor!" );
+                            #endif
+                        }
                     }
                     catch( const std::out_of_range& oor )
                     {
-                        std::cout << "No net code found for " << neighbor_conn->Name() << std::endl;
+                        #ifdef CONNECTIVITY_DEBUG
+                        wxASSERT_MSG( false, "No net code found for an existing net" );
+                        #endif
                     }
 
                     member->SetNetCode( candidate_net_code );
@@ -919,11 +889,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
          *     3)  Recurse down onto any subsheets connected to the SSSG.
          */
 
-        if( debug )
-        {
-            std::cout << "Propagating connections to subsheets for " << connection->Name() << std::endl;
-        }
-
         for( auto item : subgraph->m_items )
         {
             if( item->Type() == SCH_SHEET_PIN_T )
@@ -948,12 +913,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                             // We found a subgraph that is a subsheet child of
                             // our top-level subgraph, so let's mark it
 
-                            if( debug )
-                            {
-                                std::cout << "Processing " << driver->Connection( subsheet )->Name()
-                                    << " on " << subsheet.PathHumanReadable() << std::endl;
-                            }
-
                             candidate->m_dirty = false;
 
                             auto type = driver->Connection( subsheet )->Type();
@@ -972,17 +931,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                                     continue;
                                 }
 
-                                if( debug )
-                                {
-                                    std::cout << "Updating SG member " << c_item->GetSelectMenuText( MILLIMETRES ) << std::endl;
-                                }
-
                                 c->Clone( *connection );
-                            }
-
-                            if( debug )
-                            {
-                                std::cout << "SG neighbor count: " << candidate->m_neighbor_map.size() << std::endl;
                             }
 
                             // Now propagate to subsheet neighbors
@@ -1006,9 +955,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                                             for( auto& sub_member : parent_member->Members() )
                                             {
                                                 if( sub_member->Name( true ) == member->Name( true ) )
-                                                {
                                                     top_level_conn = sub_member;
-                                                }
                                             }
                                         }
                                     }
@@ -1019,9 +966,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                                     for( auto parent_member : connection->Members() )
                                     {
                                         if( parent_member->VectorIndex() == member->VectorIndex() )
-                                        {
                                             top_level_conn = parent_member;
-                                        }
                                     }
                                 }
                                 else
@@ -1034,16 +979,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
                                 if( !top_level_conn )
                                 {
-                                    if( debug )
-                                        std::cout << "No top level connection found" << std::endl;
-
                                     continue;
-                                }
-
-                                if( debug )
-                                {
-                                    std::cout << "Member " << member->Name()
-                                        << " mapped to " << top_level_conn->Name() << std::endl;
                                 }
 
                                 for( auto neighbor : kv.second )
@@ -1053,11 +989,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                                         auto c = n_item->Connection( subsheet );
 
                                         wxASSERT( c );
-
-                                        if( debug )
-                                        {
-                                            std::cout << "Updating sg neighbor " << n_item->GetSelectMenuText( MILLIMETRES ) << std::endl;
-                                        }
 
                                         c->Clone( *top_level_conn );
                                     }
@@ -1081,7 +1012,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
         if( subgraph->m_dirty )
         {
-            std::cout << "subgraph " << subgraph->m_code << " is still dirty after bus propagation!" << std::endl;
             subgraph->m_dirty = false;
         }
 
@@ -1092,8 +1022,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         m_net_code_to_subgraphs_map[ code ].push_back( subgraph );
     }
 
+#ifdef CONNECTIVITY_DEBUG
     phase2.Stop();
     std::cout << "BuildConnectionGraph() " <<  phase2.msecs() << " ms" << std::endl;
+#endif
 }
 
 
@@ -1435,13 +1367,6 @@ bool CONNECTION_GRAPH::ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSub
             }
         }
     }
-#if defined(DEBUG)
-    else if( bus_entry )
-    {
-        std::cout << "Warning: bus entry at " << bus_entry->GetPosition()
-                  << " has no connected_bus_item" << std::endl;
-    }
-#endif
 
     if( conflict )
     {

@@ -29,6 +29,10 @@
 #include <sch_connection.h>
 #include <sch_item_struct.h>
 
+
+// Uncomment this line to enable connectivity debugging features
+#define CONNECTIVITY_DEBUG
+
 class SCH_EDIT_FRAME;
 
 

@@ -53,6 +53,7 @@
 #include <view/view.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <colors_design_settings.h>
+#include <connection_graph.h>
 
 #include "sch_painter.h"
 
@@ -145,8 +146,7 @@ bool SCH_PAINTER::Draw( const VIEW_ITEM *aItem, int aLayer )
 
     m_schSettings.ImportLegacyColors( nullptr );
 
-    // TODO(JE) Remove debugging code
-#ifdef DEBUG
+#ifdef CONNECTIVITY_DEBUG
 
     auto sch_item = dynamic_cast<SCH_ITEM*>( item );
     auto conn = sch_item ? sch_item->Connection( *g_CurrentSheet ) : nullptr;
@@ -163,6 +163,7 @@ bool SCH_PAINTER::Draw( const VIEW_ITEM *aItem, int aLayer )
         m_gal->SetGlyphSize( VECTOR2D( 20, 20 ) );
         m_gal->StrokeText( conn->Name( true ), pos, 0.0 );
     }
+
 #endif
 
 	switch( item->Type() )

@@ -63,8 +63,6 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
 
     if( !m_graph->UsesNewBusFeatures() )
     {
-        std::cout << "Schematic does not use new bus features; running netlist QC" << std::endl;
-
         m_use_graph = false;
         auto old_nets = makeListOfNets();
 
@@ -146,8 +144,6 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
                         if( difference.size() > 0 )
                         {
                             different = true;
-
-                            std::cout << "Difference in net " << net_name << std::endl;
                         }
                     }
                 }
@@ -155,13 +151,15 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
 
             if( !found )
             {
-                // std::cout << "Net " << net_name << " not found in old algorithm" << std::endl;
+                different = true;
             }
         }
 
         if( different )
         {
-            wxLogWarning( "New netlist algorithm is inconsistent with old!" );
+            wxLogWarning( "New netlist algorithm is inconsistent with old! "
+                          "Please contact Jon Evans <jon@craftyjon.com> "
+                          "to help debug this issue" );
 
             try
             {
