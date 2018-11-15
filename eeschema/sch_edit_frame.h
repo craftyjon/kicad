@@ -36,7 +36,6 @@
 #include <template_fieldnames.h>
 #include <block_commande.h>
 #include <sch_collectors.h>
-#include <connection_graph.h>
 #include <erc_settings.h>
 #include <sch_draw_panel.h>
 
@@ -68,6 +67,7 @@ class wxFindDialogEvent;
 class wxFindReplaceData;
 class SCHLIB_FILTER;
 class RESCUER;
+class CONNECTION_GRAPH;
 
 
 /// enum used in RotationMiroir()

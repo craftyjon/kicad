@@ -31,7 +31,7 @@
 
 
 // Uncomment this line to enable connectivity debugging features
-#define CONNECTIVITY_DEBUG
+//#define CONNECTIVITY_DEBUG
 
 class SCH_EDIT_FRAME;
 

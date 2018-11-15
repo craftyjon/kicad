@@ -31,6 +31,7 @@
 
 #include <sch_edit_frame.h>
 #include <xnode.h>
+#include <connection_graph.h>
 #include "netlist_exporter_kicad.h"
 
 bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigned aNetlistOptions )

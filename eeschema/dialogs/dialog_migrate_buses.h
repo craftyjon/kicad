@@ -23,10 +23,11 @@
 
 #include <vector>
 
-#include <connection_graph.h>
 #include <sch_edit_frame.h>
 
 #include <dialog_migrate_buses_base.h>
+
+class CONNECTION_SUBGRAPH;
 
 
 struct BUS_MIGRATION_STATUS

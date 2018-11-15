@@ -19,6 +19,7 @@
  */
 
 #include <sch_connection.h>
+#include <connection_graph.h>
 
 #include <dialog_migrate_buses.h>
 

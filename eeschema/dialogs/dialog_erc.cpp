@@ -48,6 +48,7 @@
 #include <sch_sheet.h>
 #include <lib_pin.h>
 #include <sch_component.h>
+#include <connection_graph.h>
 
 #include <dialog_erc.h>
 #include <erc.h>

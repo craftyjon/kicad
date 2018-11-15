@@ -53,6 +53,7 @@
 #include <dialog_symbol_remap.h>
 #include <dialog_migrate_buses.h>
 #include <worksheet_shape_builder.h>
+#include <connection_graph.h>
 
 
 bool SCH_EDIT_FRAME::SaveEEFile( SCH_SCREEN* aScreen, bool aSaveUnderNewName,
