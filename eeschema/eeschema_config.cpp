@@ -472,6 +472,7 @@ void SCH_EDIT_FRAME::LoadSettings( wxConfigBase* aCfg )
     settings->m_ShowHiddenText = false;
     settings->m_ShowHiddenPins = m_showAllPins;
     settings->SetShowPageLimits( m_showPageLimits );
+    settings->m_ShowUmbilicals = true;
 }
 
 
@@ -573,6 +574,7 @@ void LIB_EDIT_FRAME::LoadSettings( wxConfigBase* aCfg )
     // Hidden elements must be editable
     settings->m_ShowHiddenText = true;
     settings->m_ShowHiddenPins = true;
+    settings->m_ShowUmbilicals = false;
 }
 
 
