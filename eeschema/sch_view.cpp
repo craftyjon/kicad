@@ -44,6 +44,12 @@ namespace KIGFX {
 SCH_VIEW::SCH_VIEW( bool aIsDynamic ) :
     VIEW( aIsDynamic )
 {
+    // Set m_boundary to define the max working area size. The default value
+    // is acceptable for Pcbnew and Gerbview, but too large for Eeschema.
+    // So we have to use a smaller value.
+    // A better size could be a size depending on the worksheet size.
+    m_boundary.SetOrigin( -Millimeter2iu( 3200.0 ), -Millimeter2iu( 2000.0 ) );
+    m_boundary.SetSize( Millimeter2iu( 6400.0 ), Millimeter2iu( 4000.0 ) );
 }
 
 
@@ -52,14 +58,17 @@ SCH_VIEW::~SCH_VIEW()
 }
 
 
-void SCH_VIEW::DisplaySheet( SCH_SCREEN *aSheet )
+void SCH_VIEW::DisplaySheet( SCH_SCREEN *aScreen )
 {
 
-    for( auto item = aSheet->GetDrawItems(); item; item = item->Next() )
+    for( auto item = aScreen->GetDrawItems(); item; item = item->Next() )
         Add( item );
 
-    m_worksheet.reset( new KIGFX::WORKSHEET_VIEWITEM( 1, &aSheet->GetPageSettings(),
-                                                      &aSheet->GetTitleBlock() ) );
+    m_worksheet.reset( new KIGFX::WORKSHEET_VIEWITEM( 1, &aScreen->GetPageSettings(),
+                                                      &aScreen->GetTitleBlock() ) );
+    m_worksheet->SetSheetNumber( aScreen->m_ScreenNumber );
+    m_worksheet->SetSheetCount( aScreen->m_NumberOfScreens );
+
     m_selectionArea.reset( new KIGFX::PREVIEW::SELECTION_AREA( ) );
     m_preview.reset( new KIGFX::VIEW_GROUP () );
 

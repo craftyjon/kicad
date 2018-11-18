@@ -594,6 +594,8 @@ public:
      */
     virtual void OnSelectGrid( wxCommandEvent& event );
 
+    virtual void OnGridSettings( wxCommandEvent& event ) { };
+
     /**
      * Set the zoom factor when selected by the zoom list box in the main tool bar.
      *
@@ -613,6 +615,7 @@ public:
     void OnUpdateUndo( wxUpdateUIEvent& aEvent );
     void OnUpdateRedo( wxUpdateUIEvent& aEvent );
     void OnUpdateGrid( wxUpdateUIEvent& aEvent );
+    void OnUpdateSelectGrid( wxUpdateUIEvent& aEvent );
     void OnUpdateUnits( wxUpdateUIEvent& aEvent );
     void OnUpdateCrossHairStyle( wxUpdateUIEvent& aEvent );
 
@@ -708,6 +711,16 @@ public:
 
     /** Return the zoom level which displays the full page on screen */
     virtual double BestZoom() = 0;
+
+    /**
+     * Useful to focus on a particular location, in find functions
+     * Move the graphic cursor (crosshair cursor) at a given coordinate and reframes
+     * the drawing if the requested point is out of view or if center on location is requested.
+     * @param aPos is the point to go to.
+     * @param aWarpCursor is true if the pointer should be warped to the new position.
+     * @param aCenterView is true if the new cursor position should be centered on canvas.
+     */
+    void FocusOnLocation( const wxPoint& aPos, bool aWarpCursor = true, bool aCenterView = false );
 
     /**
      * @return The current zoom level.

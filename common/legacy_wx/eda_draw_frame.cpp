@@ -447,6 +447,29 @@ void EDA_DRAW_FRAME::OnUpdateGrid( wxUpdateUIEvent& aEvent )
 }
 
 
+void EDA_DRAW_FRAME::OnUpdateSelectGrid( wxUpdateUIEvent& aEvent )
+{
+    // No need to update the grid select box if it doesn't exist or the grid setting change
+    // was made using the select box.
+    if( m_gridSelectBox == NULL || m_auxiliaryToolBar == NULL )
+        return;
+
+    int select = wxNOT_FOUND;
+
+    for( size_t i = 0; i < GetScreen()->GetGridCount(); i++ )
+    {
+        if( GetScreen()->GetGridCmdId() == GetScreen()->GetGrid( i ).m_CmdId )
+        {
+            select = (int) i;
+            break;
+        }
+    }
+
+    if( select != m_gridSelectBox->GetSelection() )
+        m_gridSelectBox->SetSelection( select );
+}
+
+
 void EDA_DRAW_FRAME::OnUpdateCrossHairStyle( wxUpdateUIEvent& aEvent )
 {
     aEvent.Check( GetGalDisplayOptions().m_fullscreenCursor );
@@ -507,6 +530,23 @@ void EDA_DRAW_FRAME::OnSelectGrid( wxCommandEvent& event )
          */
         int index = m_gridSelectBox->GetSelection();
         wxASSERT( index != wxNOT_FOUND );
+
+        if( index == int( m_gridSelectBox->GetCount() - 2 ) )
+        {
+            // this is the separator
+            wxUpdateUIEvent dummy;
+            OnUpdateSelectGrid( dummy );
+            return;
+        }
+        else if( index == int( m_gridSelectBox->GetCount() - 1 ) )
+        {
+            wxUpdateUIEvent dummy;
+            OnUpdateSelectGrid( dummy );
+            wxCommandEvent dummy2;
+            OnGridSettings( dummy2 );
+            return;
+        }
+
         clientData = (int*) m_gridSelectBox->wxItemContainer::GetClientData( index );
 
         if( clientData != NULL )
@@ -519,15 +559,7 @@ void EDA_DRAW_FRAME::OnSelectGrid( wxCommandEvent& event )
 
     int idx = eventId - ID_POPUP_GRID_LEVEL_1000;
 
-    // Notify GAL
-    TOOL_MANAGER* mgr = GetToolManager();
-
-    if( mgr && IsGalCanvasActive() )
-    {
-        mgr->RunAction( "common.Control.gridPreset", true, idx );
-    }
-    else
-        SetPresetGrid( idx );
+    SetPresetGrid( idx );
 
     m_canvas->Refresh();
 }
@@ -1860,6 +1892,69 @@ void EDA_DRAW_FRAME::AddMenuZoomAndGrid( wxMenu* MasterMenu )
 
     MasterMenu->AppendSeparator();
     AddMenuItem( MasterMenu, ID_POPUP_CANCEL, _( "Close" ), KiBitmap( cancel_xpm ) );
+}
+
+
+// Find the first child dialog.
+wxWindow* findDialog( wxWindowList& aList )
+{
+    for( wxWindow* window : aList )
+    {
+        if( dynamic_cast<DIALOG_SHIM*>( window ) )
+            return window;
+    }
+    return NULL;
+}
+
+
+void EDA_DRAW_FRAME::FocusOnLocation( const wxPoint& aPos, bool aWarpCursor, bool aCenterView )
+{
+    if( IsGalCanvasActive() )
+    {
+        if( aCenterView )
+        {
+            wxWindow* dialog = findDialog( GetChildren() );
+
+            // If a dialog partly obscures the window, then center on the uncovered area.
+            if( dialog )
+            {
+                wxRect dialogRect( GetGalCanvas()->ScreenToClient( dialog->GetScreenPosition() ),
+                                   dialog->GetSize() );
+                GetGalCanvas()->GetView()->SetCenter( aPos, dialogRect );
+            }
+            else
+                GetGalCanvas()->GetView()->SetCenter( aPos );
+        }
+
+        if( aWarpCursor )
+            GetGalCanvas()->GetViewControls()->SetCursorPosition( aPos );
+        else
+            GetGalCanvas()->GetViewControls()->SetCrossHairCursorPosition( aPos );
+    }
+    else
+    {
+        INSTALL_UNBUFFERED_DC( dc, m_canvas );
+
+        // There may be need to reframe the drawing.
+        if( aCenterView || !m_canvas->IsPointOnDisplay( aPos ) )
+        {
+            SetCrossHairPosition( aPos );
+            RedrawScreen( aPos, aWarpCursor );
+        }
+        else
+        {
+            // Put cursor on item position
+            m_canvas->CrossHairOff( &dc );
+            SetCrossHairPosition( aPos );
+
+            if( aWarpCursor )
+                m_canvas->MoveCursorToCrossHair();
+        }
+
+        // Be sure cross hair cursor is ON:
+        m_canvas->CrossHairOn( &dc );
+        m_canvas->CrossHairOn( &dc );
+    }
 }
 
 
