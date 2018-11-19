@@ -30,8 +30,10 @@
 #include <sch_item_struct.h>
 
 
+#ifdef DEBUG
 // Uncomment this line to enable connectivity debugging features
-#define CONNECTIVITY_DEBUG
+// #define CONNECTIVITY_DEBUG
+#endif
 
 class SCH_PIN_CONNECTION;
 

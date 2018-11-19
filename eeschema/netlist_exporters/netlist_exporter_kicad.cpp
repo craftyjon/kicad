@@ -158,9 +158,9 @@ bool NETLIST_EXPORTER_KICAD::WriteNetlist( const wxString& aOutFileName, unsigne
 
         if( different )
         {
-            wxLogWarning( "New netlist algorithm is inconsistent with old! "
-                          "Please contact Jon Evans <jon@craftyjon.com> "
-                          "to help debug this issue" );
+            wxLogDebug( "NOTE: New netlist algorithm is inconsistent with old! "
+                        "Please contact Jon Evans <jon@craftyjon.com> "
+                        "to help debug this issue" );
 
             try
             {
