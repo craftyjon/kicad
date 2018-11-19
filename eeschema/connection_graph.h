@@ -31,7 +31,9 @@
 
 
 // Uncomment this line to enable connectivity debugging features
-//#define CONNECTIVITY_DEBUG
+#define CONNECTIVITY_DEBUG
+
+class SCH_PIN_CONNECTION;
 
 class SCH_EDIT_FRAME;
 
@@ -180,6 +182,8 @@ private:
 
     std::vector<CONNECTION_SUBGRAPH*> m_subgraphs;
 
+    std::vector<SCH_PIN_CONNECTION*> m_invisible_power_pins;
+
     std::map<wxString, std::shared_ptr<BUS_ALIAS>> m_bus_alias_cache;
 
     std::map<wxString, int> m_net_name_to_code_map;
@@ -191,6 +195,8 @@ private:
     int m_last_net_code;
 
     int m_last_bus_code;
+
+    int m_last_subgraph_code;
 
     std::mutex m_item_mutex;
 

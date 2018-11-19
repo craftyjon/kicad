@@ -1527,14 +1527,6 @@ void SCH_EDIT_FRAME::UpdateTitle()
 }
 
 
-/**
- * TODO(JE)
- *
- * Since we don't actually care about connectivity for components, just their
- * pins, maybe it makes sense to store a map of vectors for pin connections.
- * Each sheet that the component exists on will get its own set of pin
- * connections.
- */
 void SCH_EDIT_FRAME::RecalculateConnections()
 {
     SCH_SHEET_LIST list( g_RootSheet );
@@ -1543,7 +1535,6 @@ void SCH_EDIT_FRAME::RecalculateConnections()
     for( const auto& sheet : list )
         SchematicCleanUp( true, sheet.LastScreen() );
 
-    g_ConnectionGraph->Reset();
     g_ConnectionGraph->Recalculate( list );
 }
 

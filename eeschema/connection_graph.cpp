@@ -88,7 +88,7 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
     {
         if( candidates.size() > 1 )
         {
-            if( highest_priority == 1 )
+            if( highest_priority == 1 || highest_priority == 5 )
             {
                 // We have multiple options and they are all component pins.
                 std::sort( candidates.begin(), candidates.end(),
@@ -197,6 +197,7 @@ void CONNECTION_GRAPH::Reset()
 {
     m_items.clear();
     m_subgraphs.clear();
+    m_invisible_power_pins.clear();
     m_bus_alias_cache.clear();
     m_net_name_to_code_map.clear();
     m_bus_name_to_code_map.clear();
@@ -212,6 +213,8 @@ void CONNECTION_GRAPH::Recalculate( SCH_SHEET_LIST aSheetList )
 #ifdef CONNECTIVITY_DEBUG
     PROF_COUNTER phase1;
 #endif
+
+    Reset();
 
     for( const auto& sheet : aSheetList )
     {
@@ -458,7 +461,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
     // Build subgraphs from items (on a per-sheet basis)
 
-    long subgraph_code = 1;
+    m_last_subgraph_code = 1;
 
     for( auto item : m_items )
     {
@@ -471,7 +474,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
             {
                 auto subgraph = new CONNECTION_SUBGRAPH( m_frame );
 
-                subgraph->m_code = subgraph_code++;
+                subgraph->m_code = m_last_subgraph_code++;
                 subgraph->m_sheet = sheet;
 
                 subgraph->m_items.push_back( item );
@@ -489,6 +492,14 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
                     if( pc->m_pin->GetType() == PIN_NC )
                         subgraph->m_no_connect = item;
+
+                    // Invisible power pins need to be post-processed later
+
+                    if( pc->m_pin->IsPowerConnection() &&
+                        !pc->m_pin->IsVisible() )
+                    {
+                        m_invisible_power_pins.push_back( pc );
+                    }
                 }
 
                 connection->SetSubgraphCode( subgraph->m_code );
@@ -727,6 +738,71 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                 if( candidate_connection->Name( false ) == member->Name( false ) )
                     subgraph->m_neighbor_map[ member ].push_back( candidate );
             }
+        }
+    }
+
+    // Generate subgraphs for invisible power pins
+
+    for( auto pc : m_invisible_power_pins )
+    {
+        if( pc->ConnectedItems().size() > 0 && !pc->m_pin->GetParent()->IsPower() )
+        {
+            // ERC will warn about this: user has wired up an invisible pin
+            continue;
+        }
+
+        auto name = pc->m_pin->GetName();
+        int code = -1;
+        auto sheet = all_sheets[0];
+
+        pc->InitializeConnection( sheet );
+        auto connection = pc->Connection( sheet );
+
+        try
+        {
+            code = m_net_name_to_code_map.at( name );
+        }
+        catch( const std::out_of_range& oor )
+        {
+            code = assignNewNetCode( *connection );
+        }
+
+        // Find a subgraph with the same net and just throw this pin on to it.
+        // TODO(JE) should there be a dedicated subgraph for invisible pins?
+        // Since this is currently done at the very end, the fact that some
+        // subgraph will be getting random pins added shouldn't be a problem,
+        // but this could be a gotcha if subgraph data is used after the end
+        // of this method at some point in the future.
+
+        CONNECTION_SUBGRAPH* subgraph = nullptr;
+
+        try
+        {
+            auto subgraphs = m_net_code_to_subgraphs_map.at( code );
+            subgraph = subgraphs[0];
+        }
+        catch( const std::out_of_range& oor )
+        {
+        }
+
+        if( subgraph && subgraph->m_driver )
+        {
+            auto parent = subgraph->m_driver->Connection( subgraph->m_sheet );
+            pc->Connection( sheet )->Clone( *parent );
+        }
+        else
+        {
+            subgraph = new CONNECTION_SUBGRAPH( m_frame );
+            m_net_code_to_subgraphs_map[ code ].push_back( subgraph );
+
+            subgraph->m_code = m_last_subgraph_code++;
+            subgraph->m_sheet = sheet;
+            subgraph->m_items.push_back( pc );
+            subgraph->m_drivers.push_back( pc );
+
+            subgraph->ResolveDrivers();
+
+            connection->SetSubgraphCode( subgraph->m_code );
         }
     }
 

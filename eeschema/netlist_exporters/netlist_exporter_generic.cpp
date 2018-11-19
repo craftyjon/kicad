@@ -521,8 +521,8 @@ XNODE* NETLIST_EXPORTER_GENERIC::makeListOfNets()
                     {
                         auto pc = static_cast<SCH_PIN_CONNECTION*>( item );
 
-                        if( pc->m_pin->IsPowerConnection() ||
-                            (LIB_PART*)( pc->m_pin->GetParent() )->IsPower() )
+                        // Skip power symbols
+                        if( (LIB_PART*)( pc->m_pin->GetParent() )->IsPower() )
                             continue;
 
                         if( !added )
