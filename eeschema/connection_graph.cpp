@@ -62,10 +62,16 @@ bool CONNECTION_SUBGRAPH::ResolveDrivers( bool aCreateMarkers )
         case SCH_PIN_CONNECTION_T:
         {
             auto pin_connection = static_cast<SCH_PIN_CONNECTION*>( item );
+
             if( pin_connection->m_pin->IsPowerConnection() )
                 item_priority = 5;
             else
                 item_priority = 1;
+
+            // Skip power flags, etc
+            if( item_priority == 1 && !pin_connection->m_comp->IsInNetlist() )
+                continue;
+
             break;
         }
         case SCH_GLOBAL_LABEL_T:        item_priority = 6; break;
@@ -195,6 +201,9 @@ std::vector<SCH_ITEM*> CONNECTION_SUBGRAPH::GetBusLabels()
 
 void CONNECTION_GRAPH::Reset()
 {
+    for( auto sg : m_subgraphs )
+        delete sg;
+
     m_items.clear();
     m_subgraphs.clear();
     m_invisible_power_pins.clear();
@@ -205,6 +214,7 @@ void CONNECTION_GRAPH::Reset()
     m_net_code_to_subgraphs_map.clear();
     m_last_net_code = 1;
     m_last_bus_code = 1;
+    m_last_subgraph_code = 1;
 }
 
 
@@ -460,8 +470,6 @@ void CONNECTION_GRAPH::buildConnectionGraph()
     }
 
     // Build subgraphs from items (on a per-sheet basis)
-
-    m_last_subgraph_code = 1;
 
     for( auto item : m_items )
     {
@@ -755,8 +763,17 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         int code = -1;
         auto sheet = all_sheets[0];
 
-        pc->InitializeConnection( sheet );
         auto connection = pc->Connection( sheet );
+
+        if( !connection )
+        {
+            pc->InitializeConnection( sheet );
+            connection = pc->Connection( sheet );
+        }
+        else
+        {
+            continue;
+        }
 
         try
         {
@@ -819,6 +836,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         auto connection = std::make_shared<SCH_CONNECTION>( *subgraph->m_driver->Connection( sheet ) );
 
         // Collapse power nets that are shorted together
+
         if( subgraph->m_multiple_power_ports )
         {
             for( auto obj : subgraph->m_drivers )
