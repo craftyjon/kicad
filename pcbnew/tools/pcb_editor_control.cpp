@@ -449,7 +449,7 @@ int PCB_EDITOR_CONTROL::PlaceModule( const TOOL_EVENT& aEvent )
         if( reselect && module )
             m_toolMgr->RunAction( PCB_ACTIONS::selectItem, true, module );
 
-        if( evt->IsCancel() || TOOL_EVT_UTILS::IsCancelInteractive( *evt ) || evt->IsActivate() )
+        if( TOOL_EVT_UTILS::IsCancelInteractive( *evt ) )
         {
             if( module )
             {
@@ -609,7 +609,7 @@ int PCB_EDITOR_CONTROL::PlaceTarget( const TOOL_EVENT& aEvent )
     {
         cursorPos = controls->GetCursorPosition();
 
-        if( evt->IsCancel() || TOOL_EVT_UTILS::IsCancelInteractive( *evt ) || evt->IsActivate() )
+        if( TOOL_EVT_UTILS::IsCancelInteractive( *evt ) )
             break;
 
         else if( evt->IsAction( &PCB_ACTIONS::incWidth ) )
@@ -1089,25 +1089,22 @@ static bool showLocalRatsnest( TOOL_MANAGER* aToolMgr, BOARD* aBoard, const VECT
         for( auto mod : modules )
         {
             for( auto pad : mod->Pads() )
-            {
-                pad->SetLocalRatsnestVisible( false );
-            }
+                pad->SetLocalRatsnestVisible( aBoard->IsElementVisible( LAYER_RATSNEST ) );
         }
-
-        return true;
     }
-
-    for( auto item : selection )
+    else
     {
-        if( item->Type() == PCB_MODULE_T )
+        for( auto item : selection )
         {
-            for( auto pad : static_cast<MODULE *> (item)->Pads() )
+            if( auto mod = dyn_cast<MODULE*>(item) )
             {
-                pad->SetLocalRatsnestVisible( !pad->GetLocalRatsnestVisible() );
+                for( auto pad : mod->Pads() )
+                    pad->SetLocalRatsnestVisible( !pad->GetLocalRatsnestVisible() );
             }
         }
     }
 
+    aToolMgr->GetView()->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
     return true;
 }
 

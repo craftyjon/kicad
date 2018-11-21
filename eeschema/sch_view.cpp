@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2013-2017 CERN
+ * Copyright (C) 2013-2018 CERN
  * @author Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
  * @author Maciej Suminski <maciej.suminski@cern.ch>
  *
@@ -34,6 +34,7 @@
 #include <sch_sheet.h>
 #include <sch_screen.h>
 #include <preview_items/selection_area.h>
+#include <sch_edit_frame.h>
 
 #include "sch_view.h"
 
@@ -41,15 +42,22 @@
 namespace KIGFX {
 
 
-SCH_VIEW::SCH_VIEW( bool aIsDynamic ) :
+SCH_VIEW::SCH_VIEW( bool aIsDynamic, SCH_BASE_FRAME* aFrame ) :
     VIEW( aIsDynamic )
 {
+    m_frame = aFrame;
     // Set m_boundary to define the max working area size. The default value
-    // is acceptable for Pcbnew and Gerbview, but too large for Eeschema.
+    // is acceptable for Pcbnew and Gerbview, but too large for Eeschema due to
+    // very different internal units.
     // So we have to use a smaller value.
-    // A better size could be a size depending on the worksheet size.
-    m_boundary.SetOrigin( -Millimeter2iu( 3200.0 ), -Millimeter2iu( 2000.0 ) );
-    m_boundary.SetSize( Millimeter2iu( 6400.0 ), Millimeter2iu( 4000.0 ) );
+    // A full size = 3 * MAX_PAGE_SIZE_EDITORS_MILS size allows a wide margin
+    // around the worksheet.
+    double max_size = MAX_PAGE_SIZE_EDITORS_MILS * IU_PER_MILS * 3.0;
+    m_boundary.SetOrigin( -max_size/4, -max_size/4 );
+    m_boundary.SetSize( max_size, max_size );
+
+    m_selectionArea.reset( new KIGFX::PREVIEW::SELECTION_AREA() );
+    m_preview.reset( new KIGFX::VIEW_GROUP() );
 }
 
 
@@ -58,9 +66,20 @@ SCH_VIEW::~SCH_VIEW()
 }
 
 
+void SCH_VIEW::ResizeSheetWorkingArea( SCH_SCREEN* aScreen )
+{
+    const PAGE_INFO& page_info = aScreen->GetPageSettings();
+    // A full size = 3 * page size allows a wide margin around the worksheet.
+    // This is useful to have a large working area.
+    double max_size_x = page_info.GetWidthMils() * IU_PER_MILS * 2.0;
+    double max_size_y = page_info.GetHeightMils() * IU_PER_MILS * 2.0;
+    m_boundary.SetOrigin( -max_size_x /4, -max_size_y/4 );
+    m_boundary.SetSize( max_size_x, max_size_y );
+}
+
+
 void SCH_VIEW::DisplaySheet( SCH_SCREEN *aScreen )
 {
-
     for( auto item = aScreen->GetDrawItems(); item; item = item->Next() )
         Add( item );
 
@@ -68,9 +87,17 @@ void SCH_VIEW::DisplaySheet( SCH_SCREEN *aScreen )
                                                       &aScreen->GetTitleBlock() ) );
     m_worksheet->SetSheetNumber( aScreen->m_ScreenNumber );
     m_worksheet->SetSheetCount( aScreen->m_NumberOfScreens );
+    m_worksheet->SetFileName( TO_UTF8( aScreen->GetFileName() ) );
 
-    m_selectionArea.reset( new KIGFX::PREVIEW::SELECTION_AREA( ) );
-    m_preview.reset( new KIGFX::VIEW_GROUP () );
+    if( m_frame && m_frame->IsType( FRAME_SCH ) )
+        m_worksheet->SetSheetName( TO_UTF8( m_frame->GetScreenDesc() ) );
+    else
+        m_worksheet->SetSheetName( "" );
+
+    ResizeSheetWorkingArea( aScreen );
+
+    m_selectionArea.reset( new KIGFX::PREVIEW::SELECTION_AREA() );
+    m_preview.reset( new KIGFX::VIEW_GROUP() );
 
     Add( m_worksheet.get() );
     Add( m_selectionArea.get() );
@@ -78,24 +105,24 @@ void SCH_VIEW::DisplaySheet( SCH_SCREEN *aScreen )
 }
 
 
-void SCH_VIEW::DisplaySheet( SCH_SHEET *aSheet )
+void SCH_VIEW::DisplaySheet( SCH_SHEET* aSheet )
 {
     DisplaySheet( aSheet->GetScreen() );
 }
 
 
-void SCH_VIEW::DisplayComponent( LIB_PART *aPart )
+void SCH_VIEW::DisplayComponent( LIB_PART* aPart )
 {
     Clear();
 
     if( !aPart )
         return;
 
-    for ( auto &item : aPart->GetDrawItems() )
+    for( auto& item : aPart->GetDrawItems() )
         Add( &item );
 
-    m_selectionArea.reset( new KIGFX::PREVIEW::SELECTION_AREA( ) );
-    m_preview.reset( new KIGFX::VIEW_GROUP () );
+    m_selectionArea.reset( new KIGFX::PREVIEW::SELECTION_AREA() );
+    m_preview.reset( new KIGFX::VIEW_GROUP() );
     Add( m_selectionArea.get() );
     Add( m_preview.get() );
 }
@@ -113,12 +140,12 @@ void SCH_VIEW::ClearPreview()
 }
 
 
-void SCH_VIEW::AddToPreview( EDA_ITEM *aItem, bool takeOwnership )
+void SCH_VIEW::AddToPreview( EDA_ITEM* aItem, bool aTakeOwnership )
 {
     Hide( aItem, false );
     m_preview->Add( aItem );
 
-    if( takeOwnership )
+    if( aTakeOwnership )
         m_ownedItems.push_back( aItem );
 
     SetVisible( m_preview.get(), true );
@@ -127,7 +154,7 @@ void SCH_VIEW::AddToPreview( EDA_ITEM *aItem, bool takeOwnership )
 }
 
 
-void SCH_VIEW::ShowSelectionArea( bool aShow  )
+void SCH_VIEW::ShowSelectionArea( bool aShow )
 {
     if( aShow )
     {
@@ -141,7 +168,7 @@ void SCH_VIEW::ShowSelectionArea( bool aShow  )
 }
 
 
-void SCH_VIEW::ShowPreview( bool aShow  )
+void SCH_VIEW::ShowPreview( bool aShow )
 {
     SetVisible( m_preview.get(), aShow );
 }
@@ -150,15 +177,14 @@ void SCH_VIEW::ShowPreview( bool aShow  )
 void SCH_VIEW::ClearHiddenFlags()
 {
     for( auto item : *m_allItems )
-        Hide ( item, false );
+        Hide( item, false );
 }
 
 
 void SCH_VIEW::HideWorksheet()
 {
-//    SetVisible( m_worksheet.get(), false );
+    //    SetVisible( m_worksheet.get(), false );
 }
 
 
-};
-
+}; // namespace KIGFX

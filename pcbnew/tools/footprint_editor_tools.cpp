@@ -246,16 +246,27 @@ int MODULE_EDITOR_TOOLS::EnumeratePads( const TOOL_EVENT& aEvent )
             break;
         }
 
-        else if( evt->IsCancel() || TOOL_EVT_UTILS::IsCancelInteractive( *evt ) || evt->IsActivate() )
+        // This is a cancel-current-action (ie: <esc>).
+        // Note that this must go before IsCancelInteractive() as it also checks IsCancel().
+        else if( evt->IsCancel() )
         {
+            // Clear current selection list to avoid selection of deleted items
+            m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
+
             commit.Revert();
             break;
         }
 
-        else
+        // Now that cancel-current-action has been handled, check for cancel-tool.
+        else if( TOOL_EVT_UTILS::IsCancelInteractive( *evt ) )
         {
-            // Delegate BUT_RIGHT, etc. to SELECTION_TOOL
-            m_toolMgr->PassEvent();
+            commit.Push( _( "Renumber pads" ) );
+            break;
+        }
+
+        else if( evt->IsClick( BUT_RIGHT ) )
+        {
+            m_menu.ShowContextMenu();
         }
 
         // Prepare the next loop by updating the old cursor mouse position

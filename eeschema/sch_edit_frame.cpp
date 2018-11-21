@@ -1551,6 +1551,13 @@ void SCH_EDIT_FRAME::CommonSettingsChanged()
 }
 
 
+void SCH_EDIT_FRAME::OnPageSettingsChange()
+{
+    // Rebuild the sheet view (draw area and any other items):
+    DisplayCurrentSheet();
+}
+
+
 void SCH_EDIT_FRAME::ShowChangedLanguage()
 {
     // call my base class
