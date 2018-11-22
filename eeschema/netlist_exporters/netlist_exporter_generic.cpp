@@ -499,7 +499,7 @@ XNODE* NETLIST_EXPORTER_GENERIC::makeListOfNets()
 
     m_LibParts.clear();     // must call this function before using m_LibParts.
 
-    if( m_use_graph )
+    if( m_use_graph && m_graph )
     {
         for( auto it : m_graph->m_net_code_to_subgraphs_map )
         {

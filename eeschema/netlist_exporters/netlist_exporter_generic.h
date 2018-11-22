@@ -75,7 +75,7 @@ public:
         NETLIST_EXPORTER( aMasterList ),
         m_libTable( aFrame->Prj().SchSymbolLibTable() ),
         m_graph( aGraph ),
-        m_use_graph( false )
+        m_use_graph( true )
     {}
 
     /**
