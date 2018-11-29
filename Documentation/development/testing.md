@@ -224,11 +224,14 @@ a "mask", for example:
 This will not be printed by default. To show it, set the `WXTRACE` environment
 variable when you run KiCad to include the masks you wish to enable:
 
-    $ WXTRACE="TRACEKEY,OTHERKEY" kicad
+    $ WXTRACE="TRACEMASK,OTHERMASK" kicad
 
 When printed, the debug will be prefixed with a timestamp and the trace mask:
 
-    11:22:33: Trace: (KICAD_FIND_ITEM)   item Symbol GNDPWR, #PWR020
+    11:22:33: Trace: (TRACEMASK) My trace, value: 42
+
+If you add a trace mask, define and document the mask as a variable in
+`include/trace_helpers.h`. This will add it to the [trace mask documentation][].
 
 Some available masks:
 
@@ -243,6 +246,7 @@ Some available masks:
     * `GAL_CACHED_CONTAINER`
     * `PNS`
     * `CN`
+    * `SCROLL_ZOOM` - for the scroll-wheel zooming logic in GAL
 * Plugin-specific (including "standard" KiCad formats):
     * `3D_CACHE`
     * `3D_SG`
@@ -260,3 +264,4 @@ Some available masks:
 [Boost Unit Test framework]: https://www.boost.org/doc/libs/1_68_0/libs/test/doc/html/index.html
 [boost-test-functions]: https://www.boost.org/doc/libs/1_68_0/libs/test/doc/html/boost_test/utf_reference/testing_tool_ref.html
 [AFL fuzzing tool]: http://lcamtuf.coredump.cx/afl/
+[trace mask documentation]: http://docs.kicad-pcb.org/doxygen/group__trace__env__vars.html
