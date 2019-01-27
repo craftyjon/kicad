@@ -576,7 +576,7 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::Validate()
         }
     }
 
-    if( !m_netClearance.Validate( true ) )
+    if( !m_netClearance.Validate( 0, INT_MAX ) )
         return false;
 
     return true;
@@ -612,8 +612,11 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::TransferDataFromWindow()
     m_footprint->Value() = m_texts->at( 1 );
 
     size_t i = 2;
-    for( BOARD_ITEM* item = m_footprint->GraphicalItemsList().GetFirst(); item; item = item->Next() )
+    BOARD_ITEM* next;
+    
+    for( BOARD_ITEM* item = m_footprint->GraphicalItemsList().GetFirst(); item; item = next )
     {
+        next = item->Next();
         TEXTE_MODULE* textModule = dyn_cast<TEXTE_MODULE*>( item );
 
         if( textModule )
@@ -742,6 +745,7 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::OnAddField( wxCommandEvent&  )
     textMod.SetThickness( dsnSettings.GetTextThickness( textMod.GetLayer() ) );
     textMod.SetItalic( dsnSettings.GetTextItalic( textMod.GetLayer() ) );
     textMod.SetKeepUpright( dsnSettings.GetTextUpright( textMod.GetLayer() ) );
+    textMod.SetMirrored( IsBackLayer( textMod.GetLayer() ) );
 
     m_texts->push_back( textMod );
 

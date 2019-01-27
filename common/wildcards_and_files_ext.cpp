@@ -1,9 +1,9 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2012 Jean-Pierre Charras, jaen-pierre.charras@gipsa-lab.inpg.com
+ * Copyright (C) 2018 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,6 +25,7 @@
 
 /**
  * @file wildcards_and_files_ext.cpp
+ * Definition of file extensions used in Kicad.
  */
 #include <wildcards_and_files_ext.h>
 
@@ -46,7 +47,7 @@
  *
  * @return the build appropriate file dialog wildcard filter.
  */
-static wxString FormatWildcardExt( const wxString& aWildcard )
+static wxString formatWildcardExt( const wxString& aWildcard )
 {
     wxString wc;
 #if defined( __WXGTK__ )
@@ -65,6 +66,42 @@ static wxString FormatWildcardExt( const wxString& aWildcard )
 
     return wc;
 #endif
+}
+
+wxString AddFileExtListToFilter( const std::vector<std::string>& aExts )
+{
+    if( aExts.size() == 0 )
+    {
+        // The "all files" wildcard is different on different systems
+        wxString filter;
+        filter << " (" << wxFileSelectorDefaultWildcardStr << ")|"
+               << wxFileSelectorDefaultWildcardStr;
+        return filter;
+    }
+
+    wxString files_filter = " (";
+
+    // Add extensions to the info message:
+    for( const auto& ext : aExts )
+    {
+        files_filter << " *." << ext;
+    }
+
+    files_filter << ")|*.";
+
+    // Add extensions to the filter list, using a formated string (GTK specific):
+    bool first = true;
+    for( const auto& ext : aExts )
+    {
+        if( !first )
+            files_filter << ";*.";
+
+        first = false;
+
+        files_filter << formatWildcardExt( ext );
+    }
+
+    return files_filter;
 }
 
 
@@ -103,276 +140,283 @@ const std::string GedaPcbFootprintLibFileExtension( "fp" );
 const std::string SpecctraDsnFileExtension( "dsn" );
 const std::string IpcD356FileExtension( "d356" );
 
+const std::string PngFileExtension( "png" );
+const std::string JpegFileExtension( "jpg" );
 
-const wxString AllFilesWildcard( _( "All files (*)|*" ) );
+
+wxString AllFilesWildcard()
+{
+    return _( "All files" ) + AddFileExtListToFilter( {} );
+}
 
 
 wxString SchematicSymbolFileWildcard()
 {
-    return _( "KiCad drawing symbol files (*.sym)|*." ) + FormatWildcardExt( "sym" );
+    return _( "KiCad drawing symbol files" ) + AddFileExtListToFilter( { "sym" } );
 }
 
 
 wxString SchematicLibraryFileWildcard()
 {
-    return _( "KiCad symbol library files (*.lib)|*." ) + FormatWildcardExt( "lib" );
+    return _( "KiCad symbol library files" ) + AddFileExtListToFilter( { "lib" } );
 }
 
 
 wxString ProjectFileWildcard()
 {
-    return _( "KiCad project files (*.pro)|*." ) + FormatWildcardExt( "pro" );
+    return _( "KiCad project files" ) + AddFileExtListToFilter( { "pro" } );
 }
 
 
 wxString SchematicFileWildcard()
 {
-    return _( "KiCad schematic files (*.sch)|*." ) + FormatWildcardExt( "sch" );
+    return _( "KiCad schematic files" ) + AddFileExtListToFilter( { "sch" } );
 }
 
 
 wxString EagleSchematicFileWildcard()
 {
-    return _( "Eagle XML schematic files (*.sch)|*." ) + FormatWildcardExt( "sch" );
+    return _( "Eagle XML schematic files" ) + AddFileExtListToFilter( { "sch" } );
 }
 
 
 wxString EagleFilesWildcard()
 {
-    return _( "Eagle XML files (*.sch *.brd)|*." ) +
-           FormatWildcardExt( "sch" ) + ";*." + FormatWildcardExt( "brd" );
+    return _( "Eagle XML files" ) + AddFileExtListToFilter( { "sch", "brd" } );
 }
 
 
 wxString NetlistFileWildcard()
 {
-    return _( "KiCad netlist files (*.net)|*." ) + FormatWildcardExt( "net" );
+    return _( "KiCad netlist files" ) + AddFileExtListToFilter( { "net" } );
 }
 
 
 wxString GerberFileWildcard()
 {
-    return _( "Gerber files (*.pho)|*." ) + FormatWildcardExt( "pho" );
+    return _( "Gerber files" ) + AddFileExtListToFilter( { "pho" } );
 }
 
 
 wxString LegacyPcbFileWildcard()
 {
-    return _( "KiCad printed circuit board files (*.brd)|*." ) + FormatWildcardExt( "brd" );
+    return _( "KiCad printed circuit board files" ) + AddFileExtListToFilter( { "brd" } );
 }
 
 
 wxString EaglePcbFileWildcard()
 {
-    return _( "Eagle ver. 6.x XML PCB files (*.brd)|*." ) + FormatWildcardExt( "brd" );
+    return _( "Eagle ver. 6.x XML PCB files" ) + AddFileExtListToFilter( { "brd" } );
 }
 
 
 wxString PCadPcbFileWildcard()
 {
-    return _( "P-Cad 200x ASCII PCB files (*.pcb)|*." ) + FormatWildcardExt( "pcb" );
+    return _( "P-Cad 200x ASCII PCB files" ) + AddFileExtListToFilter( { "pcb" } );
 }
 
 
 wxString PcbFileWildcard()
 {
-    return _( "KiCad printed circuit board files (*.kicad_pcb)|*." ) +
-    FormatWildcardExt( "kicad_pcb" );
+    return _( "KiCad printed circuit board files" ) + AddFileExtListToFilter( { "kicad_pcb" } );
 }
 
 
 wxString KiCadFootprintLibFileWildcard()
 {
-    return _( "KiCad footprint files (*.kicad_mod)|*." ) + FormatWildcardExt( "kicad_mod" );
+    return _( "KiCad footprint files" ) + AddFileExtListToFilter( { "kicad_mod" } );
 }
 
 
 wxString KiCadFootprintLibPathWildcard()
 {
-    return _( "KiCad footprint library paths (*.pretty)|*." ) + FormatWildcardExt( "pretty" );
+    return _( "KiCad footprint library paths" ) + AddFileExtListToFilter( { "pretty" } );
 }
 
 
 wxString LegacyFootprintLibPathWildcard()
 {
-    return _( "Legacy footprint library files (*.mod)|*." ) + FormatWildcardExt( "mod" );
+    return _( "Legacy footprint library files" ) + AddFileExtListToFilter( { "mod" } );
 }
 
 
 wxString EagleFootprintLibPathWildcard()
 {
-    return _( "Eagle ver. 6.x XML library files (*.lbr)|*." ) + FormatWildcardExt( "lbr" );
+    return _( "Eagle ver. 6.x XML library files" ) + AddFileExtListToFilter( { "lbr" } );
 }
 
 
 wxString GedaPcbFootprintLibFileWildcard()
 {
-    return _( "Geda PCB footprint library files (*.fp)|*." ) + FormatWildcardExt( "fp" );
+    return _( "Geda PCB footprint library files" ) + AddFileExtListToFilter( { "fp" } );
 }
 
 
 wxString PageLayoutDescrFileWildcard()
 {
-    return _( "Page layout design files (*.kicad_wks)|*." ) + FormatWildcardExt( "kicad_wks" );
+    return _( "Page layout design files" ) + AddFileExtListToFilter( { "kicad_wks" } );
 }
 
 
 // Wildcard for cvpcb component to footprint link file
 wxString ComponentFileWildcard()
 {
-    return _( "KiCad symbol footprint link files (*.cmp)|*." ) + FormatWildcardExt( "cmp" );
+    return _( "KiCad symbol footprint link files" ) + AddFileExtListToFilter( { "cmp" } );
 }
 
 
 // Wildcard for reports and fabrication documents
 wxString DrillFileWildcard()
 {
-    return _( "Drill files (*.drl)|*." ) + FormatWildcardExt( "drl" );
+    return _( "Drill files" ) + AddFileExtListToFilter( { "drl", "nc", "xnc" } );
 }
 
 
 wxString SVGFileWildcard()
 {
-    return _( "SVG files (*.svg)|*." ) + FormatWildcardExt( "svg" );
+    return _( "SVG files" ) + AddFileExtListToFilter( { "svg" } );
 }
 
 
 wxString HtmlFileWildcard()
 {
-    return _( "HTML files (*.html)|*." ) + FormatWildcardExt( "htm" ) + ";*.," +
-           FormatWildcardExt( "html" );
+    return _( "HTML files" ) + AddFileExtListToFilter( { "htm", "html" } );
 }
 
 
 wxString CsvFileWildcard()
 {
-    return _( "CSV Files (*.csv)|*." ) + FormatWildcardExt( "csv" );
+    return _( "CSV Files" ) + AddFileExtListToFilter( { "csv" } );
 }
 
 
 wxString PdfFileWildcard()
 {
-    return _( "Portable document format files (*.pdf)|*." ) + FormatWildcardExt( "pdf" );
+    return _( "Portable document format files" ) + AddFileExtListToFilter( { "pdf" } );
 }
 
 
 wxString PSFileWildcard()
 {
-    return _( "PostScript files (.ps)|*." ) + FormatWildcardExt( "ps" );
+    return _( "PostScript files" ) + AddFileExtListToFilter( { "ps" } );
 }
 
 
 wxString ReportFileWildcard()
 {
-    return _( "Report files (*.rpt)|*." ) + FormatWildcardExt( "rpt" );
+    return _( "Report files" ) + AddFileExtListToFilter( { "rpt" } );
 }
 
 
 wxString FootprintPlaceFileWildcard()
 {
-    return _( "Footprint place files (*.pos)|*." ) + FormatWildcardExt( "pos" );
+    return _( "Footprint place files" ) + AddFileExtListToFilter( { "pos" } );
 }
 
 
 wxString Shapes3DFileWildcard()
 {
-    return _( "VRML and X3D files (*.wrl *.x3d)|*." ) + FormatWildcardExt( "wrl" ) +
-           ";*." + FormatWildcardExt( "x3d" );
+    return _( "VRML and X3D files" ) + AddFileExtListToFilter( { "wrl", "x3d" } );
 }
 
 
 wxString IDF3DFileWildcard()
 {
-    return _( "IDFv3 footprint files (*.idf)|*." ) + FormatWildcardExt( "idf" );
+    return _( "IDFv3 footprint files" ) + AddFileExtListToFilter( { "idf" } );
 }
 
 
 wxString TextFileWildcard()
 {
-    return _( "Text files (*.txt)|*." ) + FormatWildcardExt( "txt" );
+    return _( "Text files" ) + AddFileExtListToFilter( { "txt" } );
 }
 
 
 wxString ModLegacyExportFileWildcard()
 {
-    return _( "Legacy footprint export files (*.emp)|*." ) + FormatWildcardExt( "emp" );
+    return _( "Legacy footprint export files" ) + AddFileExtListToFilter( { "emp" } );
 }
 
 
 wxString ErcFileWildcard()
 {
-    return _( "Electronic rule check file (.erc)|*." ) + FormatWildcardExt( "erc" );
+    return _( "Electronic rule check file" ) + AddFileExtListToFilter( { "erc" } );
 }
 
 
 wxString SpiceLibraryFileWildcard()
 {
-    return _( "Spice library file (*.lib)|*." ) + FormatWildcardExt( "lib" );
+    return _( "Spice library file" ) + AddFileExtListToFilter( { "lib" } );
 }
 
 
 wxString SpiceNetlistFileWildcard()
 {
-    return _( "SPICE netlist file (.cir)|*." ) + FormatWildcardExt( "cir" );
+    return _( "SPICE netlist file" ) + AddFileExtListToFilter( { "cir" } );
 }
 
 
 wxString CadstarNetlistFileWildcard()
 {
-    return _( "CadStar netlist file (.frp)|*." ) + FormatWildcardExt( "frp" );
+    return _( "CadStar netlist file" ) + AddFileExtListToFilter( { "frp" } );
 }
 
 
 wxString EquFileWildcard()
 {
-    return _( "Symbol footprint association files (*.equ)|*." ) + FormatWildcardExt( "equ" );
+    return _( "Symbol footprint association files" ) + AddFileExtListToFilter( { "equ" } );
 }
 
 
 wxString ZipFileWildcard()
 {
-    return _( "Zip file (*.zip)|*." ) + FormatWildcardExt( "zip" );
+    return _( "Zip file" ) + AddFileExtListToFilter( { "zip" } );
 }
 
 
 wxString GencadFileWildcard()
 {
-    return _( "GenCAD 1.4 board files (.cad)|*." ) + FormatWildcardExt( "cad" );
+    return _( "GenCAD 1.4 board files" ) + AddFileExtListToFilter( { "cad" } );
 }
 
 
 wxString DxfFileWildcard()
 {
-    return _( "DXF Files (*.dxf)|*." ) + FormatWildcardExt( "dxf" );
+    return _( "DXF Files" ) + AddFileExtListToFilter( { "dxf" } );
 }
 
 
 wxString GerberJobFileWildcard()
 {
-    return _( "Gerber job file (*.gbrjob)|*." ) + FormatWildcardExt( "gbrjob" ) +
-           ";.gbrjob";
+    return _( "Gerber job file" ) + AddFileExtListToFilter( { "gbrjob" } );
 }
 
 
 wxString SpecctraDsnFileWildcard()
 {
-    return _( "Specctra DSN file (*.dsn)|*." ) + FormatWildcardExt( "dsn" );
+    return _( "Specctra DSN file" ) + AddFileExtListToFilter( { "dsn" } );
 }
 
 
 wxString IpcD356FileWildcard()
 {
-    return _( "IPC-D-356 Test Files (.d356)|*." ) + FormatWildcardExt( "d356" );
+    return _( "IPC-D-356 Test Files" ) + AddFileExtListToFilter( { "d356" } );
 }
 
 
 wxString WorkbookFileWildcard()
 {
-    return _( "Workbook file (*.wbk)|*." ) + FormatWildcardExt( "wbk" );
+    return _( "Workbook file" ) + AddFileExtListToFilter( { "wbk" } );
 }
 
 
 wxString PngFileWildcard()
 {
-    return _( "PNG file (*.png)|*." ) + FormatWildcardExt( "png" );
+    return _( "PNG file" ) + AddFileExtListToFilter( { "png" } );
+}
+
+
+wxString JpegFileWildcard()
+{
+    return _( "Jpeg file" ) + AddFileExtListToFilter( { "jpg", "jpeg" } );
 }

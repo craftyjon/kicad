@@ -59,7 +59,7 @@ GERBER_PLOTTER::GERBER_PLOTTER()
     // happen easily.
     m_gerberUnitInch = false;
     m_gerberUnitFmt = 6;
-    m_useX2Attributes = false;
+    m_useX2format = true;
     m_useNetAttributes = true;
 }
 
@@ -113,7 +113,7 @@ void GERBER_PLOTTER::clearNetAttribute()
         return;
 
     // Remove all net attributes from object attributes dictionnary
-    if( m_useX2Attributes )
+    if( m_useX2format )
         fputs( "%TD*%\n", outputFile );
     else
         fputs( "G04 #@! TD*\n", outputFile );
@@ -144,12 +144,10 @@ void GERBER_PLOTTER::formatNetAttribute( GBR_NETLIST_METADATA* aData )
     if( aData == NULL )
         return;
 
-    bool useX1StructuredComment = false;
-
-    if( !m_useX2Attributes )
-        useX1StructuredComment = true;
-    else if( !m_useNetAttributes )
+    if( !m_useNetAttributes )
         return;
+
+    bool useX1StructuredComment = !m_useX2format;
 
     bool clearDict;
     std::string short_attribute_string;
@@ -214,9 +212,6 @@ bool GERBER_PLOTTER::StartPlot()
 
     // Be sure the usual dark polarity is selected:
     fputs( "%LPD*%\n", outputFile );
-
-    // Specify linear interpol (G01):
-    fputs( "G01*\n", outputFile );
 
     fputs( "G04 APERTURE LIST*\n", outputFile );
 
@@ -328,7 +323,7 @@ void GERBER_PLOTTER::selectAperture( const wxSize&           aSize,
                   ( currentAperture->m_Type != aType ) ||
                   ( currentAperture->m_Size != aSize );
 
-    if( m_useX2Attributes && !m_useNetAttributes )
+    if( !m_useNetAttributes )
         aApertureAttribute = 0;
     else
         change = change || ( currentAperture->m_ApertureAttribute != aApertureAttribute );
@@ -349,7 +344,7 @@ void GERBER_PLOTTER::writeApertureList()
 
     bool useX1StructuredComment = false;
 
-    if( !m_useX2Attributes )
+    if( !m_useX2format )
         useX1StructuredComment = true;
 
     // Init
@@ -412,7 +407,7 @@ void GERBER_PLOTTER::writeApertureList()
         // is to store the last attribute
         if( attribute )
         {
-            if( m_useX2Attributes )
+            if( m_useX2format )
                 fputs( "%TD*%\n", outputFile );
             else
                 fputs( "G04 #@! TD*\n", outputFile );
@@ -484,7 +479,7 @@ void GERBER_PLOTTER::Arc( const wxPoint& aCenter, double aStAngle, double aEndAn
     DPOINT devEnd = userToDeviceCoordinates( end );
     DPOINT devCenter = userToDeviceCoordinates( aCenter ) - userToDeviceCoordinates( start );
 
-    fprintf( outputFile, "G75*\n" ); // Multiquadrant mode
+    fprintf( outputFile, "G75*\n" ); // Multiquadrant (360 degrees) mode
 
     if( aStAngle < aEndAngle )
         fprintf( outputFile, "G03" );
@@ -494,7 +489,8 @@ void GERBER_PLOTTER::Arc( const wxPoint& aCenter, double aStAngle, double aEndAn
     fprintf( outputFile, "X%dY%dI%dJ%dD01*\n",
              KiROUND( devEnd.x ), KiROUND( devEnd.y ),
              KiROUND( devCenter.x ), KiROUND( devCenter.y ) );
-    fprintf( outputFile, "G01*\n" ); // Back to linear interp.
+
+    fprintf( outputFile, "G01*\n" ); // Back to linear interpol (perhaps useless here).
 }
 
 
@@ -519,6 +515,7 @@ void GERBER_PLOTTER:: PlotPoly( const std::vector< wxPoint >& aCornerList,
         fputs( "G36*\n", outputFile );
 
         MoveTo( aCornerList[0] );
+        fputs( "G01*\n", outputFile );      // Set linear interpolation.
 
         for( unsigned ii = 1; ii < aCornerList.size(); ii++ )
             LineTo( aCornerList[ii] );

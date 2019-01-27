@@ -68,10 +68,10 @@ void PCB_BASE_FRAME::Compile_Ratsnest( wxDC* aDC, bool aDisplayStatus )
         std::shared_ptr<CONNECTIVITY_DATA> conn = m_Pcb->GetConnectivity();
 
         msg.Printf( wxT( " %d" ), conn->GetPadCount() );
-        AppendMsgPanel( wxT( "Pads" ), msg, RED );
+        AppendMsgPanel( _( "Pads" ), msg, RED );
 
         msg.Printf( wxT( " %d" ), conn->GetNetCount() - 1 /* Don't include "No Net" in count */ );
-        AppendMsgPanel( wxT( "Nets" ), msg, CYAN );
+        AppendMsgPanel( _( "Nets" ), msg, CYAN );
 
         SetMsgPanel( m_Pcb );
     }
@@ -97,7 +97,9 @@ void PCB_BASE_FRAME::DrawGeneralRatsnest( wxDC* aDC, int aNetcode )
 
     auto connectivity = m_Pcb->GetConnectivity();
 
-    if( !connectivity->TryLock() )
+    std::unique_lock<std::mutex> lock( connectivity->GetLock(), std::try_to_lock );
+
+    if( !lock )
         return;
 
     COLOR4D color = Settings().Colors().GetItemColor( LAYER_RATSNEST );
@@ -131,8 +133,6 @@ void PCB_BASE_FRAME::DrawGeneralRatsnest( wxDC* aDC, int aNetcode )
             }
         }
     }
-
-    connectivity->Unlock();
 }
 
 

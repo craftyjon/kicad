@@ -168,10 +168,10 @@ public:
     int DrawSimilarZone( const TOOL_EVENT& aEvent );
 
     /**
-     * Function PlaceDXF()
-     * Places a drawing imported from a DXF file in module editor.
+     * Function PlaceImportedGraphics()
+     * Places a drawing imported from a DXF or SVG file in module editor.
      */
-    int PlaceDXF( const TOOL_EVENT& aEvent );
+    int PlaceImportedGraphics( const TOOL_EVENT& aEvent );
 
     /**
      * Function SetAnchor()
@@ -244,16 +244,6 @@ private:
      * complete polygon.
      */
     void runPolygonEventLoop( POLYGON_GEOM_MANAGER& aPolyGeomMgr );
-
-    /**
-     * Function make45DegLine()
-     * Forces a DRAWSEGMENT to be drawn at multiple of 45 degrees. The origin stays the same,
-     * the end of the aSegment is modified according to the current cursor position.
-     * @param aSegment is the segment that is currently drawn.
-     * @param aHelper is a helper line that shows the next possible segment.
-     * @param aPos is the position of the cursor for this event
-     */
-    void make45DegLine( DRAWSEGMENT* aSegment, DRAWSEGMENT* aHelper, VECTOR2I& aPos ) const;
 
     /**
      * Function constrainDimension()

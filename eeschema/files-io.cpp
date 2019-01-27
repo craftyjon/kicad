@@ -237,6 +237,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
 
     // unload current project file before loading new
     {
+        SetScreen( nullptr );
         delete g_RootSheet;
         g_RootSheet = NULL;
 
@@ -285,6 +286,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
     }
     else
     {
+        SetScreen( nullptr );
         delete g_RootSheet;   // Delete the current project.
         g_RootSheet = NULL;   // Force CreateScreens() to build new empty project on load failure.
 
@@ -595,6 +597,8 @@ bool SCH_EDIT_FRAME::AppendSchematic()
         }
     }
 
+    newScreens.ClearAnnotation();
+
     // Check for duplicate sheet names in the current page.
     wxArrayString duplicateSheetNames;
     SCH_TYPE_COLLECTOR sheets;
@@ -641,7 +645,7 @@ bool SCH_EDIT_FRAME::AppendSchematic()
 
     // Clear all annotation in the imported schematic to prevent clashes with existing annotation.
     // Must be done after updating the symbol links as we need to know about multi-unit parts.
-    screens.ClearAnnotation();
+    // screens.ClearAnnotation();
 
     screens.TestDanglingEnds();
 

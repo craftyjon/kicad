@@ -104,7 +104,8 @@ static wxFileName getFootprintFilenameFromUser( wxWindow* aParent, const wxStrin
 
     wildCard << KiCadFootprintLibFileWildcard() << wxChar( '|' )
              << ModLegacyExportFileWildcard() << wxChar( '|' )
-             << GedaPcbFootprintLibFileWildcard();
+             << GedaPcbFootprintLibFileWildcard() << wxChar( '|' )
+             << AllFilesWildcard();
 
     wxFileDialog dlg( aParent, FMT_IMPORT_MODULE, aLastPath, wxEmptyString, wildCard,
             wxFD_OPEN | wxFD_FILE_MUST_EXIST );
@@ -429,8 +430,7 @@ wxString PCB_BASE_EDIT_FRAME::CreateNewLibrary(const wxString& aLibName )
         fn = initialPath;
 
         if( !LibraryFileBrowser( false, fn,
-                                 KiCadFootprintLibPathWildcard(), KiCadFootprintLibPathExtension,
-                                 true ) )
+                                 KiCadFootprintLibPathWildcard(), KiCadFootprintLibPathExtension) )
         {
             return wxEmptyString;
         }

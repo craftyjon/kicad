@@ -46,8 +46,6 @@ protected:
 
     bool    m_enableAutoPan;                ///< True to enable automatic panning.
 
-    bool    m_requestAutoPan;               ///< true to request an auto pan.  Valid only when m_enableAutoPan = true.
-
     bool    m_ignoreMouseEvents;            ///< Ignore mouse events when true.
 
     /* Used to inhibit a response to a mouse left button release, after a double click
@@ -86,7 +84,26 @@ protected:
 
 public:
 
-    EDA_DRAW_PANEL(){};
+    EDA_DRAW_PANEL() :
+        m_showCrossHair( true ),
+        m_cursorLevel( 0 ),
+        m_scrollIncrementX( 1 ),
+        m_scrollIncrementY( 1 ),
+        m_abortRequest( false ),
+        m_enableZoomNoCenter( false ),
+        m_enableMousewheelPan( false ),
+        m_enableAutoPan( false ),
+        m_ignoreMouseEvents( false ),
+        m_ignoreNextLeftButtonRelease( false ),
+        m_enableBlockCommands( true ),
+        m_minDragEventCount( 5 ),
+        m_PrintIsMirrored( false ),
+        m_mouseCaptureCallback( nullptr ),
+        m_endMouseCaptureCallback( nullptr ),
+        m_canStartBlock( true ),
+        m_doubleClickInterval( 0 )
+    {};
+
     virtual ~EDA_DRAW_PANEL(){};
 
     /**
@@ -122,7 +139,7 @@ public:
 
     virtual void SetEnableAutoPan( bool aEnable ) { m_enableAutoPan = aEnable; };
 
-    void SetAutoPanRequest( bool aEnable ) { m_requestAutoPan = aEnable; }
+    virtual void SetAutoPanRequest( bool aEnable ) = 0;
 
     void SetIgnoreMouseEvents( bool aIgnore ) { m_ignoreMouseEvents = aIgnore; }
 

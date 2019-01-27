@@ -1,10 +1,10 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2013 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 2018 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2007-2012 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
  * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,14 +25,17 @@
  */
 
 /**
- * The common library
  * @file wildcards_and_files_ext.h
+ * Definition of file extensions used in Kicad.
  */
 
 #ifndef INCLUDE_WILDCARDS_AND_FILES_EXT_H_
 #define INCLUDE_WILDCARDS_AND_FILES_EXT_H_
 
 #include <wx/wx.h>
+
+#include <string>
+#include <vector>
 
 /**
  * \defgroup file_extensions File Extension Definitions
@@ -45,6 +48,27 @@
  *
  * @{
  */
+
+/**
+ * Build the wildcard extension file dialog wildcard filter to add to the base message dialog.
+ *
+ * For instance, to open .txt files in a file dialog:
+ * the base message is for instance "Text files"
+ * the ext list is " (*.txt)|*.txt"
+ * and the returned string to add to the base message is " (*.txt)|*.txt"
+ * the message to display in the dialog is  "Text files (*.txt)|*.txt"
+ *
+ * This function produces a case-insensitive filter (so .txt, .TXT and .tXT
+ * are all match if you pass "txt" into the function).
+ *
+ * @param aExts is the list of exts to add to the filter. Do not include the
+ * leading dot. Empty means "allow all files".
+ *
+ * @return the appropriate file dialog wildcard filter list.
+ */
+
+wxString AddFileExtListToFilter( const std::vector<std::string>& aExts );
+
 
 // Do NOT use wxString for these.  wxStrings are not thread-safe, even when const.  (For the
 // curious the UTF8 cacheing strategy puts iterators in a linked list.  Insertion and removal
@@ -85,6 +109,9 @@ extern const std::string KiCadLib3DShapesPathExtension;
 extern const std::string SpecctraDsnFileExtension;
 extern const std::string IpcD356FileExtension;
 
+extern const std::string PngFileExtension;
+extern const std::string JpegFileExtension;
+
 /**
  * @}
  */
@@ -100,7 +127,7 @@ extern const std::string IpcD356FileExtension;
  * @{
  */
 
-extern const wxString AllFilesWildcard;
+extern wxString AllFilesWildcard();
 
 extern wxString ComponentFileWildcard();
 extern wxString PageLayoutDescrFileWildcard();
@@ -150,6 +177,7 @@ extern wxString SpecctraDsnFileWildcard();
 extern wxString IpcD356FileWildcard();
 extern wxString WorkbookFileWildcard();
 extern wxString PngFileWildcard();
+extern wxString JpegFileWildcard();
 
 /**
  * @}

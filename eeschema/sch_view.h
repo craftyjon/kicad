@@ -35,6 +35,7 @@
 class SCH_SHEET;
 class SCH_SCREEN;
 class LIB_PART;
+class LIB_PIN;
 class SCH_BASE_FRAME;
 
 // Eeschema uses mils as the internal units
@@ -46,6 +47,7 @@ static const LAYER_NUM SCH_LAYER_ORDER[] =
         LAYER_ERC_ERR, LAYER_ERC_WARN,
         LAYER_REFERENCEPART, LAYER_VALUEPART, LAYER_FIELDS,
         LAYER_JUNCTION, LAYER_NOCONNECT,
+        LAYER_HIERLABEL,
         LAYER_WIRE, LAYER_BUS,
         LAYER_DEVICE,
         LAYER_DEVICE_BACKGROUND,
@@ -91,8 +93,14 @@ public:
     void ShowSelectionArea( bool aShow = true );
     void ShowPreview( bool aShow = true );
 
+    /**
+     * Clear the hide flag of all items in the view
+     */
     void ClearHiddenFlags();
+
     void HideWorksheet();
+
+    void HighlightItem( EDA_ITEM *aItem, LIB_PIN* aPin = nullptr );
 
 private:
     SCH_BASE_FRAME* m_frame;    // The frame using this view. Can be null. Used mainly

@@ -587,6 +587,10 @@ endif()
 # Find GLM library, required
 #
 find_package( GLM 0.9.5.1 REQUIRED )
+if( GLM_VERSION MATCHES "0.9.9.3" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    MESSAGE( FATAL_ERROR "\nGLM version ${GLM_VERSION} is incompatible with KiCad using GCC.\n"
+                         "Please downgrade to GLM version 0.9.9.2 or older or use clang instead" )
+endif()
 
 add_definitions( -DGLM_FORCE_CTOR_INIT )
 
@@ -600,7 +604,7 @@ endif()
 #
 # Find Cairo library, required
 #
-find_package( Cairo 1.8.8 REQUIRED )
+find_package( Cairo 1.12 REQUIRED )
 find_package( Pixman 0.30 REQUIRED )
 
 #
@@ -836,6 +840,8 @@ if( DOXYGEN_FOUND )
         DEPENDS Doxyfile
         COMMENT "building developer's resource docs into directory Documentation/development/doxygen/html"
         )
+
+    add_subdirectory(Documentation/docset)
 else()
     message( STATUS "WARNING: Doxygen not found - doxygen-docs (Source Docs) target not created" )
 endif()

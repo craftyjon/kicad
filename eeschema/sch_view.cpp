@@ -33,6 +33,8 @@
 #include <class_libentry.h>
 #include <sch_sheet.h>
 #include <sch_screen.h>
+#include <sch_component.h>
+#include <lib_pin.h>
 #include <preview_items/selection_area.h>
 #include <sch_edit_frame.h>
 
@@ -186,5 +188,41 @@ void SCH_VIEW::HideWorksheet()
     //    SetVisible( m_worksheet.get(), false );
 }
 
+void SCH_VIEW::HighlightItem( EDA_ITEM *aItem, LIB_PIN* aPin )
+{
+    if( !aItem )
+    {
+        for( auto item : *m_allItems )
+        {
+            // Not all view items can be highlighted, only EDA_ITEMs
+            // So clear flag of only EDA_ITEMs.
+            auto eitem = dynamic_cast<EDA_ITEM *>( item );
+
+            if( eitem )
+            {
+                eitem->ClearFlags( HIGHLIGHTED );
+
+                if( eitem->Type() == SCH_COMPONENT_T )
+                {
+                    // Items inside a component (pins, fields can be highlighted.
+                    static_cast<SCH_COMPONENT*>( eitem )->ClearAllHighlightFlags();
+                }
+            }
+        }
+    }
+    else
+    {
+        if( ( aItem->Type() == SCH_COMPONENT_T ) && aPin )
+        {
+            static_cast<SCH_COMPONENT*>( aItem )->HighlightPin( aPin );
+        }
+        else
+            aItem->SetFlags( HIGHLIGHTED );
+    }
+
+    // ugly but I guess OK for the moment...
+    UpdateAllItems( ALL );
+}
 
 }; // namespace KIGFX
+

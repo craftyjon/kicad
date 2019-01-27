@@ -154,7 +154,6 @@ PGM_BASE::PGM_BASE()
 {
     m_pgm_checker = NULL;
     m_locale = NULL;
-    m_common_settings = NULL;
 
     m_show_env_var_dialog = true;
 
@@ -173,9 +172,7 @@ PGM_BASE::~PGM_BASE()
 void PGM_BASE::Destroy()
 {
     // unlike a normal destructor, this is designed to be called more than once safely:
-
-    delete m_common_settings;
-    m_common_settings = 0;
+    m_common_settings.reset();
 
     delete m_pgm_checker;
     m_pgm_checker = 0;
@@ -556,13 +553,14 @@ void PGM_BASE::loadCommonSettings()
         m_common_settings->Write( USE_ICONS_IN_MENUS_KEY, defaultUseIconsInMenus );
 
     if( !m_common_settings->HasEntry( ICON_SCALE_KEY )
-        || !m_common_settings->HasEntry( GAL_ANTIALIASING_MODE_KEY ) )
+        || !m_common_settings->HasEntry( GAL_ANTIALIASING_MODE_KEY )
+        || !m_common_settings->HasEntry( CAIRO_ANTIALIASING_MODE_KEY )  )
     {
         // 5.0 and earlier saved common settings in each app, and saved hardware antialiasing
         // options only in pcbnew (which was the only canvas to support them).  Since there's
         // no single right answer to where to pull the common settings from, we might as well
         // get them along with the hardware antialiasing option from pcbnew.
-        wxConfigBase* pcbnewConfig = GetNewConfig( wxString::FromUTF8( "pcbnew" ) );
+        auto pcbnewConfig = GetNewConfig( wxString::FromUTF8( "pcbnew" ) );
         wxString pcbFrameKey( PCB_EDIT_FRAME_NAME );
 
         if( !m_common_settings->HasEntry( ICON_SCALE_KEY ) )
@@ -590,6 +588,14 @@ void PGM_BASE::loadCommonSettings()
             pcbnewConfig->Read( pcbFrameKey + GAL_DISPLAY_OPTIONS_KEY + GAL_ANTIALIASING_MODE_KEY,
                                 &temp, (int) KIGFX::OPENGL_ANTIALIASING_MODE::NONE );
             m_common_settings->Write( GAL_ANTIALIASING_MODE_KEY, temp );
+        }
+
+        if( !m_common_settings->HasEntry( CAIRO_ANTIALIASING_MODE_KEY ) )
+        {
+            int temp;
+            pcbnewConfig->Read( pcbFrameKey + GAL_DISPLAY_OPTIONS_KEY + CAIRO_ANTIALIASING_MODE_KEY,
+                                &temp, (int) KIGFX::CAIRO_ANTIALIASING_MODE::NONE );
+            m_common_settings->Write( CAIRO_ANTIALIASING_MODE_KEY, temp );
         }
     }
 
@@ -669,7 +675,7 @@ bool PGM_BASE::SetLanguage( bool first_time )
         m_common_settings->Read( languageCfgKey, &languageSel );
 
         // Search for the current selection
-        for( unsigned ii = 0; ii < DIM( s_Languages ); ii++ )
+        for( unsigned ii = 0; ii < arrayDim( s_Languages ); ii++ )
         {
             if( s_Languages[ii].m_Lang_Label == languageSel )
             {
@@ -711,7 +717,7 @@ bool PGM_BASE::SetLanguage( bool first_time )
         wxString languageSel;
 
         // Search for the current selection language name
-        for( unsigned ii = 0; ii < DIM( s_Languages ); ii++ )
+        for( unsigned ii = 0; ii < arrayDim( s_Languages ); ii++ )
         {
             if( s_Languages[ii].m_WX_Lang_Identifier == m_language_id )
             {
@@ -750,9 +756,9 @@ bool PGM_BASE::SetLanguage( bool first_time )
 void PGM_BASE::SetLanguageIdentifier( int menu_id )
 {
     wxLogTrace( traceLocale, "Select language ID %d from %d possible languages.",
-                menu_id, DIM( s_Languages ) );
+                menu_id, (int)arrayDim( s_Languages ) );
 
-    for( unsigned ii = 0; ii < DIM( s_Languages ); ii++ )
+    for( unsigned ii = 0; ii < arrayDim( s_Languages ); ii++ )
     {
         if( menu_id == s_Languages[ii].m_KI_Lang_Identifier )
         {
@@ -808,7 +814,7 @@ void PGM_BASE::AddMenuLanguageList( wxMenu* MasterMenu )
 
     menu = new wxMenu;
 
-    for( unsigned ii = 0; ii < DIM( s_Languages ); ii++ )
+    for( unsigned ii = 0; ii < arrayDim( s_Languages ); ii++ )
     {
         wxString label;
 
@@ -829,7 +835,7 @@ void PGM_BASE::AddMenuLanguageList( wxMenu* MasterMenu )
                  KiBitmap( language_xpm ) );
 
     // Set Check mark on current selected language
-    for( unsigned ii = 0;  ii < DIM( s_Languages );  ii++ )
+    for( unsigned ii = 0;  ii < arrayDim( s_Languages );  ii++ )
     {
         if( m_language_id == s_Languages[ii].m_WX_Lang_Identifier )
             menu->Check( s_Languages[ii].m_KI_Lang_Identifier, true );

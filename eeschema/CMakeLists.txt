@@ -55,7 +55,6 @@ set( EESCHEMA_DLGS
     dialogs/dialog_erc.cpp
     dialogs/dialog_erc_base.cpp
     dialogs/dialog_global_sym_lib_table_config.cpp
-    dialogs/dialog_global_sym_lib_table_config_base.cpp
     dialogs/dialog_lib_edit_draw_item.cpp
     dialogs/dialog_lib_edit_draw_item_base.cpp
     dialogs/dialog_lib_edit_pin.cpp
@@ -520,4 +519,3 @@ add_custom_target(
 add_dependencies( eeschema_kiface dialog_bom_cfg_lexer_source_files )
 
 add_subdirectory( plugins )
-add_subdirectory( qa )

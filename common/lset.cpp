@@ -134,6 +134,9 @@ const wxChar* LSET::Name( PCB_LAYER_ID aLayerId )
     case F_Fab:             txt = wxT( "F.Fab" );           break;
     case B_Fab:             txt = wxT( "B.Fab" );           break;
 
+    // Rescue
+    case Rescue:            txt = wxT( "Rescue" );          break;
+
     default:
         std::cout << aLayerId << std::endl;
         wxASSERT_MSG( 0, wxT( "aLayerId out of range" ) );
@@ -182,7 +185,7 @@ LSEQ LSET::CuStack() const
         B_Cu,           // 31
     };
 
-    return Seq( sequence, DIM( sequence ) );
+    return Seq( sequence, arrayDim( sequence ) );
 }
 
 
@@ -206,7 +209,7 @@ LSEQ LSET::Technicals( LSET aSetToOmit ) const
 
     LSET subset = ~aSetToOmit & *this;
 
-    return subset.Seq( sequence, DIM( sequence ) );
+    return subset.Seq( sequence, arrayDim( sequence ) );
 }
 
 
@@ -222,7 +225,7 @@ LSEQ LSET::Users() const
         Margin,
    };
 
-   return Seq( sequence, DIM( sequence ) );
+   return Seq( sequence, arrayDim( sequence ) );
 }
 
 
@@ -249,7 +252,7 @@ LSEQ LSET::TechAndUserUIOrder() const
         B_Fab,
    };
 
-   return Seq( sequence, DIM( sequence ) );
+   return Seq( sequence, arrayDim( sequence ) );
 }
 
 
@@ -299,7 +302,7 @@ std::string LSET::FmtHex() const
         if( nibble && !( nibble % 8 ) )
             ret += '_';
 
-        assert( ndx < DIM( hex ) );
+        assert( ndx < arrayDim( hex ) );
 
         ret += hex[ndx];
     }
@@ -465,7 +468,7 @@ LSEQ LSET::SeqStackupBottom2Top() const
         Edge_Cuts,
     };
 
-    return Seq( sequence, DIM( sequence ) );
+    return Seq( sequence, arrayDim( sequence ) );
 }
 
 
@@ -665,7 +668,7 @@ LSET LSET::InternalCuMask()
         In30_Cu,
     };
 
-    static const LSET saved( cu_internals, DIM( cu_internals ) );
+    static const LSET saved( cu_internals, arrayDim( cu_internals ) );
     return saved;
 }
 

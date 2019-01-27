@@ -145,7 +145,7 @@ static EDA_HOTKEY HkCopyItem( _HKI( "Copy Item" ), HK_COPY_ITEM, 'C' );
 static EDA_HOTKEY HkDragFootprint( _HKI( "Drag Item" ), HK_DRAG_ITEM, 'G' );
 static EDA_HOTKEY HkGetAndMoveFootprint( _HKI( "Get and Move Footprint" ), HK_GET_AND_MOVE_FOOTPRINT, 'T' );
 static EDA_HOTKEY HkLock_Unlock_Footprint( _HKI( "Lock/Unlock Footprint" ), HK_LOCK_UNLOCK_FOOTPRINT, 'L' );
-static EDA_HOTKEY HkDelete( _HKI( "Delete Track or Footprint" ), HK_DELETE, WXK_DELETE );
+static EDA_HOTKEY HkDelete( _HKI( "Delete Full Track" ), HK_DELETE, WXK_DELETE );
 static EDA_HOTKEY HkResetLocalCoord( _HKI( "Reset Local Coordinates" ), HK_RESET_LOCAL_COORD, ' ' );
 static EDA_HOTKEY HkSwitchHighContrastMode( _HKI( "Toggle High Contrast Mode" ), HK_SWITCH_HIGHCONTRAST_MODE,'H');
 
@@ -228,7 +228,7 @@ static EDA_HOTKEY HkZoomSelection( _HKI( "Zoom to Selection" ), HK_ZOOM_SELECTIO
 
 static EDA_HOTKEY Hk3DViewer( _HKI( "3D Viewer" ), HK_3D_VIEWER, GR_KB_ALT + '3' );
 
-static EDA_HOTKEY HkHelp( _HKI( "Help (this window)" ), HK_HELP, GR_KB_CTRL + WXK_F1 );
+static EDA_HOTKEY HkHelp( _HKI( "List Hotkeys" ), HK_HELP, GR_KB_CTRL + WXK_F1 );
 
 static EDA_HOTKEY HkSwitchTrackWidthToNext( _HKI( "Switch Track Width To Next" ),
                                             HK_SWITCH_TRACK_WIDTH_TO_NEXT, 'W' );

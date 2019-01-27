@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2014-2018 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2019 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -56,7 +56,8 @@ using KIGFX::COLOR4D;
 
 COLOR4D        g_GhostColor;
 
-#ifdef _WIN32
+
+#if defined( _WIN32 ) && defined( DEBUG )
 // a wxAssertHandler_t function to filter wxWidgets alert messages when reading/writing a file
 // when switching the locale to LC_NUMERIC, "C"
 // It is used in class LOCALE_IO to hide a useless (in kicad) wxWidgets alert message
@@ -69,7 +70,9 @@ void KiAssertFilter( const wxString &file, int line,
 }
 #endif
 
-std::atomic<unsigned int> LOCALE_IO::m_c_count(0);
+
+std::atomic<unsigned int> LOCALE_IO::m_c_count( 0 );
+
 
 // Note on Windows, setlocale( LC_NUMERIC, "C" ) works fine to read/write
 // files with floating point numbers, but generates a overzealous wx alert
@@ -83,7 +86,7 @@ LOCALE_IO::LOCALE_IO()
     {
         // Store the user locale name, to restore this locale later, in dtor
         m_user_locale = setlocale( LC_NUMERIC, nullptr );
-#ifdef _WIN32
+#if defined( _WIN32 ) && defined( DEBUG )
         // Disable wxWidgets alerts
         wxSetAssertHandler( KiAssertFilter );
 #endif
@@ -100,8 +103,8 @@ LOCALE_IO::~LOCALE_IO()
     {
         // revert to the user locale
         setlocale( LC_NUMERIC, m_user_locale.c_str() );
-#ifdef _WIN32
-        // Enaable wxWidgets alerts
+#if defined( _WIN32 ) && defined( DEBUG )
+        // Enable wxWidgets alerts
         wxSetDefaultAssertHandler();
 #endif
     }
@@ -168,6 +171,7 @@ void SelectReferenceNumber( wxTextEntry* aTextEntry )
         {
             if( !isdigit( num.Last() ) )
                 num.RemoveLast();
+
             if( !isdigit( num.GetChar ( 0 ) ) )
                 num = num.Right( num.Length() - 1);
         }
@@ -248,15 +252,14 @@ double RoundTo0( double x, double precision )
 }
 
 
-wxConfigBase* GetNewConfig( const wxString& aProgName )
+std::unique_ptr<wxConfigBase> GetNewConfig( const wxString& aProgName )
 {
-    wxConfigBase* cfg = 0;
     wxFileName configname;
     configname.AssignDir( GetKicadConfigPath() );
     configname.SetFullName( aProgName );
 
-    cfg = new wxFileConfig( wxT( "" ), wxT( "" ), configname.GetFullPath() );
-    return cfg;
+    // explicitly use wxFileConfig to prevent storing any settings in the system registry on Windows
+    return std::make_unique<wxFileConfig>( wxT( "" ), wxT( "" ), configname.GetFullPath() );
 }
 
 
@@ -323,34 +326,39 @@ wxString KIwxExpandEnvVars(const wxString& str)
     size_t strlen = str.length();
 
     wxString strResult;
-    strResult.Alloc(strlen);
+    strResult.Alloc( strlen );
 
-    for ( size_t n = 0; n < strlen; n++ ) {
+    for( size_t n = 0; n < strlen; n++ )
+    {
         wxUniChar str_n = str[n];
 
-        switch ( str_n.GetValue() ) {
+        switch( str_n.GetValue() )
+        {
 #ifdef __WINDOWS__
-        case wxT('%'):
+        case wxT( '%' ):
 #endif // __WINDOWS__
-        case wxT('$'):
+        case wxT( '$' ):
         {
             Bracket bracket;
 #ifdef __WINDOWS__
-            if ( str_n == wxT('%') )
+            if( str_n == wxT( '%' ) )
               bracket = Bracket_Windows;
             else
 #endif // __WINDOWS__
-            if ( n == strlen - 1 ) {
+            if( n == strlen - 1 )
+            {
                 bracket = Bracket_None;
             }
-            else {
-                switch ( str[n + 1].GetValue() ) {
-                case wxT('('):
+            else
+            {
+                switch( str[n + 1].GetValue() )
+                {
+                case wxT( '(' ):
                     bracket = Bracket_Normal;
                     str_n = str[++n];                   // skip the bracket
                     break;
 
-                case wxT('{'):
+                case wxT( '{' ):
                     bracket = Bracket_Curly;
                     str_n = str[++n];                   // skip the bracket
                     break;
@@ -363,10 +371,10 @@ wxString KIwxExpandEnvVars(const wxString& str)
             size_t m = n + 1;
             wxUniChar str_m = str[m];
 
-            while ( m < strlen && (wxIsalnum(str_m) || str_m == wxT('_')) )
+            while( m < strlen && ( wxIsalnum( str_m ) || str_m == wxT( '_' ) ) )
                 str_m = str[++m];
 
-            wxString strVarName(str.c_str() + n + 1, m - n - 1);
+            wxString strVarName( str.c_str() + n + 1, m - n - 1 );
 
 #ifdef __WXWINCE__
             const bool expanded = false;
@@ -375,7 +383,8 @@ wxString KIwxExpandEnvVars(const wxString& str)
             //     set through wxSetEnv may not be read correctly!
             bool expanded = false;
             wxString tmp;
-            if (wxGetEnv(strVarName, &tmp))
+
+            if( wxGetEnv( strVarName, &tmp ) )
             {
                 strResult += tmp;
                 expanded = true;
@@ -389,27 +398,33 @@ wxString KIwxExpandEnvVars(const wxString& str)
 #endif
                 if ( bracket != Bracket_None )
                     strResult << str[n - 1];
+
                 strResult << str_n << strVarName;
             }
 
             // check the closing bracket
-            if ( bracket != Bracket_None ) {
-                if ( m == strlen || str_m != (wxChar)bracket ) {
+            if( bracket != Bracket_None )
+            {
+                if( m == strlen || str_m != (wxChar)bracket )
+                {
                     // under MSW it's common to have '%' characters in the registry
                     // and it's annoying to have warnings about them each time, so
-                    // ignroe them silently if they are not used for env vars
+                    // ignore them silently if they are not used for env vars
                     //
                     // under Unix, OTOH, this warning could be useful for the user to
                     // understand why isn't the variable expanded as intended
 #ifndef __WINDOWS__
-                    wxLogWarning(_("Environment variables expansion failed: missing '%c' at position %u in '%s'."),
-                                 (char)bracket, (unsigned int) (m + 1), str.c_str());
+                    wxLogWarning( _( "Environment variables expansion failed: missing '%c' "
+                                     "at position %u in '%s'." ),
+                                  (char)bracket, (unsigned int) (m + 1), str.c_str() );
 #endif // __WINDOWS__
                 }
-                else {
+                else
+                {
                     // skip closing bracket unless the variables wasn't expanded
-                    if ( !expanded )
+                    if( !expanded )
                         strResult << (wxChar)bracket;
+
                     str_m = str[++m];
                 }
             }
@@ -419,9 +434,10 @@ wxString KIwxExpandEnvVars(const wxString& str)
         }
             break;
 
-        case wxT('\\'):
+        case wxT( '\\' ):
             // backslash can be used to suppress special meaning of % and $
-            if ( n != strlen - 1 && (str[n + 1] == wxT('%') || str[n + 1] == wxT('$')) ) {
+            if( n != strlen - 1 && (str[n + 1] == wxT( '%' ) || str[n + 1] == wxT( '$' )) )
+            {
                 str_n = str[++n];
                 strResult += str_n;
 
@@ -447,8 +463,7 @@ const wxString ExpandEnvVarSubstitutions( const wxString& aString )
 
     MUTLOCK lock( getenv_mutex );
 
-    // We reserve the right to do this another way, by providing our own member
-    // function.
+    // We reserve the right to do this another way, by providing our own member function.
     return KIwxExpandEnvVars( aString );
 }
 
@@ -457,6 +472,7 @@ const wxString ResolveUriByEnvVars( const wxString& aUri )
 {
     // URL-like URI: return as is.
     wxURL url( aUri );
+
     if( url.GetError() == wxURL_NOERR )
         return aUri;
 
@@ -529,7 +545,7 @@ wxString GetOSXKicadUserDataDir()
     // Since appname is different if started via launcher or standalone binary
     // map all to "kicad" here
     udir.RemoveLastDir();
-    udir.AppendDir( wxT( "kicad" ) );
+    udir.AppendDir( "kicad" );
 
     return udir.GetPath();
 }
@@ -566,6 +582,7 @@ wxString GetOSXKicadDataDir()
 }
 #endif
 
+
 // add this only if it is not in wxWidgets (for instance before 3.1.0)
 #ifdef USE_KICAD_WXSTRING_HASH
 size_t std::hash<wxString>::operator()( const wxString& s ) const
@@ -597,7 +614,7 @@ bool std::less<wxPoint>::operator()( const wxPoint& aA, const wxPoint& aB ) cons
  * Performance enhancements to file and directory operations.
  *
  * Note: while it's annoying to have to make copies of wxWidgets stuff and then
- * add platform-specific performance optimizations, the following routies offer
+ * add platform-specific performance optimizations, the following routines offer
  * SIGNIFICANT performance benefits.
  */
 
@@ -674,7 +691,7 @@ long long WX_FILENAME::GetTimestamp()
  */
 bool matchWild( const char* pat, const char* text, bool dot_special )
 {
-    if ( !*text )
+    if( !*text )
     {
         /* Match if both are empty. */
         return !*pat;
@@ -688,51 +705,56 @@ bool matchWild( const char* pat, const char* text, bool dot_special )
     acount = 0,
     count = 0;
 
-    if (dot_special && (*n == '.'))
+    if( dot_special && (*n == '.') )
     {
         /* Never match so that hidden Unix files
          * are never found. */
         return false;
     }
 
-    for (;;)
+    for(;;)
     {
-        if (*m == '*')
+        if( *m == '*' )
         {
             ma = ++m;
             na = n;
             just = 1;
             acount = count;
         }
-        else if (*m == '?')
+        else if( *m == '?' )
         {
             m++;
-            if (!*n++)
+
+            if( !*n++ )
                 return false;
         }
         else
         {
-            if (*m == '\\')
+            if( *m == '\\' )
             {
                 m++;
+
                 /* Quoting "nothing" is a bad thing */
-                if (!*m)
+                if( !*m )
                     return false;
             }
-            if (!*m)
+            if( !*m )
             {
                 /*
                 * If we are out of both strings or we just
                 * saw a wildcard, then we can say we have a
                 * match
                 */
-                if (!*n)
+                if( !*n )
                     return true;
-                if (just)
+
+                if( just )
                     return true;
+
                 just = 0;
                 goto not_matched;
             }
+
             /*
             * We could check for *n == NULL at this point, but
             * since it's more common to have a character there,
@@ -741,7 +763,8 @@ bool matchWild( const char* pat, const char* text, bool dot_special )
             * the NULL of n
             */
             just = 0;
-            if (*m == *n)
+
+            if( *m == *n )
             {
                 m++;
                 count++;
@@ -749,19 +772,18 @@ bool matchWild( const char* pat, const char* text, bool dot_special )
             }
             else
             {
-
                 not_matched:
 
                 /*
-                * If there are no more characters in the
-                * string, but we still need to find another
-                * character (*m != NULL), then it will be
-                * impossible to match it
-                */
-                if (!*n)
+                 * If there are no more characters in the
+                 * string, but we still need to find another
+                 * character (*m != NULL), then it will be
+                 * impossible to match it
+                 */
+                if( !*n )
                     return false;
 
-                if (ma)
+                if( ma )
                 {
                     m = ma;
                     n = ++na;
@@ -787,13 +809,14 @@ bool matchWild( const char* pat, const char* text, bool dot_special )
 // This is the offset between FILETIME epoch and the Unix/wxDateTime Epoch.
 static wxInt64 EPOCH_OFFSET_IN_MSEC = wxLL(11644473600000);
 
-static void ConvertFileTimeToWx(wxDateTime *dt, const FILETIME &ft)
+
+static void ConvertFileTimeToWx( wxDateTime *dt, const FILETIME &ft )
 {
-    wxLongLong t(ft.dwHighDateTime, ft.dwLowDateTime);
+    wxLongLong t( ft.dwHighDateTime, ft.dwLowDateTime );
     t /= 10000; // Convert hundreds of nanoseconds to milliseconds.
     t -= EPOCH_OFFSET_IN_MSEC;
 
-    *dt = wxDateTime(t);
+    *dt = wxDateTime( t );
 }
 
 #endif // wxUSE_DATETIME && __WIN32__
@@ -812,7 +835,7 @@ long long TimestampDir( const wxString& aDirPath, const wxString& aFilespec )
 {
     long long timestamp = 0;
 
-#if defined(__WIN32__)
+#if defined( __WIN32__ )
     // Win32 version.
     // Save time by not searching for each path twice: once in wxDir.GetNext() and once in
     // wxFileName.GetModificationTime().  Also cuts out wxWidgets' string-matching and case
@@ -833,7 +856,7 @@ long long TimestampDir( const wxString& aDirPath, const wxString& aFilespec )
             ConvertFileTimeToWx( &lastModDate, findData.ftLastWriteTime );
             timestamp += lastModDate.GetValue().GetValue();
         }
-        while ( FindNextFile( fileHandle, &findData ) != 0);
+        while ( FindNextFile( fileHandle, &findData ) != 0 );
     }
 
     FindClose( fileHandle );
@@ -882,5 +905,3 @@ long long TimestampDir( const wxString& aDirPath, const wxString& aFilespec )
 
     return timestamp;
 }
-
-

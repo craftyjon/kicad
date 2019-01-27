@@ -65,6 +65,8 @@ bool GRID_TRICKS::toggleCell( int aRow, int aCol )
 
     if( isCheckbox )
     {
+        m_grid->SetGridCursor( aRow, aCol );
+
         wxGridTableBase* model = m_grid->GetTable();
 
         if( model->CanGetValueAs( aRow, aCol, wxGRID_VALUE_BOOL )
@@ -97,12 +99,12 @@ bool GRID_TRICKS::toggleCell( int aRow, int aCol )
 
 bool GRID_TRICKS::showEditor( int aRow, int aCol )
 {
+    m_grid->SetGridCursor( aRow, aCol );
+
     if( m_grid->IsEditable() && !m_grid->IsReadOnly( aRow, aCol ) )
     {
         if( m_grid->GetSelectionMode() == wxGrid::wxGridSelectRows )
             m_grid->SelectRow( aRow );
-
-        m_grid->SetGridCursor( aRow, aCol );
 
         // For several reasons we can't enable the control here.  There's the whole
         // SetInSetFocus() issue/hack in wxWidgets, and there's also wxGrid's MouseUp
@@ -122,9 +124,10 @@ void GRID_TRICKS::onGridCellLeftClick( wxGridEvent& aEvent )
     int row = aEvent.GetRow();
     int col = aEvent.GetCol();
 
-    // Don't make users click twice to toggle a checkbox or edit a text cell
-
-    if( !aEvent.GetModifiers() )
+    // Activate editor only if a cursor is placed on the clicked cell
+    if( !aEvent.GetModifiers() &&
+        m_grid->GetGridCursorRow() == row &&
+        m_grid->GetGridCursorCol() == col )
     {
         if( toggleCell( row, col ) )
             return;
@@ -150,17 +153,24 @@ void GRID_TRICKS::onMouseUp( wxMouseEvent& aEvent )
     {
         // Some wxGridCellEditors don't have the SetInSetFocus() hack.  Even when they do,
         // it sometimes fails.  Activating the control here seems to avoid those issues.
-        if( m_grid->CanEnableCellControl() )
+        m_showEditorOnMouseUp = false;
+        // Mouse button can be pressed on one cell but be released on another
+        // cell (when range of cells is selecting, for example).
+        // So it must be checked.
+        wxGridCellCoords curCell = wxGridCellCoords( m_grid->GetGridCursorRow(),
+                                                     m_grid->GetGridCursorCol() );
+        wxGridCellCoords eventCell = m_grid->XYToCell( m_grid->CalcUnscrolledPosition( aEvent.GetPosition() ) );
+        if( eventCell == curCell && m_grid->CanEnableCellControl() )
         {
             // Yes, the first of these also shows the control.  Well, at least sometimes.
             // The second call corrects those (as yet undefined) "other times".
             m_grid->EnableCellEditControl();
             m_grid->ShowCellEditControl();
+            return;
         }
-        m_showEditorOnMouseUp = false;
     }
-    else
-        aEvent.Skip();
+
+    aEvent.Skip();
 }
 
 
@@ -378,6 +388,11 @@ void GRID_TRICKS::paste_text( const wxString& cb_text )
 
     const int cur_row = m_grid->GetGridCursorRow();
     const int cur_col = m_grid->GetGridCursorCol();
+    int start_row;
+    int end_row;
+    int start_col;
+    int end_col;
+    bool is_selection = false;
 
     if( cur_row < 0 || cur_col < 0 )
     {
@@ -385,24 +400,70 @@ void GRID_TRICKS::paste_text( const wxString& cb_text )
         return;
     }
 
-    wxStringTokenizer   rows( cb_text, ROW_SEP, wxTOKEN_RET_EMPTY );
-
-    // if clipboard rows would extend past end of current table size...
-    if( int( rows.CountTokens() ) > tbl->GetNumberRows() - cur_row )
+    if( m_grid->GetSelectionMode() == wxGrid::wxGridSelectRows )
     {
-        int newRowsNeeded = rows.CountTokens() - ( tbl->GetNumberRows() - cur_row );
-
-        tbl->AppendRows( newRowsNeeded );
+        if( m_sel_row_count > 1 )
+            is_selection = true;
+    }
+    else
+    {
+        if( m_grid->IsSelection() )
+            is_selection = true;
     }
 
-    for( int row = cur_row;  rows.HasMoreTokens();  ++row )
+    wxStringTokenizer rows( cb_text, ROW_SEP, wxTOKEN_RET_EMPTY );
+
+    // If selection of cells is present
+    // then a clipboard pastes to selected cells only.
+    if( is_selection )
     {
+        start_row = m_sel_row_start;
+        end_row = m_sel_row_start + m_sel_row_count;
+        start_col = m_sel_col_start;
+        end_col = m_sel_col_start + m_sel_col_count;
+    }
+    // Otherwise, paste whole clipboard
+    // starting from cell with cursor.
+    else
+    {
+        start_row = cur_row;
+        end_row = cur_row + rows.CountTokens();
+
+        if( end_row > tbl->GetNumberRows() )
+            end_row = tbl->GetNumberRows();
+
+        start_col = cur_col;
+        end_col = start_col; // end_col actual value calculates later
+    }
+
+    for( int row = start_row;  row < end_row;  ++row )
+    {
+        // If number of selected rows bigger than count of rows in
+        // the clipboard, paste from the clipboard again and again
+        // while end of the selection is reached.
+        if( !rows.HasMoreTokens() )
+            rows.SetString( cb_text, ROW_SEP, wxTOKEN_RET_EMPTY );
+
         wxString rowTxt = rows.GetNextToken();
 
-        wxStringTokenizer   cols( rowTxt, COL_SEP, wxTOKEN_RET_EMPTY );
+        wxStringTokenizer cols( rowTxt, COL_SEP, wxTOKEN_RET_EMPTY );
 
-        for( int col = cur_col;  cols.HasMoreTokens();  ++col )
+        if( !is_selection )
         {
+            end_col = cur_col + cols.CountTokens();
+
+            if( end_col > tbl->GetNumberCols() )
+                end_col = tbl->GetNumberCols();
+        }
+
+        for( int col = start_col;  col < end_col;  ++col )
+        {
+            // If number of selected columns bigger than count of columns in
+            // the clipboard, paste from the clipboard again and again while
+            // end of the selection is reached.
+            if( !cols.HasMoreTokens() )
+                cols.SetString( rowTxt, COL_SEP, wxTOKEN_RET_EMPTY );
+
             wxString cellTxt = cols.GetNextToken();
             tbl->SetValue( row, col, cellTxt );
         }

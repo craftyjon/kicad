@@ -54,9 +54,9 @@ DIALOG_TEXT_PROPERTIES::DIALOG_TEXT_PROPERTIES( PCB_BASE_EDIT_FRAME* aParent, BO
     DIALOG_TEXT_PROPERTIES_BASE( aParent ),
     m_Parent( aParent ), m_DC( aDC ), m_item( aItem ),
     m_edaText( nullptr ), m_modText( nullptr ), m_pcbText( nullptr ),
-    m_textWidth( aParent, m_SizeXLabel, m_SizeXCtrl, m_SizeXUnits, true, TEXTS_MIN_SIZE ),
-    m_textHeight( aParent, m_SizeYLabel, m_SizeYCtrl, m_SizeYUnits, true, TEXTS_MIN_SIZE ),
-    m_thickness( aParent, m_ThicknessLabel, m_ThicknessCtrl, m_ThicknessUnits, true, 0 ),
+    m_textWidth( aParent, m_SizeXLabel, m_SizeXCtrl, m_SizeXUnits, true ),
+    m_textHeight( aParent, m_SizeYLabel, m_SizeYCtrl, m_SizeYUnits, true ),
+    m_thickness( aParent, m_ThicknessLabel, m_ThicknessCtrl, m_ThicknessUnits, true ),
     m_posX( aParent, m_PositionXLabel, m_PositionXCtrl, m_PositionXUnits ),
     m_posY( aParent, m_PositionYLabel, m_PositionYCtrl, m_PositionYUnits ),
     m_OrientValidator( 1, &m_OrientValue )
@@ -107,6 +107,11 @@ DIALOG_TEXT_PROPERTIES::DIALOG_TEXT_PROPERTIES( PCB_BASE_EDIT_FRAME* aParent, BO
         m_SingleLineSizer->Show( false );
         m_DimensionTextSizer->Show( false );
 
+        // This option make sense only for footprint texts,
+        // Texts on board are always visible:
+        m_Visible->SetValue( true );
+        m_Visible->Show( false );
+
         m_KeepUpright->Show( false );
         m_statusLine->Show( false );
     }
@@ -129,6 +134,14 @@ DIALOG_TEXT_PROPERTIES::DIALOG_TEXT_PROPERTIES( PCB_BASE_EDIT_FRAME* aParent, BO
     m_OrientCtrl->SetValidator( m_OrientValidator );
     m_OrientValidator.SetWindow( m_OrientCtrl );
 
+    // Handle decimal separators in combo dropdown
+    for( size_t i = 0; i < m_OrientCtrl->GetCount(); ++i )
+    {
+        wxString item = m_OrientCtrl->GetString( i );
+        item.Replace( '.', localeconv()->decimal_point[0] );
+        m_OrientCtrl->SetString( i, item );
+    }
+
     // Set font sizes
     wxFont infoFont = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT );
     infoFont.SetSymbolicSize( wxFONTSIZE_SMALL );
@@ -138,7 +151,7 @@ DIALOG_TEXT_PROPERTIES::DIALOG_TEXT_PROPERTIES( PCB_BASE_EDIT_FRAME* aParent, BO
 
     // wxTextCtrls fail to generate wxEVT_CHAR events when the wxTE_MULTILINE flag is set,
     // so we have to listen to wxEVT_CHAR_HOOK events instead.
-    m_MultiLineText->Connect( wxEVT_CHAR_HOOK, wxKeyEventHandler( DIALOG_TEXT_PROPERTIES::OnCharHook ), NULL, this );
+    Connect( wxEVT_CHAR_HOOK, wxKeyEventHandler( DIALOG_TEXT_PROPERTIES::OnCharHook ), NULL, this );
 
     FinishDialogSettings();
 }
@@ -146,7 +159,7 @@ DIALOG_TEXT_PROPERTIES::DIALOG_TEXT_PROPERTIES( PCB_BASE_EDIT_FRAME* aParent, BO
 
 DIALOG_TEXT_PROPERTIES::~DIALOG_TEXT_PROPERTIES()
 {
-    m_MultiLineText->Disconnect( wxEVT_CHAR_HOOK, wxKeyEventHandler( DIALOG_TEXT_PROPERTIES::OnCharHook ), NULL, this );
+    Disconnect( wxEVT_CHAR_HOOK, wxKeyEventHandler( DIALOG_TEXT_PROPERTIES::OnCharHook ), NULL, this );
 }
 
 
@@ -183,10 +196,15 @@ void DIALOG_TEXT_PROPERTIES::OnCharHook( wxKeyEvent& aEvent )
 
         NavigateIn( flags );
     }
-    else if( aEvent.GetKeyCode() == WXK_RETURN && aEvent.ShiftDown() )
+    else if( aEvent.GetKeyCode() == WXK_RETURN )
     {
-        TransferDataFromWindow();
-        EndModal( wxID_OK );
+        if( FindFocus() == m_MultiLineText && !aEvent.ShiftDown() )
+            aEvent.Skip();
+        else
+        {
+            TransferDataFromWindow();
+            EndModal( wxID_OK );
+        }
     }
     else
     {
@@ -259,7 +277,7 @@ bool DIALOG_TEXT_PROPERTIES::TransferDataToWindow()
         m_DimensionUnitsOpt->SetSelection( units == MILLIMETRES ? 2 : useMils ? 1 : 0 );
     }
 
-    if( m_item->Type() == PCB_MODULE_TEXT_T )
+    if( m_item->Type() == PCB_MODULE_TEXT_T && m_modText )
     {
         MODULE*  module = dynamic_cast<MODULE*>( m_modText->GetParent() );
         wxString msg;
@@ -280,7 +298,12 @@ bool DIALOG_TEXT_PROPERTIES::TransferDataToWindow()
         m_statusLine->Show( false );
     }
 
-    m_LayerSelectionCtrl->SetLayerSelection( m_item->GetLayer() );
+    if( m_LayerSelectionCtrl->SetLayerSelection( m_item->GetLayer() ) < 0 )
+    {
+        wxMessageBox( _( "This item was on a non-existing or forbidden layer.\n"
+                         "It has been moved to the first allowed layer." ) );
+        m_LayerSelectionCtrl->SetSelection( 0 );
+    }
 
     m_textWidth.SetValue( m_edaText->GetTextSize().x );
     m_textHeight.SetValue( m_edaText->GetTextSize().y );
@@ -307,18 +330,8 @@ bool DIALOG_TEXT_PROPERTIES::TransferDataFromWindow()
     if( !DIALOG_TEXT_PROPERTIES_BASE::TransferDataFromWindow() )
         return false;
 
-    // Test for acceptable layer.
-    // Incorrect layer can happen for old boards, having texts on edge cut layer for instance
-    if( m_LayerSelectionCtrl->GetLayerSelection() < 0 )
-    {
-        wxMessageBox( _( "No layer selected, Please select the text layer" ) );
-        return false;
-    }
-
-    if( !m_textWidth.Validate( true ) || !m_textHeight.Validate( true ) )
-        return false;
-
-    if( !m_thickness.Validate( true ) )
+    if( !m_textWidth.Validate( TEXTS_MIN_SIZE, TEXTS_MAX_SIZE )
+        || !m_textHeight.Validate( TEXTS_MIN_SIZE, TEXTS_MAX_SIZE ) )
         return false;
 
     BOARD_COMMIT commit( m_Parent );

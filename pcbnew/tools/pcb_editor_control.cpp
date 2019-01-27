@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2014 CERN
- * Copyright (C) 2014-2018 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2014-2019 KiCad Developers, see AUTHORS.txt for contributors.
  * @author Maciej Suminski <maciej.suminski@cern.ch>
  *
  * This program is free software; you can redistribute it and/or
@@ -145,6 +145,14 @@ TOOL_ACTION PCB_ACTIONS::highlightNetSelection( "pcbnew.EditorControl.highlightN
         "", "" );
 
 TOOL_ACTION PCB_ACTIONS::showLocalRatsnest( "pcbnew.Control.showLocalRatsnest",
+        AS_GLOBAL, 0,
+        "", "" );
+
+TOOL_ACTION PCB_ACTIONS::hideLocalRatsnest( "pcbnew.Control.hideLocalRatsnest",
+        AS_GLOBAL, 0,
+        "", "" );
+
+TOOL_ACTION PCB_ACTIONS::updateLocalRatsnest( "pcbnew.Control.updateLocalRatsnest",
         AS_GLOBAL, 0,
         "", "" );
 
@@ -475,9 +483,19 @@ int PCB_EDITOR_CONTROL::PlaceModule( const TOOL_EVENT& aEvent )
                     continue;
 
                 module->SetLink( 0 );
-                m_frame->AddModuleToBoard( module );
-                commit.Added( module );
+
+                module->SetFlags( IS_NEW ); // whatever
+                module->SetTimeStamp( GetNewTimeStamp() );
+
+                // Put it on FRONT layer,
+                // (Can be stored flipped if the lib is an archive built from a board)
+                if( module->IsFlipped() )
+                    module->Flip( module->GetPosition() );
+
+                module->SetOrientation( 0 );
                 module->SetPosition( wxPoint( cursorPos.x, cursorPos.y ) );
+
+                commit.Add( module );
                 m_toolMgr->RunAction( PCB_ACTIONS::selectItem, true, module );
                 controls->SetCursorPosition( cursorPos, false );
             }
@@ -827,6 +845,8 @@ int PCB_EDITOR_CONTROL::CrossProbePcbToSch( const TOOL_EVENT& aEvent )
 
     if( selection.Size() == 1 )
         m_frame->SendMessageToEESCHEMA( static_cast<BOARD_ITEM*>( selection.Front() ) );
+    else
+        m_frame->SendMessageToEESCHEMA( nullptr );
 
     return 0;
 }
@@ -1079,17 +1099,21 @@ int PCB_EDITOR_CONTROL::HighlightNetCursor( const TOOL_EVENT& aEvent )
 static bool showLocalRatsnest( TOOL_MANAGER* aToolMgr, BOARD* aBoard, const VECTOR2D& aPosition )
 {
     auto selectionTool = aToolMgr->GetTool<SELECTION_TOOL>();
-    auto modules = aBoard->Modules();
 
     aToolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
-    aToolMgr->RunAction( PCB_ACTIONS::selectionCursor, true, EDIT_TOOL::FootprintFilter );
+    aToolMgr->RunAction( PCB_ACTIONS::selectionCursor, true, EDIT_TOOL::PadFilter );
+    SELECTION& selection = selectionTool->GetSelection();
 
-    const SELECTION& selection = selectionTool->GetSelection();
+    if( selection.Empty() )
+    {
+        aToolMgr->RunAction( PCB_ACTIONS::selectionCursor, true, EDIT_TOOL::FootprintFilter );
+        selection = selectionTool->GetSelection();
+    }
 
     if( selection.Empty() )
     {
         // Clear the previous local ratsnest if we click off all items
-        for( auto mod : modules )
+        for( auto mod : aBoard->Modules() )
         {
             for( auto pad : mod->Pads() )
                 pad->SetLocalRatsnestVisible( aBoard->IsElementVisible( LAYER_RATSNEST ) );
@@ -1099,10 +1123,18 @@ static bool showLocalRatsnest( TOOL_MANAGER* aToolMgr, BOARD* aBoard, const VECT
     {
         for( auto item : selection )
         {
-            if( auto mod = dyn_cast<MODULE*>(item) )
+            if( auto pad = dyn_cast<D_PAD*>(item) )
             {
-                for( auto pad : mod->Pads() )
-                    pad->SetLocalRatsnestVisible( !pad->GetLocalRatsnestVisible() );
+                pad->SetLocalRatsnestVisible( !pad->GetLocalRatsnestVisible() );
+            }
+            else if( auto mod = dyn_cast<MODULE*>(item) )
+            {
+                bool enable = !( *( mod->Pads().begin() ) )->GetLocalRatsnestVisible();
+
+                for( auto modpad : mod->Pads() )
+                {
+                    modpad->SetLocalRatsnestVisible( enable );
+                }
             }
         }
     }
@@ -1127,10 +1159,15 @@ int PCB_EDITOR_CONTROL::ShowLocalRatsnest( const TOOL_EVENT& aEvent )
     picker->SetClickHandler( std::bind( showLocalRatsnest, m_toolMgr, board, _1 ) );
     picker->SetFinalizeHandler( [ board ]( int aCondition ){
         auto vis = board->IsElementVisible( LAYER_RATSNEST );
-        for( auto mod : board->Modules() )
-            for( auto pad : mod->Pads() )
-                pad->SetLocalRatsnestVisible( vis );
+
+        if( aCondition != PICKER_TOOL::END_ACTIVATE )
+        {
+            for( auto mod : board->Modules() )
+                for( auto pad : mod->Pads() )
+                    pad->SetLocalRatsnestVisible( vis );
+        }
         } );
+
     picker->SetSnapping( false );
     picker->Activate();
     Wait();
@@ -1202,7 +1239,22 @@ void PCB_EDITOR_CONTROL::calculateSelectionRatsnest()
     items.reserve( selection.Size() );
 
     for( auto item : selection )
-        items.push_back( static_cast<BOARD_ITEM*>( item ) );
+    {
+        auto board_item = static_cast<BOARD_CONNECTED_ITEM*>( item );
+
+        if( board_item->Type() != PCB_MODULE_T && board_item->GetLocalRatsnestVisible() )
+        {
+            items.push_back( board_item );
+        }
+        else if( board_item->Type() == PCB_MODULE_T )
+        {
+            for( auto pad : static_cast<MODULE*>( item )->Pads() )
+            {
+                if( pad->GetLocalRatsnestVisible() )
+                    items.push_back( pad );
+            }
+        }
+    }
 
     connectivity->ComputeDynamicRatsnest( items );
 }
@@ -1229,15 +1281,18 @@ void PCB_EDITOR_CONTROL::setTransitions()
     Go( &PCB_EDITOR_CONTROL::LockSelected,        PCB_ACTIONS::lock.MakeEvent() );
     Go( &PCB_EDITOR_CONTROL::UnlockSelected,      PCB_ACTIONS::unlock.MakeEvent() );
     Go( &PCB_EDITOR_CONTROL::CrossProbePcbToSch,  SELECTION_TOOL::SelectedEvent );
+    Go( &PCB_EDITOR_CONTROL::CrossProbePcbToSch,  SELECTION_TOOL::UnselectedEvent );
+    Go( &PCB_EDITOR_CONTROL::CrossProbePcbToSch,  SELECTION_TOOL::ClearedEvent );
     Go( &PCB_EDITOR_CONTROL::CrossProbeSchToPcb,  PCB_ACTIONS::crossProbeSchToPcb.MakeEvent() );
     Go( &PCB_EDITOR_CONTROL::DrillOrigin,         PCB_ACTIONS::drillOrigin.MakeEvent() );
     Go( &PCB_EDITOR_CONTROL::HighlightNet,        PCB_ACTIONS::highlightNet.MakeEvent() );
     Go( &PCB_EDITOR_CONTROL::ClearHighlight,      PCB_ACTIONS::clearHighlight.MakeEvent() );
     Go( &PCB_EDITOR_CONTROL::HighlightNetCursor,  PCB_ACTIONS::highlightNetCursor.MakeEvent() );
     Go( &PCB_EDITOR_CONTROL::HighlightNetCursor,  PCB_ACTIONS::highlightNetSelection.MakeEvent() );
+
     Go( &PCB_EDITOR_CONTROL::ShowLocalRatsnest,   PCB_ACTIONS::showLocalRatsnest.MakeEvent() );
-    Go( &PCB_EDITOR_CONTROL::UpdateSelectionRatsnest, PCB_ACTIONS::selectionModified.MakeEvent() );
-    Go( &PCB_EDITOR_CONTROL::HideSelectionRatsnest, SELECTION_TOOL::ClearedEvent );
+    Go( &PCB_EDITOR_CONTROL::HideSelectionRatsnest, PCB_ACTIONS::hideLocalRatsnest.MakeEvent() );
+    Go( &PCB_EDITOR_CONTROL::UpdateSelectionRatsnest, PCB_ACTIONS::updateLocalRatsnest.MakeEvent() );
 }
 
 

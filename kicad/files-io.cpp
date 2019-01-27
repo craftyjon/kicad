@@ -29,6 +29,7 @@
 
 #include <wx/dir.h>
 #include <wx/fs_zip.h>
+#include <wx/uri.h>
 #include <wx/wfstream.h>
 #include <wx/zipstrm.h>
 
@@ -83,10 +84,11 @@ void KICAD_MANAGER_FRAME::OnUnarchiveFiles( wxCommandEvent& event )
     wxFileSystem zipfilesys;
 
     zipfilesys.AddHandler( new wxZipFSHandler );
-    zipfilesys.ChangePathTo( zipfiledlg.GetPath() + wxT( "#zip:" ), true );
+    auto path = wxURI( zipfiledlg.GetPath() + wxT( "#zip:" ) ).BuildURI();
+    zipfilesys.ChangePathTo( path, true );
 
     wxFSFile* zipfile = NULL;
-    wxString  localfilename = zipfilesys.FindFirst( wxT( "*.*" ) );
+    wxString  localfilename = zipfilesys.FindFirst( wxFileSelectorDefaultWildcardStr, wxFILE );
 
     while( !localfilename.IsEmpty() )
     {
@@ -140,8 +142,16 @@ void KICAD_MANAGER_FRAME::OnArchiveFiles( wxCommandEvent& event )
         wxT( "*.cmp" ),
         wxT( "*.brd" ), wxT( "*.kicad_pcb" ),   // Brd files
         wxT( "*.mod" ), wxT( "*.kicad_mod" ),   // fp files
-        wxT( "*.gbr" ), wxT( "*.gbrjob" ),      // Gerber files
+        wxT( "*.gb?" ), wxT( "*.gbrjob" ),      // Gerber files
+        wxT( "*.gko" ), wxT( "*.gm1" ),
+        wxT( "*.gm2" ), wxT( "*.g?" ),
+        wxT( "*.gp1" ), wxT( "*.gp2" ),
+        wxT( "*.gpb" ), wxT( "*.gpt" ),
+        wxT( "*.gt?" ),
         wxT( "*.pos" ), wxT( "*.drl" ),         // Fab files
+        wxT( "*.d356" ), wxT( "*.rpt" ),
+        wxT( "*.stp" ), wxT( "*.step" ),        // 3d files
+        wxT( "*.wrl" ),
         wxT( "*.net" ), wxT( "*.py" ),
         wxT( "*.pdf" ), wxT( "*.txt" ), wxT( "*.kicad_wks" ),
     };
@@ -188,7 +198,7 @@ void KICAD_MANAGER_FRAME::OnArchiveFiles( wxCommandEvent& event )
 
 	wxArrayString files;
 
-    for( unsigned ii = 0; ii < DIM( extentionList ); ii++ )
+    for( unsigned ii = 0; ii < arrayDim( extentionList ); ii++ )
         wxDir::GetAllFiles( currdirname, &files, extentionList[ii] );
 
     files.Sort();

@@ -31,32 +31,32 @@
 
 
 #include "fctsys.h"
-#include "gr_basic.h"
 #include "base_screen.h"
 #include "common.h"
 #include "macros.h"
 #include "marker_base.h"
+#include <geometry/shape_line_chain.h>
 #include "dialog_display_info_HTML_base.h"
 
 
-// Default marquer shape:
-const int      M_SHAPE_SCALE = 6;     // default scaling factor for MarkerShapeCorners coordinates
 /* The graphic shape of markers is a polygon.
  * MarkerShapeCorners contains the coordinates of corners of the polygonal default shape
- * actual coordinates are these values * .m_ScalingFactor
-*/
-static const wxPoint MarkerShapeCorners[] =
+ * they are arbitrary units to make coding shape easy.
+ * internal units coordinates are these values scaled by .m_ScalingFactor
+ */
+static const VECTOR2I MarkerShapeCorners[] =
 {
-    wxPoint( 0,  0 ),
-    wxPoint( 8,  1 ),
-    wxPoint( 4,  3 ),
-    wxPoint( 13, 8 ),
-    wxPoint( 9, 9 ),
-    wxPoint( 8,  13 ),
-    wxPoint( 3,  4 ),
-    wxPoint( 1,  8 )
+    VECTOR2I( 0,  0 ),
+    VECTOR2I( 8,  1 ),
+    VECTOR2I( 4,  3 ),
+    VECTOR2I( 13, 8 ),
+    VECTOR2I( 9, 9 ),
+    VECTOR2I( 8,  13 ),
+    VECTOR2I( 3,  4 ),
+    VECTOR2I( 1,  8 ),
+    VECTOR2I( 0,  0 )
 };
-const unsigned CORNERS_COUNT = DIM( MarkerShapeCorners );
+const unsigned CORNERS_COUNT = arrayDim( MarkerShapeCorners );
 
 /*******************/
 /* Classe MARKER_BASE */
@@ -67,16 +67,17 @@ void MARKER_BASE::init()
     m_MarkerType = MARKER_UNSPEC;
     m_ErrorLevel = MARKER_SEVERITY_UNSPEC;
     m_Color = RED;
-    wxPoint start = MarkerShapeCorners[0];
-    wxPoint end = MarkerShapeCorners[0];
+    const VECTOR2I* point_shape = GetShapePolygon();
+    wxPoint start( point_shape->x, point_shape->y );
+    wxPoint end = start;
 
-    for( unsigned ii = 0; ii < CORNERS_COUNT; ii++ )
+    for( int ii = 1; ii < GetShapePolygonCornerCount(); ii++ )
     {
-        wxPoint corner = MarkerShapeCorners[ii];
-        start.x = std::min( start.x, corner.x);
-        start.y = std::min( start.y, corner.y);
-        end.x = std::max( end.x, corner.x);
-        end.y = std::max( end.y, corner.y);
+        ++point_shape;
+        start.x = std::min( start.x, point_shape->x);
+        start.y = std::min( start.y, point_shape->y);
+        end.x = std::max( end.x, point_shape->x);
+        end.y = std::max( end.y, point_shape->y);
     }
 
     m_ShapeBoundingBox.SetOrigin(start);
@@ -95,18 +96,18 @@ MARKER_BASE::MARKER_BASE( const MARKER_BASE& aMarker )
 }
 
 
-MARKER_BASE::MARKER_BASE()
+MARKER_BASE::MARKER_BASE( int aScalingFactor )
 {
-    m_ScalingFactor = M_SHAPE_SCALE;
+    m_ScalingFactor = aScalingFactor;
     init();
 }
 
 
 MARKER_BASE::MARKER_BASE( EDA_UNITS_T aUnits, int aErrorCode, const wxPoint& aMarkerPos,
                           EDA_ITEM* aItem, const wxPoint& aPos,
-                          EDA_ITEM* bItem, const wxPoint& bPos )
+                          EDA_ITEM* bItem, const wxPoint& bPos, int aScalingFactor )
 {
-    m_ScalingFactor = M_SHAPE_SCALE;
+    m_ScalingFactor = aScalingFactor;
     init();
 
     SetData( aUnits, aErrorCode, aMarkerPos, aItem, aPos, bItem, bPos );
@@ -115,9 +116,9 @@ MARKER_BASE::MARKER_BASE( EDA_UNITS_T aUnits, int aErrorCode, const wxPoint& aMa
 
 MARKER_BASE::MARKER_BASE( int aErrorCode, const wxPoint& aMarkerPos,
                           const wxString& aText, const wxPoint& aPos,
-                          const wxString& bText, const wxPoint& bPos )
+                          const wxString& bText, const wxPoint& bPos, int aScalingFactor )
 {
-    m_ScalingFactor = M_SHAPE_SCALE;
+    m_ScalingFactor = aScalingFactor;
     init();
 
     SetData( aErrorCode, aMarkerPos, aText, aPos, bText, bPos );
@@ -125,9 +126,9 @@ MARKER_BASE::MARKER_BASE( int aErrorCode, const wxPoint& aMarkerPos,
 
 
 MARKER_BASE::MARKER_BASE( int aErrorCode, const wxPoint& aMarkerPos,
-                          const wxString& aText, const wxPoint& aPos )
+                          const wxString& aText, const wxPoint& aPos, int aScalingFactor )
 {
-    m_ScalingFactor = M_SHAPE_SCALE;
+    m_ScalingFactor = aScalingFactor;
     init();
 
     SetData( aErrorCode, aMarkerPos, aText, aPos );
@@ -159,26 +160,67 @@ void MARKER_BASE::SetData( int aErrorCode, const wxPoint& aMarkerPos,
 }
 
 
-bool MARKER_BASE::HitTestMarker( const wxPoint& refPos ) const
+bool MARKER_BASE::HitTestMarker( const wxPoint& aHitPosition ) const
 {
-    wxPoint rel_pos = refPos - m_Pos;
-    rel_pos.x /= m_ScalingFactor;
-    rel_pos.y /= m_ScalingFactor;
+    EDA_RECT bbox = GetBoundingBoxMarker();
 
-    return m_ShapeBoundingBox.Contains( rel_pos );
+    // Fast hit test using boundary box. A finer test will be made if requested
+    bool hit = bbox.Contains( aHitPosition );
+
+    if( hit )   // Fine test
+    {
+        SHAPE_LINE_CHAIN polygon;
+        ShapeToPolygon( polygon );
+        VECTOR2I rel_pos( aHitPosition - m_Pos );
+        hit = polygon.PointInside( rel_pos );
+    }
+
+    return hit;
+}
+
+
+void MARKER_BASE::ShapeToPolygon( SHAPE_LINE_CHAIN& aPolygon) const
+{
+    // Build the marker shape polygon in internal units:
+    const int ccount = GetShapePolygonCornerCount();
+
+    for( int ii = 0; ii < ccount; ii++ )
+        aPolygon.Append( GetShapePolygonCorner( ii ) * MarkerScale() );
+
+    // Be sure aPolygon is seen as a closed polyline:
+    aPolygon.SetClosed( true );
+}
+
+
+const VECTOR2I* MARKER_BASE::GetShapePolygon() const
+{
+    return MarkerShapeCorners;
+}
+
+
+const VECTOR2I& MARKER_BASE::GetShapePolygonCorner( int aIdx ) const
+{
+    return MarkerShapeCorners[aIdx];
+}
+
+
+int MARKER_BASE::GetShapePolygonCornerCount() const
+{
+    return CORNERS_COUNT;
 }
 
 
 EDA_RECT MARKER_BASE::GetBoundingBoxMarker() const
 {
-    wxSize realsize = m_ShapeBoundingBox.GetSize();
-    wxPoint realposition = m_ShapeBoundingBox.GetPosition();
-    realsize.x *= m_ScalingFactor;
-    realsize.y *= m_ScalingFactor;
-    realposition.x *= m_ScalingFactor;
-    realposition.y *= m_ScalingFactor;
-    realposition += m_Pos;
-    return EDA_RECT( m_Pos, realsize );
+    wxSize size_iu = m_ShapeBoundingBox.GetSize();
+    wxPoint position_iu = m_ShapeBoundingBox.GetPosition();
+    size_iu.x *= m_ScalingFactor;
+    size_iu.y *= m_ScalingFactor;
+    position_iu.x *= m_ScalingFactor;
+    position_iu.y *= m_ScalingFactor;
+    position_iu += m_Pos;
+
+    return EDA_RECT( position_iu, size_iu );
 }
 
 

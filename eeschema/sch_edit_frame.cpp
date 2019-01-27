@@ -395,6 +395,7 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ):
     m_undoItem = NULL;
     m_hasAutoSave = true;
     m_busUnfold = {};
+    m_FrameSize = ConvertDialogToPixels( wxSize( 500, 350 ) );    // default in case of no prefs
 
     m_toolManager = new TOOL_MANAGER;
 

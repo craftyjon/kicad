@@ -30,6 +30,8 @@
 #include <functional>
 #include <wx/time.h>
 
+#include <config.h>
+
 class BOARD;
 class PLUGIN;
 class MODULE;
@@ -56,8 +58,11 @@ public:
         EAGLE,
         PCAD,
         GEDA_PCB,       ///< Geda PCB file formats.
-        GITHUB,         ///< Read only http://github.com repo holding pretty footprints
 
+        //N.B. This needs to be commented out to ensure compile-type errors
+#if defined(BUILD_GITHUB_PLUGIN)
+        GITHUB,         ///< Read only http://github.com repo holding pretty footprints
+#endif
         // add your type here.
 
         // ALTIUM,

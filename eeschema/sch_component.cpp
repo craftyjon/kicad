@@ -151,7 +151,10 @@ SCH_COMPONENT::SCH_COMPONENT( LIB_PART& aPart, LIB_ID aLibId, SCH_SHEET_PATH* sh
     UpdatePinCache();
 
     // Update the reference -- just the prefix for now.
-    SetRef( sheet, aPart.GetReferenceField().GetText() + wxT( "?" ) );
+    if( sheet )
+        SetRef( sheet, aPart.GetReferenceField().GetText() + wxT( "?" ) );
+    else
+        m_prefix = aPart.GetReferenceField().GetText() + wxT( "?" );
 }
 
 
@@ -2019,4 +2022,35 @@ void SCH_COMPONENT::Plot( PLOTTER* aPlotter )
             m_Fields[i].Plot( aPlotter );
         }
     }
+}
+
+
+void SCH_COMPONENT::ClearHighlightedPins()
+{
+    m_highlightedPins.clear();
+}
+
+
+void SCH_COMPONENT::HighlightPin( LIB_PIN* aPin )
+{
+    m_highlightedPins.insert( aPin->GetNumber() );
+}
+
+
+bool SCH_COMPONENT::IsPinHighlighted( const LIB_PIN* aPin )
+{
+    return m_highlightedPins.find( aPin->GetNumber() ) != m_highlightedPins.end();
+}
+
+
+void SCH_COMPONENT::ClearAllHighlightFlags()
+{
+    ClearFlags( HIGHLIGHTED );
+
+    // Clear the HIGHLIGHTED flag of pins
+    ClearHighlightedPins();
+
+    // Clear the HIGHLIGHTED flag of other items, currently only fields
+    for( SCH_FIELD& each_field : m_Fields )
+        each_field.ClearFlags( HIGHLIGHTED );
 }

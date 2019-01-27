@@ -173,6 +173,7 @@ BEGIN_EVENT_TABLE( LIB_EDIT_FRAME, EDA_DRAW_FRAME )
     EVT_UPDATE_UI( wxID_PASTE, LIB_EDIT_FRAME::OnUpdatePaste )
     EVT_UPDATE_UI( ID_LIBEDIT_EXPORT_PART, LIB_EDIT_FRAME::OnUpdateHavePart )
     EVT_UPDATE_UI( ID_LIBEDIT_SAVE, LIB_EDIT_FRAME::OnUpdateSave )
+    EVT_UPDATE_UI( ID_LIBEDIT_SAVE_ALL, LIB_EDIT_FRAME::OnUpdateSave )
     EVT_UPDATE_UI( ID_LIBEDIT_SAVE_AS, LIB_EDIT_FRAME::OnUpdateSaveAs )
     EVT_UPDATE_UI( ID_LIBEDIT_REVERT, LIB_EDIT_FRAME::OnUpdateRevert )
     EVT_UPDATE_UI( ID_LIBEDIT_CHECK_PART, LIB_EDIT_FRAME::OnUpdateEditingPart )
@@ -205,6 +206,7 @@ LIB_EDIT_FRAME::LIB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     m_syncPinEdit         = false;
     m_repeatPinStep = DEFAULT_REPEAT_OFFSET_PIN;
     SetShowElectricalType( true );
+    m_FrameSize = ConvertDialogToPixels( wxSize( 500, 350 ) );    // default in case of no prefs
 
     m_my_part = NULL;
     m_tempCopyComponent = NULL;
@@ -1194,7 +1196,7 @@ void LIB_EDIT_FRAME::OnRotate( wxCommandEvent& aEvent )
 
         for( unsigned ii = 0; ii < block.GetCount(); ii++ )
         {
-            item = dynamic_cast<LIB_ITEM*>( block.GetItem( ii ) );
+            item = static_cast<LIB_ITEM*>( block.GetItem( ii ) );
             item->Rotate( rotationPoint );
         }
 
@@ -1253,7 +1255,7 @@ void LIB_EDIT_FRAME::OnOrient( wxCommandEvent& aEvent )
 
         for( unsigned ii = 0; ii < block.GetCount(); ii++ )
         {
-            item = dynamic_cast<LIB_ITEM*>( block.GetItem( ii ) );
+            item = static_cast<LIB_ITEM*>( block.GetItem( ii ) );
 
             if( aEvent.GetId() == ID_LIBEDIT_MIRROR_Y || aEvent.GetId() == ID_POPUP_MIRROR_Y_BLOCK )
                 item->MirrorHorizontal( mirrorPoint );
@@ -1491,15 +1493,6 @@ bool LIB_EDIT_FRAME::SynchronizePins()
 
 void LIB_EDIT_FRAME::refreshSchematic()
 {
-    // This is not the most effecient way to do this because the changed library may not have
-    // any effect on the schematic symbol links.  Since this is not called very often, take the
-    // hit here rather than the myriad other places (including SCH_SCREEN::Draw()) where it was
-    // being called.
-    SCH_SCREENS schematic;
-
-    schematic.UpdateSymbolLinks();
-    schematic.TestDanglingEnds();
-
     // There may be no parent window so use KIWAY message to refresh the schematic editor
     // in case any symbols have changed.
     Kiway().ExpressMail( FRAME_SCH, MAIL_SCH_REFRESH, std::string( "" ), this );

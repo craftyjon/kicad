@@ -44,10 +44,17 @@
 #include <limits>
 #include <functional>
 using namespace std::placeholders;
-
-
 using namespace KIGFX;
 
+// A ugly workaround to avoid serious issues (crashes) when using bitmaps cache
+// to speedup redraw.
+// issues arise when using bitmaps in page layout, when the page layout containd bitmaps,
+// and is common to schematic and board editor,
+// and the schematic is a hierarchy and when using cross-probing
+// When the cross probing from pcbnew to eeschema switches to a sheet, the bitmaps cache
+// becomes broken (in fact the associated texture).
+// I hope (JPC) it will be fixed later, but a slighty slower refresh is better than a crash
+#define DISABLE_BITMAP_CACHE
 
 // The current font is "Ubuntu Mono" available under Ubuntu Font Licence 1.0
 // (see ubuntu-font-licence-1.0.txt for details)
@@ -95,9 +102,7 @@ private:
 GL_BITMAP_CACHE::~GL_BITMAP_CACHE()
 {
     for ( auto b = m_bitmaps.begin(); b != m_bitmaps.end(); ++b )
-    {
         glDeleteTextures( 1, &b->second.id );
-    }
 }
 
 
@@ -107,12 +112,15 @@ GLuint GL_BITMAP_CACHE::RequestBitmap( const BITMAP_BASE* aBitmap )
 
     if ( it != m_bitmaps.end() )
     {
-        return it->second.id;
+        // A bitmap is found in cache bitmap.
+        // Ensure the associated texture is still valide (can be destoyed somewhere)
+        if( glIsTexture( it->second.id ) )
+            return it->second.id;
+
+        // else if not valid, it will be recreated.
     }
-    else
-    {
-        return cacheBitmap( aBitmap );
-    }
+
+    return cacheBitmap( aBitmap );
 }
 
 
@@ -123,41 +131,49 @@ GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
     bmp.w = aBitmap->GetSizePixels().x;
     bmp.h = aBitmap->GetSizePixels().y;
 
-    // There are draw issues (incorrect rendering) with some w values.
-    // It happens when the w value is not a multiple of 4
-    // so we use only a sub image with a modified width
-    bmp.w -= bmp.w % 4;
+    // The bitmap size needs to be a multiple of 4.
+    // This is easiest to achieve by ensuring that each row
+    // has a multiple of 4 pixels
+    int extra_w = bmp.w % 4;
+
+    if( extra_w )
+        extra_w = 4 - extra_w;
 
     GLuint textureID;
     glGenTextures(1, &textureID);
 
-    uint8_t *buf = new uint8_t [ bmp.w * bmp.h * 3];
+    // make_unique initializes this to 0, so extra pixels are transparent
+    auto buf = std::make_unique<uint8_t[]>( ( bmp.w + extra_w ) * bmp.h * 4 );
     auto imgData = const_cast<BITMAP_BASE*>( aBitmap )->GetImageData();
 
     for( int y = 0; y < bmp.h; y++ )
     {
         for( int x = 0; x < bmp.w; x++ )
         {
-            uint8_t *p = buf + ( bmp.w * y + x ) * 3;
+            uint8_t *p = buf.get() + ( ( bmp.w + extra_w ) * y + x ) * 4;
 
             p[0] = imgData->GetRed( x, y );
             p[1] = imgData->GetGreen( x, y );
             p[2] = imgData->GetBlue( x, y );
+
+            if( imgData->HasAlpha() )
+                p[3] = imgData->GetAlpha( x, y );
+            else
+                p[3] = 255;
         }
     }
 
     glBindTexture( GL_TEXTURE_2D, textureID );
-
-    glTexImage2D( GL_TEXTURE_2D, 0,GL_RGB, bmp.w, bmp.h, 0, GL_RGB, GL_UNSIGNED_BYTE, buf );
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, bmp.w + extra_w, bmp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf.get() );
 
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 
-    delete [] buf;
-
     bmp.id = textureID;
 
+#ifndef DISABLE_BITMAP_CACHE
     m_bitmaps[ aBitmap ] = bmp;
+#endif
 
     return textureID;
 }
@@ -971,24 +987,30 @@ void OPENGL_GAL::DrawPolygon( const SHAPE_POLY_SET& aPolySet )
     for( int j = 0; j < aPolySet.OutlineCount(); ++j )
     {
         const SHAPE_LINE_CHAIN& outline = aPolySet.COutline( j );
-
-        if( outline.SegmentCount() == 0 )
-            continue;
-
-        const int pointCount = outline.SegmentCount() + 1;
-        std::unique_ptr<GLdouble[]> points( new GLdouble[3 * pointCount] );
-        GLdouble* ptr = points.get();
-
-        for( int i = 0; i < pointCount; ++i )
-        {
-            const VECTOR2I& p = outline.CPoint( i );
-            *ptr++ = p.x;
-            *ptr++ = p.y;
-            *ptr++ = layerDepth;
-        }
-
-        drawPolygon( points.get(), pointCount );
+        DrawPolygon( outline );
     }
+}
+
+
+
+void OPENGL_GAL::DrawPolygon( const SHAPE_LINE_CHAIN& aPolygon )
+{
+    if( aPolygon.SegmentCount() == 0 )
+        return;
+
+    const int pointCount = aPolygon.SegmentCount() + 1;
+    std::unique_ptr<GLdouble[]> points( new GLdouble[3 * pointCount] );
+    GLdouble* ptr = points.get();
+
+    for( int i = 0; i < pointCount; ++i )
+    {
+        const VECTOR2I& p = aPolygon.CPoint( i );
+        *ptr++ = p.x;
+        *ptr++ = p.y;
+        *ptr++ = layerDepth;
+    }
+
+    drawPolygon( points.get(), pointCount );
 }
 
 
@@ -1038,7 +1060,10 @@ void OPENGL_GAL::DrawBitmap( const BITMAP_BASE& aBitmap )
     glm::vec4 v1 = xform * glm::vec4( w/2, h/2, 0.0, 0.0 );
     glm::vec4 trans = xform[3];
 
-    auto id = bitmapCache->RequestBitmap( &aBitmap );
+    auto texture_id = bitmapCache->RequestBitmap( &aBitmap );
+
+    if( !glIsTexture( texture_id ) )    // ensure the bitmap texture is still valid
+        return;
 
     auto oldTarget = GetTarget();
 
@@ -1048,7 +1073,7 @@ void OPENGL_GAL::DrawBitmap( const BITMAP_BASE& aBitmap )
     SetTarget( TARGET_NONCACHED );
     glEnable(GL_TEXTURE_2D);
     glActiveTexture( GL_TEXTURE0 );
-    glBindTexture( GL_TEXTURE_2D, id );
+    glBindTexture( GL_TEXTURE_2D, texture_id );
 
     glBegin( GL_QUADS );
     glColor4f( 1.0, 1.0, 1.0, 1.0 );
@@ -1067,6 +1092,10 @@ void OPENGL_GAL::DrawBitmap( const BITMAP_BASE& aBitmap )
 
     SetTarget( oldTarget );
     glBindTexture( GL_TEXTURE_2D, 0 );
+
+#ifdef DISABLE_BITMAP_CACHE
+    glDeleteTextures( 1, &texture_id );
+#endif
 
     glPopMatrix();
 }
@@ -1770,21 +1799,9 @@ void OPENGL_GAL::drawPolyline( const std::function<VECTOR2D (int)>& aPointGetter
     {
         auto start = aPointGetter( i - 1 );
         auto end = aPointGetter( i );
-        const VECTOR2D startEndVector = ( end - start );
-        double lineAngle = startEndVector.Angle();
 
         drawLineQuad( start, end );
-
-        // There is no need to draw line caps on both ends of polyline's segments
-        drawFilledSemiCircle( start, lineWidth / 2, lineAngle + M_PI / 2 );
     }
-
-    // ..and now - draw the ending cap
-    auto start = aPointGetter( i - 2 );
-    auto end = aPointGetter( i - 1 );
-    const VECTOR2D startEndVector = ( end - start );
-    double lineAngle = startEndVector.Angle();
-    drawFilledSemiCircle( end, lineWidth / 2, lineAngle - M_PI / 2 );
 }
 
 

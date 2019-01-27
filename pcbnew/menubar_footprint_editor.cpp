@@ -29,13 +29,14 @@
  * @brief (Re)Create the main menubar for the footprint editor
  */
 
+#include "footprint_edit_frame.h"
 
+#include <advanced_config.h>
 #include <menus_helpers.h>
 #include <pgm_base.h>
 
 #include "help_common_strings.h"
 #include "hotkeys.h"
-#include "footprint_edit_frame.h"
 #include "pcbnew.h"
 #include "pcbnew_id.h"
 
@@ -101,9 +102,9 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
                  _( "Import a footprint from an existing footprint file" ),
                  KiBitmap( import_module_xpm ) );
 
-    AddMenuItem( fileMenu, ID_GEN_IMPORT_DXF_FILE,
-                 _( "Import Outlines from &DXF File..." ),
-                 _( "Import 2D Drawing DXF file to Footprint Editor on Drawings layer" ),
+    AddMenuItem( fileMenu, ID_GEN_IMPORT_GRAPHICS_FILE,
+                 _( "Import Outlines from &DXF or SVG File..." ),
+                 _( "Import 2D Drawing DXF or SVG file to Footprint Editor on Drawings layer" ),
                  KiBitmap( import_xpm ) );
 
     AddMenuItem( fileMenu, ID_MODEDIT_EXPORT_PART,
@@ -431,10 +432,13 @@ void FOOTPRINT_EDIT_FRAME::ReCreateMenuBar()
 
     prefs_menu->AppendSeparator();
 
-    text = AddHotkeyName( _( "Legacy Tool&set" ), m_hotkeysDescrList, HK_CANVAS_LEGACY );
-    AddMenuItem( prefs_menu, ID_MENU_CANVAS_LEGACY, text,
-                 _( "Use Legacy Toolset (not all features will be available)" ),
-                 KiBitmap( tools_xpm ), wxITEM_RADIO );
+    if( ADVANCED_CFG::GetCfg().AllowLegacyCanvas() )
+    {
+        text = AddHotkeyName( _( "Legacy Tool&set" ), m_hotkeysDescrList, HK_CANVAS_LEGACY );
+        AddMenuItem( prefs_menu, ID_MENU_CANVAS_LEGACY, text,
+                _( "Use Legacy Toolset (not all features will be available)" ),
+                KiBitmap( tools_xpm ), wxITEM_RADIO );
+    }
 
     text = AddHotkeyName( _( "Modern Toolset (&Accelerated)" ), m_hotkeysDescrList, HK_CANVAS_OPENGL );
     AddMenuItem( prefs_menu, ID_MENU_CANVAS_OPENGL, text,

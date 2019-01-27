@@ -6,9 +6,9 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2012 Jean-Pierre Charras, jean-pierre.charras@ujf-grenoble.fr
+ * Copyright (C) 2018 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2012 SoftPLC Corporation, Dick Hollenbeck <dick@softplc.com>
- * Copyright (C) 1992-2012 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -41,16 +41,14 @@
 #include <layers_id_colors_and_visibility.h>
 
 
-/// Adjust the actual size of markers, when using default shape
-#define SCALING_FACTOR      Mils2iu( 3 )
-
+/// Factor to convert the maker unit shape to internal units:
+#define SCALING_FACTOR  Millimeter2iu( 0.1 )
 
 MARKER_PCB::MARKER_PCB( BOARD_ITEM* aParent ) :
     BOARD_ITEM( aParent, PCB_MARKER_T ),
-    MARKER_BASE(), m_item( nullptr )
+    MARKER_BASE( SCALING_FACTOR ), m_item( nullptr )
 {
     m_Color = WHITE;
-    m_ScalingFactor = SCALING_FACTOR;
 }
 
 
@@ -58,10 +56,9 @@ MARKER_PCB::MARKER_PCB( EDA_UNITS_T aUnits, int aErrorCode, const wxPoint& aMark
                         BOARD_ITEM* aItem, const wxPoint& aPos,
                         BOARD_ITEM* bItem, const wxPoint& bPos ) :
     BOARD_ITEM( nullptr, PCB_MARKER_T ),  // parent set during BOARD::Add()
-    MARKER_BASE( aUnits, aErrorCode, aMarkerPos, aItem, aPos, bItem, bPos ), m_item( nullptr )
+    MARKER_BASE( aUnits, aErrorCode, aMarkerPos, aItem, aPos, bItem, bPos, SCALING_FACTOR ), m_item( nullptr )
 {
     m_Color = WHITE;
-    m_ScalingFactor = SCALING_FACTOR;
 }
 
 
@@ -69,10 +66,9 @@ MARKER_PCB::MARKER_PCB( int aErrorCode, const wxPoint& aMarkerPos,
                         const wxString& aText, const wxPoint& aPos,
                         const wxString& bText, const wxPoint& bPos ) :
     BOARD_ITEM( nullptr, PCB_MARKER_T ),  // parent set during BOARD::Add()
-    MARKER_BASE( aErrorCode, aMarkerPos, aText, aPos, bText, bPos ), m_item( nullptr )
+    MARKER_BASE( aErrorCode, aMarkerPos, aText, aPos, bText, bPos, SCALING_FACTOR ), m_item( nullptr )
 {
     m_Color = WHITE;
-    m_ScalingFactor = SCALING_FACTOR;
 }
 
 
@@ -146,5 +142,19 @@ void MARKER_PCB::ViewGetLayers( int aLayers[], int& aCount ) const
 
 const EDA_RECT MARKER_PCB::GetBoundingBox() const
 {
-    return EDA_RECT( m_Pos, wxSize( 1300000, 1300000 ) );
+    EDA_RECT bbox = m_ShapeBoundingBox;
+
+    wxPoint pos = m_Pos;
+    pos.x += int( bbox.GetOrigin().x * MarkerScale() );
+    pos.y += int( bbox.GetOrigin().y * MarkerScale() );
+
+    return EDA_RECT( pos, wxSize( int( bbox.GetWidth() * MarkerScale() ),
+                                  int( bbox.GetHeight() * MarkerScale() ) ) );
+}
+
+
+const BOX2I MARKER_PCB::ViewBBox() const
+{
+    EDA_RECT bbox = GetBoundingBox();
+    return BOX2I( bbox.GetOrigin(), VECTOR2I( bbox.GetWidth(), bbox.GetHeight() ) );
 }

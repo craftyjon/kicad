@@ -62,15 +62,15 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
 {
     SCH_ITEM*   item = GetScreen()->GetCurItem();
     wxPoint     gridPosition = GetGridPosition( aPosition );
-    DBG(printf("mousep %d %d gridp %d %d\n", aPosition.x, aPosition.y, gridPosition.x, gridPosition.y );)
+    // item_flags != 0 means a current item in edit, or new ...
+    int item_flags = item ? (item->GetFlags() & ~HIGHLIGHTED) : 0;
 
-
-    if( ( GetToolId() == ID_NO_TOOL_SELECTED ) || ( item && item->GetFlags() ) )
+    if( ( GetToolId() == ID_NO_TOOL_SELECTED ) || item_flags )
     {
         m_canvas->SetAutoPanRequest( false );
         SetRepeatItem( NULL );
 
-        if( item && item->GetFlags() )
+        if( item_flags )
         {
             switch( item->Type() )
             {
@@ -108,6 +108,9 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         }
     }
 
+    if( !item ) // If clicked on a empty area, clear any highligthed symbol
+        GetCanvas()->GetView()->HighlightItem( nullptr, nullptr );
+
     switch( GetToolId() )
     {
     case ID_NO_TOOL_SELECTED:
@@ -121,7 +124,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         break;
 
     case ID_NOCONN_BUTT:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( item_flags == 0 )
         {
             if( GetScreen()->GetItem( gridPosition, 0, SCH_NO_CONNECT_T ) == NULL )
             {
@@ -138,7 +141,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         break;
 
     case ID_JUNCTION_BUTT:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( item_flags == 0 )
         {
             if( GetScreen()->GetItem( gridPosition, 0, SCH_JUNCTION_T ) == NULL )
             {
@@ -155,7 +158,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         break;
 
     case ID_WIRETOBUS_ENTRY_BUTT:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( item_flags == 0 )
         {
             CreateBusWireEntry();
             m_canvas->SetAutoPanRequest( true );
@@ -167,7 +170,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         break;
 
     case ID_BUSTOBUS_ENTRY_BUTT:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( item_flags == 0 )
         {
             CreateBusBusEntry();
             m_canvas->SetAutoPanRequest( true );
@@ -198,7 +201,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         break;
 
     case ID_TEXT_COMMENT_BUTT:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( item_flags == 0 )
         {
             GetScreen()->SetCurItem( CreateNewText( LAYER_NOTES ) );
             m_canvas->SetAutoPanRequest( true );
@@ -210,7 +213,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         break;
 
     case ID_ADD_IMAGE_BUTT:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( item_flags == 0 )
         {
             GetScreen()->SetCurItem( CreateNewImage( aDC ) );
             m_canvas->SetAutoPanRequest( true );
@@ -222,7 +225,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         break;
 
     case ID_LABEL_BUTT:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( item_flags == 0 )
         {
             GetScreen()->SetCurItem( CreateNewText( LAYER_LOCLABEL ) );
             m_canvas->SetAutoPanRequest( true );
@@ -235,7 +238,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
 
     case ID_GLABEL_BUTT:
     case ID_HIERLABEL_BUTT:
-        if( (item == NULL) || (item->GetFlags() == 0) )
+        if( item_flags == 0 )
         {
             if( GetToolId() == ID_GLABEL_BUTT )
                 GetScreen()->SetCurItem( CreateNewText( LAYER_GLOBLABEL ) );
@@ -252,7 +255,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         break;
 
     case ID_SHEET_SYMBOL_BUTT:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( item_flags == 0 )
         {
             item = CreateSheet( aDC );
 
@@ -270,13 +273,13 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
 
     case ID_IMPORT_HLABEL_BUTT:
     case ID_SHEET_PIN_BUTT:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( item_flags == 0 )
             item = LocateAndShowItem( aPosition, SCH_COLLECTOR::SheetsAndSheetLabels );
 
         if( item == NULL )
             break;
 
-        if( (item->Type() == SCH_SHEET_T) && (item->GetFlags() == 0) )
+        if( (item->Type() == SCH_SHEET_T) && (item_flags == 0) )
         {
             if( GetToolId() == ID_IMPORT_HLABEL_BUTT )
                 GetScreen()->SetCurItem( ImportSheetPin( (SCH_SHEET*) item ) );
@@ -290,7 +293,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         break;
 
     case ID_SCH_PLACE_COMPONENT:
-        if( (item == NULL) || (item->GetFlags() == 0) )
+        if( item_flags == 0 )
         {
             // ERC dialog interferes with moving items so we close it before starting
             CloseErc();
@@ -304,7 +307,7 @@ void SCH_EDIT_FRAME::OnLeftClick( wxDC* aDC, const wxPoint& aPosition )
         break;
 
     case ID_PLACE_POWER_BUTT:
-        if( ( item == NULL ) || ( item->GetFlags() == 0 ) )
+        if( item_flags == 0 )
         {
             SCHLIB_FILTER filter;
             filter.FilterPowerParts( true );

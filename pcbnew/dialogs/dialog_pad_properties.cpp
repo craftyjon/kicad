@@ -35,7 +35,6 @@
 #include <pcbnew.h>
 #include <pcb_base_frame.h>
 #include <base_units.h>
-#include <unit_format.h>
 #include <board_commit.h>
 #include <bitmaps.h>
 
@@ -113,14 +112,14 @@ DIALOG_PAD_PROPERTIES::DIALOG_PAD_PROPERTIES( PCB_BASE_FRAME* aParent, D_PAD* aP
     m_padToDie( aParent, m_padToDieLabel, m_padToDieCtrl, m_padToDieUnits, true ),
     m_trapDelta( aParent, m_trapDeltaLabel, m_trapDeltaCtrl, m_trapDeltaUnits, true ),
     m_cornerRadius( aParent, m_cornerRadiusLabel, m_tcCornerRadius, m_cornerRadiusUnits, true ),
-    m_holeX( aParent, m_holeXLabel, m_holeXCtrl, m_holeXUnits, true, 0 ),
-    m_holeY( aParent, m_holeYLabel, m_holeYCtrl, m_holeYUnits, true, 0 ),
+    m_holeX( aParent, m_holeXLabel, m_holeXCtrl, m_holeXUnits, true ),
+    m_holeY( aParent, m_holeYLabel, m_holeYCtrl, m_holeYUnits, true ),
     m_OrientValidator( 1, &m_OrientValue ),
     m_clearance( aParent, m_clearanceLabel, m_clearanceCtrl, m_clearanceUnits, true ),
     m_maskClearance( aParent, m_maskClearanceLabel, m_maskClearanceCtrl, m_maskClearanceUnits, true ),
     m_pasteClearance( aParent, m_pasteClearanceLabel, m_pasteClearanceCtrl, m_pasteClearanceUnits, true ),
-    m_spokeWidth( aParent, m_spokeWidthLabel, m_spokeWidthCtrl, m_spokeWidthUnits, true, 0 ),
-    m_thermalGap( aParent, m_thermalGapLabel, m_thermalGapCtrl, m_thermalGapUnits, true, 0 )
+    m_spokeWidth( aParent, m_spokeWidthLabel, m_spokeWidthCtrl, m_spokeWidthUnits, true ),
+    m_thermalGap( aParent, m_thermalGapLabel, m_thermalGapCtrl, m_thermalGapUnits, true )
 {
     m_currentPad = aPad;        // aPad can be NULL, if the dialog is called
                                 // from the footprint editor to set default pad setup
@@ -798,7 +797,7 @@ void DIALOG_PAD_PROPERTIES::displayPrimitivesList()
             bs_info[0] = _( "Arc" );
             bs_info[1] = _( "center " ) + formatCoord( m_units, primitive.m_Start );// Center
             bs_info[2] = _( "start " ) + formatCoord( m_units, primitive.m_End );   // Start point
-            bs_info[3] = wxString::Format( _( "angle %s" ), FMT_ANGLE( primitive.m_ArcAngle ) );
+            bs_info[3] = wxString::Format( _( "angle %s" ), FormatAngle( primitive.m_ArcAngle ) );
             break;
 
         case S_CIRCLE:          //  ring or circle
@@ -975,7 +974,7 @@ void DIALOG_PAD_PROPERTIES::PadTypeSelected( wxCommandEvent& event )
 {
     int ii = m_PadType->GetSelection();
 
-    if( (unsigned)ii >= DIM( code_type ) ) // catches < 0 also
+    if( (unsigned)ii >= arrayDim( code_type ) ) // catches < 0 also
         ii = 0;
 
     bool hasHole, hasConnection;
@@ -1025,7 +1024,7 @@ void DIALOG_PAD_PROPERTIES::OnUpdateUI( wxUpdateUIEvent& event )
 {
     int ii = m_PadType->GetSelection();
 
-    if( (unsigned)ii >= DIM( code_type ) ) // catches < 0 also
+    if( (unsigned)ii >= arrayDim( code_type ) ) // catches < 0 also
         ii = 0;
 
     bool hasHole, hasConnection;
@@ -1543,6 +1542,8 @@ bool DIALOG_PAD_PROPERTIES::transferDataToPad( D_PAD* aPad )
         return true;
     if( !m_localSettingsPanel->Validate() )
         return true;
+    if( !m_spokeWidth.Validate( 0, INT_MAX ) )
+        return false;
 
     m_OrientValidator.TransferFromWindow();
 
@@ -1903,7 +1904,7 @@ void DIALOG_PAD_PROPERTIES::onAddPrimitive( wxCommandEvent& event )
     wxString shapelist[] = { _( "Segment" ), _( "Arc" ), _( "Ring/Circle" ), _( "Polygon" ) };
 
     int type = wxGetSingleChoiceIndex( _( "Shape type:" ), _( "Add Primitive" ),
-                                       DIM( shapelist ), shapelist, 0, this );
+                                       arrayDim( shapelist ), shapelist, 0, this );
 
     STROKE_T listtype[] = { S_SEGMENT, S_ARC, S_CIRCLE, S_POLYGON };
 

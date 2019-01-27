@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2014-2017 CERN
+ * Copyright (C) 2014-2019 CERN
  * @author Maciej Suminski <maciej.suminski@cern.ch>
  *
  * This program is free software; you can redistribute it and/or
@@ -79,6 +79,11 @@ SCH_DRAW_PANEL::SCH_DRAW_PANEL( wxWindow* aParentWindow, wxWindowID aWindowId,
     m_view->SetScaleLimits( 50.0, 0.05 );    // This fixes the zoom in and zoom out limits
     m_view->SetMirror( false, false );
 
+    // Early initialization of the canvas background color,
+    // before any OnPaint event is fired for the canvas using a wrong bg color
+    auto settings = m_painter->GetSettings();
+    m_gal->SetClearColor( settings->GetBackgroundColor() );
+
     setDefaultLayerOrder();
     setDefaultLayerDeps();
 
@@ -119,7 +124,6 @@ SCH_DRAW_PANEL::SCH_DRAW_PANEL( wxWindow* aParentWindow, wxWindowID aWindowId,
     m_mouseCaptureCallback = NULL;
     m_endMouseCaptureCallback = NULL;
 
-    m_requestAutoPan = false;
     m_enableBlockCommands = false;
     m_minDragEventCount = 0;
 
@@ -216,10 +220,17 @@ void SCH_DRAW_PANEL::SetEnableMousewheelPan( bool aEnable )
 
 void SCH_DRAW_PANEL::SetEnableAutoPan( bool aEnable )
 {
-    m_enableAutoPan = aEnable;
+    EDA_DRAW_PANEL::SetEnableAutoPan( aEnable );
 
     if( GetParent()->IsGalCanvasActive() )
         GetParent()->GetGalCanvas()->GetViewControls()->EnableAutoPan( aEnable );
+}
+
+
+void SCH_DRAW_PANEL::SetAutoPanRequest( bool aEnable )
+{
+    wxCHECK( GetParent()->IsGalCanvasActive(), /*void*/ );
+    GetParent()->GetGalCanvas()->GetViewControls()->SetAutoPan( aEnable );
 }
 
 
@@ -293,7 +304,7 @@ void SCH_DRAW_PANEL::OnMouseEvent( wxMouseEvent& event )
         m_canStartBlock = -1;
 
     if( !IsMouseCaptured() )          // No mouse capture in progress.
-        m_requestAutoPan = false;
+        SetAutoPanRequest( false );
 
     if( GetParent()->IsActive() )
         SetFocus();
@@ -436,7 +447,7 @@ void SCH_DRAW_PANEL::OnMouseEvent( wxMouseEvent& event )
         {
             if( screen->m_BlockLocate.GetState() == STATE_BLOCK_MOVE )
             {
-                m_requestAutoPan = false;
+                SetAutoPanRequest( false );
                 GetParent()->HandleBlockPlace( nullptr );
                 m_ignoreNextLeftButtonRelease = true;
             }
@@ -468,7 +479,7 @@ void SCH_DRAW_PANEL::OnMouseEvent( wxMouseEvent& event )
                     }
                     else
                     {
-                        m_requestAutoPan = true;
+                        SetAutoPanRequest( true );
                         SetCursor( wxCURSOR_SIZING );
                     }
                 }
@@ -494,19 +505,19 @@ void SCH_DRAW_PANEL::OnMouseEvent( wxMouseEvent& event )
                 if( m_endMouseCaptureCallback )
                 {
                     m_endMouseCaptureCallback( this, nullptr );
-                    m_requestAutoPan = false;
+                    SetAutoPanRequest( false );
                 }
 
                 //SetCursor( (wxStockCursor) m_currentCursor );
            }
             else if( screen->m_BlockLocate.GetState() == STATE_BLOCK_END )
             {
-                m_requestAutoPan = false;
+                SetAutoPanRequest( false );
                 GetParent()->HandleBlockEnd( nullptr );
                 //SetCursor( (wxStockCursor) m_currentCursor );
                 if( screen->m_BlockLocate.GetState() == STATE_BLOCK_MOVE )
                 {
-                    m_requestAutoPan = true;
+                    SetAutoPanRequest( true );
                     SetCursor( wxCURSOR_HAND );
                 }
            }
@@ -575,7 +586,7 @@ void SCH_DRAW_PANEL::EndMouseCapture( int id, int cursor, const wxString& title,
 
     m_mouseCaptureCallback = NULL;
     m_endMouseCaptureCallback = NULL;
-    m_requestAutoPan = false;
+    SetAutoPanRequest( false );
 
     if( id != -1 && cursor != -1 )
     {
@@ -684,15 +695,6 @@ void SCH_DRAW_PANEL::onPaint( wxPaintEvent& aEvent )
         // The first wxPaintEvent can be fired at startup before the GAL engine is fully initialized
         // (depending on platforms). Do nothing in this case
         return;
-
-    SCH_SCREEN* screen = static_cast<SCH_SCREEN*>( GetScreen() );
-
-    // The screen might be null if the wxPaintEvent is fired after the parent frame deletion
-    if( !screen )
-        return;
-
-    // Ensure links are up to date, even if a library was reloaded for some reason:
-    screen->UpdateSymbolLinks();
 
     if( m_painter )
         static_cast<KIGFX::SCH_PAINTER*>(m_painter.get())->GetSettings()->ImportLegacyColors( nullptr );

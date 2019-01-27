@@ -60,14 +60,17 @@ namespace KIGFX
 /// \ingroup config
 
 /// User units
-static const wxString UserUnitsEntryKeyword( wxT( "Units" ) );
+#define UserUnitsEntryKeyword "Units"
 /// Nonzero to show grid (suffix)
-static const wxString ShowGridEntryKeyword( wxT( "ShowGrid" ) );
+#define ShowGridEntryKeyword "ShowGrid"
 /// Grid color ID (suffix)
-static const wxString GridColorEntryKeyword( wxT( "GridColor" ) );
+#define GridColorEntryKeyword "GridColor"
 /// Most recently used grid size (suffix)
-static const wxString LastGridSizeIdKeyword( wxT( "_LastGridSize" ) );
+#define LastGridSizeIdKeyword "_LastGridSize"
 
+/// The key to store the canvas type in config. This is the base key.
+/// can be a suffix if the canvas_type in config is specific to a frame
+#define CanvasTypeKeyBase "canvas_type"
 ///@}
 
 
@@ -145,8 +148,8 @@ protected:
     /// Key to control whether first run dialog is shown on startup
     long    m_firstRunDialogSetting;
 
-    wxChoice*       m_gridSelectBox;
-    wxChoice*       m_zoomSelectBox;
+    wxComboBox*       m_gridSelectBox;
+    wxComboBox*       m_zoomSelectBox;
 
     /// Auxiliary tool bar typically shown below the main tool bar at the top of the
     /// main window.
@@ -171,9 +174,6 @@ protected:
 
     /// One-shot to avoid a recursive mouse event during hotkey movement
     bool            m_movingCursorWithKeyboard;
-
-    /// Flag indicating that drawing canvas type needs to be saved to config
-    bool            m_canvasTypeDirty;
 
     /// The current canvas type
     EDA_DRAW_PANEL_GAL::GAL_TYPE    m_canvasType;
@@ -202,7 +202,8 @@ protected:
      * @return true for OK; false for Cancel.
      */
     bool LibraryFileBrowser( bool doOpen, wxFileName& aFilename,
-                             const wxString& wildcard, const wxString& ext, bool isDirectory );
+                             const wxString& wildcard, const wxString& ext,
+                             bool isDirectory = false );
 
     /**
      * Handle the common part of GeneralControl dedicated to global
@@ -233,8 +234,14 @@ protected:
     bool saveCanvasImageToFile( const wxString& aFileName,
                                 wxBitmapType aBitmapType = wxBITMAP_TYPE_PNG );
 
-    ///> Key in KifaceSettings to store the canvas type.
-    static const wxChar CANVAS_TYPE_KEY[];
+    /** @return the key in KifaceSettings to store the canvas type.
+     * the base version returns only CanvasTypeKeyBase.
+     * Can be overriden to return a key specific of a frame name
+     */
+    virtual wxString GetCanvasTypeKey()
+    {
+        return CanvasTypeKeyBase;
+    }
 
 public:
     EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
@@ -896,7 +903,7 @@ public:
     /**
      * Returns the canvas type stored in the application settings.
      */
-    static EDA_DRAW_PANEL_GAL::GAL_TYPE LoadCanvasTypeSetting();
+    EDA_DRAW_PANEL_GAL::GAL_TYPE LoadCanvasTypeSetting();
 
     /**
      * Use to switch between standard and GAL-based canvas.
@@ -918,7 +925,7 @@ public:
      *
      * @return True for GAL-based canvas, false for standard canvas.
      */
-    bool IsGalCanvasActive() const          { return m_galCanvasActive; }
+    bool IsGalCanvasActive() const { return m_galCanvasActive; }
 
     /**
      * Return a pointer to GAL-based canvas of given EDA draw frame.

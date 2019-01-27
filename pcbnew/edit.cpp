@@ -1242,16 +1242,14 @@ void PCB_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         ArchiveModulesOnBoard( true );
         break;
 
-    case ID_GEN_IMPORT_DXF_FILE:
-        InvokeDXFDialogBoardImport( this );
+    case ID_GEN_IMPORT_GRAPHICS_FILE:
+        InvokeDialogImportGfxBoard( this );
         m_canvas->Refresh();
         break;
 
-   
+
     default:
-        wxString msg;
-        msg.Printf( wxT( "PCB_EDIT_FRAME::Process_Special_Functions() unknown event id %d" ), id );
-        DisplayError( this, msg );
+        wxLogDebug( wxT( "PCB_EDIT_FRAME::Process_Special_Functions() unknown event id %d" ), id );
         break;
     }
 
@@ -1327,11 +1325,7 @@ void PCB_EDIT_FRAME::RemoveStruct( BOARD_ITEM* Item, wxDC* DC )
     case TYPE_NOT_INIT:
     case PCB_T:
     default:
-        {
-            wxString msg = wxString::Format(
-                wxT( "Remove: item type %d unknown." ), Item->Type() );
-            DisplayError( this, msg );
-        }
+        wxLogDebug( wxT( "Remove: item type %d unknown." ), Item->Type() );
         break;
     }
 }

@@ -1,13 +1,13 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2018 Jean-Pierre Charras jp.charras at wanadoo.fr
- * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2019 Jean-Pierre Charras jp.charras at wanadoo.fr
+ * Copyright (C) 1992-2019 KiCad Developers, see AUTHORS.txt for contributors.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -106,7 +106,15 @@ DIALOG_GRAPHIC_ITEM_PROPERTIES::DIALOG_GRAPHIC_ITEM_PROPERTIES( PCB_BASE_EDIT_FR
 
     // Configure the layers list selector
     if( m_moduleItem )
-        m_LayerSelectionCtrl->SetNotAllowedLayerSet( LSET::ForbiddenFootprintLayers() );
+    {
+        LSET forbiddenLayers = LSET::ForbiddenFootprintLayers();
+
+        // If someone went to the trouble of setting the layer in a text editor, then there's
+        // very little sense in nagging them about it.
+        forbiddenLayers.set( m_item->GetLayer(), false );
+
+        m_LayerSelectionCtrl->SetNotAllowedLayerSet( forbiddenLayers );
+    }
 
     m_LayerSelectionCtrl->SetLayersHotkeys( false );
     m_LayerSelectionCtrl->SetBoardFrame( m_parent );
@@ -206,9 +214,9 @@ bool DIALOG_GRAPHIC_ITEM_PROPERTIES::TransferDataToWindow()
 
     if( m_LayerSelectionCtrl->SetLayerSelection( m_item->GetLayer() ) < 0 )
     {
-        wxMessageBox( _( "This item was on a forbidden or non-existing layer.\n"
-                         "It has been moved to the first allowed layer." ) );
-        m_LayerSelectionCtrl->SetSelection( F_SilkS );
+        wxMessageBox( _( "This item was on a non-existing or forbidden layer.\n"
+                         "It has been moved to the first allowed layer. Please fix it." ) );
+        m_LayerSelectionCtrl->SetSelection( 0 );
     }
 
     return DIALOG_GRAPHIC_ITEM_PROPERTIES_BASE::TransferDataToWindow();

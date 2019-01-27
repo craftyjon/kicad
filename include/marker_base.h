@@ -29,7 +29,7 @@
 #include <drc_item.h>
 #include <gr_basic.h>
 #include <eda_rect.h>
-
+class SHAPE_LINE_CHAIN;
 
 /* Marker are mainly used to show a DRC or ERC error or warning
  */
@@ -52,23 +52,22 @@ public:
     };
 
     wxPoint               m_Pos;                 ///< position of the marker
-    int                   m_ScalingFactor;       ///< Scaling factor for m_Size and m_Corners (can
-                                                 ///<   set the physical size)
 
 protected:
+    int                   m_ScalingFactor;       ///< Scaling factor to convert corners coordinates
+                                                 ///< to internat units coordinates
     TYPEMARKER            m_MarkerType;          ///< The type of marker (useful to filter markers)
     MARKER_SEVERITY       m_ErrorLevel;          ///< Specify the severity of the error
     COLOR4D               m_Color;               ///< color
     EDA_RECT              m_ShapeBoundingBox;    ///< Bounding box of the graphic symbol, relative
-                                                 ///<   to the position of the shape, used for Hit
-                                                 ///<   Tests
+                                                 ///< to the position of the shape, in marker shape units
     DRC_ITEM              m_drc;
 
     void init();
 
 public:
 
-    MARKER_BASE();
+    MARKER_BASE( int aScalingFactor );
 
     /**
      * Constructor
@@ -78,10 +77,11 @@ public:
      * @param aPos The position of the first of two objects
      * @param bItem The second of the two conflicting objects
      * @param bPos The position of the second of two objects
+     * @param aScalingFactor the scaling factor to convert the shape coordinates to IU coordinates
      */
     MARKER_BASE( EDA_UNITS_T aUnits, int aErrorCode, const wxPoint& aMarkerPos,
                  EDA_ITEM* aItem, const wxPoint& aPos,
-                 EDA_ITEM* bItem, const wxPoint& bPos );
+                 EDA_ITEM* bItem, const wxPoint& bPos, int aScalingFactor );
 
     /**
      * Constructor
@@ -91,10 +91,11 @@ public:
      * @param aPos The position of the first of two objects
      * @param bText Text describing the second of the two conflicting objects
      * @param bPos The position of the second of two objects
+     * @param aScalingFactor the scaling factor to convert the shape coordinates to IU coordinates
      */
     MARKER_BASE( int aErrorCode, const wxPoint& aMarkerPos,
                  const wxString& aText, const wxPoint& aPos,
-                 const wxString& bText, const wxPoint& bPos );
+                 const wxString& bText, const wxPoint& bPos, int aScalingFactor );
 
     /**
      * Constructor
@@ -102,9 +103,10 @@ public:
      * @param aMarkerPos The position of the MARKER on the BOARD
      * @param aText Text describing the object
      * @param aPos The position of the object
+     * @param aScalingFactor the scaling factor to convert the shape coordinates to IU coordinates
      */
     MARKER_BASE( int aErrorCode, const wxPoint& aMarkerPos,
-                 const wxString& aText, const wxPoint& aPos );
+                 const wxString& aText, const wxPoint& aPos, int aScalingFactor );
 
     /**
      * Contructor
@@ -116,6 +118,28 @@ public:
 
     ~MARKER_BASE();
 
+    /** The scaling factor to convert polygonal shape coordinates to internal units
+     */
+    int MarkerScale() const { return m_ScalingFactor; }
+
+    /** Returns the shape polygon in internal units in a SHAPE_LINE_CHAIN
+     * the coordinates are relatives to the marker position (are not absolute)
+     * @param aPolygon is the SHAPE_LINE_CHAIN to fill with the shape
+     */
+    void ShapeToPolygon( SHAPE_LINE_CHAIN& aPolygon) const;
+
+    /** @return the shape corner list
+     */
+    const VECTOR2I* GetShapePolygon() const;
+
+    /** @return the shape polygon corner aIdx
+     */
+    const VECTOR2I& GetShapePolygonCorner( int aIdx ) const;
+
+    /** @return the default shape polygon corner count
+     */
+    int GetShapePolygonCornerCount() const;
+
     /**
      * Function DrawMarker
      * draws the shape is the polygon defined in m_Corners (array of wxPoints).
@@ -125,7 +149,7 @@ public:
 
     /**
      * Function GetPos
-     * returns the position of this MARKER, const.
+     * @return the position of this MARKER in internal units.
      */
     const wxPoint& GetPos() const
     {
@@ -229,12 +253,11 @@ public:
     void DisplayMarkerInfo( EDA_DRAW_FRAME* aFrame );
 
     /**
-     * Function HitTestMarker
-     * tests if the given wxPoint is within the bounds of this object.
-     * @param ref_pos A wxPoint to test
+     * Tests if the given wxPoint is within the bounds of this object.
+     * @param aHitPosition is the wxPoint to test (in internal units)
      * @return bool - true if a hit, else false
      */
-    bool     HitTestMarker( const wxPoint& ref_pos ) const;
+    bool HitTestMarker( const wxPoint& aHitPosition ) const;
 
     /**
      * Function GetBoundingBoxMarker

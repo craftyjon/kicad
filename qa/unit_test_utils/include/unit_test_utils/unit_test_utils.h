@@ -24,7 +24,11 @@
 #ifndef UNIT_TEST_UTILS__H
 #define UNIT_TEST_UTILS__H
 
+#include <boost/test/test_case_template.hpp>
+#include <boost/test/unit_test.hpp>
+
 #include <functional>
+#include <set>
 
 /**
  * If HAVE_EXPECTED_FAILURES is defined, this means that
@@ -49,5 +53,109 @@
  * This can be removed when our minimum boost version is 1.59 or higher.
  */
 #undef BOOST_TEST
+
+
+#if BOOST_VERSION < 105900
+
+/*
+ * BOOST_TEST_INFO is not available before 1.59. It's not critical for
+ * test pass/fail, it's just info, so just pass along to a logging
+ * function.
+ *
+ * This can be removed when our minimum boost version is 1.59 or higher.
+ */
+#define BOOST_TEST_INFO( A ) BOOST_TEST_MESSAGE( A )
+
+/*
+ *
+ * BOOST_TEST_CONTEXT provides scoped info, but again, only after 1.59.
+ * Replacing with a call to BOOST_TEST_MESSAGE will work, and the
+ * scoping will still work for newer boosts.
+ *
+ * This can be removed when our minimum boost version is 1.59 or higher.
+ */
+#define BOOST_TEST_CONTEXT( A ) BOOST_TEST_MESSAGE( A );
+
+#endif
+
+namespace KI_TEST
+{
+/**
+ * Check that a container of "found" objects matches a container of "expected"
+ * objects. This means that:
+ *
+ * * Every "expected" object is "found"
+ * * Every "found" object is "expected"
+ *
+ * This is a very generic function: all you need are two containers of any type
+ * and a function to check if a given "found" object corresponds to a given
+ * "expected object". Conditions:
+ *
+ * * The expected object type needs operator<<
+ * * The expected object container does not contain multiple references to the
+ *   same object.
+ * * Identical values are also can't be present as the predicate can't tell which
+ *   one to match up.
+ *
+ * Not needed:
+ *
+ * * Equality or ordering operators
+ *
+ * This is a slightly more complex way of doing it that, say, sorting both
+ * lists and checking element-by-element matches. However, it can tell you
+ * exactly which objects are problematic, as well as a simple go/no-go.
+ *
+ *@param aExpected  a container of "expected" items, usually from a test case
+ *@param aMatched   a container of "found" items, usually the result of some
+ *                  routine under test
+ *@param aMatchPredicate a predicate that determines if a given "found" object
+ *                  matches a given "expected" object.
+ */
+template <typename EXP_CONT> using EXP_OBJ = typename EXP_CONT::value_type;
+template <typename FOUND_CONT> using FOUND_OBJ = typename FOUND_CONT::value_type;
+template <typename EXP_OBJ, typename FOUND_OBJ>
+using MATCH_PRED = std::function<bool( const EXP_OBJ&, const FOUND_OBJ& )>;
+template <typename EXP_CONT, typename FOUND_CONT, typename MATCH_PRED>
+void CheckUnorderedMatches(
+        const EXP_CONT& aExpected, const FOUND_CONT& aFound, MATCH_PRED aMatchPredicate )
+{
+    using EXP_OBJ = typename EXP_CONT::value_type;
+
+    // set of object we've already found
+    std::set<const EXP_OBJ*> matched;
+
+    // fill the set of object that match
+    for( const auto& found : aFound )
+    {
+        for( const auto& expected : aExpected )
+        {
+            if( aMatchPredicate( expected, found ) )
+            {
+                matched.insert( &expected );
+                break;
+            }
+        }
+    }
+
+    // first check every expected object was "found"
+    for( const EXP_OBJ& exp : aExpected )
+    {
+        BOOST_CHECK_MESSAGE( matched.count( &exp ) > 0, "Expected item was not found. Expected: \n"
+                                                                << exp );
+    }
+
+    // check every "found" object was expected
+    for( const EXP_OBJ* found : matched )
+    {
+        const bool was_expected =
+                std::find_if( aExpected.begin(), aExpected.end(),
+                        [found]( const EXP_OBJ& aObj ) { return &aObj == found; } )
+                != aExpected.end();
+
+        BOOST_CHECK_MESSAGE( was_expected, "Found item was not expected. Found: \n" << *found );
+    }
+}
+
+} // namespace KI_TEST
 
 #endif // UNIT_TEST_UTILS__H

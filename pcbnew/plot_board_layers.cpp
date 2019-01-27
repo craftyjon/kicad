@@ -461,7 +461,7 @@ void PlotStandardLayer( BOARD *aBoard, PLOTTER* aPlotter,
                 D_PAD dummy( *pad );
                 SHAPE_POLY_SET shape;
                 pad->MergePrimitivesAsPolygon( &shape, 64 );
-                shape.Inflate( margin.x, 32 );
+                shape.Inflate( margin.x, ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF );
                 dummy.DeletePrimitivesList();
                 dummy.AddPrimitive( shape, 0 );
                 dummy.MergePrimitivesAsPolygon();
@@ -672,7 +672,7 @@ void PlotLayerOutlines( BOARD* aBoard, PLOTTER* aPlotter,
 
     SHAPE_POLY_SET outlines;
 
-    for( LSEQ seq = aLayerMask.Seq( plot_seq, DIM( plot_seq ) );  seq;  ++seq )
+    for( LSEQ seq = aLayerMask.Seq( plot_seq, arrayDim( plot_seq ) );  seq;  ++seq )
     {
         PCB_LAYER_ID layer = *seq;
 
@@ -774,7 +774,11 @@ void PlotSolderMaskLayer( BOARD *aBoard, PLOTTER* aPlotter,
                           int aMinThickness )
 {
     PCB_LAYER_ID    layer = aLayerMask[B_Mask] ? B_Mask : F_Mask;
-    int         inflate = aMinThickness/2;
+
+    // We remove 1nm as we expand both sides of the shapes, so allowing for
+    // a strictly greater than or equal comparison in the shape separation (boolean add)
+    // means that we will end up with separate shapes that then are shrunk
+    int             inflate = aMinThickness/2 - 1;
 
     BRDITEMS_PLOTTER itemplotter( aPlotter, aBoard, aPlotOpt );
     itemplotter.SetLayerSet( aLayerMask );
@@ -817,7 +821,7 @@ void PlotSolderMaskLayer( BOARD *aBoard, PLOTTER* aPlotter,
     /* calculates the coeff to compensate radius reduction of holes clearance
      * due to the segment approx ( 1 /cos( PI/circleToSegmentsCount )
      */
-    int circleToSegmentsCount = 32;
+    int circleToSegmentsCount = ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF;
     double correction = GetCircletoPolyCorrectionFactor( circleToSegmentsCount );
 
     // Plot pads
@@ -895,7 +899,7 @@ void PlotSolderMaskLayer( BOARD *aBoard, PLOTTER* aPlotter,
     // However it is not complex, and fast enough for plot purposes (copy/convert data
     // is only a very small calculation time for these calculations)
     ZONE_CONTAINER zone( aBoard );
-    zone.SetArcSegmentCount( 32 );
+    zone.SetArcSegmentCount( ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF );
     zone.SetMinThickness( 0 );      // trace polygons only
     zone.SetLayer ( layer );
 
@@ -1107,19 +1111,14 @@ PLOTTER* StartPlotBoard( BOARD *aBoard, PCB_PLOT_PARAMS *aPlotOpts,
         // For the Gerber "file function" attribute, set the layer number
         if( plotter->GetPlotterType() == PLOT_FORMAT_GERBER )
         {
-            bool useX2mode = plotOpts.GetUseGerberAttributes();
+            bool useX2mode = plotOpts.GetUseGerberX2format();
 
-            if( useX2mode )
-            {
-                AddGerberX2Attribute( plotter, aBoard, aLayer, false );
-                GERBER_PLOTTER* gbrplotter = static_cast <GERBER_PLOTTER*> ( plotter );
-                gbrplotter->UseX2Attributes( true );
-                gbrplotter->UseX2NetAttributes( plotOpts.GetIncludeGerberNetlistInfo() );
-            }
-            else
-            {
-                AddGerberX2Attribute( plotter, aBoard, aLayer, true );
-            }
+            GERBER_PLOTTER* gbrplotter = static_cast <GERBER_PLOTTER*> ( plotter );
+            gbrplotter->UseX2format( useX2mode );
+            gbrplotter->UseX2NetAttributes( plotOpts.GetIncludeGerberNetlistInfo() );
+
+            // Attributes can be added using X2 format or as comment (X1 format)
+            AddGerberX2Attribute( plotter, aBoard, aLayer, not useX2mode );
         }
 
         plotter->StartPlot();

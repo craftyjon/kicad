@@ -171,8 +171,6 @@ void BOARD::BuildConnectivity()
 
 const wxPoint BOARD::GetPosition() const
 {
-    wxLogWarning( wxT( "This should not be called on the BOARD object") );
-
     return ZeroOffset;
 }
 
@@ -342,9 +340,9 @@ static void checkConnectedTo( BOARD* aBoard, TRACKS* aList, const TRACKS& aTrack
         {
             std::string m = StrPrintf(
                 "intervening pad at:(xy %s) between start:(xy %s) and goal:(xy %s)",
-                BOARD_ITEM::FormatInternalUnits( next ).c_str(),
-                BOARD_ITEM::FormatInternalUnits( aStart ).c_str(),
-                BOARD_ITEM::FormatInternalUnits( aGoal ).c_str()
+                FormatInternalUnits( next ).c_str(),
+                FormatInternalUnits( aStart ).c_str(),
+                FormatInternalUnits( aGoal ).c_str()
                 );
             THROW_IO_ERROR( m );
         }
@@ -356,7 +354,7 @@ static void checkConnectedTo( BOARD* aBoard, TRACKS* aList, const TRACKS& aTrack
             std::string m = StrPrintf(
                 "found %d tracks intersecting at (xy %s), exactly 2 would be acceptable.",
                 track_count + aList->size() == 1 ? 1 : 0,
-                BOARD_ITEM::FormatInternalUnits( next ).c_str()
+                FormatInternalUnits( next ).c_str()
                 );
             THROW_IO_ERROR( m );
         }
@@ -369,8 +367,8 @@ static void checkConnectedTo( BOARD* aBoard, TRACKS* aList, const TRACKS& aTrack
 
     std::string m = StrPrintf(
         "not enough tracks connecting start:(xy %s) and goal:(xy %s).",
-        BOARD_ITEM::FormatInternalUnits( aStart ).c_str(),
-        BOARD_ITEM::FormatInternalUnits( aGoal ).c_str()
+        FormatInternalUnits( aStart ).c_str(),
+        FormatInternalUnits( aGoal ).c_str()
         );
     THROW_IO_ERROR( m );
 }
@@ -414,8 +412,8 @@ TRACKS BOARD::TracksInNetBetweenPoints( const wxPoint& aStartPos, const wxPoint&
 
     wxString m = wxString::Format(
             "no clean path connecting start:(xy %s) with goal:(xy %s)",
-            BOARD_ITEM::FormatInternalUnits( aStartPos ).c_str(),
-            BOARD_ITEM::FormatInternalUnits( aGoalPos ).c_str()
+            FormatInternalUnits( aStartPos ).c_str(),
+            FormatInternalUnits( aGoalPos ).c_str()
             );
 
     THROW_IO_ERROR( m + per_path_problem_text );
@@ -560,7 +558,7 @@ void BOARD::PopHighLight()
 
 bool BOARD::SetLayerDescr( PCB_LAYER_ID aIndex, const LAYER& aLayer )
 {
-    if( unsigned( aIndex ) < DIM( m_Layer ) )
+    if( unsigned( aIndex ) < arrayDim( m_Layer ) )
     {
         m_Layer[ aIndex ] = aLayer;
         return true;
@@ -1018,6 +1016,12 @@ void BOARD::Remove( BOARD_ITEM* aBoardItem )
     }
 
     m_connectivity->Remove( aBoardItem );
+}
+
+
+wxString BOARD::GetSelectMenuText( EDA_UNITS_T aUnits ) const
+{
+    return wxString::Format( _( "PCB" ) );
 }
 
 
@@ -2949,12 +2953,14 @@ BOARD_ITEM* BOARD::Duplicate( const BOARD_ITEM* aItem,
  * return true if success, false if a contour is not valid
  */
 extern bool BuildBoardPolygonOutlines( BOARD* aBoard, SHAPE_POLY_SET& aOutlines,
-                                wxString* aErrorText, unsigned int aTolerance );
+                                wxString* aErrorText, unsigned int aTolerance,
+                                wxPoint* aErrorLocation = nullptr );
 
 
-bool BOARD::GetBoardPolygonOutlines( SHAPE_POLY_SET& aOutlines, wxString* aErrorText )
+bool BOARD::GetBoardPolygonOutlines( SHAPE_POLY_SET& aOutlines, wxString* aErrorText, wxPoint* aErrorLocation )
 {
-    bool success = BuildBoardPolygonOutlines( this, aOutlines, aErrorText, Millimeter2iu( 0.05 ) );
+    bool success = BuildBoardPolygonOutlines( this, aOutlines, aErrorText,
+            Millimeter2iu( 0.05 ), aErrorLocation );
 
     // Make polygon strictly simple to avoid issues (especially in 3D viewer)
     aOutlines.Simplify( SHAPE_POLY_SET::PM_STRICTLY_SIMPLE );

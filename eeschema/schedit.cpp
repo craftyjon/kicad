@@ -1,9 +1,9 @@
  /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2015 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 2019 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008-2017 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 2004-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2004-2019 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -93,7 +93,6 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
     case ID_POPUP_SCH_ADD_JUNCTION:
     case ID_POPUP_SCH_ADD_LABEL:
     case ID_POPUP_SCH_GETINFO_MARKER:
-
         /* At this point: Do nothing. these commands do not need to stop the
          * current command (mainly a block command) or reset the current state
          * They will be executed later, in next switch structure.
@@ -102,7 +101,6 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
     case ID_POPUP_SCH_DELETE_CMP:
     case ID_POPUP_SCH_DELETE:
-
         // Stop the current command (if any) but keep the current tool
         m_canvas->EndMouseCapture();
         break;
@@ -113,8 +111,6 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         break;
     }
 
-
-    //INSTALL_UNBUFFERED_DC( dc, m_canvas );
     item = screen->GetCurItem();    // Can be modified by previous calls.
 
     switch( id )
@@ -235,10 +231,6 @@ void SCH_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
 
     case ID_POPUP_SCH_RESIZE_SHEET:
         ReSizeSheet( (SCH_SHEET*) item, nullptr );
-
-        TestDanglingEnds();
-        m_canvas->Refresh();
-
         break;
 
     case ID_POPUP_IMPORT_HLABEL_TO_SHEETPIN:
@@ -511,14 +503,6 @@ void SCH_EDIT_FRAME::OnMoveItem( wxCommandEvent& aEvent )
         PrepareMoveItem( item );
         break;
 
-/*    case SCH_BITMAP_T:
-        // move an image is a special case:
-        // we cannot undraw/redraw a bitmap just using our xor mode
-        // the MoveImage function handle this undraw/redraw difficulty
-        // By redrawing the full bounding box
-        MoveImage( (SCH_BITMAP*) item, &dc );
-        break;
-*/
     case SCH_MARKER_T:
         // Moving a marker has no sense
         break;
@@ -819,14 +803,12 @@ static void abortMoveItem( EDA_DRAW_PANEL* aPanel, wxDC* aDC )
 
         // Never delete existing item, because it can be referenced by an undo/redo command
         // Just restore its data
-        currentItem->SwapData( oldItem );
-        view->Hide( item, false );
-        item->ClearFlags();
 
-        // for items managed by their parent, we have to refresh
-        // the parent drawings (scheet or symbol)
-        if( currentItem != item )
-            parent->RefreshItem( currentItem );
+        view->Remove( currentItem );
+        currentItem->SwapData( oldItem );
+        item->ClearFlags();
+        view->Add( currentItem );
+        view->Hide( item, false );
     }
 
     screen->TestDanglingEnds();
@@ -934,7 +916,7 @@ void SCH_EDIT_FRAME::OnRotate( wxCommandEvent& aEvent )
         // Compute the rotation center and put it on grid:
         wxPoint rotationPoint = GetNearestGridPosition( block.Centre() );
 
-        if( block.GetCommand() != BLOCK_DUPLICATE )
+        if( block.GetCommand() != BLOCK_DUPLICATE && block.GetCommand() != BLOCK_PASTE )
         {
             SaveCopyInUndoList( block.GetItems(), UR_ROTATED, block.AppendUndo(), rotationPoint );
             block.SetAppendUndo();
@@ -943,6 +925,7 @@ void SCH_EDIT_FRAME::OnRotate( wxCommandEvent& aEvent )
         RotateListOfItems( block.GetItems(), rotationPoint );
 
         m_canvas->CallMouseCapture( nullptr, wxDefaultPosition, false );
+        m_canvas->Refresh();
         return;
     }
 
@@ -1295,7 +1278,7 @@ void SCH_EDIT_FRAME::OnOrient( wxCommandEvent& aEvent )
             mirrorPt = GetNearestGridPosition( mirrorPt );
             SetCrossHairPosition( mirrorPt );
 
-            if( block.GetCommand() != BLOCK_DUPLICATE )
+            if( block.GetCommand() != BLOCK_DUPLICATE && block.GetCommand() != BLOCK_PASTE )
             {
                 SaveCopyInUndoList( block.GetItems(), UR_MIRRORED_X, block.AppendUndo(), mirrorPt );
                 block.SetAppendUndo();
@@ -1304,6 +1287,7 @@ void SCH_EDIT_FRAME::OnOrient( wxCommandEvent& aEvent )
             MirrorX( block.GetItems(), mirrorPt );
 
             m_canvas->CallMouseCapture( nullptr, wxDefaultPosition, false );
+            m_canvas->Refresh();
             return;
         }
         else if( aEvent.GetId() == ID_SCH_MIRROR_Y )
@@ -1313,7 +1297,7 @@ void SCH_EDIT_FRAME::OnOrient( wxCommandEvent& aEvent )
             mirrorPt = GetNearestGridPosition( mirrorPt );
             SetCrossHairPosition( mirrorPt );
 
-            if( block.GetCommand() != BLOCK_DUPLICATE )
+            if( block.GetCommand() != BLOCK_DUPLICATE && block.GetCommand() != BLOCK_PASTE )
             {
                 SaveCopyInUndoList( block.GetItems(), UR_MIRRORED_Y, block.AppendUndo(), mirrorPt );
                 block.SetAppendUndo();
@@ -1322,6 +1306,7 @@ void SCH_EDIT_FRAME::OnOrient( wxCommandEvent& aEvent )
             MirrorY( block.GetItems(), mirrorPt );
 
             m_canvas->CallMouseCapture( nullptr, wxDefaultPosition, false );
+            m_canvas->Refresh();
             return;
         }
         else

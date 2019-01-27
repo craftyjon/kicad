@@ -177,7 +177,7 @@ public:
 
     MODEL_VRML() : m_OutputPCB( (SGNODE*) NULL )
     {
-        for( unsigned i = 0; i < DIM( m_layer_z );  ++i )
+        for( unsigned i = 0; i < arrayDim( m_layer_z );  ++i )
             m_layer_z[i] = 0;
 
         m_holes.GetArcParams( m_iMaxSeg, m_arcMinLen, m_arcMaxLen );
@@ -254,7 +254,7 @@ public:
 
     double GetLayerZ( LAYER_NUM aLayer )
     {
-        if( unsigned( aLayer ) >= DIM( m_layer_z ) )
+        if( unsigned( aLayer ) >= arrayDim( m_layer_z ) )
             return 0;
 
         return m_layer_z[ aLayer ];
@@ -679,7 +679,7 @@ static void export_vrml_arc( MODEL_VRML& aModel, LAYER_NUM layer,
 static void export_vrml_polygon( MODEL_VRML& aModel, LAYER_NUM layer,
         DRAWSEGMENT *aOutline, double aOrientation, wxPoint aPos )
 {
-    const int circleSegmentsCount = 32;
+    const int circleSegmentsCount = ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF;
 
     if( aOutline->IsPolyShapeValid() )
     {
@@ -1118,7 +1118,7 @@ static void export_vrml_padshape( MODEL_VRML& aModel, VRML_LAYER* aTinLayer, D_P
     case PAD_SHAPE_ROUNDRECT:
     {
         SHAPE_POLY_SET polySet;
-        int segmentToCircleCount = 32;
+        int segmentToCircleCount = ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF;
         const int corner_radius = aPad->GetRoundRectCornerRadius( aPad->GetSize() );
         TransformRoundRectToPolygon( polySet, wxPoint( 0, 0 ), aPad->GetSize(),
                 0.0, corner_radius, segmentToCircleCount );
@@ -1141,7 +1141,7 @@ static void export_vrml_padshape( MODEL_VRML& aModel, VRML_LAYER* aTinLayer, D_P
     case PAD_SHAPE_CUSTOM:
     {
         SHAPE_POLY_SET polySet;
-        int segmentToCircleCount = 32;
+        int segmentToCircleCount = ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF;
         std::vector< wxRealPoint > cornerList;
         aPad->MergePrimitivesAsPolygon( &polySet, segmentToCircleCount );
 

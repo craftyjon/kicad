@@ -46,7 +46,6 @@ include_directories(
     ../common/dialogs
     ./exporters
     ../dxflib_qcad
-    ./import_dxf
     ../utils/idftools
     ${GLM_INCLUDE_DIR}
     ./specctra_import_export
@@ -101,6 +100,7 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_global_edit_tracks_and_vias_base.cpp
     dialogs/dialog_global_edit_text_and_graphics.cpp
     dialogs/dialog_global_edit_text_and_graphics_base.cpp
+    dialogs/dialog_global_fp_lib_table_config.cpp
     dialogs/dialog_push_pad_properties.cpp
     dialogs/dialog_push_pad_properties_base.cpp
     dialogs/dialog_graphic_item_properties.cpp
@@ -181,10 +181,16 @@ if( KICAD_SCRIPTING AND KICAD_SCRIPTING_ACTION_MENU )
         )
 endif()
 
-set( PCBNEW_IMPORT_DXF
-    import_dxf/dialog_dxf_import.cpp
-    import_dxf/dialog_dxf_import_base.cpp
-    import_dxf/dxf2brd_items.cpp
+set( PCBNEW_IMPORT_GFX
+    import_gfx/dialog_import_gfx_base.cpp
+    import_gfx/dialog_import_gfx.cpp
+    import_gfx/graphics_import_mgr.cpp
+    import_gfx/graphics_importer.cpp
+    import_gfx/graphics_importer_pcbnew.cpp
+    import_gfx/graphics_importer_buffer.cpp
+    import_gfx/dxf_import_plugin.cpp
+    import_gfx/svg_import_plugin.cpp
+    import_gfx/nanosvg.cpp
     )
 
 set( PCBNEW_EXPORTERS
@@ -205,10 +211,17 @@ set( PCBNEW_MICROWAVE_SRCS
     microwave/microwave_inductor.cpp
     )
 
+set( PCBNEW_DRC_SRCS
+    drc/courtyard_overlap.cpp
+    drc/drc_marker_factory.cpp
+    drc/drc_provider.cpp
+    )
+
 set( PCBNEW_CLASS_SRCS
     ${PCBNEW_DIALOGS}
     ${PCBNEW_EXPORTERS}
-    ${PCBNEW_IMPORT_DXF}
+    ${PCBNEW_IMPORT_GFX}
+    ${PCBNEW_DRC_SRCS}
 
     autorouter/rect_placement/rect_placement.cpp
     autorouter/spread_footprints.cpp
@@ -232,7 +245,6 @@ set( PCBNEW_CLASS_SRCS
     dragsegm.cpp
     drc.cpp
     drc_clearance_test_functions.cpp
-    drc_marker_functions.cpp
     edgemod.cpp
     edit.cpp
     edit_pcb_text.cpp
@@ -275,6 +287,7 @@ set( PCBNEW_CLASS_SRCS
     onleftclick.cpp
     onrightclick.cpp
     pad_edit_functions.cpp
+    pad_naming.cpp
     pcb_base_edit_frame.cpp
     pcb_footprint_edit_utils.cpp
     pcb_layer_box_selector.cpp
@@ -468,6 +481,7 @@ if( KICAD_SCRIPTING )   # Generate pcbnew.py and pcbnew_wrap.cxx using swig
         DEPENDS swig/edge_mod.i
         DEPENDS swig/marker_pcb.i
         DEPENDS swig/pcb_target.i
+        DEPENDS swig/pcb_plot_params.i
         DEPENDS swig/footprint.i
         DEPENDS swig/netclass.i
         DEPENDS swig/netinfo.i
@@ -653,6 +667,7 @@ endif ()
 
 set( PCBNEW_KIFACE_LIBRARIES
     3d-viewer
+    connectivity
     pcbcommon
     pnsrouter
     pcad2kicadpcb
@@ -663,7 +678,6 @@ set( PCBNEW_KIFACE_LIBRARIES
     gal
     lib_dxf
     idf3
-    connectivity
     ${wxWidgets_LIBRARIES}
     ${GITHUB_PLUGIN_LIBRARIES}
     ${GDI_PLUS_LIBRARIES}

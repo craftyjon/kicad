@@ -180,13 +180,18 @@ public:
                 pin->SetName( aValue );
                 break;
             case COL_TYPE:
-                pin->SetType( (ELECTRICAL_PINTYPE) g_typeNames.Index( aValue ), false );
+                if( g_typeNames.Index( aValue ) != wxNOT_FOUND )
+                    pin->SetType( (ELECTRICAL_PINTYPE) g_typeNames.Index( aValue ), false );
+
                 break;
             case COL_SHAPE:
-                pin->SetShape( (GRAPHIC_PINSHAPE) g_shapeNames.Index( aValue ) );
+                if( g_shapeNames.Index( aValue ) != wxNOT_FOUND )
+                    pin->SetShape( (GRAPHIC_PINSHAPE) g_shapeNames.Index( aValue ) );
+
                 break;
             case COL_ORIENTATION:
-                pin->SetOrientation( LIB_PIN::GetOrientationCode(
+                if( g_orientationNames.Index( aValue ) != wxNOT_FOUND )
+                    pin->SetOrientation( LIB_PIN::GetOrientationCode(
                                               g_orientationNames.Index( aValue ) ), false );
                 break;
             case COL_NUMBER_SIZE:
@@ -436,6 +441,7 @@ DIALOG_LIB_EDIT_PIN_TABLE::DIALOG_LIB_EDIT_PIN_TABLE( wxWindow* parent, LIB_PART
 
     m_ButtonsOK->SetDefault();
     m_initialized = true;
+    m_modified = false;
 
     // Connect Events
     m_grid->Connect( wxEVT_GRID_COL_SORT, wxGridEventHandler( DIALOG_LIB_EDIT_PIN_TABLE::OnColSort ), nullptr, this );
@@ -654,9 +660,9 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnClose( wxCloseEvent& event )
     }
 
     if( IsQuasiModal() )
-        EndQuasiModal( wxID_OK );
+        EndQuasiModal( wxID_CANCEL );
     else if( IsModal() )
-        EndModal( wxID_OK );
+        EndModal( wxID_CANCEL );
     else
         event.Skip();
 }

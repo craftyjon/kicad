@@ -2,6 +2,7 @@
  * This program source code file is part of KICAD, a free EDA CAD application.
  *
  * Copyright (C) 2013-2017 CERN
+ * Copyright (C) 2018-2019 KiCad Developers, see AUTHORS.txt for contributors.
  * @author Maciej Suminski <maciej.suminski@cern.ch>
  * @author Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
  *
@@ -27,7 +28,6 @@
 #define __CONNECTIVITY_DATA_H
 
 #include <core/typeinfo.h>
-#include <core/lockable.h>
 
 #include <wx/string.h>
 #include <vector>
@@ -77,7 +77,7 @@ struct RN_DYNAMIC_LINE
 };
 
 // a wrapper class encompassing the connectivity computation algorithm and the
-class CONNECTIVITY_DATA : public LOCKABLE
+class CONNECTIVITY_DATA
 {
 public:
     CONNECTIVITY_DATA();
@@ -213,7 +213,7 @@ public:
      * @param aTypes allows one to filter by item types.
      */
     const std::vector<BOARD_CONNECTED_ITEM*> GetConnectedItems( const BOARD_CONNECTED_ITEM* aItem,
-            const KICAD_T aTypes[] ) const;
+            const KICAD_T aTypes[], bool aIgnoreNetcodes = false ) const;
 
     /**
      * Function GetNetItems()
@@ -235,6 +235,11 @@ public:
         return m_connAlgo;
     }
 
+    std::mutex& GetLock()
+    {
+        return m_lock;
+    }
+
     void MarkItemNetAsDirty( BOARD_ITEM* aItem );
     void SetProgressReporter( PROGRESS_REPORTER* aReporter );
 
@@ -253,6 +258,8 @@ private:
     std::vector<RN_NET*> m_nets;
 
     PROGRESS_REPORTER* m_progressReporter;
+
+    std::mutex m_lock;
 };
 
 #endif

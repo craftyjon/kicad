@@ -38,10 +38,12 @@
 #include <sch_component.h>
 #include <sch_sheet.h>
 
+// List of items having the highlight option modified, therefore need to be redrawn
 
 // TODO(JE) Probably use netcode rather than connection name here eventually
 bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
 {
+    std::vector<EDA_ITEM*> itemsToRedraw;
     m_SelectedNetName = "";
     bool buildNetlistOk = false;
 
@@ -70,26 +72,40 @@ bool SCH_EDIT_FRAME::HighlightConnectionAtPosition( wxPoint aPosition )
 
     SendCrossProbeNetName( m_SelectedNetName );
     SetStatusText( _( "Selected net: " ) + m_SelectedNetName );
-    SetCurrentSheetHighlightFlags();
-    // Be sure hightlight change will be redrawn in any case
-    GetGalCanvas()->GetView()->RecacheAllItems();
-    GetGalCanvas()->GetView()->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
+    SetCurrentSheetHighlightFlags( &itemsToRedraw );
 
+    // Be sure hightlight change will be redrawn
+    KIGFX::VIEW* view = GetGalCanvas()->GetView();
+
+    for( auto item : itemsToRedraw )
+        view->Update( (KIGFX::VIEW_ITEM*)item, KIGFX::VIEW_UPDATE_FLAGS::REPAINT );
+
+    //view->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
+    GetGalCanvas()->Refresh();
     return buildNetlistOk;
 }
 
 
-bool SCH_EDIT_FRAME::SetCurrentSheetHighlightFlags()
+bool SCH_EDIT_FRAME::SetCurrentSheetHighlightFlags( std::vector<EDA_ITEM*>* aItemsToRedrawList )
 {
     SCH_SCREEN* screen = g_CurrentSheet->LastScreen();
 
-    // Update highlight flag on all items in the current screen
+    if( !screen )
+        return true;
+
+    // Disable highlight flag on all items in the current screen
     for( SCH_ITEM* ptr = screen->GetDrawItems(); ptr; ptr = ptr->Next() )
     {
         auto conn = ptr->Connection( *g_CurrentSheet );
+        bool bright = ptr->GetState( BRIGHTENED );
 
-        ptr->SetState( BRIGHTENED,
-                       ( conn && conn->Name() == m_SelectedNetName ) );
+        if( bright && aItemsToRedrawList )
+            aItemsToRedrawList->push_back( ptr );
+
+        ptr->SetState( BRIGHTENED, ( conn && conn->Name() == m_SelectedNetName ) );
+
+        if( !bright && ptr->GetState( BRIGHTENED ) && aItemsToRedrawList )
+            aItemsToRedrawList->push_back( ptr );
 
         if( ptr->Type() == SCH_SHEET_T )
         {
@@ -97,8 +113,16 @@ bool SCH_EDIT_FRAME::SetCurrentSheetHighlightFlags()
             {
                 auto pin_conn = pin.Connection( *g_CurrentSheet );
 
+                bright = pin.GetState( BRIGHTENED );
+
+                if( bright && aItemsToRedrawList )
+                    aItemsToRedrawList->push_back( &pin );
+
                 pin.SetState( BRIGHTENED, ( pin_conn &&
-                              pin_conn->Name() == m_SelectedNetName ) );
+                                            pin_conn->Name() == m_SelectedNetName ) );
+
+                if( !bright && pin.GetState( BRIGHTENED ) && aItemsToRedrawList )
+                    aItemsToRedrawList->push_back( &pin );
             }
         }
     }

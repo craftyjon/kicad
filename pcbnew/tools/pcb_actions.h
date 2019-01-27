@@ -132,7 +132,12 @@ public:
     static TOOL_ACTION remove;
     static TOOL_ACTION removeAlt;
 
+    /// Break a single track into two segments at the cursor
     static TOOL_ACTION breakTrack;
+
+    /// Breaks track when router is not activated
+    static TOOL_ACTION inlineBreakTrack;
+
     static TOOL_ACTION drag45Degree;
     static TOOL_ACTION dragFreeAngle;
 
@@ -177,8 +182,8 @@ public:
     /// Activation of the drawing tool (placing a MODULE)
     static TOOL_ACTION placeModule;
 
-    /// Activation of the drawing tool (placing a drawing from DXF file)
-    static TOOL_ACTION placeDXF;
+    /// Activation of the drawing tool (placing a drawing imported from DXF or SVG file)
+    static TOOL_ACTION placeImportedGraphics;
 
     /// Activation of the drawing tool (placing the footprint anchor)
     static TOOL_ACTION setAnchor;
@@ -375,8 +380,12 @@ public:
     static TOOL_ACTION crossProbeSchToPcb;
     static TOOL_ACTION appendBoard;
     static TOOL_ACTION showHelp;
-    static TOOL_ACTION showLocalRatsnest;
     static TOOL_ACTION toBeDone;
+
+    // Ratsnest
+    static TOOL_ACTION showLocalRatsnest;
+    static TOOL_ACTION hideLocalRatsnest;
+    static TOOL_ACTION updateLocalRatsnest;
 
     /// Find an item
     static TOOL_ACTION find;

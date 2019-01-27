@@ -28,7 +28,6 @@
  */
 
 #include <fctsys.h>
-#include <PolyLine.h>
 #include <trigo.h>
 
 #include <pcbnew.h>
@@ -234,7 +233,7 @@ bool D_PAD::buildCustomPadPolygon( SHAPE_POLY_SET* aMergedPolygon,
                     polyset.Append( poly[ii].x, poly[ii].y );
                 }
 
-                polyset.Inflate( bshape.m_Thickness/2, 32 );
+                polyset.Inflate( bshape.m_Thickness/2, ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF );
 
                 aux_polyset.Append( polyset );
             }
@@ -330,7 +329,7 @@ bool D_PAD::GetBestAnchorPosition( VECTOR2I& aPos )
 {
     SHAPE_POLY_SET poly;
 
-    if ( !buildCustomPadPolygon( &poly, 16 ) )
+    if ( !buildCustomPadPolygon( &poly, ARC_APPROX_SEGMENTS_COUNT_LOW_DEF ) )
         return false;
 
     const int minSteps = 10;

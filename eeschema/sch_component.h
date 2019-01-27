@@ -38,6 +38,7 @@
 #include <transform.h>
 #include <general.h>
 #include <vector>
+#include <set>
 #include <lib_draw_item.h>
 #include <sch_pin_connection.h>
 
@@ -94,6 +95,7 @@ private:
 
     std::vector<bool> m_isDangling; ///< One isDangling per pin
     std::vector<wxPoint> m_Pins;
+    std::set<wxString> m_highlightedPins; ///< God forgive me - Tom
 
     AUTOPLACED  m_fieldsAutoplaced; ///< indicates status of field autoplacement
 
@@ -142,6 +144,11 @@ public:
     SCH_COMPONENT( const SCH_COMPONENT& aComponent );
 
     ~SCH_COMPONENT() { }
+
+    static inline bool ClassOf( const EDA_ITEM* aItem )
+    {
+        return aItem && SCH_COMPONENT_T == aItem->Type();
+    }
 
     wxString GetClass() const override
     {
@@ -332,6 +339,12 @@ public:
      * @param aNewTimeStamp = new time stamp
      */
     void SetTimeStamp( timestamp_t aNewTimeStamp );
+
+    /**
+     * Clear the HIGHLIGHTED flag of all items of the component
+     * (fields, pins ...)
+     */
+    void ClearAllHighlightFlags();
 
     const EDA_RECT GetBoundingBox() const override;
 
@@ -592,7 +605,8 @@ public:
     {
         return ( aItem->Type() == SCH_LINE_T && aItem->GetLayer() == LAYER_WIRE ) ||
                 ( aItem->Type() == SCH_NO_CONNECT_T ) ||
-                ( aItem->Type() == SCH_JUNCTION_T );
+                ( aItem->Type() == SCH_JUNCTION_T ) ||
+                ( aItem->Type() == SCH_COMPONENT_T ) ;
     }
 
     /**
@@ -647,6 +661,12 @@ public:
 #if defined(DEBUG)
     void Show( int nestLevel, std::ostream& os ) const override;
 #endif
+
+    void ClearHighlightedPins();
+
+    void HighlightPin( LIB_PIN* aPin );
+
+    bool IsPinHighlighted( const LIB_PIN* aPin );
 
 private:
     bool doIsConnected( const wxPoint& aPosition ) const override;

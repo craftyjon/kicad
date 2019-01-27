@@ -144,7 +144,14 @@ void BOM_CFG_PARSER::parsePlugin()
             NeedSYMBOLorNUMBER();
 
             if( plugin )
-                plugin->Options().Add( FromUTF8() );
+            {
+                wxString option = FromUTF8();
+
+                if( option.StartsWith( "nickname=", &name ) )
+                    plugin->SetName( name );
+                else
+                    plugin->Options().Add( option );
+            }
 
             NeedRIGHT();
             break;
@@ -229,13 +236,12 @@ DIALOG_BOM::DIALOG_BOM( SCH_EDIT_FRAME* parent ) :
     m_checkBoxShowConsole->Show( false );
 #endif
 
-    m_sdbSizer1OK->SetLabel( _( "Generate" ) );
-    m_sdbSizer1Cancel->SetLabel( _( "Close" ) );
-    m_sdbSizer1->Layout();
+    m_sdbSizerOK->SetLabel( _( "Generate" ) );
+    m_sdbSizerCancel->SetLabel( _( "Close" ) );
+    m_sdbSizer->Layout();
 
     SetInitialFocus( m_lbPlugins );
-    m_sdbSizer1OK->SetDefault();
-    wxLogDebug( "TEEEEST" );
+    m_sdbSizerOK->SetDefault();
 
     // Now all widgets have the size fixed, call FinishDialogSettings
     FinishDialogSettings();
@@ -264,6 +270,14 @@ DIALOG_BOM::~DIALOG_BOM()
         {
             writer.Print( 1, "(opts %s)",
                           writer.Quotew( plugin->Options().Item( jj ) ).c_str() );
+        }
+
+        if( !plugin->GetName().IsEmpty() )
+        {
+            wxString option = wxString::Format( "nickname=%s", plugin->GetName() );
+
+            writer.Print( 1, "(opts %s)",
+                          writer.Quotew( option ).c_str() );
         }
 
         writer.Print( 0, ")" );
@@ -340,7 +354,7 @@ void DIALOG_BOM::installPluginsList()
 
             pluginPath.AssignDir( dir.GetName() );
             wxString fileName;
-            bool cont = dir.GetFirst( &fileName, "*", wxDIR_FILES );
+            bool cont = dir.GetFirst( &fileName, wxFileSelectorDefaultWildcardStr, wxDIR_FILES );
 
             while( cont )
             {
@@ -431,6 +445,10 @@ void DIALOG_BOM::pluginInit()
     else
         m_checkBoxShowConsole->SetValue( true );
 #endif
+
+    // A plugin can be not working, so do not left the OK button enabled if
+    // the plugin is not ready to use
+    m_sdbSizerOK->Enable( plugin->IsOk() );
 }
 
 
@@ -532,7 +550,8 @@ wxString DIALOG_BOM::choosePlugin()
     }
 
     wxString fullFileName = EDA_FILE_SELECTOR( _( "Plugin files:" ), lastPath, wxEmptyString,
-                                               wxEmptyString, "*", this, wxFD_OPEN, true );
+                                               wxEmptyString, wxFileSelectorDefaultWildcardStr,
+                                               this, wxFD_OPEN, true );
 
     return fullFileName;
 }

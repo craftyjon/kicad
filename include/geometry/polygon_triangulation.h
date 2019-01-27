@@ -263,9 +263,9 @@ private:
      * as the NULL triangles are inserted as Steiner points to improve the
      * triangulation regularity of polygons
      */
-    bool removeNullTriangles( Vertex* aStart )
+    Vertex* removeNullTriangles( Vertex* aStart )
     {
-        bool retval = false;
+        Vertex* retval = nullptr;
         Vertex* p = aStart->next;
 
         while( p != aStart )
@@ -274,7 +274,7 @@ private:
             {
                 p = p->prev;
                 p->next->remove();
-                retval = true;
+                retval = aStart;
 
                 if( p == p->next )
                     break;
@@ -286,8 +286,8 @@ private:
         // here we do the final check for this as a Steiner point
         if( area( aStart->prev, aStart, aStart->next ) == 0.0 )
         {
+            retval = p->next;
             p->remove();
-            retval = true;
         }
 
         return retval;
@@ -301,9 +301,31 @@ private:
     Vertex* createList( const ClipperLib::Path& aPath )
     {
         Vertex* tail = nullptr;
+        double sum = 0.0;
+        auto len = aPath.size();
 
-        for( auto point : aPath )
-            tail = insertVertex( VECTOR2I( point.X, point.Y ), tail );
+        // Check for winding order
+        for( size_t i = 0; i < len; i++ )
+        {
+            auto p1 = aPath.at( i );
+            auto p2 = aPath.at( ( i + 1 ) < len ? i + 1 : 0 );
+
+            sum += ( ( p2.X - p1.X ) * ( p2.Y + p1.Y ) );
+        }
+
+        if( sum <= 0.0 )
+        {
+            for( auto point : aPath )
+                tail = insertVertex( VECTOR2I( point.X, point.Y ), tail );
+        }
+        else
+        {
+            for( size_t i = 0; i < len; i++ )
+            {
+                auto p = aPath.at( len - i - 1 );
+                tail = insertVertex( VECTOR2I( p.X, p.Y ), tail );
+            }
+        }
 
         if( tail && ( *tail == *tail->next ) )
         {
@@ -322,9 +344,23 @@ private:
     Vertex* createList( const SHAPE_LINE_CHAIN& points )
     {
         Vertex* tail = nullptr;
+        double sum = 0.0;
 
+        // Check for winding order
         for( int i = 0; i < points.PointCount(); i++ )
-            tail = insertVertex( points.CPoint( i ), tail );
+        {
+            VECTOR2D p1 = points.CPoint( i );
+            VECTOR2D p2 = points.CPoint( i + 1 );
+
+            sum += ( ( p2.x - p1.x ) * ( p2.y + p1.y ) );
+        }
+
+        if( sum > 0.0 )
+            for( int i = points.PointCount() - 1; i >= 0; i--)
+                tail = insertVertex( points.CPoint( i ), tail );
+        else
+            for( int i = 0; i < points.PointCount(); i++ )
+                tail = insertVertex( points.CPoint( i ), tail );
 
         if( tail && ( *tail == *tail->next ) )
         {
@@ -397,8 +433,13 @@ private:
             if( aPoint == stop )
             {
                 // First, try to remove the remaining steiner points
-                if( removeNullTriangles( aPoint ) )
+                // If aPoint is a steiner, we need to re-assign both the start and stop points
+                if( auto newPoint = removeNullTriangles( aPoint ) )
+                {
+                    aPoint = newPoint;
+                    stop = newPoint;
                     continue;
+                }
 
                 // If we don't have any NULL triangles left, cut the polygon in two and try again
                 splitPolygon( aPoint );
@@ -611,38 +652,26 @@ private:
 
 public:
 
-    void TesselatePolygon( const SHAPE_LINE_CHAIN& aPoly )
+    bool TesselatePolygon( const SHAPE_LINE_CHAIN& aPoly )
     {
-        ClipperLib::Clipper c;
         m_bbox = aPoly.BBox();
+        m_result.Clear();
 
         if( !m_bbox.GetWidth() || !m_bbox.GetHeight() )
-            return;
+            return false;
 
-        Vertex* outerNode = createList( aPoly );
-        if( !outerNode )
-            return;
+        /// Place the polygon Vertices into a circular linked list
+        /// and check for lists that have only 0, 1 or 2 elements and
+        /// therefore cannot be polygons
+        Vertex* firstVertex = createList( aPoly );
+        if( !firstVertex || firstVertex->prev == firstVertex->next )
+            return false;
 
-        outerNode->updateList();
-        if( !earcutList( outerNode ) )
-        {
-            m_vertices.clear();
-            m_result.Clear();
+        firstVertex->updateList();
 
-            ClipperLib::Paths simplified;
-            ClipperLib::SimplifyPolygon( aPoly.convertToClipper( true ), simplified );
-
-            for( auto path : simplified )
-            {
-                outerNode = createList( path );
-                if( !outerNode )
-                    return;
-
-                earcutList( outerNode );
-            }
-        }
-
+        auto retval = earcutList( firstVertex );
         m_vertices.clear();
+        return retval;
     }
 };
 

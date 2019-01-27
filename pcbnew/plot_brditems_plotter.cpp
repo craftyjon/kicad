@@ -534,7 +534,22 @@ void BRDITEMS_PLOTTER::Plot_1_EdgeModule( EDGE_MODULE* aEdge )
                 cornerList.push_back( corner );
             }
 
-            m_plotter->PlotPoly( cornerList, FILLED_SHAPE, thickness, &gbr_metadata );
+            if( !aEdge->IsPolygonFilled() )
+            {
+                for( size_t i = 1; i < cornerList.size(); i++ )
+                {
+                    m_plotter->ThickSegment( cornerList[i-1], cornerList[i],
+                            thickness, GetPlotMode(), &gbr_metadata );
+                }
+
+                m_plotter->ThickSegment( cornerList.back(), cornerList.front(),
+                        thickness, GetPlotMode(), &gbr_metadata );
+
+            }
+            else
+            {
+                m_plotter->PlotPoly( cornerList, FILLED_SHAPE, thickness, &gbr_metadata );
+            }
         }
     break;
     }
@@ -762,14 +777,31 @@ void BRDITEMS_PLOTTER::PlotDrawSegment( DRAWSEGMENT* aSeg )
 
     case S_POLYGON:
         {
-            m_plotter->SetCurrentLineWidth( thickness, &gbr_metadata );
-            // Draw the polygon: only one polygon is expected
-            // However we provide a multi polygon shape drawing
-            // ( for the future or to show a non expected shape )
-            for( int jj = 0; jj < aSeg->GetPolyShape().OutlineCount(); ++jj )
+            if( !aSeg->IsPolygonFilled() )
             {
-                SHAPE_LINE_CHAIN& poly = aSeg->GetPolyShape().Outline( jj );
-                m_plotter->PlotPoly( poly, FILLED_SHAPE, thickness, &gbr_metadata );
+                for( auto it = aSeg->GetPolyShape().IterateSegments( 0 ); it; it++ )
+                {
+                    auto seg = it.Get();
+                    m_plotter->ThickSegment( wxPoint( seg.A ), wxPoint( seg.B ),
+                            thickness, GetPlotMode(), &gbr_metadata );
+                }
+            }
+            else
+            {
+                m_plotter->SetCurrentLineWidth( thickness, &gbr_metadata );
+                // Draw the polygon: only one polygon is expected
+                // However we provide a multi polygon shape drawing
+                // ( for the future or to show a non expected shape )
+                // This must be simplified and fractured to prevent overlapping polygons
+                // from generating invalid Gerber files
+                auto tmpPoly = SHAPE_POLY_SET( aSeg->GetPolyShape() );
+                tmpPoly.Fracture( SHAPE_POLY_SET::PM_FAST );
+
+                for( int jj = 0; jj < tmpPoly.OutlineCount(); ++jj )
+                {
+                    SHAPE_LINE_CHAIN& poly = tmpPoly.Outline( jj );
+                    m_plotter->PlotPoly( poly, FILLED_SHAPE, thickness, &gbr_metadata );
+                }
             }
         }
         break;

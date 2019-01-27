@@ -262,8 +262,8 @@ protected:
 
 public:
     PCB_LAYER_BOX_SELECTOR* m_SelLayerBox;  // a combo box to display and select active layer
-    wxChoice* m_SelTrackWidthBox;           // a choice box to display and select current track width
-    wxChoice* m_SelViaSizeBox;              // a choice box to display and select current via diameter
+    wxComboBox* m_SelTrackWidthBox;         // a choice box to display and select current track width
+    wxComboBox* m_SelViaSizeBox;            // a choice box to display and select current via diameter
 
     bool m_show_microwave_tools;
     bool m_show_layer_manager_tools;
@@ -353,8 +353,8 @@ public:
     void OnUpdatePCBFromSch( wxCommandEvent& event );
     void OnRunEeschema( wxCommandEvent& event );
 
-    void UpdateTrackWidthSelectBox( wxChoice* aTrackWidthSelectBox );
-    void UpdateViaSizeSelectBox( wxChoice* aViaSizeSelectBox );
+    void UpdateTrackWidthSelectBox( wxComboBox* aTrackWidthSelectBox );
+    void UpdateViaSizeSelectBox( wxComboBox* aViaSizeSelectBox );
 
     void GetKicadAbout( wxCommandEvent& event );
 
@@ -1556,6 +1556,7 @@ public:
      * @param aDeleteSinglePadNets if true, remove nets counting only one pad
      *                             and set net code to 0 for these pads
      * @param aIsDryRun performs a dry run without making any changes if true.
+     * @param runDragCommand indicates that a selection was created which should be dragged.
      */
     void ReadPcbNetlist( const wxString&  aNetlistFileName,
                          const wxString&  aCmpFileName,
@@ -1565,7 +1566,8 @@ public:
                          bool             aDeleteExtraFootprints,
                          bool             aSelectByTimestamp,
                          bool             aDeleteSinglePadNets,
-                         bool             aIsDryRun );
+                         bool             aIsDryRun,
+                         bool*            runDragCommand );
 
     /**
      * Function RemoveMisConnectedTracks

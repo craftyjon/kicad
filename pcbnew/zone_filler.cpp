@@ -2,13 +2,13 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2014-2017 CERN
- * Copyright (C) 2014-2018 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2014-2019 KiCad Developers, see AUTHORS.txt for contributors.
  * @author Tomasz Włostowski <tomasz.wlostowski@cern.ch>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -85,7 +85,9 @@ bool ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones, bool aCheck )
     std::vector<CN_ZONE_ISOLATED_ISLAND_LIST> toFill;
     auto connectivity = m_board->GetConnectivity();
 
-    if( !connectivity->TryLock() )
+    std::unique_lock<std::mutex> lock( connectivity->GetLock(), std::try_to_lock );
+
+    if( !lock )
         return false;
 
     for( auto zone : aZones )
@@ -189,6 +191,10 @@ bool ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones, bool aCheck )
 
     for( auto& zone : toFill )
     {
+        // Non-net zones do not have islands by definition
+        if( zone.m_zone->GetNetCode() <= 0 )
+            continue;
+
         std::sort( zone.m_islands.begin(), zone.m_islands.end(), std::greater<int>() );
         SHAPE_POLY_SET poly = zone.m_zone->GetFilledPolysList();
 
@@ -229,7 +235,6 @@ bool ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones, bool aCheck )
                 m_commit->Revert();
 
             connectivity->SetProgressReporter( nullptr );
-            connectivity->Unlock();
             return false;
         }
     }
@@ -304,7 +309,6 @@ bool ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones, bool aCheck )
         connectivity->RecalculateRatsnest();
     }
 
-    connectivity->Unlock();
     return true;
 }
 
@@ -312,21 +316,19 @@ bool ZONE_FILLER::Fill( std::vector<ZONE_CONTAINER*> aZones, bool aCheck )
 void ZONE_FILLER::buildZoneFeatureHoleList( const ZONE_CONTAINER* aZone,
         SHAPE_POLY_SET& aFeatures ) const
 {
-    int segsPerCircle;
-    double correctionFactor;
-
     // Set the number of segments in arc approximations
-    if( aZone->GetArcSegmentCount() > SEGMENT_COUNT_CROSSOVER  )
-        segsPerCircle = ARC_APPROX_SEGMENTS_COUNT_HIGHT_DEF;
-    else
-        segsPerCircle = ARC_APPROX_SEGMENTS_COUNT_LOW_DEF;
+    // Since we can no longer edit the segment count in pcbnew, we set
+    // the fill to our high-def count to avoid jagged knock-outs
+    // However, if the user has edited their zone to increase the segment count,
+    // we keep this preference
+    int segsPerCircle = std::max( aZone->GetArcSegmentCount(), ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF );
 
     /* calculates the coeff to compensate radius reduction of holes clearance
      * due to the segment approx.
      * For a circle the min radius is radius * cos( 2PI / segsPerCircle / 2)
      * correctionFactor is 1 /cos( PI/segsPerCircle  )
      */
-    correctionFactor = GetCircletoPolyCorrectionFactor( segsPerCircle );
+    double correctionFactor = GetCircletoPolyCorrectionFactor( segsPerCircle );
 
     aFeatures.RemoveAllContours();
 
@@ -529,30 +531,37 @@ void ZONE_FILLER::buildZoneFeatureHoleList( const ZONE_CONTAINER* aZone,
             // the netclass value, because we do not have a copper item
             zclearance = zone_to_edgecut_clearance;
 
+#if 0
+// 6.0 TODO: we're leaving this off for 5.1 so that people can continue to use the board
+// edge width as a hack for edge clearance.
             // edge cuts by definition don't have a width
             ignoreLineWidth = true;
+#endif
         }
 
         switch( aItem->Type() )
         {
         case PCB_LINE_T:
-            ( (DRAWSEGMENT*) aItem )->TransformShapeWithClearanceToPolygon(
+            static_cast<DRAWSEGMENT*>( aItem )->TransformShapeWithClearanceToPolygon(
                     aFeatures, zclearance, segsPerCircle, correctionFactor, ignoreLineWidth );
             break;
 
         case PCB_TEXT_T:
-            ( (TEXTE_PCB*) aItem )->TransformBoundingBoxWithClearanceToPolygon(
+            static_cast<TEXTE_PCB*>( aItem )->TransformBoundingBoxWithClearanceToPolygon(
                     &aFeatures, zclearance );
             break;
 
         case PCB_MODULE_EDGE_T:
-            ( (EDGE_MODULE*) aItem )->TransformShapeWithClearanceToPolygon(
+            static_cast<EDGE_MODULE*>( aItem )->TransformShapeWithClearanceToPolygon(
                     aFeatures, zclearance, segsPerCircle, correctionFactor, ignoreLineWidth );
             break;
 
         case PCB_MODULE_TEXT_T:
-            ( (TEXTE_PCB*) aItem )->TransformBoundingBoxWithClearanceToPolygon(
-                    &aFeatures, zclearance );
+            if( static_cast<TEXTE_MODULE*>( aItem )->IsVisible() )
+            {
+                static_cast<TEXTE_MODULE*>( aItem )->TransformBoundingBoxWithClearanceToPolygon(
+                        &aFeatures, zclearance );
+            }
             break;
 
         default:
@@ -643,6 +652,9 @@ void ZONE_FILLER::buildZoneFeatureHoleList( const ZONE_CONTAINER* aZone,
             if( pad->GetNetCode() != aZone->GetNetCode() )
                 continue;
 
+            if( pad->GetNetCode() <= 0 )
+                continue;
+
             item_boundingbox = pad->GetBoundingBox();
             int thermalGap = aZone->GetThermalReliefGap( pad );
             item_boundingbox.Inflate( thermalGap, thermalGap );
@@ -694,22 +706,17 @@ void ZONE_FILLER::computeRawFilledAreas( const ZONE_CONTAINER* aZone,
         SHAPE_POLY_SET& aRawPolys,
         SHAPE_POLY_SET& aFinalPolys ) const
 {
-    int segsPerCircle;
-    double correctionFactor;
     int outline_half_thickness = aZone->GetMinThickness() / 2;
 
     std::unique_ptr<SHAPE_FILE_IO> dumper( new SHAPE_FILE_IO(
                     s_DumpZonesWhenFilling ? "zones_dump.txt" : "", SHAPE_FILE_IO::IOM_APPEND ) );
 
     // Set the number of segments in arc approximations
-    if( aZone->GetArcSegmentCount() == ARC_APPROX_SEGMENTS_COUNT_HIGHT_DEF  )
-        segsPerCircle = ARC_APPROX_SEGMENTS_COUNT_HIGHT_DEF;
-    else
-        segsPerCircle = ARC_APPROX_SEGMENTS_COUNT_LOW_DEF;
+    int segsPerCircle = std::max( aZone->GetArcSegmentCount(), ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF );
 
     /* calculates the coeff to compensate radius reduction of holes clearance
      */
-    correctionFactor = GetCircletoPolyCorrectionFactor( segsPerCircle );
+    double correctionFactor = GetCircletoPolyCorrectionFactor( segsPerCircle );
 
     if( s_DumpZonesWhenFilling )
         dumper->BeginGroup( "clipper-zone" );
@@ -814,7 +821,7 @@ bool ZONE_FILLER::fillSingleZone( const ZONE_CONTAINER* aZone, SHAPE_POLY_SET& a
     {
         aRawPolys = smoothedPoly;
         aFinalPolys = smoothedPoly;
-        aFinalPolys.Inflate( -aZone->GetMinThickness() / 2, 16 );
+        aFinalPolys.Inflate( -aZone->GetMinThickness() / 2, ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF );
         aFinalPolys.Fracture( SHAPE_POLY_SET::PM_FAST );
     }
 

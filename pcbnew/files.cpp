@@ -117,7 +117,7 @@ bool AskLoadBoardFileName( wxWindow* aParent, int* aCtl, wxString* aFileName, bo
     }
     else
     {
-        for( unsigned ii = 2; ii < DIM( loaders ); ++ii )
+        for( unsigned ii = 2; ii < arrayDim( loaders ); ++ii )
         {
             if( !fileFilters.IsEmpty() )
                 fileFilters += wxChar( '|' );
@@ -357,7 +357,7 @@ bool PCB_EDIT_FRAME::Files_io_from_id( int id )
         }
 
     default:
-        DisplayError( this, wxT( "File_io Internal Error" ) );
+        wxLogDebug( wxT( "File_io Internal Error" ) );
         return false;
     }
 }
@@ -505,9 +505,12 @@ bool PCB_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         }
         catch( const IO_ERROR& ioe )
         {
-            DisplayErrorMessage( this,
-                                 wxString::Format( _( "Error loading board file:\n%s" ), fullFileName ),
-                                 ioe.What() );
+            if( ioe.Problem() != wxT( "CANCEL" ) )
+            {
+                wxString msg = wxString::Format( _( "Error loading board file:\n%s" ), fullFileName );
+                DisplayErrorMessage( this, msg, ioe.What() );
+            }
+
             return false;
         }
 

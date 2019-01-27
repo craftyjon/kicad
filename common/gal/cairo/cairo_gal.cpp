@@ -158,7 +158,7 @@ void CAIRO_GAL_BASE::DrawArc( const VECTOR2D& aCenterPoint, double aRadius, doub
 
     if( isFillEnabled )     // Draw the filled area of the shape, before drawing the outline itself
     {
-        double pen_size = GetLineWidth();
+        auto pen_size = GetLineWidth();
         auto fgcolor = GetStrokeColor();
         SetStrokeColor( GetFillColor() );
 
@@ -259,6 +259,12 @@ void CAIRO_GAL_BASE::DrawPolygon( const SHAPE_POLY_SET& aPolySet )
 }
 
 
+void CAIRO_GAL_BASE::DrawPolygon( const SHAPE_LINE_CHAIN& aPolygon )
+{
+    drawPoly( aPolygon );
+}
+
+
 void CAIRO_GAL_BASE::DrawCurve( const VECTOR2D& aStartPoint, const VECTOR2D& aControlPointA,
                            const VECTOR2D& aControlPointB, const VECTOR2D& aEndPoint )
 {
@@ -288,7 +294,7 @@ void CAIRO_GAL_BASE::DrawBitmap( const BITMAP_BASE& aBitmap )
     cairo_translate( currentContext, -w/2, -h/2 );
 
     cairo_new_path( currentContext );
-    cairo_surface_t* image = cairo_image_surface_create( CAIRO_FORMAT_RGB24, w, h );
+    cairo_surface_t* image = cairo_image_surface_create( CAIRO_FORMAT_ARGB32, w, h );
     cairo_surface_flush( image );
 
     unsigned char* pix_buffer = cairo_image_surface_get_data( image );
@@ -296,8 +302,8 @@ void CAIRO_GAL_BASE::DrawBitmap( const BITMAP_BASE& aBitmap )
     auto bm_pix_buffer = (( BITMAP_BASE&)aBitmap).GetImageData();
 
     // Copy the source bitmap to the cairo bitmap buffer.
-    // In cairo bitmap buffer, a RGB24 bitmap is a RGB pixel packed into a uint_32
-    // 24 low bits only are used.
+    // In cairo bitmap buffer, a ARGB32 bitmap is an ARGB pixel packed into a uint_32
+    // 24 low bits only are used for color, top 8 are transparency.
     for( int row = 0; row < h; row++ )
     {
         for( int col = 0; col < w; col++ )
@@ -306,6 +312,11 @@ void CAIRO_GAL_BASE::DrawBitmap( const BITMAP_BASE& aBitmap )
             uint32_t pixel = bm_pix_buffer->GetRed( col, row ) << 16;
             pixel += bm_pix_buffer->GetGreen( col, row ) << 8;
             pixel += bm_pix_buffer->GetBlue( col, row );
+
+            if( bm_pix_buffer->HasAlpha() )
+                pixel += bm_pix_buffer->GetAlpha( col, row ) << 24;
+            else
+                pixel += ( 0xff << 24 );
 
             // Write the pixel to the cairo image buffer:
             uint32_t* pix_ptr = (uint32_t*) pix_buffer;
@@ -428,7 +439,7 @@ void CAIRO_GAL_BASE::SetLineWidth( float aLineWidth )
         // Make lines appear at least 1 pixel wide, no matter of zoom
         double x = 1.0, y = 1.0;
         cairo_device_to_user_distance( currentContext, &x, &y );
-        float minWidth = std::min( fabs( x ), fabs( y ) );
+        auto minWidth = std::min( fabs( x ), fabs( y ) );
         cairo_set_line_width( currentContext, std::fmax( aLineWidth, minWidth ) );
     }
 }
@@ -612,13 +623,13 @@ void CAIRO_GAL_BASE::DrawGroup( int aGroupNumber )
 
 
         case CMD_STROKE_PATH:
-            cairo_set_source_rgb( currentContext, strokeColor.r, strokeColor.g, strokeColor.b );
+            cairo_set_source_rgba( currentContext, strokeColor.r, strokeColor.g, strokeColor.b, strokeColor.a );
             cairo_append_path( currentContext, it->cairoPath );
             cairo_stroke( currentContext );
             break;
 
         case CMD_FILL_PATH:
-            cairo_set_source_rgb( currentContext, fillColor.r, fillColor.g, fillColor.b );
+            cairo_set_source_rgba( currentContext, fillColor.r, fillColor.g, fillColor.b, strokeColor.a );
             cairo_append_path( currentContext, it->cairoPath );
             cairo_fill( currentContext );
             break;
@@ -707,10 +718,8 @@ void CAIRO_GAL_BASE::DeleteGroup( int aGroupNumber )
 
 void CAIRO_GAL_BASE::ClearCache()
 {
-    for( int i = groups.size() - 1; i >= 0; --i )
-    {
-        DeleteGroup( i );
-    }
+    for( auto it = groups.begin(); it != groups.end(); )
+        DeleteGroup( ( it++ )->first );
 }
 
 
@@ -733,6 +742,7 @@ void CAIRO_GAL_BASE::EnableDepthTest( bool aEnabled )
 
 void CAIRO_GAL_BASE::resetContext()
 {
+
     cairo_set_antialias( context, CAIRO_ANTIALIAS_NONE );
 
     ClearScreen();
@@ -799,14 +809,14 @@ void CAIRO_GAL_BASE::storePath()
         {
             if( isFillEnabled )
             {
-                cairo_set_source_rgb( currentContext, fillColor.r, fillColor.g, fillColor.b );
+                cairo_set_source_rgba( currentContext, fillColor.r, fillColor.g, fillColor.b, fillColor.a );
                 cairo_fill_preserve( currentContext );
             }
 
             if( isStrokeEnabled )
             {
-                cairo_set_source_rgb( currentContext, strokeColor.r, strokeColor.g,
-                                      strokeColor.b );
+                cairo_set_source_rgba( currentContext, strokeColor.r, strokeColor.g,
+                                      strokeColor.b, strokeColor.a );
                 cairo_stroke_preserve( currentContext );
             }
         }
@@ -1221,6 +1231,7 @@ void CAIRO_GAL::setCompositor()
     // Recreate the compositor with the new Cairo context
     compositor.reset( new CAIRO_COMPOSITOR( &currentContext ) );
     compositor->Resize( screenSize.x, screenSize.y );
+    compositor->SetAntialiasingMode( options.cairo_antialiasing_mode );
 
     // Prepare buffers
     mainBuffer = compositor->CreateBuffer();
@@ -1247,6 +1258,16 @@ void CAIRO_GAL::skipMouseEvent( wxMouseEvent& aEvent )
 bool CAIRO_GAL::updatedGalDisplayOptions( const GAL_DISPLAY_OPTIONS& aOptions )
 {
     bool refresh = false;
+
+    if( validCompositor && aOptions.cairo_antialiasing_mode != compositor->GetAntialiasingMode() )
+    {
+
+        compositor->SetAntialiasingMode( options.cairo_antialiasing_mode );
+        validCompositor = false;
+        deinitSurface();
+
+        refresh = true;
+    }
 
     if( super::updatedGalDisplayOptions( aOptions ) )
     {

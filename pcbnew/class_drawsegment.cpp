@@ -412,9 +412,8 @@ void DRAWSEGMENT::Draw( EDA_DRAW_PANEL* panel, wxDC* DC, GR_DRAWMODE draw_mode,
             for( int jj = 0; jj < outline.OutlineCount(); ++jj )
             {
                 SHAPE_LINE_CHAIN& poly = outline.Outline( jj );
-
                 GRClosedPoly( panel->GetClipBox(), DC, poly.PointCount(),
-                        (wxPoint*)&poly.Point( 0 ), FILLED, GetWidth(),
+                        (wxPoint*)&poly.Point( 0 ), IsPolygonFilled(), GetWidth(),
                         color, color );
             }
         }
@@ -639,13 +638,17 @@ bool DRAWSEGMENT::HitTest( const wxPoint& aPosition ) const
             return true;
         break;
 
-    case S_POLYGON:     // not yet handled
+    case S_POLYGON:
         {
-            #define MAX_DIST_IN_MM 0.25
-            int distmax = std::max( m_Width, Millimeter2iu( MAX_DIST_IN_MM ) );
-
-            if( m_Poly.Collide( VECTOR2I( aPosition ), distmax ) )
-                return true;
+            if( !IsPolygonFilled() )
+            {
+                SHAPE_POLY_SET::VERTEX_INDEX i;
+                auto poly = m_Poly;  //todo: Fix CollideEdge to be const
+                return poly.CollideEdge(VECTOR2I( aPosition ), i,
+                        std::max( m_Width / 2, Millimeter2iu( 0.25 ) ) );
+            }
+            else
+                return m_Poly.Collide( VECTOR2I( aPosition ), m_Width / 2 );
         }
         break;
 

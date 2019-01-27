@@ -33,6 +33,7 @@
 #include <macros.h>
 
 #include <class_drawsegment.h>
+#include <class_module.h>
 #include <base_units.h>
 #include <convert_basic_shapes_to_polygon.h>
 #include <geometry/geometry_utils.h>
@@ -177,9 +178,10 @@ static DRAWSEGMENT* findPoint( const wxPoint& aPoint, std::vector< DRAWSEGMENT* 
  * @param aPolygons will contain the complex polygon.
  * @param aTolerance is the max distance between points that is still accepted as connected (internal units)
  * @param aErrorText is a wxString to return error message.
+ * @param aErrorLocation is the optional position of the error in the outline
  */
 bool ConvertOutlineToPolygon( std::vector<DRAWSEGMENT*>& aSegList, SHAPE_POLY_SET& aPolygons,
-                              wxString* aErrorText, unsigned int aTolerance )
+                              wxString* aErrorText, unsigned int aTolerance, wxPoint* aErrorLocation )
 {
     if( aSegList.size() == 0 )
         return true;
@@ -281,6 +283,28 @@ bool ConvertOutlineToPolygon( std::vector<DRAWSEGMENT*>& aSegList, SHAPE_POLY_SE
             }
             break;
 
+        case S_POLYGON:
+            {
+                const auto poly = graphic->GetPolyShape();
+                MODULE* module = aSegList[0]->GetParentModule();
+                double orientation = module ? module->GetOrientation() : 0.0;
+                VECTOR2I offset = module ? module->GetPosition() : VECTOR2I( 0, 0 );
+
+                for( auto iter = poly.CIterate(); iter; iter++ )
+                {
+                    auto pt = *iter;
+                    RotatePoint( pt, orientation );
+                    pt += offset;
+
+                    if( pt.x < xmin.x )
+                    {
+                        xmin.x = pt.x;
+                        xmin.y = pt.y;
+                        xmini = i;
+                    }
+                }
+            }
+            break;
         default:
             break;
         }
@@ -300,6 +324,22 @@ bool ConvertOutlineToPolygon( std::vector<DRAWSEGMENT*>& aSegList, SHAPE_POLY_SE
     {
         int steps = GetArcToSegmentCount( graphic->GetRadius(), ARC_LOW_DEF, 360.0 );
         TransformCircleToPolygon( aPolygons, graphic->GetCenter(), graphic->GetRadius(), steps );
+    }
+    else if( graphic->GetShape() == S_POLYGON )
+    {
+        MODULE* module = graphic->GetParentModule();     // NULL for items not in footprints
+        double orientation = module ? module->GetOrientation() : 0.0;
+        VECTOR2I offset = module ? module->GetPosition() : VECTOR2I( 0, 0 );
+
+        aPolygons.NewOutline();
+
+        for( auto it = graphic->GetPolyShape().CIterate( 0 ); it; it++ )
+        {
+            auto pt = *it;
+            RotatePoint( pt, orientation );
+            pt += offset;
+            aPolygons.Append( pt );
+        }
     }
     else
     {
@@ -415,6 +455,9 @@ bool ConvertOutlineToPolygon( std::vector<DRAWSEGMENT*>& aSegList, SHAPE_POLY_SE
                     *aErrorText << msg << "\n";
                 }
 
+                if( aErrorLocation )
+                    *aErrorLocation = graphic->GetPosition();
+
                 return false;
             }
 
@@ -443,6 +486,9 @@ bool ConvertOutlineToPolygon( std::vector<DRAWSEGMENT*>& aSegList, SHAPE_POLY_SE
                         *aErrorText << msg << "\n";
                     }
 
+                    if( aErrorLocation )
+                        *aErrorLocation = prevPt;
+
                     return false;
                 }
                 break;
@@ -458,7 +504,24 @@ bool ConvertOutlineToPolygon( std::vector<DRAWSEGMENT*>& aSegList, SHAPE_POLY_SE
         graphic = (DRAWSEGMENT*) segList[0];
         segList.erase( segList.begin() );
 
-        if( graphic->GetShape() == S_CIRCLE )
+        // Both circles and polygons on the edge cuts layer are closed items that
+        // do not connect to other elements, so we process them independently
+        if( graphic->GetShape() == S_POLYGON )
+        {
+            MODULE* module = graphic->GetParentModule();     // NULL for items not in footprints
+            double orientation = module ? module->GetOrientation() : 0.0;
+            VECTOR2I offset = module ? module->GetPosition() : VECTOR2I( 0, 0 );
+
+            for( auto it = graphic->GetPolyShape().CIterate(); it; it++ )
+            {
+                auto val = *it;
+                RotatePoint( val, orientation );
+                val += offset;
+
+                aPolygons.Append( val, -1, hole );
+            }
+        }
+        else if( graphic->GetShape() == S_CIRCLE )
         {
             // make a circle by segments;
             wxPoint  center  = graphic->GetCenter();
@@ -594,6 +657,9 @@ bool ConvertOutlineToPolygon( std::vector<DRAWSEGMENT*>& aSegList, SHAPE_POLY_SE
                         *aErrorText << msg << "\n";
                     }
 
+                    if( aErrorLocation )
+                        *aErrorLocation = graphic->GetPosition();
+
                     return false;
                 }
 
@@ -622,6 +688,9 @@ bool ConvertOutlineToPolygon( std::vector<DRAWSEGMENT*>& aSegList, SHAPE_POLY_SE
                             *aErrorText << msg << "\n";
                         }
 
+                        if( aErrorLocation )
+                            *aErrorLocation = prevPt;
+
                         return false;
                     }
                     break;
@@ -641,7 +710,7 @@ bool ConvertOutlineToPolygon( std::vector<DRAWSEGMENT*>& aSegList, SHAPE_POLY_SE
  * All contours should be closed, i.e. valid closed polygon vertices
  */
 bool BuildBoardPolygonOutlines( BOARD* aBoard, SHAPE_POLY_SET& aOutlines,
-        wxString* aErrorText, unsigned int aTolerance )
+        wxString* aErrorText, unsigned int aTolerance, wxPoint* aErrorLocation )
 {
     PCB_TYPE_COLLECTOR  items;
 
@@ -659,7 +728,7 @@ bool BuildBoardPolygonOutlines( BOARD* aBoard, SHAPE_POLY_SET& aOutlines,
             segList.push_back( static_cast< DRAWSEGMENT* >( items[ii] ) );
     }
 
-    bool success = ConvertOutlineToPolygon( segList, aOutlines, aErrorText, aTolerance );
+    bool success = ConvertOutlineToPolygon( segList, aOutlines, aErrorText, aTolerance, aErrorLocation );
 
     if( !success || !aOutlines.OutlineCount() )
     {

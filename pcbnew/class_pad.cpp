@@ -29,7 +29,6 @@
  */
 
 #include <fctsys.h>
-#include <PolyLine.h>
 #include <trigo.h>
 #include <macros.h>
 #include <msgpanel.h>
@@ -482,6 +481,40 @@ void D_PAD::FlipPrimitives()
 }
 
 
+void D_PAD::MirrorXPrimitives( int aX )
+{
+    // Mirror custom shapes
+    for( unsigned ii = 0; ii < m_basicShapes.size(); ++ii )
+    {
+        PAD_CS_PRIMITIVE& primitive = m_basicShapes[ii];
+
+        MIRROR( primitive.m_Start.x, aX );
+        MIRROR( primitive.m_End.x, aX );
+        primitive.m_ArcAngle = -primitive.m_ArcAngle;
+
+        switch( primitive.m_Shape )
+        {
+        case S_POLYGON:         // polygon
+            for( unsigned jj = 0; jj < primitive.m_Poly.size(); jj++ )
+                MIRROR( primitive.m_Poly[jj].x, aX );
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    // Mirror the local coordinates in merged Polygon
+    for( int cnt = 0; cnt < m_customShapeAsPolygon.OutlineCount(); ++cnt )
+    {
+        SHAPE_LINE_CHAIN& poly = m_customShapeAsPolygon.Outline( cnt );
+
+        for( int ii = 0; ii < poly.PointCount(); ++ii )
+            MIRROR( poly.Point( ii ).x, aX );
+    }
+}
+
+
 void D_PAD::AppendConfigs( PARAM_CFG_ARRAY* aResult )
 {
     // Parameters stored in config are only significant parameters
@@ -617,7 +650,10 @@ int D_PAD::GetSolderMaskMargin() const
         if( margin == 0 )
         {
             BOARD* brd = GetBoard();
-            margin = brd->GetDesignSettings().m_SolderMaskMargin;
+            if( brd )
+            {
+                margin = brd->GetDesignSettings().m_SolderMaskMargin;
+            }
         }
     }
 
@@ -655,15 +691,17 @@ wxSize D_PAD::GetSolderPasteMargin() const
         if( margin == 0 )
             margin = module->GetLocalSolderPasteMargin();
 
-        BOARD * brd = GetBoard();
+        auto brd = GetBoard();
 
-        if( margin == 0 )
-            margin = brd->GetDesignSettings().m_SolderPasteMargin;
+        if( margin == 0 && brd )
+        {
+                margin = brd->GetDesignSettings().m_SolderPasteMargin;
+        }
 
         if( mratio == 0.0 )
             mratio = module->GetLocalSolderPasteMarginRatio();
 
-        if( mratio == 0.0 )
+        if( mratio == 0.0 && brd )
         {
             mratio = brd->GetDesignSettings().m_SolderPasteMarginRatio;
         }
@@ -885,7 +923,7 @@ bool D_PAD::HitTest( const wxPoint& aPosition ) const
     {
         // Check for hit in polygon
         SHAPE_POLY_SET outline;
-        const int segmentToCircleCount = 32;
+        const int segmentToCircleCount = ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF;
         TransformRoundRectToPolygon( outline, wxPoint(0,0), GetSize(), m_Orient,
                                  GetRoundRectCornerRadius(), segmentToCircleCount );
 
@@ -1308,6 +1346,9 @@ void D_PAD::ViewGetLayers( int aLayers[], int& aCount ) const
 
 unsigned int D_PAD::ViewGetLOD( int aLayer, KIGFX::VIEW* aView ) const
 {
+    if( aView->GetPrintMode() > 0 )  // In printing mode the pad is always drawable
+        return 0;
+
     const int HIDE = std::numeric_limits<unsigned int>::max();
     BOARD* board = GetBoard();
 
@@ -1370,25 +1411,28 @@ wxString LayerMaskDescribe( const BOARD *aBoard, LSET aMask )
 {
     // Try to be smart and useful.  Check all copper first.
     if( aMask[F_Cu] && aMask[B_Cu] )
-        return wxT( "all copper layers" );
+        return _( "All copper layers" );
 
-    // Check for single copper.
-    LSEQ cu = aBoard->GetEnabledLayers().CuStack();
+    // Check for copper.
+    auto layer = aBoard->GetEnabledLayers().AllCuMask() & aMask;
 
-    if( cu )
-        return aBoard->GetLayerName( *cu );
-
-    // No copper; check for single techincal.
-    LSEQ tech = aBoard->GetEnabledLayers().Technicals();
-
-    if( tech )
+    for( int i = 0; i < 2; i++ )
     {
-        wxString layerInfo = aBoard->GetLayerName( *tech );
+        for( int bit = PCBNEW_LAYER_ID_START; bit < PCB_LAYER_ID_COUNT; ++bit )
+        {
+            if( layer[ bit ] )
+            {
+                wxString layerInfo = aBoard->GetLayerName( static_cast<PCB_LAYER_ID>( bit ) );
 
-        if( tech.size() > 1 )
-            layerInfo << _( " & others" );
+                if( aMask.count() > 1 )
+                    layerInfo << _( " and others" );
 
-        return layerInfo;
+                return layerInfo;
+            }
+        }
+
+        // No copper; check for technicals.
+        layer = aBoard->GetEnabledLayers().AllTechMask() & aMask;
     }
 
     // No copper, no technicals: no layer

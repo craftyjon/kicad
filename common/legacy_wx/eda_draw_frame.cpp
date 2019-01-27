@@ -66,10 +66,11 @@
 #include <tool/tool_dispatcher.h>
 #include <tool/actions.h>
 
+#include <advanced_config.h>
 #include <menus_helpers.h>
-#include <worksheet_shape_builder.h>
 #include <page_info.h>
 #include <title_block.h>
+#include <worksheet_shape_builder.h>
 
 /**
  * Definition for enabling and disabling scroll bar setting trace output.  See the
@@ -80,9 +81,6 @@ static const wxString traceScrollSettings( wxT( "KicadScrollSettings" ) );
 
 ///@{
 /// \ingroup config
-
-const wxChar EDA_DRAW_FRAME::CANVAS_TYPE_KEY[] = wxT( "canvas_type" );
-
 static const wxString FirstRunShownKeyword( wxT( "FirstRunShown" ) );
 
 ///@}
@@ -148,7 +146,6 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
 
     m_canvas              = NULL;
     m_canvasType          = EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
-    m_canvasTypeDirty     = false;
     m_galCanvas           = NULL;
     m_galCanvasActive     = false;
     m_actions             = NULL;
@@ -206,7 +203,7 @@ EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, wxWindow* aParent,
         GetTextSize( wxT( "Add layer alignment target" ), stsbar ).x + 10,
     };
 
-    SetStatusWidths( DIM( dims ), dims );
+    SetStatusWidths( arrayDim( dims ), dims );
 
     // Create child subwindows.
     GetClientSize( &m_FrameSize.x, &m_FrameSize.y );
@@ -230,8 +227,7 @@ EDA_DRAW_FRAME::~EDA_DRAW_FRAME()
         socket->Destroy();
     }
 
-    if( m_canvasTypeDirty )
-        saveCanvasTypeSetting( m_canvasType );
+    saveCanvasTypeSetting( m_canvasType );
 
     delete m_actions;
     delete m_toolManager;
@@ -303,6 +299,10 @@ void EDA_DRAW_FRAME::CommonSettingsChanged()
     int tmp;
     settings->Read( GAL_ANTIALIASING_MODE_KEY, &tmp, (int) KIGFX::OPENGL_ANTIALIASING_MODE::NONE );
     m_galDisplayOptions.gl_antialiasing_mode = (KIGFX::OPENGL_ANTIALIASING_MODE) tmp;
+
+    settings->Read( CAIRO_ANTIALIASING_MODE_KEY, &tmp, (int) KIGFX::CAIRO_ANTIALIASING_MODE::NONE );
+    m_galDisplayOptions.cairo_antialiasing_mode = (KIGFX::CAIRO_ANTIALIASING_MODE) tmp;
+
     m_galDisplayOptions.NotifyChanged();
 }
 
@@ -518,7 +518,7 @@ void EDA_DRAW_FRAME::OnSelectGrid( wxCommandEvent& event )
     int* clientData;
     int  eventId = ID_POPUP_GRID_LEVEL_100;
 
-    if( event.GetEventType() == wxEVT_CHOICE )
+    if( event.GetEventType() == wxEVT_COMBOBOX )
     {
         if( m_gridSelectBox == NULL )   // Should not happen
             return;
@@ -867,6 +867,10 @@ void EDA_DRAW_FRAME::LoadSettings( wxConfigBase* aCfg )
     int temp;
     cmnCfg->Read( GAL_ANTIALIASING_MODE_KEY, &temp, (int) KIGFX::OPENGL_ANTIALIASING_MODE::NONE );
     m_galDisplayOptions.gl_antialiasing_mode = (KIGFX::OPENGL_ANTIALIASING_MODE) temp;
+
+    cmnCfg->Read( CAIRO_ANTIALIASING_MODE_KEY, &temp, (int) KIGFX::CAIRO_ANTIALIASING_MODE::NONE );
+    m_galDisplayOptions.cairo_antialiasing_mode = (KIGFX::CAIRO_ANTIALIASING_MODE) temp;
+
     m_galDisplayOptions.NotifyChanged();
 }
 
@@ -1307,7 +1311,6 @@ bool EDA_DRAW_FRAME::SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType )
     use_gal &= aCanvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
     UseGalCanvas( use_gal );
     m_canvasType = use_gal ? aCanvasType : EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
-    m_canvasTypeDirty = true;
 
     return use_gal;
 }
@@ -1319,7 +1322,7 @@ EDA_DRAW_PANEL_GAL::GAL_TYPE EDA_DRAW_FRAME::LoadCanvasTypeSetting()
     wxConfigBase* cfg = Kiface().KifaceSettings();
 
     if( cfg )
-        canvasType = (EDA_DRAW_PANEL_GAL::GAL_TYPE) cfg->ReadLong( CANVAS_TYPE_KEY,
+        canvasType = (EDA_DRAW_PANEL_GAL::GAL_TYPE) cfg->ReadLong( GetCanvasTypeKey(),
                                                                    EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE );
 
     if( canvasType < EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE
@@ -1329,23 +1332,53 @@ EDA_DRAW_PANEL_GAL::GAL_TYPE EDA_DRAW_FRAME::LoadCanvasTypeSetting()
         canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
     }
 
+    // Coerce the value into a GAL type when Legacy is not available
+    // Default to Cairo, and on the first, user will be prompted for OpenGL
+    if( canvasType == EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE
+            && !ADVANCED_CFG::GetCfg().AllowLegacyCanvas() )
+    {
+        canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO;
+    }
+
     return canvasType;
 }
 
 
 bool EDA_DRAW_FRAME::saveCanvasTypeSetting( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType )
 {
+    // Not all classes derived from EDA_DRAW_FRAME can save the canvas type, because some
+    // have a fixed type, or do not have a option to set the canvas type (they inherit from
+    // a parent frame)
+    FRAME_T allowed_frames[] =
+    {
+        FRAME_SCH, FRAME_PCB, FRAME_PCB_MODULE_EDITOR
+    };
+
+    bool allow_save = false;
+
+    for( int ii = 0; ii < 3; ii++ )
+    {
+        if( m_Ident == allowed_frames[ii] )
+        {
+            allow_save = true;
+            break;
+        }
+    }
+
+    if( !allow_save )
+        return false;
+
     if( aCanvasType < EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE
             || aCanvasType >= EDA_DRAW_PANEL_GAL::GAL_TYPE_LAST )
     {
-        assert( false );
+        wxASSERT( false );
         return false;
     }
 
     wxConfigBase* cfg = Kiface().KifaceSettings();
 
     if( cfg )
-        return cfg->Write( CANVAS_TYPE_KEY, (long) aCanvasType );
+        return cfg->Write( GetCanvasTypeKey(), (long) aCanvasType );
 
     return false;
 }
@@ -1466,10 +1499,10 @@ bool EDA_DRAW_FRAME::LibraryFileBrowser( bool doOpen, wxFileName& aFilename,
     aFilename.SetExt( ext );
 
 #ifndef __WXMAC__
-    if( isDirectory )
+    if( isDirectory && doOpen )
     {
         wxDirDialog dlg( this, prompt, Prj().GetProjectPath(),
-                         doOpen ? wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST : wxDD_DEFAULT_STYLE );
+                wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST );
 
         if( dlg.ShowModal() == wxID_CANCEL )
             return false;

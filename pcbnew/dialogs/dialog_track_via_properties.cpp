@@ -34,8 +34,6 @@
 #include <widgets/net_selector.h>
 #include <board_commit.h>
 
-#define MIN_SIZE ( int )( 0.001 * IU_PER_MM )
-
 DIALOG_TRACK_VIA_PROPERTIES::DIALOG_TRACK_VIA_PROPERTIES( PCB_BASE_FRAME* aParent,
                                                           const SELECTION& aItems,
                                                           COMMIT& aCommit ) :
@@ -47,11 +45,11 @@ DIALOG_TRACK_VIA_PROPERTIES::DIALOG_TRACK_VIA_PROPERTIES( PCB_BASE_FRAME* aParen
     m_trackStartY( aParent, m_TrackStartYLabel, m_TrackStartYCtrl, m_TrackStartYUnit ),
     m_trackEndX( aParent, m_TrackEndXLabel, m_TrackEndXCtrl, m_TrackEndXUnit ),
     m_trackEndY( aParent, m_TrackEndYLabel, m_TrackEndYCtrl, m_TrackEndYUnit ),
-    m_trackWidth( aParent, m_TrackWidthLabel, m_TrackWidthCtrl, m_TrackWidthUnit, true, MIN_SIZE ),
+    m_trackWidth( aParent, m_TrackWidthLabel, m_TrackWidthCtrl, m_TrackWidthUnit, true ),
     m_viaX( aParent, m_ViaXLabel, m_ViaXCtrl, m_ViaXUnit ),
     m_viaY( aParent, m_ViaYLabel, m_ViaYCtrl, m_ViaYUnit ),
-    m_viaDiameter( aParent, m_ViaDiameterLabel, m_ViaDiameterCtrl, m_ViaDiameterUnit, true, MIN_SIZE ),
-    m_viaDrill( aParent, m_ViaDrillLabel, m_ViaDrillCtrl, m_ViaDrillUnit, true, MIN_SIZE ),
+    m_viaDiameter( aParent, m_ViaDiameterLabel, m_ViaDiameterCtrl, m_ViaDiameterUnit, true ),
+    m_viaDrill( aParent, m_ViaDrillLabel, m_ViaDrillCtrl, m_ViaDrillUnit, true ),
     m_tracks( false ),
     m_vias( false )
 {
@@ -346,8 +344,15 @@ bool DIALOG_TRACK_VIA_PROPERTIES::TransferDataFromWindow()
 
         for( auto& item : m_items )
         {
-            auto boardItem = static_cast<BOARD_CONNECTED_ITEM*>( item );
-            connectivity->GetConnectedPads( boardItem, &connectedPads );
+            const KICAD_T ourTypes[] = { PCB_TRACE_T, PCB_PAD_T, PCB_VIA_T, PCB_MODULE_T, EOT };
+            auto connectedItems = connectivity->GetConnectedItems( static_cast<BOARD_CONNECTED_ITEM*>( item ), ourTypes, true );
+            for ( auto citem : connectedItems )
+            {
+                if( citem->Type() == PCB_PAD_T )
+                {
+                    connectedPads.insert( static_cast<D_PAD*>( citem ) );
+                }
+            }
         }
 
         for( D_PAD* pad : connectedPads )
@@ -367,7 +372,8 @@ bool DIALOG_TRACK_VIA_PROPERTIES::TransferDataFromWindow()
 
     if( m_vias )
     {
-        if( !m_viaDiameter.Validate( true ) || !m_viaDrill.Validate( true ) )
+        if( !m_viaDiameter.Validate( GEOMETRY_MIN_SIZE, INT_MAX )
+            || !m_viaDrill.Validate( GEOMETRY_MIN_SIZE, INT_MAX ) )
             return false;
 
         if( m_ViaDiameterCtrl->IsEnabled() && !m_viaDiameter.IsIndeterminate()
@@ -390,7 +396,7 @@ bool DIALOG_TRACK_VIA_PROPERTIES::TransferDataFromWindow()
 
     if( m_tracks )
     {
-        if( !m_trackWidth.Validate( true ) )
+        if( !m_trackWidth.Validate( GEOMETRY_MIN_SIZE, INT_MAX ) )
             return false;
     }
 

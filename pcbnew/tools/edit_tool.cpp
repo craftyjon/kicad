@@ -129,8 +129,8 @@ TOOL_ACTION PCB_ACTIONS::remove( "pcbnew.InteractiveEdit.remove",
 
 TOOL_ACTION PCB_ACTIONS::removeAlt( "pcbnew.InteractiveEdit.removeAlt",
         AS_GLOBAL, TOOL_ACTION::LegacyHotKey( HK_DELETE ),
-        _( "Delete (Alternative)" ), _( "Deletes selected item(s)" ), delete_xpm,
-        AF_NONE, (void*) REMOVE_FLAGS::ALT );
+        _( "Delete Full Track" ), _( "Deletes selected item(s) and copper connections" ),
+        delete_xpm, AF_NONE, (void*) REMOVE_FLAGS::ALT );
 
 TOOL_ACTION PCB_ACTIONS::updateFootprints( "pcbnew.InteractiveEdit.updateFootprints",
         AS_GLOBAL, 0,
@@ -213,7 +213,7 @@ void EditToolSelectionFilter( GENERAL_COLLECTOR& aCollector, int aFlags )
 
 EDIT_TOOL::EDIT_TOOL() :
     PCB_TOOL( "pcbnew.InteractiveEdit" ), m_selectionTool( NULL ),
-    m_dragging( false )
+    m_dragging( false ), m_lockedSelected( false )
 {
 }
 
@@ -234,7 +234,7 @@ bool EDIT_TOOL::Init()
 
     if( !m_selectionTool )
     {
-        DisplayError( NULL, wxT( "pcbnew.InteractiveSelection tool is not available" ) );
+        DisplayError( NULL, _( "pcbnew.InteractiveSelection tool is not available" ) );
         return false;
     }
 
@@ -253,6 +253,8 @@ bool EDIT_TOOL::Init()
     CONDITIONAL_MENU& menu = m_selectionTool->GetToolMenu().GetMenu();
 
     menu.AddItem( PCB_ACTIONS::move, SELECTION_CONDITIONS::NotEmpty );
+    menu.AddItem( PCB_ACTIONS::inlineBreakTrack, SELECTION_CONDITIONS::Count( 1 )
+                      && SELECTION_CONDITIONS::OnlyTypes( GENERAL_COLLECTOR::Tracks ) );
     menu.AddItem( PCB_ACTIONS::drag45Degree, SELECTION_CONDITIONS::OnlyTypes( GENERAL_COLLECTOR::Tracks ) );
     menu.AddItem( PCB_ACTIONS::dragFreeAngle, SELECTION_CONDITIONS::OnlyTypes( GENERAL_COLLECTOR::Tracks ) );
     menu.AddItem( PCB_ACTIONS::rotateCcw, SELECTION_CONDITIONS::NotEmpty );
@@ -494,6 +496,8 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
             }
 
             m_toolMgr->RunAction( PCB_ACTIONS::selectionModified, false );
+            m_toolMgr->RunAction( PCB_ACTIONS::updateLocalRatsnest, false );
+
         }
 
         else if( evt->IsCancel() || evt->IsActivate() )
@@ -553,8 +557,10 @@ int EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
         {
             break; // Finish
         }
+
     } while( ( evt = Wait() ) ); //Should be assignment not equality test
 
+    m_lockedSelected = false;
     controls->ForceCursorPosition( false );
     controls->ShowCursor( false );
     controls->SetSnapping( false );
@@ -666,7 +672,7 @@ int EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
 
     auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); }, nullptr, ! m_dragging );
 
     if( selection.Empty() )
         return 0;
@@ -696,6 +702,9 @@ int EDIT_TOOL::Rotate( const TOOL_EVENT& aEvent )
 
     m_toolMgr->RunAction( PCB_ACTIONS::selectionModified, true );
 
+    if( m_dragging )
+        m_toolMgr->RunAction( PCB_ACTIONS::updateLocalRatsnest, false );
+
     return 0;
 }
 
@@ -722,6 +731,9 @@ static void mirrorPadX( D_PAD& aPad, const wxPoint& aMirrorPoint )
 {
     wxPoint tmpPt = mirrorPointX( aPad.GetPosition(), aMirrorPoint );
 
+    if( aPad.GetShape() == PAD_SHAPE_CUSTOM )
+        aPad.MirrorXPrimitives( tmpPt.x );
+
     aPad.SetPosition( tmpPt );
 
     aPad.SetX0( aPad.GetPosition().x );
@@ -742,7 +754,7 @@ int EDIT_TOOL::Mirror( const TOOL_EVENT& aEvent )
 {
     auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); }, nullptr, ! m_dragging ); 
 
     if( selection.Empty() )
         return 0;
@@ -813,6 +825,9 @@ int EDIT_TOOL::Mirror( const TOOL_EVENT& aEvent )
 
     m_toolMgr->RunAction( PCB_ACTIONS::selectionModified, true );
 
+    if( m_dragging )
+        m_toolMgr->RunAction( PCB_ACTIONS::updateLocalRatsnest, false );
+
     return 0;
 }
 
@@ -821,7 +836,7 @@ int EDIT_TOOL::Flip( const TOOL_EVENT& aEvent )
 {
     auto& selection = m_selectionTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); }, nullptr, ! m_dragging );
 
     if( selection.Empty() )
         return 0;
@@ -851,6 +866,9 @@ int EDIT_TOOL::Flip( const TOOL_EVENT& aEvent )
 
     m_toolMgr->RunAction( PCB_ACTIONS::selectionModified, true );
 
+    if( m_dragging )
+        m_toolMgr->RunAction( PCB_ACTIONS::updateLocalRatsnest, false );
+
     return 0;
 }
 
@@ -862,27 +880,47 @@ int EDIT_TOOL::Remove( const TOOL_EVENT& aEvent )
 
     // Do not delete items while actively routing.
     if( routerTool && routerTool->Router() && routerTool->Router()->RoutingInProgress() )
-        return 0;
+        return 1;
+
+    std::vector<BOARD_ITEM*> lockedItems;
 
     // get a copy instead of reference (as we're going to clear the selection before removing items)
-    auto selectionCopy = m_selectionTool->RequestSelection(
-            []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
-            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED | EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
+    SELECTION selectionCopy;
+    bool isCut = aEvent.Parameter<intptr_t>() == static_cast<intptr_t>( PCB_ACTIONS::REMOVE_FLAGS::CUT );
+    bool isAlt = aEvent.Parameter<intptr_t>() == static_cast<intptr_t>( PCB_ACTIONS::REMOVE_FLAGS::ALT );
 
-    // is this "alternative" remove?
-    const bool isAlt = aEvent.Parameter<intptr_t>() == (int) PCB_ACTIONS::REMOVE_FLAGS::ALT;
+    // If we are in a "Cut" operation, then the copied selection exists already
+    if( isCut )
+        selectionCopy = m_selectionTool->GetSelection();
+    else
+        selectionCopy = m_selectionTool->RequestSelection(
+            []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
+            { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED_PADS | EXCLUDE_TRANSIENTS ); } );
+
+    bool isHover = selectionCopy.IsHover();
 
     // in "alternative" mode, deletion is not just a simple list of selected items,
     // it removes whole tracks, not just segments
-    if( isAlt && selectionCopy.IsHover()
+    if( isAlt && isHover
             && ( selectionCopy.HasType( PCB_TRACE_T ) || selectionCopy.HasType( PCB_VIA_T ) ) )
     {
         m_toolMgr->RunAction( PCB_ACTIONS::expandSelectedConnection, true );
-        selectionCopy = m_selectionTool->GetSelection();
     }
 
     if( selectionCopy.Empty() )
         return 0;
+
+    // N.B. Setting the CUT flag prevents lock filtering as we only want to delete the items that
+    // were copied to the clipboard, no more, no fewer.  Filtering for locked item, if any will be done
+    // in the copyToClipboard() routine
+    if( !m_lockedSelected && !isCut )
+    {
+        // Second RequestSelection removes locked items but keeps a copy of their pointers
+        selectionCopy = m_selectionTool->RequestSelection(
+                []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector )
+                { EditToolSelectionFilter( aCollector, EXCLUDE_LOCKED ); }, &lockedItems );
+    }
+
 
     // As we are about to remove items, they have to be removed from the selection first
     m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
@@ -917,7 +955,33 @@ int EDIT_TOOL::Remove( const TOOL_EVENT& aEvent )
         }
     }
 
-    m_commit->Push( _( "Delete" ) );
+    if( isCut )
+        m_commit->Push( _( "Cut" ) );
+    else
+        m_commit->Push( _( "Delete" ) );
+
+    if( !m_lockedSelected && lockedItems.size() > 0 )
+    {
+        ///> Popup nag for deleting locked items
+        STATUS_TEXT_POPUP statusPopup( frame() );
+
+        m_lockedSelected = true;
+        m_toolMgr->RunAction( PCB_ACTIONS::selectItems, true, &lockedItems );
+        statusPopup.SetText( _( "Delete again to remove locked items" ) );
+        statusPopup.Expire( 2000 );
+        statusPopup.Popup();
+        statusPopup.Move( wxGetMousePosition() + wxPoint( 20, 20 ) );
+
+        Activate();
+
+        while( m_lockedSelected && statusPopup.IsShown() )
+        {
+            statusPopup.Move( wxGetMousePosition() + wxPoint( 20, 20 ) );
+            Wait();
+        }
+    }
+
+    m_lockedSelected = false;
 
     return 0;
 }
@@ -990,6 +1054,9 @@ int EDIT_TOOL::MoveExact( const TOOL_EVENT& aEvent )
             m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
 
         m_toolMgr->RunAction( PCB_ACTIONS::selectionModified, true );
+
+        if( m_dragging )
+            m_toolMgr->RunAction( PCB_ACTIONS::updateLocalRatsnest, false );
     }
 
     return 0;
@@ -1164,6 +1231,18 @@ int EDIT_TOOL::CreateArray( const TOOL_EVENT& aEvent )
 }
 
 
+void EDIT_TOOL::PadFilter( const VECTOR2I&, GENERAL_COLLECTOR& aCollector )
+{
+    for( int i = aCollector.GetCount() - 1; i >= 0; i-- )
+    {
+        BOARD_ITEM* item = static_cast<BOARD_ITEM*>( aCollector[i] );
+
+        if( item->Type() != PCB_PAD_T )
+            aCollector.Remove( i );
+    }
+}
+
+
 void EDIT_TOOL::FootprintFilter( const VECTOR2I&, GENERAL_COLLECTOR& aCollector )
 {
     for( int i = aCollector.GetCount() - 1; i >= 0; i-- )
@@ -1225,6 +1304,7 @@ int EDIT_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 
     controls.ShowCursor( true );
     controls.SetAutoPan( false );
+    controls.CaptureCursor( false );
 
     while( auto evt = Wait() )
     {
@@ -1469,7 +1549,14 @@ int EDIT_TOOL::copyToClipboardWithAnchor( const TOOL_EVENT& aEvent )
 int EDIT_TOOL::cutToClipboard( const TOOL_EVENT& aEvent )
 {
     if( !copyToClipboard( aEvent ) )
-        Remove( aEvent );
+    {
+        // N.B. Setting the CUT flag prevents lock filtering as we only want to delete the items that
+        // were copied to the clipboard, no more, no fewer.  Filtering for locked item, if any will be done
+        // in the copyToClipboard() routine
+        TOOL_EVENT evt( aEvent.Category(), aEvent.Action(), TOOL_ACTION_SCOPE::AS_GLOBAL );
+        evt.SetParameter( PCB_ACTIONS::REMOVE_FLAGS::CUT );
+        Remove( evt );
+    }
 
     return 0;
 }

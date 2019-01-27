@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <wxFormBuilder_Project>
-    <FileVersion major="1" minor="13" />
+    <FileVersion major="1" minor="15" />
     <object class="Project" expanded="1">
         <property name="class_decoration"></property>
         <property name="code_generation">C++</property>
@@ -14,6 +14,7 @@
         <property name="file">panel_eeschema_settings_base</property>
         <property name="first_id">1000</property>
         <property name="help_provider">none</property>
+        <property name="indent_with_spaces"></property>
         <property name="internationalize">1</property>
         <property name="name">PanelEeschemaSettingsBase</property>
         <property name="namespace"></property>
@@ -48,36 +49,6 @@
             <property name="window_extra_style"></property>
             <property name="window_name"></property>
             <property name="window_style">wxTAB_TRAVERSAL</property>
-            <event name="OnAuiFindManager"></event>
-            <event name="OnAuiPaneButton"></event>
-            <event name="OnAuiPaneClose"></event>
-            <event name="OnAuiPaneMaximize"></event>
-            <event name="OnAuiPaneRestore"></event>
-            <event name="OnAuiRender"></event>
-            <event name="OnChar"></event>
-            <event name="OnEnterWindow"></event>
-            <event name="OnEraseBackground"></event>
-            <event name="OnInitDialog"></event>
-            <event name="OnKeyDown"></event>
-            <event name="OnKeyUp"></event>
-            <event name="OnKillFocus"></event>
-            <event name="OnLeaveWindow"></event>
-            <event name="OnLeftDClick"></event>
-            <event name="OnLeftDown"></event>
-            <event name="OnLeftUp"></event>
-            <event name="OnMiddleDClick"></event>
-            <event name="OnMiddleDown"></event>
-            <event name="OnMiddleUp"></event>
-            <event name="OnMotion"></event>
-            <event name="OnMouseEvents"></event>
-            <event name="OnMouseWheel"></event>
-            <event name="OnPaint"></event>
-            <event name="OnRightDClick"></event>
-            <event name="OnRightDown"></event>
-            <event name="OnRightUp"></event>
-            <event name="OnSetFocus"></event>
-            <event name="OnSize"></event>
-            <event name="OnUpdateUI"></event>
             <object class="wxBoxSizer" expanded="1">
                 <property name="minimum_size"></property>
                 <property name="name">bPanelSizer</property>
@@ -94,23 +65,23 @@
                         <property name="permission">none</property>
                         <object class="sizeritem" expanded="1">
                             <property name="border">5</property>
-                            <property name="flag">wxBOTTOM|wxRIGHT|wxLEFT</property>
+                            <property name="flag">wxLEFT|wxRIGHT</property>
                             <property name="proportion">0</property>
                             <object class="wxFlexGridSizer" expanded="1">
                                 <property name="cols">3</property>
                                 <property name="flexible_direction">wxBOTH</property>
                                 <property name="growablecols">0,1,2</property>
                                 <property name="growablerows"></property>
-                                <property name="hgap">0</property>
+                                <property name="hgap">5</property>
                                 <property name="minimum_size"></property>
                                 <property name="name">fgSizer3</property>
                                 <property name="non_flexible_grow_mode">wxFLEX_GROWMODE_SPECIFIED</property>
                                 <property name="permission">none</property>
                                 <property name="rows">0</property>
-                                <property name="vgap">3</property>
+                                <property name="vgap">5</property>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxRIGHT</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxLEFT</property>
                                     <property name="proportion">0</property>
                                     <object class="wxStaticText" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -141,6 +112,7 @@
                                         <property name="hidden">0</property>
                                         <property name="id">wxID_ANY</property>
                                         <property name="label">&amp;Measurement units:</property>
+                                        <property name="markup">0</property>
                                         <property name="max_size"></property>
                                         <property name="maximize_button">0</property>
                                         <property name="maximum_size"></property>
@@ -166,34 +138,11 @@
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
                                         <property name="wrap">-1</property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxEXPAND|wxTOP|wxBOTTOM</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxEXPAND</property>
                                     <property name="proportion">0</property>
                                     <object class="wxChoice" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -253,30 +202,7 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
-                                        <event name="OnChar"></event>
                                         <event name="OnChoice">OnChooseUnits</event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
@@ -291,7 +217,7 @@
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxLEFT</property>
                                     <property name="proportion">0</property>
                                     <object class="wxStaticText" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -322,6 +248,7 @@
                                         <property name="hidden">0</property>
                                         <property name="id">wxID_ANY</property>
                                         <property name="label">Def&amp;ault text size:</property>
+                                        <property name="markup">0</property>
                                         <property name="max_size"></property>
                                         <property name="maximize_button">0</property>
                                         <property name="maximum_size"></property>
@@ -347,34 +274,11 @@
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
                                         <property name="wrap">-1</property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">10</property>
-                                    <property name="flag">wxEXPAND|wxTOP|wxBOTTOM</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxEXPAND</property>
                                     <property name="proportion">0</property>
                                     <object class="wxTextCtrl" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -434,38 +338,11 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnText"></event>
-                                        <event name="OnTextEnter"></event>
-                                        <event name="OnTextMaxLen"></event>
-                                        <event name="OnTextURL"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxALL</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL</property>
                                     <property name="proportion">0</property>
                                     <object class="wxStaticText" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -496,6 +373,7 @@
                                         <property name="hidden">0</property>
                                         <property name="id">wxID_ANY</property>
                                         <property name="label">mils</property>
+                                        <property name="markup">0</property>
                                         <property name="max_size"></property>
                                         <property name="maximize_button">0</property>
                                         <property name="maximum_size"></property>
@@ -521,34 +399,11 @@
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
                                         <property name="wrap">-1</property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
-                                    <property name="border">10</property>
-                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxTOP|wxRIGHT</property>
+                                    <property name="border">5</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxLEFT</property>
                                     <property name="proportion">0</property>
                                     <object class="wxStaticText" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -579,6 +434,7 @@
                                         <property name="hidden">0</property>
                                         <property name="id">wxID_ANY</property>
                                         <property name="label">&amp;Horizontal pitch of repeated items:</property>
+                                        <property name="markup">0</property>
                                         <property name="max_size"></property>
                                         <property name="maximize_button">0</property>
                                         <property name="maximum_size"></property>
@@ -604,34 +460,11 @@
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
                                         <property name="wrap">-1</property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxEXPAND|wxTOP</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxEXPAND</property>
                                     <property name="proportion">0</property>
                                     <object class="wxTextCtrl" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -691,38 +524,11 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnText"></event>
-                                        <event name="OnTextEnter"></event>
-                                        <event name="OnTextMaxLen"></event>
-                                        <event name="OnTextURL"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxTOP|wxRIGHT|wxLEFT</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL</property>
                                     <property name="proportion">0</property>
                                     <object class="wxStaticText" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -753,6 +559,7 @@
                                         <property name="hidden">0</property>
                                         <property name="id">wxID_ANY</property>
                                         <property name="label">mils</property>
+                                        <property name="markup">0</property>
                                         <property name="max_size"></property>
                                         <property name="maximize_button">0</property>
                                         <property name="maximum_size"></property>
@@ -778,34 +585,11 @@
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
                                         <property name="wrap">-1</property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxRIGHT</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxLEFT</property>
                                     <property name="proportion">0</property>
                                     <object class="wxStaticText" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -836,6 +620,7 @@
                                         <property name="hidden">0</property>
                                         <property name="id">wxID_ANY</property>
                                         <property name="label">&amp;Vertical pitch of repeated items:</property>
+                                        <property name="markup">0</property>
                                         <property name="max_size"></property>
                                         <property name="maximize_button">0</property>
                                         <property name="maximum_size"></property>
@@ -861,34 +646,11 @@
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
                                         <property name="wrap">-1</property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxEXPAND</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxEXPAND</property>
                                     <property name="proportion">0</property>
                                     <object class="wxTextCtrl" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -948,38 +710,11 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnText"></event>
-                                        <event name="OnTextEnter"></event>
-                                        <event name="OnTextMaxLen"></event>
-                                        <event name="OnTextURL"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL</property>
                                     <property name="proportion">0</property>
                                     <object class="wxStaticText" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -1010,6 +745,7 @@
                                         <property name="hidden">0</property>
                                         <property name="id">wxID_ANY</property>
                                         <property name="label">mils</property>
+                                        <property name="markup">0</property>
                                         <property name="max_size"></property>
                                         <property name="maximize_button">0</property>
                                         <property name="maximum_size"></property>
@@ -1035,34 +771,11 @@
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
                                         <property name="wrap">-1</property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxBOTTOM|wxRIGHT</property>
+                                    <property name="flag">wxALIGN_CENTER_VERTICAL|wxLEFT</property>
                                     <property name="proportion">0</property>
                                     <object class="wxStaticText" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -1093,6 +806,7 @@
                                         <property name="hidden">0</property>
                                         <property name="id">wxID_ANY</property>
                                         <property name="label">&amp;Increment of repeated labels:</property>
+                                        <property name="markup">0</property>
                                         <property name="max_size"></property>
                                         <property name="maximize_button">0</property>
                                         <property name="maximum_size"></property>
@@ -1118,34 +832,11 @@
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
                                         <property name="wrap">-1</property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxEXPAND|wxBOTTOM</property>
+                                    <property name="flag">wxALIGN_CENTER_HORIZONTAL|wxEXPAND</property>
                                     <property name="proportion">0</property>
                                     <object class="wxSpinCtrl" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -1203,32 +894,6 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnSpinCtrl"></event>
-                                        <event name="OnSpinCtrlText"></event>
-                                        <event name="OnTextEnter"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
@@ -1254,7 +919,7 @@
                                 <property name="permission">none</property>
                                 <object class="sizeritem" expanded="0">
                                     <property name="border">5</property>
-                                    <property name="flag">wxEXPAND|wxALL</property>
+                                    <property name="flag">wxBOTTOM|wxLEFT|wxRIGHT</property>
                                     <property name="proportion">0</property>
                                     <object class="wxCheckBox" expanded="0">
                                         <property name="BottomDockable">1</property>
@@ -1314,35 +979,11 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnCheckBox"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxALL</property>
+                                    <property name="flag">wxBOTTOM|wxLEFT|wxRIGHT</property>
                                     <property name="proportion">0</property>
                                     <object class="wxCheckBox" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -1402,30 +1043,6 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnCheckBox"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                             </object>
@@ -1442,10 +1059,9 @@
                                 <property name="orient">wxVERTICAL</property>
                                 <property name="parent">1</property>
                                 <property name="permission">none</property>
-                                <event name="OnUpdateUI"></event>
                                 <object class="sizeritem" expanded="1">
                                     <property name="border">5</property>
-                                    <property name="flag">wxEXPAND|wxRIGHT|wxLEFT</property>
+                                    <property name="flag">wxEXPAND|wxTOP|wxRIGHT|wxLEFT</property>
                                     <property name="proportion">0</property>
                                     <object class="wxCheckBox" expanded="1">
                                         <property name="BottomDockable">1</property>
@@ -1505,30 +1121,6 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnCheckBox"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
@@ -1593,30 +1185,6 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnCheckBox"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="1">
@@ -1681,30 +1249,6 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
-                                        <event name="OnChar"></event>
-                                        <event name="OnCheckBox"></event>
-                                        <event name="OnEnterWindow"></event>
-                                        <event name="OnEraseBackground"></event>
-                                        <event name="OnKeyDown"></event>
-                                        <event name="OnKeyUp"></event>
-                                        <event name="OnKillFocus"></event>
-                                        <event name="OnLeaveWindow"></event>
-                                        <event name="OnLeftDClick"></event>
-                                        <event name="OnLeftDown"></event>
-                                        <event name="OnLeftUp"></event>
-                                        <event name="OnMiddleDClick"></event>
-                                        <event name="OnMiddleDown"></event>
-                                        <event name="OnMiddleUp"></event>
-                                        <event name="OnMotion"></event>
-                                        <event name="OnMouseEvents"></event>
-                                        <event name="OnMouseWheel"></event>
-                                        <event name="OnPaint"></event>
-                                        <event name="OnRightDClick"></event>
-                                        <event name="OnRightDown"></event>
-                                        <event name="OnRightUp"></event>
-                                        <event name="OnSetFocus"></event>
-                                        <event name="OnSize"></event>
-                                        <event name="OnUpdateUI"></event>
                                     </object>
                                 </object>
                             </object>

@@ -32,6 +32,9 @@
 #include <vector>
 #include <memory>
 #include <geometry/seg.h>
+#include <geometry/shape_poly_set.h>
+
+#include <drc/drc_marker_factory.h>
 
 #define OK_DRC  0
 #define BAD_DRC 1
@@ -94,6 +97,8 @@
 #define DRCE_BURIED_VIA_NOT_ALLOWED            49   ///< buried vias are not allowed
 #define DRCE_DISABLED_LAYER_ITEM               50   ///< item on a disabled layer
 #define DRCE_DRILLED_HOLES_TOO_CLOSE           51   ///< overlapping drilled holes break drill bits
+#define DRCE_TRACK_NEAR_EDGE                   53   ///< track too close to board edge
+#define DRCE_INVALID_OUTLINE                   54   ///< invalid board outline
 
 
 class EDA_DRAW_PANEL;
@@ -220,7 +225,9 @@ private:
 
     PCB_EDIT_FRAME*     m_pcbEditorFrame;   ///< The pcb frame editor which owns the board
     BOARD*              m_pcb;
+    SHAPE_POLY_SET      m_board_outlines;   ///< The board outline including cutouts
     DIALOG_DRC_CONTROL* m_drcDialog;
+    DRC_MARKER_FACTORY  m_markerFactory; ///< Class that generates markers
 
     DRC_LIST            m_unconnected;      ///< list of unconnected pads, as DRC_ITEMs
 
@@ -229,42 +236,6 @@ private:
      * Update needed pointers from the one pointer which is known not to change.
      */
     void updatePointers();
-
-
-    /**
-     * Function newMarker
-     * Creates a marker on a track, via or pad.
-     *
-     * @param aTrack/aPad The reference item.
-     * @param aConflitItem  Another item on the board which is in conflict with the
-     *                       reference item.
-     * @param aErrorCode An ID for the particular type of error that is being reported.
-     */
-    MARKER_PCB* newMarker( TRACK* aTrack, BOARD_ITEM* aConflitItem, const SEG& aConflictSeg,
-                           int aErrorCode );
-
-    MARKER_PCB* newMarker( TRACK* aTrack, ZONE_CONTAINER* aConflictZone, int aErrorCode );
-
-    MARKER_PCB* newMarker( D_PAD* aPad, BOARD_ITEM* aConflictItem, int aErrorCode );
-
-    /**
-     * Function newMarker
-     * Creates a marker at a given location.
-     *
-     * @param aItem The reference item.
-     * @param aPos Usually the position of the item, but could be more specific for a zone.
-     * @param aErrorCode An ID for the particular type of error that is being reported.
-     */
-    MARKER_PCB* newMarker( const wxPoint& aPos, BOARD_ITEM* aItem, int aErrorCode );
-
-    MARKER_PCB* newMarker( const wxPoint& aPos, BOARD_ITEM* aItem, BOARD_ITEM* bItem,
-                           int aErrorCode );
-
-    /**
-     * Create a MARKER which will report on a generic problem with the board which is
-     * not geographically locatable.
-     */
-    MARKER_PCB* newMarker( int aErrorCode, const wxString& aMessage );
 
     /**
      * Adds a DRC marker to the PCB through the COMMIT mechanism.
@@ -313,6 +284,11 @@ private:
 
     ///> Tests for items placed on disabled layers (causing false connections).
     void testDisabledLayers();
+
+    /**
+     * Test that the board outline is contiguous and composed of valid elements
+     */
+    void testOutline();
 
     //-----<single "item" tests>-----------------------------------------
 
@@ -366,10 +342,8 @@ private:
 
     /**
      * Test for footprint courtyard overlaps.
-     *
-     * @return bool - false if DRC error  or true if OK
      */
-    bool doFootprintOverlappingDrc();
+    void doFootprintOverlappingDrc();
 
     //-----<single tests>----------------------------------------------
 

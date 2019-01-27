@@ -30,11 +30,11 @@
 #ifndef PAD_H_
 #define PAD_H_
 
-
+#include <pcbnew.h>
 #include <class_board_item.h>
 #include <board_connected_item.h>
 #include <pad_shapes.h>
-#include <PolyLine.h>
+#include <geometry/shape_poly_set.h>
 #include <config_params.h>       // PARAM_CFG_ARRAY
 #include "zones.h"
 
@@ -308,7 +308,7 @@ public:
      * Note: The corners coordinates are relative to the pad position, orientation 0,
      */
     bool MergePrimitivesAsPolygon( SHAPE_POLY_SET * aMergedPolygon = NULL,
-                                    int aCircleToSegmentsCount = 32 );
+                                    int aCircleToSegmentsCount = ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF );
 
     /**
      * clear the basic shapes list
@@ -346,6 +346,13 @@ public:
      * Flip the basic shapes, in custom pads
      */
     void FlipPrimitives();
+
+    /**
+     * Mirror the primitives about a coordinate
+     *
+     * @param aX the x coordinate about which to mirror
+     */
+    void MirrorXPrimitives( int aX );
 
     /**
      * Import to the basic shape list
@@ -680,6 +687,7 @@ public:
     ///> Set absolute coordinates.
     void SetDrawCoord();
 
+    //todo: Remove SetLocalCoord along with m_pos
     ///> Set relative coordinates.
     void SetLocalCoord();
 
@@ -788,6 +796,7 @@ private:    // Private variable members:
 
     wxString    m_name;
 
+    // TODO: Remove m_Pos from Pad or make private.  View positions calculated from m_Pos0
     wxPoint     m_Pos;              ///< pad Position on board
 
     PAD_SHAPE_T m_padShape;         ///< Shape: PAD_SHAPE_CIRCLE, PAD_SHAPE_RECT,

@@ -92,8 +92,8 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
 
     EVT_SIZE( FOOTPRINT_EDIT_FRAME::OnSize )
 
-    EVT_CHOICE( ID_ON_ZOOM_SELECT, FOOTPRINT_EDIT_FRAME::OnSelectZoom )
-    EVT_CHOICE( ID_ON_GRID_SELECT, FOOTPRINT_EDIT_FRAME::OnSelectGrid )
+    EVT_COMBOBOX( ID_ON_ZOOM_SELECT, FOOTPRINT_EDIT_FRAME::OnSelectZoom )
+    EVT_COMBOBOX( ID_ON_GRID_SELECT, FOOTPRINT_EDIT_FRAME::OnSelectGrid )
 
     EVT_TOOL( ID_MODEDIT_SAVE, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_SAVE_AS, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
@@ -112,7 +112,7 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_TOOL( ID_MODEDIT_CREATE_NEW_LIB, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_ADD_LIBRARY, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_SHEET_SET, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
-    EVT_TOOL( ID_GEN_IMPORT_DXF_FILE, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
+    EVT_TOOL( ID_GEN_IMPORT_GRAPHICS_FILE, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( wxID_PRINT, FOOTPRINT_EDIT_FRAME::ToPrinter )
     EVT_TOOL( ID_MODEDIT_EDIT_MODULE, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
     EVT_TOOL( ID_MODEDIT_CHECK, FOOTPRINT_EDIT_FRAME::Process_Special_Functions )
@@ -205,7 +205,7 @@ BEGIN_EVENT_TABLE( FOOTPRINT_EDIT_FRAME, PCB_BASE_FRAME )
     EVT_UPDATE_UI( ID_MODEDIT_SHOW_HIDE_SEARCH_TREE,
                    FOOTPRINT_EDIT_FRAME::OnUpdateOptionsToolbar )
 
-    EVT_UPDATE_UI( ID_GEN_IMPORT_DXF_FILE, FOOTPRINT_EDIT_FRAME::OnUpdateModuleSelected )
+    EVT_UPDATE_UI( ID_GEN_IMPORT_GRAPHICS_FILE, FOOTPRINT_EDIT_FRAME::OnUpdateModuleSelected )
 
 END_EVENT_TABLE()
 
@@ -220,6 +220,8 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent,
     m_showAxis = true;                   // true to show X and Y axis on screen
     m_showGridAxis = true;               // show the grid origin axis
     m_hotkeysDescrList = g_Module_Editor_Hotkeys_Descr;
+    m_FrameSize = ConvertDialogToPixels( wxSize( 500, 350 ) );    // default in case of no prefs
+    m_canvasType = aBackend;
 
     // Give an icon
     wxIcon icon;
@@ -227,8 +229,13 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent,
     SetIcon( icon );
 
     // Create GAL canvas
+    if( aBackend == EDA_DRAW_PANEL_GAL::GAL_TYPE_UNKNOWN )
+        m_canvasType = LoadCanvasTypeSetting();
+    else
+        m_canvasType = aBackend;
+
     PCB_DRAW_PANEL_GAL* drawPanel = new PCB_DRAW_PANEL_GAL( this, -1, wxPoint( 0, 0 ), m_FrameSize,
-                                                            GetGalDisplayOptions(), aBackend );
+                                                            GetGalDisplayOptions(), m_canvasType );
     SetGalCanvas( drawPanel );
 
     SetBoard( new BOARD() );
@@ -316,7 +323,7 @@ FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent,
     // Create the manager and dispatcher & route draw panel events to the dispatcher
     setupTools();
     GetGalCanvas()->GetGAL()->SetAxesEnabled( true );
-    UseGalCanvas( aBackend != EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE );
+    UseGalCanvas( m_canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE );
 
     m_auimgr.Update();
     updateTitle();

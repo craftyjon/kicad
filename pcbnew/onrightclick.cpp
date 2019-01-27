@@ -293,16 +293,14 @@ bool PCB_EDIT_FRAME::OnRightClick( const wxPoint& aMousePos, wxMenu* aPopMenu )
         case SCREEN_T:
         case TYPE_NOT_INIT:
         case PCB_T:
-            msg.Printf( wxT( "PCB_EDIT_FRAME::OnRightClick() Error: unexpected DrawType %d" ),
+            wxLogDebug( wxT( "PCB_EDIT_FRAME::OnRightClick() Error: unexpected DrawType %d" ),
                         item->Type() );
-            wxMessageBox( msg );
             SetCurItem( NULL );
             break;
 
         default:
-            msg.Printf( wxT( "PCB_EDIT_FRAME::OnRightClick() Error: unknown DrawType %d" ),
+            wxLogDebug( wxT( "PCB_EDIT_FRAME::OnRightClick() Error: unknown DrawType %d" ),
                         item->Type() );
-            wxMessageBox( msg );
 
             // Attempt to clear error (but should no occurs )
             if( item->Type() >= MAX_STRUCT_TYPE_ID )
@@ -656,9 +654,9 @@ void PCB_EDIT_FRAME::createPopUpMenuForZones( ZONE_CONTAINER* edge_zone, wxMenu*
         if( edge_zone->HitTestForCorner( RefPos( true ), accuracy * 2 ) )
         {
             AddMenuItem( zones_menu, ID_POPUP_PCB_MOVE_ZONE_CORNER,
-                         _( "Move" ), KiBitmap( move_xpm ) );
+                         _( "Move Corner" ), KiBitmap( move_xpm ) );
             AddMenuItem( zones_menu, ID_POPUP_PCB_DELETE_ZONE_CORNER,
-                         _( "Delete" ), KiBitmap( delete_xpm ) );
+                         _( "Delete Corner" ), KiBitmap( delete_xpm ) );
         }
         else if( edge_zone->HitTestForEdge( RefPos( true ), accuracy ) )
         {

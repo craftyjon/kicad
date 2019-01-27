@@ -21,6 +21,7 @@
 
 set( QA_UTIL_COMMON_SRC
     stdstream_line_reader.cpp
+    utility_program.cpp
 )
 
 # A generic library of useful functions for various testing purposes

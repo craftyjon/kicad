@@ -80,7 +80,7 @@ static void addTextSegmToPoly( int x0, int y0, int xf, int yf, void* aData )
 void BOARD::ConvertBrdLayerToPolygonalContours( PCB_LAYER_ID aLayer, SHAPE_POLY_SET& aOutlines )
 {
     // Number of segments to convert a circle to a polygon
-    const int       segcountforcircle   = 18;
+    const int       segcountforcircle   = ARC_APPROX_SEGMENTS_COUNT_HIGH_DEF;
     double          correctionFactor    = GetCircletoPolyCorrectionFactor( segcountforcircle );
 
     // convert tracks and vias:
@@ -576,6 +576,20 @@ void DRAWSEGMENT::TransformShapeWithClearanceToPolygon( SHAPE_POLY_SET& aCornerB
             {
                 RotatePoint( &poly[ii], orientation );
                 poly[ii] += offset;
+            }
+
+            // If the polygon is not filled, treat it as a closed set of lines
+            if( !IsPolygonFilled() )
+            {
+                for( size_t ii = 1; ii < poly.size(); ii++ )
+                {
+                    TransformOvalClearanceToPolygon( aCornerBuffer, poly[ii - 1], poly[ii],
+                            linewidth, aCircleToSegmentsCount, aCorrectionFactor );
+                }
+
+                TransformOvalClearanceToPolygon( aCornerBuffer, poly.back(), poly.front(),
+                        linewidth, aCircleToSegmentsCount, aCorrectionFactor );
+                break;
             }
 
             // Generate polygons for the outline + clearance
@@ -1289,7 +1303,7 @@ void    CreateThermalReliefPadPolygon( SHAPE_POLY_SET& aCornerBuffer,
 
         stub.NewOutline();
 
-        for( unsigned ii = 0; ii < DIM( stubBuffer ); ii++ )
+        for( unsigned ii = 0; ii < arrayDim( stubBuffer ); ii++ )
         {
             wxPoint cpos = stubBuffer[ii];
             RotatePoint( &cpos, aPad.GetOrientation() );
@@ -1311,7 +1325,7 @@ void    CreateThermalReliefPadPolygon( SHAPE_POLY_SET& aCornerBuffer,
         stub.RemoveAllContours();
         stub.NewOutline();
 
-        for( unsigned ii = 0; ii < DIM( stubBuffer ); ii++ )
+        for( unsigned ii = 0; ii < arrayDim( stubBuffer ); ii++ )
         {
             wxPoint cpos = stubBuffer[ii];
             RotatePoint( &cpos, aPad.GetOrientation() );

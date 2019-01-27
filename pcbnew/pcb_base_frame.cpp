@@ -61,7 +61,6 @@
 #include <tool/tool_dispatcher.h>
 #include <tools/pcb_actions.h>
 
-const wxChar PCB_BASE_FRAME::CANVAS_TYPE_KEY[] = wxT( "canvas_type" );
 const wxChar PCB_BASE_FRAME::AUTO_ZOOM_KEY[] = wxT( "AutoZoom" );
 const wxChar PCB_BASE_FRAME::ZOOM_KEY[] = wxT( "Zoom" );
 
@@ -126,6 +125,12 @@ PCB_BASE_FRAME::PCB_BASE_FRAME( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrame
 
 PCB_BASE_FRAME::~PCB_BASE_FRAME()
 {
+    // Ensure m_canvasType is up to date, to save it in config
+    if( !GetGalCanvas() )
+        m_canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE;
+    else
+        m_canvasType = GetGalCanvas()->GetBackend();
+
     delete m_Collector;
     delete m_Pcb;
 }
@@ -157,7 +162,14 @@ bool PCB_BASE_FRAME::Update3DView( const wxString* aTitle )
     if( aTitle )
         draw3DFrame->SetTitle( *aTitle );
 
-    draw3DFrame->NewDisplay( true );
+    // The 3D view update can be time consumming to rebuild a board 3D view.
+    // So do not use a immediate update in the board editor
+    bool immediate_update = true;
+
+    if( IsType( FRAME_PCB ) )
+        immediate_update = false;
+
+    draw3DFrame->NewDisplay( immediate_update );
 
     return true;
 }
@@ -1075,7 +1087,7 @@ void PCB_BASE_FRAME::SetFastGrid1()
 
     if( m_gridSelectBox )
     {
-        wxCommandEvent cmd( wxEVT_CHOICE );
+        wxCommandEvent cmd( wxEVT_COMBOBOX );
         cmd.SetEventObject( this );
         OnSelectGrid( cmd );
     }
@@ -1094,7 +1106,7 @@ void PCB_BASE_FRAME::SetFastGrid2()
 
     if( m_gridSelectBox )
     {
-        wxCommandEvent cmd( wxEVT_CHOICE );
+        wxCommandEvent cmd( wxEVT_COMBOBOX );
         cmd.SetEventObject( this );
         OnSelectGrid( cmd );
     }
@@ -1108,7 +1120,7 @@ void PCB_BASE_FRAME::SetNextGrid()
 
     if( m_gridSelectBox )
     {
-        wxCommandEvent cmd( wxEVT_CHOICE );
+        wxCommandEvent cmd( wxEVT_COMBOBOX );
         cmd.SetEventObject( this );
         OnSelectGrid( cmd );
     }
@@ -1123,7 +1135,7 @@ void PCB_BASE_FRAME::SetPrevGrid()
 
     if( m_gridSelectBox )
     {
-        wxCommandEvent cmd( wxEVT_CHOICE );
+        wxCommandEvent cmd( wxEVT_COMBOBOX );
         cmd.SetEventObject( this );
         OnSelectGrid( cmd );
     }

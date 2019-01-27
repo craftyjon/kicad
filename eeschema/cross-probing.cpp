@@ -1,9 +1,9 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2004 Jean-Pierre Charras, jaen-pierre.charras@gipsa-lab.inpg.com
+ * Copyright (C) 2019 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2011 Wayne Stambaugh <stambaughw@verizon.net>
- * Copyright (C) 2004-2011 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2004-2019 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -58,7 +58,9 @@
  * \li \c \$PART: \c "reference" \c \$VAL: \c "value" Put cursor on component value.
  * \li \c \$PART: \c "reference" \c \$PAD: \c "pin name" Put cursor on the component pin.
  * \li \c \$NET: \c "netname" Highlight a specified net
+ * \li \c \$CLEAR: \c "HIGHLIGHTED" Clear components highlight
  * <p>
+ * They are a keyword followed by a quoted string.
  * @param cmdline = received command from Pcbnew
  */
 void SCH_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
@@ -81,11 +83,26 @@ void SCH_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
             m_SelectedNetName = FROM_UTF8( text );
 
             SetStatusText( _( "Selected net: " ) + m_SelectedNetName );
-            SetCurrentSheetHighlightFlags();
-            // Be sure hightlight change will be redrawn in any case
-            GetGalCanvas()->GetView()->RecacheAllItems();
-            GetGalCanvas()->GetView()->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
+            std::vector<EDA_ITEM*> itemsToRedraw;
+            SetCurrentSheetHighlightFlags( &itemsToRedraw );
+
+            // Be sure hightlight change will be redrawn
+            KIGFX::VIEW* view = GetGalCanvas()->GetView();
+
+            for( auto item : itemsToRedraw )
+                view->Update( (KIGFX::VIEW_ITEM*)item, KIGFX::VIEW_UPDATE_FLAGS::REPAINT );
+
+            //view->MarkTargetDirty( KIGFX::TARGET_NONCACHED );
+            GetGalCanvas()->Refresh();
         }
+
+        return;
+    }
+
+    if( strcmp( idcmd, "$CLEAR:" ) == 0 )
+    {
+        if( text && strcmp( text, "HIGHLIGHTED" ) == 0 )
+            GetCanvas()->GetView()->HighlightItem( nullptr, nullptr );
 
         return;
     }
@@ -101,8 +118,9 @@ void SCH_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
     /* look for a complement */
     idcmd = strtok( NULL, " \n\r" );
 
-    if( idcmd == NULL )    // component only
+    if( idcmd == NULL )    // Highlight component only (from Cvpcb or Pcbnew)
     {
+        // Highlight component part_ref, or clear Highlight, if part_ref is not existing
         FindComponentAndItem( part_ref, true, FIND_COMPONENT_ONLY, wxEmptyString );
         return;
     }
@@ -135,23 +153,25 @@ void SCH_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
 
 std::string FormatProbeItem( EDA_ITEM* aItem, SCH_COMPONENT* aPart )
 {
+    // This is a keyword followed by a quoted string.
+
     // Cross probing to Pcbnew if a pin or a component is found
     switch( aItem->Type() )
     {
     case SCH_FIELD_T:
     case LIB_FIELD_T:
         if( aPart )
-            return StrPrintf( "$PART: %s", TO_UTF8( aPart->GetField( REFERENCE )->GetText() ) );
+            return StrPrintf( "$PART: \"%s\"", TO_UTF8( aPart->GetField( REFERENCE )->GetText() ) );
         break;
 
     case SCH_COMPONENT_T:
         aPart = (SCH_COMPONENT*) aItem;
-        return StrPrintf( "$PART: %s", TO_UTF8( aPart->GetField( REFERENCE )->GetText() ) );
+        return StrPrintf( "$PART: \"%s\"", TO_UTF8( aPart->GetField( REFERENCE )->GetText() ) );
 
     case SCH_SHEET_T:
         {
         SCH_SHEET* sheet = (SCH_SHEET*)aItem;
-        return StrPrintf( "$SHEET: %8.8lX", (unsigned long) sheet->GetTimeStamp() );
+        return StrPrintf( "$SHEET: \"%8.8lX\"", (unsigned long) sheet->GetTimeStamp() );
         }
 
     case LIB_PIN_T:
@@ -163,12 +183,12 @@ std::string FormatProbeItem( EDA_ITEM* aItem, SCH_COMPONENT* aPart )
 
             if( !pin->GetNumber().IsEmpty() )
             {
-                return StrPrintf( "$PIN: %s $PART: %s", TO_UTF8( pin->GetNumber() ),
+                return StrPrintf( "$PIN: \"%s\" $PART: \"%s\"", TO_UTF8( pin->GetNumber() ),
                          TO_UTF8( aPart->GetField( REFERENCE )->GetText() ) );
             }
             else
             {
-                return StrPrintf( "$PART: %s", TO_UTF8( aPart->GetField( REFERENCE )->GetText() ) );
+                return StrPrintf( "$PART: \"%s\"", TO_UTF8( aPart->GetField( REFERENCE )->GetText() ) );
             }
         }
         break;
@@ -207,7 +227,9 @@ void SCH_EDIT_FRAME::SendMessageToPCBNEW( EDA_ITEM* aObjectToSync, SCH_COMPONENT
 
 void SCH_EDIT_FRAME::SendCrossProbeNetName( const wxString& aNetName )
 {
-    std::string packet = StrPrintf( "$NET: %s", TO_UTF8( aNetName ) );
+    // The command is a keyword followed by a quoted string.
+
+    std::string packet = StrPrintf( "$NET: \"%s\"", TO_UTF8( aNetName ) );
 
     if( packet.size() )
     {
@@ -250,10 +272,15 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_EXPRESS& mail )
         break;
 
     case MAIL_SCH_REFRESH:
+    {
+        SCH_SCREENS schematic;
+        schematic.UpdateSymbolLinks();
+        schematic.TestDanglingEnds();
+
         GetCanvas()->GetView()->UpdateAllItems( KIGFX::ALL );
         GetCanvas()->Refresh();
         break;
-
+    }
     case MAIL_IMPORT_FILE:
     {
         // Extract file format type and path (plugin type and path separated with \n)

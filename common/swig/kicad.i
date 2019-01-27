@@ -100,8 +100,10 @@ principle should be easily implemented by adapting the current STL containers.
 // all the wx wrappers for wxString, wxPoint, wxRect, wxChar ..
 %include wx.i
 
-// header files that must be wrapped
+// SWIG is incompatible with std::unique_ptr
+%ignore GetNewConfig;
 
+// header files that must be wrapped
 %include macros.h
 %include core/typeinfo.h
 %include base_struct.h
@@ -109,6 +111,7 @@ principle should be easily implemented by adapting the current STL containers.
 %include common.h
 %include title_block.h
 %include gal/color4d.h
+%include core/settings.h
 %include colors_design_settings.h
 %include marker_base.h
 %include eda_text.h
@@ -129,16 +132,14 @@ typedef long time_t;
 // KiCad plugin handling
 %include "kicadplugins.i"
 
-// map CPolyLine and classes used in CPolyLine:
-#include <../polygon/PolyLine.h>
-%include <../polygon/PolyLine.h>
-
 #include <geometry/shape.h>
 %include <geometry/shape.h>
 
 // Contains VECTOR2I
 %include math.i
 
+// ignore warning from nested classes
+#pragma SWIG nowarn=325
 %ignore SHAPE_LINE_CHAIN::convertFromClipper;
 #include <geometry/shape_line_chain.h>
 %include <geometry/shape_line_chain.h>
@@ -152,6 +153,7 @@ typedef long time_t;
 // Rename operators defined in utf8.h
 %rename(utf8_to_charptr) operator char* () const;
 %rename(utf8_to_wxstring) operator wxString () const;
+%rename(utf8_to_string) operator const std::string& () const;
 
 #include <utf8.h>
 %include <utf8.h>

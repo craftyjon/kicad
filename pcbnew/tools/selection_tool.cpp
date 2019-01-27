@@ -395,7 +395,8 @@ static EDA_RECT getRect( const BOARD_ITEM* aItem )
 }
 
 
-SELECTION& SELECTION_TOOL::RequestSelection( CLIENT_SELECTION_FILTER aClientFilter )
+SELECTION& SELECTION_TOOL::RequestSelection( CLIENT_SELECTION_FILTER aClientFilter,
+        std::vector<BOARD_ITEM*>* aFiltered, bool aConfirmLockedItems )
 {
     bool selectionEmpty = m_selection.Empty();
     m_selection.SetIsHover( selectionEmpty );
@@ -405,7 +406,13 @@ SELECTION& SELECTION_TOOL::RequestSelection( CLIENT_SELECTION_FILTER aClientFilt
         m_toolMgr->RunAction( PCB_ACTIONS::selectionCursor, true, aClientFilter );
         m_selection.ClearReferencePoint();
     }
-    else if( aClientFilter )
+
+    if ( aConfirmLockedItems && CheckLock() == SELECTION_LOCKED )
+    {
+        clearSelection();
+    }
+
+    if( aClientFilter )
     {
         GENERAL_COLLECTOR collector;
 
@@ -429,6 +436,12 @@ SELECTION& SELECTION_TOOL::RequestSelection( CLIENT_SELECTION_FILTER aClientFilt
         std::set_difference( m_selection.begin(), m_selection.end(), collector.begin(), collector.end(),
                 std::back_inserter( diff ) );
 
+        if( aFiltered )
+        {
+            for( auto item : diff )
+                aFiltered->push_back( static_cast<BOARD_ITEM*>( item ) );
+        }
+
         /**
          * Once we find the adjustments to m_selection that are required by the client filter, we
          * apply them both
@@ -446,7 +459,7 @@ SELECTION& SELECTION_TOOL::RequestSelection( CLIENT_SELECTION_FILTER aClientFilt
 }
 
 
-void SELECTION_TOOL::toggleSelection( BOARD_ITEM* aItem )
+void SELECTION_TOOL::toggleSelection( BOARD_ITEM* aItem, bool aForce )
 {
     if( aItem->IsSelected() )
     {
@@ -461,7 +474,7 @@ void SELECTION_TOOL::toggleSelection( BOARD_ITEM* aItem )
             clearSelection();
 
         // Prevent selection of invisible or inactive items
-        if( selectable( aItem ) )
+        if( aForce || selectable( aItem ) )
         {
             select( aItem );
 
@@ -1264,7 +1277,7 @@ int SELECTION_TOOL::findMove( const TOOL_EVENT& aEvent )
     {
         KIGFX::VIEW_CONTROLS* viewCtrls = getViewControls();
         clearSelection();
-        toggleSelection( module );
+        toggleSelection( module, true );
 
         auto cursorPosition = viewCtrls->GetCursorPosition( false );
 
@@ -1426,6 +1439,7 @@ void SELECTION_TOOL::clearSelection()
 
     // Inform other potentially interested tools
     m_toolMgr->ProcessEvent( ClearedEvent );
+    m_toolMgr->RunAction( PCB_ACTIONS::hideLocalRatsnest, true );
 }
 
 
@@ -1755,6 +1769,10 @@ bool SELECTION_TOOL::selectable( const BOARD_ITEM* aItem, bool checkVisibilityOn
 
         break;
     }
+
+
+    case PCB_MARKER_T:  // Always selectable
+        return true;
 
     // These are not selectable
     case NOT_USED:

@@ -81,18 +81,12 @@ private:
 #define PLOTSVG_LAYERBASE           wxT( "PlotSVGLayer_%d" )
 #define PLOTSVG_DIR_KEY             wxT( "PlotSVGDirectory" )
 
-// reasonable values for default pen width
-#define WIDTH_MAX_VALUE             (2 * IU_PER_MM)
-#define WIDTH_MIN_VALUE             (0.05 * IU_PER_MM)
-
-
 /*
  * DIALOG_EXPORT_SVG functions
  */
 DIALOG_EXPORT_SVG::DIALOG_EXPORT_SVG( PCB_BASE_FRAME* aParent, BOARD* aBoard ) :
     DIALOG_EXPORT_SVG_BASE( aParent ),
-    m_lineWidth( aParent, m_penWidthLabel, m_penWidthCtrl, m_penWidthUnits, true,
-                       WIDTH_MIN_VALUE, WIDTH_MAX_VALUE)
+    m_lineWidth( aParent, m_penWidthLabel, m_penWidthCtrl, m_penWidthUnits, true )
 {
     m_board  = aBoard;
     m_config = Kiface().KifaceSettings();
@@ -132,7 +126,7 @@ DIALOG_EXPORT_SVG::~DIALOG_EXPORT_SVG()
 
         wxString layerKey;
 
-        for( unsigned layer = 0; layer < DIM(m_boxSelectLayer);  ++layer )
+        for( unsigned layer = 0; layer < arrayDim(m_boxSelectLayer);  ++layer )
         {
             if( !m_boxSelectLayer[layer].first )
                 continue;
@@ -200,7 +194,7 @@ LSET DIALOG_EXPORT_SVG::getCheckBoxSelectedLayers() const
 {
     LSET ret;
 
-    for( unsigned layer = 0; layer < DIM(m_boxSelectLayer);  ++layer )
+    for( unsigned layer = 0; layer < arrayDim(m_boxSelectLayer);  ++layer )
     {
         if( !m_boxSelectLayer[layer].first )
             continue;

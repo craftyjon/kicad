@@ -12,13 +12,20 @@ if( KICAD_SCRIPTING_MODULES )
 
 endif()
 
-# common QA helpers
+# Shared QA helper libraries
 add_subdirectory( qa_utils )
+add_subdirectory( pcbnew_utils )
 add_subdirectory( unit_test_utils )
 
+# Unit tests
 add_subdirectory( common )
+add_subdirectory( pcbnew )
+add_subdirectory( eeschema )
 add_subdirectory( shape_poly_set_refactor )
-add_subdirectory( pcb_parse_input )
+
+# Utility/debugging/profiling programs
+add_subdirectory( common_tools )
+add_subdirectory( pcbnew_tools )
+
 # add_subdirectory( pcb_test_window )
 # add_subdirectory( polygon_triangulation )
-# add_subdirectory( polygon_generator )

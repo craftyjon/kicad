@@ -116,6 +116,12 @@ TOOL_ACTION PCB_ACTIONS::routerInlineDrag( "pcbnew.InteractiveRouter.InlineDrag"
         _( "Drag Track/Via" ), _( "Drags tracks and vias without breaking connections" ),
         drag_xpm );
 
+TOOL_ACTION PCB_ACTIONS::inlineBreakTrack( "pcbnew.InteractiveRouter.InlineBreakTrack",
+        AS_GLOBAL, 0,
+        _( "Break Track" ),
+        _( "Splits the track segment into two segments connected at the cursor position." ),
+        break_line_xpm );
+
 TOOL_ACTION PCB_ACTIONS::breakTrack( "pcbnew.InteractiveRouter.BreakTrack",
         AS_GLOBAL, 0,
         _( "Break Track" ),
@@ -248,7 +254,7 @@ protected:
             if( i == 0 )
                 msg = _( "Track netclass width" );
             else
-                msg = _( "Track " ) + MessageTextFromValue( units, width, true );
+                msg.Printf( _( "Track %s" ), MessageTextFromValue( units, width, true ) );
 
             int menuIdx = ID_POPUP_PCB_SELECT_WIDTH1 + i;
             Append( menuIdx, msg, wxEmptyString, wxITEM_CHECK );
@@ -265,10 +271,12 @@ protected:
                 msg = _( "Via netclass values" );
             else
             {
-                msg = _( "Via " ) + MessageTextFromValue( units, via.m_Diameter, true );
-
                 if( via.m_Drill > 0 )
-                    msg << _(", drill " ) << MessageTextFromValue( units, via.m_Drill, true );
+                    msg.Printf( _("Via %s, drill %s" ),
+                                MessageTextFromValue( units, via.m_Diameter, true ),
+                                MessageTextFromValue( units, via.m_Drill, true ) );
+                else
+                    msg.Printf( _( "Via %s" ), MessageTextFromValue( units, via.m_Diameter, true ) );
             }
 
             int menuIdx = ID_POPUP_PCB_SELECT_VIASIZE1 + i;
@@ -885,6 +893,7 @@ void ROUTER_TOOL::setTransitions()
     Go( &ROUTER_TOOL::DpDimensionsDialog, PCB_ACTIONS::routerActivateDpDimensionsDialog.MakeEvent() );
     Go( &ROUTER_TOOL::SettingsDialog, PCB_ACTIONS::routerActivateSettingsDialog.MakeEvent() );
     Go( &ROUTER_TOOL::InlineDrag, PCB_ACTIONS::routerInlineDrag.MakeEvent() );
+    Go( &ROUTER_TOOL::InlineBreakTrack, PCB_ACTIONS::inlineBreakTrack.MakeEvent() );
 
     Go( &ROUTER_TOOL::onViaCommand, ACT_PlaceThroughVia.MakeEvent() );
     Go( &ROUTER_TOOL::onViaCommand, ACT_PlaceBlindVia.MakeEvent() );
@@ -1207,6 +1216,50 @@ int ROUTER_TOOL::InlineDrag( const TOOL_EVENT& aEvent )
 }
 
 
+int ROUTER_TOOL::InlineBreakTrack( const TOOL_EVENT& aEvent )
+{
+    const auto& selection = m_toolMgr->GetTool<SELECTION_TOOL>()->GetSelection();
+
+    if( selection.Size() != 1 )
+        return 0;
+
+    const BOARD_CONNECTED_ITEM* item = static_cast<const BOARD_CONNECTED_ITEM*>( selection.Front() );
+
+    if( item->Type() != PCB_TRACE_T )
+        return 0;
+
+    Init();
+    Activate();
+
+    m_toolMgr->RunAction( PCB_ACTIONS::selectionClear, true );
+    m_router->SyncWorld();
+    m_startItem = m_router->GetWorld()->FindItemByParent( item );
+    m_startSnapPoint = snapToItem( true, m_startItem, controls()->GetCursorPosition() );
+
+
+    if( m_startItem && m_startItem->IsLocked() )
+    {
+        KIDIALOG dlg( frame(), _( "The selected item is locked." ), _( "Confirmation" ),
+                      wxOK | wxCANCEL | wxICON_WARNING );
+        dlg.SetOKLabel( _( "Break Track" ) );
+        dlg.DoNotShowCheckbox( __FILE__, __LINE__ );
+
+        if( dlg.ShowModal() == wxID_CANCEL )
+            return 0;
+    }
+
+    frame()->UndoRedoBlock( true );
+    breakTrack();
+
+    if( m_router->RoutingInProgress() )
+        m_router->StopRouting();
+
+    frame()->UndoRedoBlock( false );
+
+    return 0;
+}
+
+
 int ROUTER_TOOL::CustomTrackWidthDialog( const TOOL_EVENT& aEvent )
 {
     BOARD_DESIGN_SETTINGS& bds = board()->GetDesignSettings();
@@ -1228,7 +1281,7 @@ int ROUTER_TOOL::onTrackViaSizeChanged( const TOOL_EVENT& aEvent )
     sizes.ImportCurrent( board()->GetDesignSettings() );
     m_router->UpdateSizes( sizes );
 
-    //Changing the track width can affect the placement, so call the
+    // Changing the track width can affect the placement, so call the
     // move routine without changing the destination
     m_router->Move( m_endSnapPoint, m_endItem );
 

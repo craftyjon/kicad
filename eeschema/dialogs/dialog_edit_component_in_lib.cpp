@@ -39,9 +39,15 @@
 #include <lib_edit_frame.h>
 #include <class_library.h>
 #include <symbol_lib_table.h>
+#include <sch_item_struct.h>
 #include <sch_component.h>
 #include <dialog_helpers.h>
 #include <bitmaps.h>
+
+#ifdef KICAD_SPICE
+#include <dialog_spice_model.h>
+#include <netlist_exporter_pspice.h>
+#endif /* KICAD_SPICE */
 
 #include <dialog_edit_component_in_lib.h>
 
@@ -60,6 +66,8 @@ DIALOG_EDIT_COMPONENT_IN_LIBRARY::DIALOG_EDIT_COMPONENT_IN_LIBRARY( LIB_EDIT_FRA
     m_pinNameOffset( aParent, m_nameOffsetLabel, m_nameOffsetCtrl, m_nameOffsetUnits, true ),
     m_delayedFocusCtrl( nullptr ),
     m_delayedFocusGrid( nullptr ),
+    m_delayedFocusRow( -1 ),
+    m_delayedFocusColumn( -1 ),
     m_delayedFocusPage( -1 )
 {
     m_config = Kiface().KifaceSettings();
@@ -110,6 +118,10 @@ DIALOG_EDIT_COMPONENT_IN_LIBRARY::DIALOG_EDIT_COMPONENT_IN_LIBRARY( LIB_EDIT_FRA
     m_editFilterButton->SetBitmap( KiBitmap( small_edit_xpm ) );
 
     m_stdSizerButtonOK->SetDefault();
+
+#ifndef KICAD_SPICE
+    m_spiceFieldsButton->Hide();
+#endif
 
     // wxFormBuilder doesn't include this event...
     m_grid->Connect( wxEVT_GRID_CELL_CHANGING, wxGridEventHandler( DIALOG_EDIT_COMPONENT_IN_LIBRARY::OnGridCellChanging ), NULL, this );
@@ -556,6 +568,35 @@ void DIALOG_EDIT_COMPONENT_IN_LIBRARY::transferAliasDataToBuffer()
 }
 
 
+void DIALOG_EDIT_COMPONENT_IN_LIBRARY::OnEditSpiceModel( wxCommandEvent& event )
+{
+#ifdef KICAD_SPICE
+    int diff = m_fields->size();
+    auto cmp = SCH_COMPONENT( *m_libEntry, m_libEntry->GetLibId(), nullptr );
+
+    DIALOG_SPICE_MODEL dialog( this, cmp, m_fields );
+
+    if( dialog.ShowModal() != wxID_OK )
+        return;
+
+    diff = m_fields->size() - diff;
+
+    if( diff > 0 )
+    {
+        wxGridTableMessage msg( m_fields, wxGRIDTABLE_NOTIFY_ROWS_APPENDED, diff );
+        m_grid->ProcessTableMessage( msg );
+    }
+    else if( diff < 0 )
+    {
+        wxGridTableMessage msg( m_fields, wxGRIDTABLE_NOTIFY_ROWS_DELETED, 0, diff );
+        m_grid->ProcessTableMessage( msg );
+    }
+
+    m_grid->ForceRefresh();
+#endif /* KICAD_SPICE */
+}
+
+
 void DIALOG_EDIT_COMPONENT_IN_LIBRARY::OnSelectAlias( wxCommandEvent& event )
 {
     if( m_delayedFocusCtrl || !m_aliasGrid->CommitPendingChanges() )
@@ -674,6 +715,7 @@ void DIALOG_EDIT_COMPONENT_IN_LIBRARY::OnDeleteAlias( wxCommandEvent& event )
 
     m_aliasListBox->Delete( (unsigned) sel );
     m_aliasesBuffer.erase( m_aliasesBuffer.begin() + sel );
+    m_currentAlias = wxNOT_FOUND;
 
     if( m_aliasListBox->GetCount() == 0 )
         m_aliasListBox->SetSelection( wxNOT_FOUND );

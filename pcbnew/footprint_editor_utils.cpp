@@ -1,8 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 1992-2016 KiCad Developers, see AUTHORS.txt for contributors.
- * Copyright (C) 2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -183,6 +182,8 @@ void FOOTPRINT_EDIT_FRAME::LoadModuleFromBoard( wxCommandEvent& event )
 
 void FOOTPRINT_EDIT_FRAME::LoadModuleFromLibrary( LIB_ID aFPID)
 {
+    bool is_last_fp_from_brd = IsCurrentFPFromBoard();
+
     MODULE* module = LoadFootprint( aFPID );
 
     if( !module )
@@ -225,6 +226,10 @@ void FOOTPRINT_EDIT_FRAME::LoadModuleFromLibrary( LIB_ID aFPID)
 
     updateView();
     m_canvas->Refresh();
+
+    // Update the bitmap of the ID_MODEDIT_SAVE tool if needed.
+    if( is_last_fp_from_brd )
+        ReCreateHToolbar();
 
     m_treePane->GetLibTree()->ExpandLibId( aFPID );
     m_treePane->GetLibTree()->CenterLibId( aFPID );
@@ -458,9 +463,10 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         if( getTargetFPID().GetLibItemName().empty() )
         {
             // Save Library As
-            const wxString& libName = getTargetFPID().GetLibNickname();
+            const wxString& src_libNickname = getTargetFPID().GetLibNickname();
+            wxString src_libFullName = Prj().PcbFootprintLibs()->GetFullURI( src_libNickname );
 
-            if( SaveLibraryAs( Prj().PcbFootprintLibs()->FindRow( libName )->GetFullURI() ) )
+            if( SaveLibraryAs( src_libFullName ) )
                 SyncLibraryTree( true );
         }
         else if( getTargetFPID() == GetLoadedFPID() )
@@ -796,17 +802,16 @@ void FOOTPRINT_EDIT_FRAME::Process_Special_Functions( wxCommandEvent& event )
         HandleBlockEnd( &dc );
         break;
 
-    case ID_GEN_IMPORT_DXF_FILE:
+    case ID_GEN_IMPORT_GRAPHICS_FILE:
         if( GetBoard()->m_Modules )
         {
-            InvokeDXFDialogModuleImport( this, GetBoard()->m_Modules );
+            InvokeDialogImportGfxModule( this, GetBoard()->m_Modules );
             m_canvas->Refresh();
         }
         break;
 
     default:
-        DisplayError( this,
-                      wxT( "FOOTPRINT_EDIT_FRAME::Process_Special_Functions error" ) );
+        wxLogDebug( wxT( "FOOTPRINT_EDIT_FRAME::Process_Special_Functions error" ) );
         break;
     }
 }

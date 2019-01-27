@@ -104,7 +104,7 @@ static LSEQ dlg_layers()
         Dwgs_User,
     };
 
-    return LSEQ( layers, layers + DIM( layers ) );
+    return LSEQ( layers, layers + arrayDim( layers ) );
 }
 
 
@@ -137,8 +137,7 @@ static const LSET presets[] =
 PANEL_SETUP_LAYERS::PANEL_SETUP_LAYERS( PAGED_DIALOG* aParent, PCB_EDIT_FRAME* aFrame ) :
         PANEL_SETUP_LAYERS_BASE( aParent->GetTreebook() ),
         m_Parent( aParent ), m_frame( aFrame ),
-        m_pcbThickness( aFrame, m_thicknessLabel, m_thicknessCtrl, m_thicknessUnits, true,
-                        Millimeter2iu( 0.1 ), Millimeter2iu( 10.0 ) )
+        m_pcbThickness( aFrame, m_thicknessLabel, m_thicknessCtrl, m_thicknessUnits, true )
 {
     m_pcb = aFrame->GetBoard();
 
@@ -316,7 +315,7 @@ void PANEL_SETUP_LAYERS::showPresets( LSET enabledLayers )
 {
     int presetsNdx = 0;     // the "Custom" setting, matches nothing
 
-    for( unsigned i=1; i<DIM( presets );  ++i )
+    for( unsigned i=1; i<arrayDim( presets );  ++i )
     {
         if( enabledLayers == presets[i] )
         {
@@ -461,7 +460,7 @@ void PANEL_SETUP_LAYERS::OnPresetsChoice( wxCommandEvent& event )
     if( presetNdx <= 0 )        // the Custom setting controls nothing.
         return;
 
-    if( presetNdx < (int) DIM(presets) )
+    if( presetNdx < (int) arrayDim(presets) )
     {
         m_enabledLayers = presets[ presetNdx ];
         LSET copperSet = m_enabledLayers & LSET::AllCuMask();
@@ -487,9 +486,6 @@ void PANEL_SETUP_LAYERS::OnCopperLayersChoice( wxCommandEvent& event )
 
 bool PANEL_SETUP_LAYERS::TransferDataFromWindow()
 {
-    if( !m_pcbThickness.Validate( true ) )
-        return false;
-
     if( !testLayerNames() )
         return false;
 
@@ -602,9 +598,9 @@ wxString PANEL_SETUP_LAYERS::getLayerName( LAYER_NUM aLayer )
     wxControl* control = getName( aLayer );
 
     if( dynamic_cast<wxTextCtrl*>( control ) )
-        return dynamic_cast<wxTextCtrl*>( control )->GetValue().Trim();
+        return static_cast<wxTextCtrl*>( control )->GetValue().Trim();
     else
-        return dynamic_cast<wxStaticText*>( control )->GetLabel();
+        return static_cast<wxStaticText*>( control )->GetLabel();
 }
 
 

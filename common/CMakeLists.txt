@@ -3,6 +3,8 @@ if( COMPILER_SUPPORTS_WSHADOW )
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${WSHADOW_FLAGS}")
 endif()
 
+add_subdirectory( libeval )
+
 include_directories( BEFORE ${INC_BEFORE} )
 include_directories(
     ./dialogs
@@ -184,6 +186,8 @@ set( COMMON_DLG_SRCS
     dialogs/dialog_edit_library_tables.cpp
     dialogs/dialog_exit_base.cpp
     dialogs/dialog_file_dir_picker.cpp
+    dialogs/dialog_global_lib_table_config.cpp
+    dialogs/dialog_global_lib_table_config_base.cpp
     dialogs/dialog_hotkey_list.cpp
     dialogs/dialog_image_editor.cpp
     dialogs/dialog_image_editor_base.cpp
@@ -267,6 +271,7 @@ set( COMMON_SRCS
     ${COMMON_PAGE_LAYOUT_SRCS}
     ${COMMON_PREVIEW_ITEMS_SRCS}
     ${PLOTTERS_CONTROL_SRCS}
+    advanced_config.cpp
     base_struct.cpp
     bezier_curves.cpp
     bin_mod.cpp
@@ -410,6 +415,7 @@ set( COMMON_SRCS
 add_library( common STATIC ${COMMON_SRCS} )
 add_dependencies( common version_header )
 target_link_libraries( common
+    bitmaps
     gal
     ${Boost_LIBRARIES}
     ${CURL_LIBRARIES}

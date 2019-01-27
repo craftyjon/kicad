@@ -229,7 +229,7 @@ can down load the source archive from the [KiCad Launchpad][] developers page.  
 other archive program to extract the source on your system.  If you are using tar, use the
 following command:
 
-    tar -xzf kicad_src_archive.tar.gz
+    tar -xaf kicad_src_archive.tar.xz
 
 If you are contributing directly to the KiCad project on Launchpad, you can create a local
 copy on your machine by using the following command:
@@ -238,7 +238,7 @@ copy on your machine by using the following command:
 
 Here is a list of source links:
 
-Stable release archive: https://launchpad.net/kicad/4.0/4.0.7/+download/kicad-4.0.7.tar.xz
+Stable release archive: https://launchpad.net/kicad/5.0/5.0.2/+download/kicad-5.0.2.tar.xz
 
 Development branch: https://code.launchpad.net/~kicad-product-committers/kicad/+git/product-git/+ref/master
 
@@ -462,7 +462,7 @@ you will have to apply the Boost patches in the KiCad source [patches folder][].
 [GIT]: https://git-scm.com/
 [GitHub]: https://github.com/KiCad/kicad-source-mirror
 [ngspice]: http://ngspice.sourceforge.net/
-[Doxygen]: http://www.stack.nl/~dimitri/doxygen/
+[Doxygen]: http://www.doxygen.nl
 [mailing list]: https://launchpad.net/~kicad-developers
 [SWIG]: http://www.swig.org/
 [wxWidgets]: http://wxwidgets.org/
