@@ -225,6 +225,7 @@ set( COMMON_WIDGET_SRCS
     widgets/two_column_tree_list.cpp
     widgets/ui_common.cpp
     widgets/unit_binder.cpp
+    widgets/widget_save_restore.cpp
     widgets/widget_hotkey_list.cpp
     widgets/wx_grid.cpp
     )
@@ -272,6 +273,7 @@ set( COMMON_SRCS
     ${COMMON_PREVIEW_ITEMS_SRCS}
     ${PLOTTERS_CONTROL_SRCS}
     advanced_config.cpp
+    array_options.cpp
     base_struct.cpp
     bezier_curves.cpp
     bin_mod.cpp
@@ -336,6 +338,7 @@ set( COMMON_SRCS
     project.cpp
     properties.cpp
     ptree.cpp
+    refdes_utils.cpp
     reporter.cpp
     richio.cpp
     search_stack.cpp

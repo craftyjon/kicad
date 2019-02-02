@@ -30,50 +30,15 @@
 
 #include <wx/cmdline.h>
 
-// Parsing
-#include <class_board.h>
-#include <class_board_item.h>
-#include <kicad_plugin.h>
-#include <pcb_parser.h>
-#include <richio.h>
+#include <pcbnew_utils/board_file_utils.h>
 
 // DRC
 #include <drc/courtyard_overlap.h>
 #include <drc/drc_marker_factory.h>
 
-#include <scoped_timer.h>
-#include <stdstream_line_reader.h>
+#include <qa_utils/scoped_timer.h>
+#include <qa_utils/stdstream_line_reader.h>
 
-
-/**
- * Parse a PCB from the given stream
- *
- * @param aStream the input stream to read from
- */
-std::unique_ptr<BOARD> parse( std::istream& aStream )
-{
-    // Take input from stdin
-    STDISTREAM_LINE_READER reader;
-    reader.SetStream( aStream );
-
-    PCB_PARSER parser;
-
-    parser.SetLineReader( &reader );
-
-    std::unique_ptr<BOARD> board;
-
-    try
-    {
-        board.reset( dynamic_cast<BOARD*>( parser.Parse() ) );
-    }
-    catch( const IO_ERROR& parse_error )
-    {
-        std::cerr << parse_error.Problem() << std::endl;
-        std::cerr << parse_error.Where() << std::endl;
-    }
-
-    return board;
-}
 
 using DRC_DURATION = std::chrono::microseconds;
 
@@ -304,7 +269,7 @@ static const wxCmdLineEntryDesc g_cmdLineDesc[] = {
  */
 enum PARSER_RET_CODES
 {
-    PARSE_FAILED = RET_CODES::TOOL_SPECIFIC,
+    PARSE_FAILED = KI_TEST::RET_CODES::TOOL_SPECIFIC,
 };
 
 
@@ -325,36 +290,19 @@ int drc_main_func( int argc, char** argv )
     if( cmd_parsed_ok != 0 )
     {
         // Help and invalid input both stop here
-        return ( cmd_parsed_ok == -1 ) ? RET_CODES::OK : RET_CODES::BAD_CMDLINE;
+        return ( cmd_parsed_ok == -1 ) ? KI_TEST::RET_CODES::OK : KI_TEST::RET_CODES::BAD_CMDLINE;
     }
 
     const bool verbose = cl_parser.Found( "verbose" );
 
-    const auto file_count = cl_parser.GetParamCount();
+    std::string filename;
 
-    std::unique_ptr<BOARD> board;
-
-    if( file_count == 0 )
+    if( cl_parser.GetParamCount() )
     {
-        // Parse the file provided on stdin - used by AFL to drive the
-        // program
-        // while (__AFL_LOOP(2))
-        {
-            board = parse( std::cin );
-        }
+        filename = cl_parser.GetParam( 0 ).ToStdString();
     }
-    else
-    {
-        const auto filename = cl_parser.GetParam( 0 ).ToStdString();
 
-        if( verbose )
-            std::cout << "Parsing: " << filename << std::endl;
-
-        std::ifstream fin;
-        fin.open( filename );
-
-        board = parse( fin );
-    }
+    std::unique_ptr<BOARD> board = KI_TEST::ReadBoardFromFileOrStream( filename );
 
     if( !board )
         return PARSER_RET_CODES::PARSE_FAILED;
@@ -380,14 +328,14 @@ int drc_main_func( int argc, char** argv )
         runner.Execute( *board );
     }
 
-    return RET_CODES::OK;
+    return KI_TEST::RET_CODES::OK;
 }
 
 
 /*
  * Define the tool interface
  */
-UTILITY_PROGRAM drc_tool = {
+KI_TEST::UTILITY_PROGRAM drc_tool = {
     "drc",
     "Run selected DRC function on a PCB",
     drc_main_func,

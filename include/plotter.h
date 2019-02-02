@@ -936,6 +936,22 @@ public:
                             double aScaleFactor ) override;
 
     virtual void PenTo( const wxPoint& pos, char plume ) override;
+
+
+    /**
+     * calling this function allows one to define the beginning of a group
+     * of drawing items (used in SVG format to separate components)
+     * @param aData should be a string for the SVG ID tage
+     */
+    virtual void StartBlock( void* aData ) override;
+
+    /**
+     * calling this function allows one to define the end of a group of drawing
+     * items the group is started by StartBlock()
+     * @param aData should be null
+     */
+    virtual void EndBlock( void* aData ) override;
+
     virtual void Text( const wxPoint&              aPos,
                        const COLOR4D               aColor,
                        const wxString&             aText,
@@ -975,9 +991,12 @@ protected:
 
     /**
      * function setSVGPlotStyle()
-     * output the string which define pen and brush color, shape, transparence
+     * output the string which define pen and brush color, shape, transparency
+     *
+     * @param aIsGroup If false, do not form a new group for the style.
+     * @param aExtraStyle If given, the string will be added into the style string before closing
      */
-    void setSVGPlotStyle();
+    void setSVGPlotStyle( bool aIsGroup = true, const std::string& aExtraStyle = {} );
 
     /**
      * function setFillMode()

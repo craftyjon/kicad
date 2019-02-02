@@ -28,310 +28,20 @@
 // Include the wxFormBuider header base:
 #include <dialog_create_array_base.h>
 
+#include <array_options.h>
 #include <class_board_item.h>
 #include <pcb_base_frame.h>
 
 #include <boost/bimap.hpp>
 #include <widgets/unit_binder.h>
-
-class CONFIG_SAVE_RESTORE_WINDOW
-{
-private:
-
-    enum CONFIG_CTRL_TYPE_T
-    {
-        CFG_CTRL_TEXT,
-        CFG_CTRL_UNIT_BINDER,
-        CFG_CTRL_CHECKBOX,
-        CFG_CTRL_RADIOBOX,
-        CFG_CTRL_CHOICE,
-        CFG_CTRL_TAB
-    };
-
-    struct CONFIG_CTRL_T
-    {
-        void* control;
-        CONFIG_CTRL_TYPE_T type;
-        void* dest;
-    };
-
-    std::vector<CONFIG_CTRL_T> ctrls;
-    bool& valid;
-
-protected:
-    CONFIG_SAVE_RESTORE_WINDOW( bool& validFlag ) :
-        valid( validFlag )
-    {}
-
-    void Add( wxRadioBox* ctrl, int& dest )
-    {
-        CONFIG_CTRL_T ctrlInfo = { ctrl, CFG_CTRL_RADIOBOX, (void*) &dest };
-
-        ctrls.push_back( ctrlInfo );
-    }
-
-    void Add( wxCheckBox* ctrl, bool& dest )
-    {
-        CONFIG_CTRL_T ctrlInfo = { ctrl, CFG_CTRL_CHECKBOX, (void*) &dest };
-
-        ctrls.push_back( ctrlInfo );
-    }
-
-    void Add( wxTextCtrl* ctrl, wxString& dest )
-    {
-        CONFIG_CTRL_T ctrlInfo = { ctrl, CFG_CTRL_TEXT, (void*) &dest };
-
-        ctrls.push_back( ctrlInfo );
-    }
-
-    void Add( UNIT_BINDER& ctrl, int& dest )
-    {
-        CONFIG_CTRL_T ctrlInfo = { &ctrl, CFG_CTRL_UNIT_BINDER, (void*) &dest };
-
-        ctrls.push_back( ctrlInfo );
-    }
+#include <widgets/widget_save_restore.h>
 
 
-    void Add( wxChoice* ctrl, int& dest )
-    {
-        CONFIG_CTRL_T ctrlInfo = { ctrl, CFG_CTRL_CHOICE, (void*) &dest };
-
-        ctrls.push_back( ctrlInfo );
-    }
-
-    void Add( wxNotebook* ctrl, int& dest )
-    {
-        CONFIG_CTRL_T ctrlInfo = { ctrl, CFG_CTRL_TAB, (void*) &dest };
-
-        ctrls.push_back( ctrlInfo );
-    }
-
-    void ReadConfigFromControls()
-    {
-        for( std::vector<CONFIG_CTRL_T>::const_iterator iter = ctrls.begin(), iend = ctrls.end();
-             iter != iend; ++iter )
-        {
-            switch( iter->type )
-            {
-            case CFG_CTRL_CHECKBOX:
-                *(bool*) iter->dest = static_cast<wxCheckBox*>( iter->control )->GetValue();
-                break;
-
-            case CFG_CTRL_TEXT:
-                *(wxString*) iter->dest = static_cast<wxTextCtrl*>( iter->control )->GetValue();
-                break;
-
-            case CFG_CTRL_UNIT_BINDER:
-                *(int*) iter->dest = static_cast<UNIT_BINDER*>( iter->control )->GetValue();
-                break;
-
-            case CFG_CTRL_CHOICE:
-                *(int*) iter->dest = static_cast<wxChoice*>( iter->control )->GetSelection();
-                break;
-
-            case CFG_CTRL_RADIOBOX:
-                *(int*) iter->dest = static_cast<wxRadioBox*>( iter->control )->GetSelection();
-                break;
-
-            case CFG_CTRL_TAB:
-                *(int*) iter->dest = static_cast<wxNotebook*>( iter->control )->GetSelection();
-                break;
-
-            default:
-                wxASSERT_MSG( false, wxString(
-                                "Unhandled control type for config store: " ) << iter->type );
-            }
-        }
-
-        valid = true;
-    }
-
-    void RestoreConfigToControls()
-    {
-        if( !valid )
-            return;
-
-        for( std::vector<CONFIG_CTRL_T>::const_iterator iter = ctrls.begin(), iend = ctrls.end();
-             iter != iend; ++iter )
-        {
-            switch( iter->type )
-            {
-            case CFG_CTRL_CHECKBOX:
-                static_cast<wxCheckBox*>( iter->control )->SetValue( *(bool*) iter->dest );
-                break;
-
-            case CFG_CTRL_TEXT:
-                static_cast<wxTextCtrl*>( iter->control )->SetValue( *(wxString*) iter->dest );
-                break;
-
-            case CFG_CTRL_UNIT_BINDER:
-                static_cast<UNIT_BINDER*>( iter->control )->SetValue( *(int*) iter->dest );
-                break;
-
-            case CFG_CTRL_CHOICE:
-                static_cast<wxChoice*>( iter->control )->SetSelection( *(int*) iter->dest );
-                break;
-
-            case CFG_CTRL_RADIOBOX:
-                static_cast<wxRadioBox*>( iter->control )->SetSelection( *(int*) iter->dest );
-                break;
-
-            case CFG_CTRL_TAB:
-                static_cast<wxNotebook*>( iter->control )->SetSelection( *(int*) iter->dest );
-                break;
-
-            default:
-                wxASSERT_MSG( false, wxString(
-                                "Unhandled control type for config restore: " ) << iter->type );
-            }
-        }
-    }
-};
-
-class DIALOG_CREATE_ARRAY : public DIALOG_CREATE_ARRAY_BASE,
-    public CONFIG_SAVE_RESTORE_WINDOW
+class DIALOG_CREATE_ARRAY : public DIALOG_CREATE_ARRAY_BASE
 {
 public:
 
-    enum ARRAY_TYPE_T
-    {
-        ARRAY_GRID,         ///< A grid (x*y) array
-        ARRAY_CIRCULAR,     ///< A circular array
-    };
-
-    // NOTE: do not change order relative to charSetDescriptions
-    enum NUMBERING_TYPE_T
-    {
-        NUMBERING_NUMERIC = 0,      ///< Arabic numerals: 0,1,2,3,4,5,6,7,8,9,10,11...
-        NUMBERING_HEX,
-        NUMBERING_ALPHA_NO_IOSQXZ,  /*!< Alphabet, excluding IOSQXZ
-                                     *
-                                     * Per ASME Y14.35M-1997 sec. 5.2 (previously MIL-STD-100 sec. 406.5)
-                                     * as these can be confused with numerals and are often not used
-                                     * for pin numbering on BGAs, etc
-                                     */
-        NUMBERING_ALPHA_FULL,       ///< Full 26-character alphabet
-    };
-
     #define NUMBERING_TYPE_MAX NUMBERING_ALPHA_FULL
-
-    /**
-     * Persistent dialog options
-     */
-    struct ARRAY_OPTIONS
-    {
-        ARRAY_OPTIONS( ARRAY_TYPE_T aType ) :
-            m_type( aType ),
-            m_shouldNumber( false ),
-            m_numberingStartIsSpecified( false )
-        {}
-
-        virtual ~ARRAY_OPTIONS() {};
-
-        ARRAY_TYPE_T m_type;
-
-        /*!
-         * Function GetArrayPositions
-         * Returns the set of points that represent the array
-         * in order, if that is important
-         *
-         * TODO: Can/should this be done with some sort of iterator?
-         */
-        virtual void TransformItem( int n, BOARD_ITEM* item,
-                const wxPoint& rotPoint ) const = 0;
-        virtual int GetArraySize() const = 0;
-        virtual wxString GetItemNumber( int n ) const = 0;
-        virtual wxString InterpolateNumberIntoString( int n, const wxString& pattern ) const;
-
-        /*!
-         * @return are the items in this array numberred, or are all the
-         * items numbered the same
-         */
-        bool ShouldNumberItems() const
-        {
-            return m_shouldNumber;
-        }
-
-        /*!
-         * @return is the numbering is enabled and should start at a point
-         * specified in these options or is it implicit according to the calling
-         * code?
-         */
-        bool NumberingStartIsSpecified() const
-        {
-            return m_shouldNumber && m_numberingStartIsSpecified;
-        }
-
-    protected:
-        static wxString getCoordinateNumber( int n, NUMBERING_TYPE_T type );
-
-        // allow the dialog to set directly
-        friend class DIALOG_CREATE_ARRAY;
-
-        /// True if this array numbers the new items
-        bool m_shouldNumber;
-
-        /// True if this array's number starts from the preset point
-        /// False if the array numbering starts from some externally provided point
-        bool m_numberingStartIsSpecified;
-    };
-
-    struct ARRAY_GRID_OPTIONS : public ARRAY_OPTIONS
-    {
-        ARRAY_GRID_OPTIONS() :
-            ARRAY_OPTIONS( ARRAY_GRID ),
-            m_nx( 0 ), m_ny( 0 ),
-            m_horizontalThenVertical( true ),
-            m_reverseNumberingAlternate( false ),
-            m_stagger( 0 ),
-            m_stagger_rows( true ),
-            m_2dArrayNumbering( false ),
-            m_numberingOffsetX( 0 ),
-            m_numberingOffsetY( 0 ),
-            m_priAxisNumType( NUMBERING_NUMERIC ),
-            m_secAxisNumType( NUMBERING_NUMERIC )
-        {}
-
-        long    m_nx, m_ny;
-        bool    m_horizontalThenVertical, m_reverseNumberingAlternate;
-        wxPoint m_delta;
-        wxPoint m_offset;
-        long    m_stagger;
-        bool    m_stagger_rows;
-        bool    m_2dArrayNumbering;
-        int     m_numberingOffsetX, m_numberingOffsetY;
-        NUMBERING_TYPE_T m_priAxisNumType, m_secAxisNumType;
-
-        void        TransformItem( int n, BOARD_ITEM* item, const wxPoint& rotPoint ) const override;
-        int         GetArraySize() const override;
-        wxString    GetItemNumber( int n ) const override;
-
-private:
-        wxPoint getGridCoords( int n ) const;
-    };
-
-    struct ARRAY_CIRCULAR_OPTIONS : public ARRAY_OPTIONS
-    {
-        ARRAY_CIRCULAR_OPTIONS() :
-            ARRAY_OPTIONS( ARRAY_CIRCULAR ),
-            m_nPts( 0 ),
-            m_angle( 0.0f ),
-            m_rotateItems( false ),
-            m_numberingType( NUMBERING_NUMERIC ),
-            m_numberingOffset( 0 )
-        {}
-
-        long m_nPts;
-        double m_angle;
-        wxPoint m_centre;
-        bool m_rotateItems;
-        NUMBERING_TYPE_T m_numberingType;
-        long m_numberingOffset;
-
-        void        TransformItem( int n, BOARD_ITEM* item, const wxPoint& rotPoint ) const override;
-        int         GetArraySize() const override;
-        wxString    GetItemNumber( int n ) const override;
-    };
 
     // Constructor and destructor
     DIALOG_CREATE_ARRAY( PCB_BASE_FRAME* aParent, bool enableNumbering,
@@ -360,6 +70,9 @@ private:
     UNIT_BINDER    m_hOffset, m_vOffset;
     UNIT_BINDER    m_hCentre, m_vCentre;
     UNIT_BINDER    m_circRadius;
+    UNIT_BINDER    m_circAngle;
+
+    WIDGET_SAVE_RESTORE m_cfg_persister;
 
     /*
      * The position of the original item(s), used for finding radius, etc
@@ -375,44 +88,8 @@ private:
 
     bool TransferDataFromWindow() override;
 
-    struct CREATE_ARRAY_DIALOG_ENTRIES
-    {
-        CREATE_ARRAY_DIALOG_ENTRIES() :
-            m_optionsSet( false ),
-            m_gridStaggerType( 0 ),
-            m_gridNumberingAxis( 0 ),
-            m_gridNumberingReverseAlternate( false ),
-            m_grid2dArrayNumbering( 0 ),
-            m_gridPriAxisNumScheme( 0 ),
-            m_gridSecAxisNumScheme( 0 ),
-            m_circRotate( false ),
-            m_arrayTypeTab( 0 )
-        {}
-
-        bool m_optionsSet;
-
-        wxString m_gridNx, m_gridNy;
-        int      m_gridDx, m_gridDy;
-        int      m_gridOffsetX, m_gridOffsetY;
-        wxString m_gridStagger;
-
-        int      m_gridStaggerType, m_gridNumberingAxis;
-        bool     m_gridNumberingReverseAlternate;
-        int      m_grid2dArrayNumbering;
-        int      m_gridPriAxisNumScheme, m_gridSecAxisNumScheme;
-        wxString m_gridPriNumberingOffset, m_gridSecNumberingOffset;
-
-        int      m_circCentreX, m_circCentreY;
-        wxString m_circAngle, m_circCount, m_circNumberingOffset;
-        bool     m_circRotate;
-        int      m_arrayTypeTab;
-    };
-
     // some uses of arrays might not allow component renumbering
     bool m_numberingEnabled;
-
-    // saved array options
-    static CREATE_ARRAY_DIALOG_ENTRIES m_options;
 };
 
 #endif      // __DIALOG_CREATE_ARRAY__

@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2019 KiCad Developers, see CHANGELOG.TXT for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,54 +21,29 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#ifndef FSTREAM_LINE_READER_H
-#define FSTREAM_LINE_READER_H
+#include <qa_utils/geometry/line_chain_construction.h>
 
-#include <wx/filename.h>
-
-#include <richio.h>
-
-#include <istream>
-#include <fstream>
-
-/**
- * LINE_READER that wraps a given std::istream instance.
- */
-class STDISTREAM_LINE_READER : public LINE_READER
+namespace KI_TEST
 {
-public:
 
-    STDISTREAM_LINE_READER();
-
-    ~STDISTREAM_LINE_READER();
-
-    char* ReadLine()  override;
-
-    /**
-     * Set the stream for this line reader.
-     * @param aStream a stream to read
-     */
-    void SetStream( std::istream&  aStream );
-
-private:
-    std::string m_buffer;
-    std::istream* m_stream;
-};
-
-
-/**
- * LINE_READER interface backed by std::ifstream
- */
-class IFSTREAM_LINE_READER : public STDISTREAM_LINE_READER
+SHAPE_LINE_CHAIN BuildRectChain( const VECTOR2I& aSize, const VECTOR2I& aCentre )
 {
-public:
+    const std::vector<VECTOR2I> pts = {
+        { aCentre.x - aSize.x / 2, aCentre.y - aSize.y / 2 },
+        { aCentre.x - aSize.x / 2, aCentre.y + aSize.y / 2 },
+        { aCentre.x + aSize.x / 2, aCentre.y + aSize.y / 2 },
+        { aCentre.x + aSize.x / 2, aCentre.y - aSize.y / 2 },
+    };
 
-    IFSTREAM_LINE_READER( const wxFileName& aFileName );
+    SHAPE_LINE_CHAIN chain( pts.data(), pts.size() );
+    chain.SetClosed( true );
 
-    void Rewind();
+    return chain;
+}
 
-private:
-    std::ifstream m_fStream;
-};
+SHAPE_LINE_CHAIN BuildSquareChain( int aSize, const VECTOR2I& aCentre )
+{
+    return BuildRectChain( { aSize, aSize }, aCentre );
+}
 
-#endif // FSTREAM_LINE_READER_H
+} // namespace KI_TEST

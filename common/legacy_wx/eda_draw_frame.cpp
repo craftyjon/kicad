@@ -518,7 +518,7 @@ void EDA_DRAW_FRAME::OnSelectGrid( wxCommandEvent& event )
     int* clientData;
     int  eventId = ID_POPUP_GRID_LEVEL_100;
 
-    if( event.GetEventType() == wxEVT_COMBOBOX )
+    if( event.GetEventType() == wxEVT_CHOICE )
     {
         if( m_gridSelectBox == NULL )   // Should not happen
             return;
@@ -1322,8 +1322,10 @@ EDA_DRAW_PANEL_GAL::GAL_TYPE EDA_DRAW_FRAME::LoadCanvasTypeSetting()
     wxConfigBase* cfg = Kiface().KifaceSettings();
 
     if( cfg )
-        canvasType = (EDA_DRAW_PANEL_GAL::GAL_TYPE) cfg->ReadLong( GetCanvasTypeKey(),
-                                                                   EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE );
+    {
+        canvasType = (EDA_DRAW_PANEL_GAL::GAL_TYPE)
+                        cfg->ReadLong( GetCanvasTypeKey(), EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE );
+    }
 
     if( canvasType < EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE
             || canvasType >= EDA_DRAW_PANEL_GAL::GAL_TYPE_LAST )
@@ -1337,7 +1339,12 @@ EDA_DRAW_PANEL_GAL::GAL_TYPE EDA_DRAW_FRAME::LoadCanvasTypeSetting()
     if( canvasType == EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE
             && !ADVANCED_CFG::GetCfg().AllowLegacyCanvas() )
     {
+#ifdef __WXMAC__
+        // Cairo renderer doesn't handle Retina displays
+        canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL;
+#else
         canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO;
+#endif
     }
 
     return canvasType;

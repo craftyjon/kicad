@@ -37,6 +37,7 @@
 #include <confirm.h>
 #include <kicad_string.h>
 #include <pcbnew.h>
+#include <refdes_utils.h>
 #include <richio.h>
 #include <filter_reader.h>
 #include <macros.h>
@@ -1309,7 +1310,7 @@ wxString MODULE::GetNextPadName( bool aFillSequenceGaps ) const
     // Create a set of used pad numbers
     for( D_PAD* pad = PadsList(); pad; pad = pad->Next() )
     {
-        int padNumber = getTrailingInt( pad->GetName() );
+        int padNumber = GetTrailingInt( pad->GetName() );
         usedNumbers.insert( padNumber );
     }
 
@@ -1319,33 +1320,11 @@ wxString MODULE::GetNextPadName( bool aFillSequenceGaps ) const
 }
 
 
-wxString MODULE::GetReferencePrefix() const
-{
-    wxString prefix = GetReference();
-
-    int strIndex = prefix.length() - 1;
-    while( strIndex >= 0 )
-    {
-        const wxUniChar chr = prefix.GetChar( strIndex );
-
-        // numeric suffix
-        if( chr >= '0' && chr <= '9' )
-            break;
-
-        strIndex--;
-    }
-
-    prefix = prefix.Mid( 0, strIndex );
-
-    return prefix;
-}
-
-
 void MODULE::IncrementReference( int aDelta )
 {
-    SetReference( wxString::Format( wxT( "%s%i" ),
-                                    GetReferencePrefix(),
-                                    getTrailingInt( GetReference() ) + aDelta ) );
+    const auto& refdes = GetReference();
+    SetReference( wxString::Format( wxT( "%s%i" ), UTIL::GetReferencePrefix( refdes ),
+            GetTrailingInt( refdes ) + aDelta ) );
 }
 
 

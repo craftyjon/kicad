@@ -2014,6 +2014,7 @@ void SCH_COMPONENT::Plot( PLOTTER* aPlotter )
     if( PART_SPTR part = m_part.lock() )
     {
         temp = GetTransform();
+        aPlotter->StartBlock( nullptr );
 
         part->Plot( aPlotter, GetUnit(), GetConvert(), m_Pos, temp );
 
@@ -2021,6 +2022,8 @@ void SCH_COMPONENT::Plot( PLOTTER* aPlotter )
         {
             m_Fields[i].Plot( aPlotter );
         }
+
+        aPlotter->EndBlock( nullptr );
     }
 }
 

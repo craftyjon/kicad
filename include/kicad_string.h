@@ -149,16 +149,6 @@ bool WildCompareString( const wxString& pattern,
 int ValueStringCompare( wxString strFWord, wxString strSWord );
 
 /**
- * Function RefDesStringCompare
- * acts just like the strcmp function but treats numbers within the string text
- * correctly for sorting.  eg. A10 > A2
- * return -1 if first string is less than the second
- * return 0 if the strings are equal
- * return 1 if the first string is greater than the second
- */
-int RefDesStringCompare( wxString lhs, wxString rhs );
-
-/**
  * Function SplitString
  * breaks a string into three parts.
  * The alphabetic preamble
@@ -170,6 +160,13 @@ int SplitString( wxString  strToSplit,
                  wxString* strBeginning,
                  wxString* strDigits,
                  wxString* strEnd );
+
+/**
+ * Gets the trailing int, if any, from a string.
+ * @param  aStr the string to check
+ * @return      the trailing int or 0 if none found
+ */
+int GetTrailingInt( const wxString& aStr );
 
 /**
  * Function GetIllegalFileNameWxChars

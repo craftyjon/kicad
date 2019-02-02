@@ -22,11 +22,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <geometry/shape_poly_set.h>
-#include <geometry/shape_line_chain.h>
+#include "polygon_triangulation.h"
 
-#include <io_mgr.h>
-#include <kicad_plugin.h>
+#include <geometry/shape_line_chain.h>
+#include <geometry/shape_poly_set.h>
+
+#include <pcbnew_utils/board_file_utils.h>
 
 #include <class_board.h>
 #include <class_zone.h>
@@ -198,33 +199,24 @@ aResult->clear();
         std::swap( (*aResult) [0], (*aResult)[outline] );
 }
 
-BOARD* loadBoard( const std::string& filename )
+
+enum POLY_TRI_RET_CODES
 {
-    PLUGIN::RELEASER pi( new PCB_IO );
-    BOARD* brd = nullptr;
+    LOAD_FAILED = KI_TEST::RET_CODES::TOOL_SPECIFIC,
+};
 
-    try
-    {
-        brd = pi->Load( wxString( filename.c_str() ), NULL, NULL );
-    }
-    catch( const IO_ERROR& ioe )
-    {
-        wxString msg = wxString::Format( _( "Error loading board.\n%s" ),
-                ioe.Problem() );
 
-        printf( "%s\n", (const char*) msg.mb_str() );
-        return nullptr;
-    }
-
-    return brd;
-}
-
-int main( int argc, char *argv[] )
+int polygon_triangulation_main( int argc, char *argv[] )
 {
-    auto brd = loadBoard( argc > 1 ? argv[1] : "../../../../tests/dp.kicad_pcb" );
+    std::string filename;
+
+    if( argc > 1 )
+        filename = argv[1];
+
+    auto brd = KI_TEST::ReadBoardFromFileOrStream( filename );
 
     if( !brd )
-        return -1;
+        return POLY_TRI_RET_CODES::LOAD_FAILED;
 
 
     PROF_COUNTER cnt( "allBoard" );
@@ -236,8 +228,7 @@ int main( int argc, char *argv[] )
     size_t parallelThreadCount = std::max<size_t>( std::thread::hardware_concurrency(), 2 );
     for( size_t ii = 0; ii < parallelThreadCount; ++ii )
     {
-        std::thread t = std::thread( [brd, &zonesToTriangulate, &threadsFinished] ()
-        {
+        std::thread t = std::thread( [&brd, &zonesToTriangulate, &threadsFinished]() {
             for( size_t areaId = zonesToTriangulate.fetch_add( 1 );
                         areaId < static_cast<size_t>( brd->GetAreaCount() );
                         areaId = zonesToTriangulate.fetch_add( 1 ) )
@@ -249,7 +240,7 @@ int main( int argc, char *argv[] )
 
                 (void) poly;
                 printf("zone %zu/%d\n", ( areaId + 1 ), brd->GetAreaCount() );
-        #if 0
+#if 0
                 PROF_COUNTER unfrac("unfrac");
                 poly.Unfracture( SHAPE_POLY_SET::PM_FAST );
                 unfrac.Show();
@@ -261,7 +252,7 @@ int main( int argc, char *argv[] )
                     poly.triangulatePoly( &poly.Polygon(i) );
                 }
                 triangulate.Show();
-        #endif
+#endif
             }
 
             threadsFinished++;
@@ -273,11 +264,16 @@ int main( int argc, char *argv[] )
     while( threadsFinished < parallelThreadCount )
         std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
 
-
     cnt.Show();
 
-    delete brd;
-
-    return 0;
-
+    return KI_TEST::RET_CODES::OK;
 }
+
+/*
+ * Define the tool interface
+ */
+KI_TEST::UTILITY_PROGRAM polygon_triangulation_tool = {
+    "polygon_triangulation",
+    "Process polygon trianguation on a PCB",
+    polygon_triangulation_main,
+};

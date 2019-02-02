@@ -1,8 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2017 CERN
- * @author Alejandro García Montoro <alejandro.garciamontoro@gmail.com>
+ * Copyright (C) 2017 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,11 +21,52 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
+#ifndef FSTREAM_LINE_READER_H
+#define FSTREAM_LINE_READER_H
+
+#include <wx/filename.h>
+
+#include <richio.h>
+
+#include <fstream>
+#include <istream>
+
 /**
- * Main file for the geometry tests to be compiled
+ * LINE_READER that wraps a given std::istream instance.
  */
+class STDISTREAM_LINE_READER : public LINE_READER
+{
+public:
+    STDISTREAM_LINE_READER();
 
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_MODULE "CPolyLine -> SHAPE_POLY_SET refactor module"
+    ~STDISTREAM_LINE_READER();
 
-#include <boost/test/unit_test.hpp>
+    char* ReadLine() override;
+
+    /**
+     * Set the stream for this line reader.
+     * @param aStream a stream to read
+     */
+    void SetStream( std::istream& aStream );
+
+private:
+    std::string   m_buffer;
+    std::istream* m_stream;
+};
+
+
+/**
+ * LINE_READER interface backed by std::ifstream
+ */
+class IFSTREAM_LINE_READER : public STDISTREAM_LINE_READER
+{
+public:
+    IFSTREAM_LINE_READER( const wxFileName& aFileName );
+
+    void Rewind();
+
+private:
+    std::ifstream m_fStream;
+};
+
+#endif // FSTREAM_LINE_READER_H

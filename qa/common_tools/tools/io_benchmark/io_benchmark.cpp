@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2017-2019 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -36,7 +36,7 @@
 #include <wx/wfstream.h>
 #include <wx/filename.h>
 
-#include "stdstream_line_reader.h"
+#include <qa_utils/stdstream_line_reader.h>
 
 
 using CLOCK = std::chrono::steady_clock;
@@ -388,7 +388,7 @@ int io_benchmark_func( int argc, char* argv[] )
         os << "Usage: " << argv[0] << " <FILE> <REPS> [" << getBenchFlags() << "]\n\n";
         os << "Benchmarks:\n";
         os << getBenchDescriptions();
-        return RET_CODES::BAD_CMDLINE;
+        return KI_TEST::RET_CODES::BAD_CMDLINE;
     }
 
     wxFileName inFile( argv[1] );
@@ -419,11 +419,11 @@ int io_benchmark_func( int argc, char* argv[] )
             << std::endl;;
     }
 
-    return RET_CODES::OK;
+    return KI_TEST::RET_CODES::OK;
 }
 
 
-UTILITY_PROGRAM io_benchmark_tool = {
+KI_TEST::UTILITY_PROGRAM io_benchmark_tool = {
     "io_benchmark",
     "Benchmark various kinds of IO methods",
     io_benchmark_func,

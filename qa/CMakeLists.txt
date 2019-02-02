@@ -21,11 +21,9 @@ add_subdirectory( unit_test_utils )
 add_subdirectory( common )
 add_subdirectory( pcbnew )
 add_subdirectory( eeschema )
-add_subdirectory( shape_poly_set_refactor )
 
 # Utility/debugging/profiling programs
 add_subdirectory( common_tools )
 add_subdirectory( pcbnew_tools )
 
 # add_subdirectory( pcb_test_window )
-# add_subdirectory( polygon_triangulation )

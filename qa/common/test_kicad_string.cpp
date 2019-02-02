@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2018 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2018 KiCad Developers, see CHANGELOG.TXT for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,42 +21,41 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#ifndef SCOPED_TIMER_H
-#define SCOPED_TIMER_H
+/**
+ * @file
+ * Test suite for general string functions
+ */
 
-#include <chrono>
+#include <unit_test_utils/unit_test_utils.h>
+
+// Code under test
+#include <kicad_string.h>
 
 /**
- * A simple RAII class to measure the time of an operation.
- *
- * ON construction, a timer is started, and on destruction, the timer is
- * ended, and the time difference is written into the given duration
+ * Declare the test suite
  */
-template<typename DURATION>
-class SCOPED_TIMER
+BOOST_AUTO_TEST_SUITE( KicadString )
+
+/**
+ * Test the #GetTrailingInt method.
+ */
+BOOST_AUTO_TEST_CASE( TrailingInt )
 {
-    using CLOCK = std::chrono::steady_clock;
-    using TIME_PT = std::chrono::time_point<CLOCK>;
+    using CASE = std::pair<std::string, int>;
 
-public:
-    SCOPED_TIMER( DURATION& aDuration ):
-        m_duration( aDuration )
+    const std::vector<CASE> cases = {
+        { "", 0 }, { "foo", 0 },            // no int
+        { "0", 0 },                         // only int
+        { "42", 42 },                       // only int
+        { "1001", 1001 },                   // only int
+        { "Foo42", 42 }, { "12Foo42", 42 }, // only the trailing
+        { "12Foo4.2", 2 },                  // no dots
+    };
+
+    for( const auto& c : cases )
     {
-        m_start = CLOCK::now();
+        BOOST_CHECK_EQUAL( GetTrailingInt( c.first ), c.second );
     }
+}
 
-    ~SCOPED_TIMER()
-    {
-        const auto end = CLOCK::now();
-
-        // update the output
-        m_duration = std::chrono::duration_cast<DURATION>( end - m_start );
-    }
-
-private:
-
-    DURATION& m_duration;
-    TIME_PT m_start;
-};
-
-#endif // SCOPED_TIMER_h
+BOOST_AUTO_TEST_SUITE_END()

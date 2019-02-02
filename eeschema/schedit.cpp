@@ -942,8 +942,6 @@ void SCH_EDIT_FRAME::OnRotate( wxCommandEvent& aEvent )
         item = LocateAndShowItem( data->GetPosition(), SCH_COLLECTOR::RotatableItems,
                                   aEvent.GetInt() );
 
-        DBG(printf("Rotate Item %p", item);)
-
         // Exit if no item found at the current location or the item is already being edited.
         if( (item == NULL) || (item->GetFlags() != 0) )
             return;
@@ -974,6 +972,13 @@ void SCH_EDIT_FRAME::OnRotate( wxCommandEvent& aEvent )
     case SCH_HIERARCHICAL_LABEL_T:
         m_canvas->MoveCursorToCrossHair();
         ChangeTextOrient( (SCH_TEXT*) item );
+        break;
+
+    case SCH_BUS_BUS_ENTRY_T:
+    case SCH_BUS_WIRE_ENTRY_T:
+        m_canvas->MoveCursorToCrossHair();
+        SaveCopyInUndoList( item, UR_CHANGED );
+        item->Rotate( m_canvas->GetParent()->GetCrossHairPosition() );
         break;
 
     case SCH_FIELD_T:
@@ -1365,7 +1370,6 @@ void SCH_EDIT_FRAME::OnOrient( wxCommandEvent& aEvent )
         // The bitmap is cached in Opengl: clear the cache, because
         // the cache data is invalid
         GetCanvas()->GetGAL()->ClearCache();
-
         break;
 
     case SCH_SHEET_T:
@@ -1373,6 +1377,18 @@ void SCH_EDIT_FRAME::OnOrient( wxCommandEvent& aEvent )
             MirrorSheet( (SCH_SHEET*) item, true );
         else if( aEvent.GetId() == ID_SCH_MIRROR_Y )
             MirrorSheet( (SCH_SHEET*) item, false );
+
+        break;
+
+    case SCH_BUS_BUS_ENTRY_T:
+    case SCH_BUS_WIRE_ENTRY_T:
+        m_canvas->MoveCursorToCrossHair();
+        SaveCopyInUndoList( item, UR_CHANGED );
+
+        if( aEvent.GetId() == ID_SCH_MIRROR_X )
+            item->MirrorX( m_canvas->GetParent()->GetCrossHairPosition().y );
+        else if( aEvent.GetId() == ID_SCH_MIRROR_Y )
+            item->MirrorY( m_canvas->GetParent()->GetCrossHairPosition().x );
 
         break;
 

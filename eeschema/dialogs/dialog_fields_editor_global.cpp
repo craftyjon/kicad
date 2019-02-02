@@ -31,6 +31,7 @@
 #include <bitmaps.h>
 #include <grid_tricks.h>
 #include <kicad_string.h>
+#include <refdes_utils.h>
 #include <build_version.h>
 #include <general.h>
 #include <sch_view.h>
@@ -43,6 +44,13 @@
 
 #include "dialog_fields_editor_global.h"
 
+#define QUANTITY_COLUMN   ( 0 )
+
+// The first column in m_grid is Quantity, so offset the rows
+static constexpr int colNumber( const int aCol )
+{
+    return aCol + 1;
+}
 
 enum
 {
@@ -64,12 +72,12 @@ public:
 protected:
     void showPopupMenu( wxMenu& menu ) override
     {
-        if( m_grid->GetGridCursorCol() == FOOTPRINT )
+        if( m_grid->GetGridCursorCol() == colNumber( FOOTPRINT ) )
         {
             menu.Append( MYID_SELECT_FOOTPRINT, _( "Select Footprint..." ), _( "Browse for footprint" ) );
             menu.AppendSeparator();
         }
-        else if( m_grid->GetGridCursorCol() == DATASHEET )
+        else if( m_grid->GetGridCursorCol() == colNumber( DATASHEET ) )
         {
             menu.Append( MYID_SHOW_DATASHEET,   _( "Show Datasheet" ),      _( "Show datasheet in browser" ) );
             menu.AppendSeparator();
@@ -83,17 +91,19 @@ protected:
         if( event.GetId() == MYID_SELECT_FOOTPRINT )
         {
             // pick a footprint using the footprint picker.
-            wxString      fpid = m_grid->GetCellValue( m_grid->GetGridCursorRow(), FOOTPRINT );
+            wxString      fpid = m_grid->GetCellValue( m_grid->GetGridCursorRow(),
+                                                       colNumber( FOOTPRINT ) );
             KIWAY_PLAYER* frame = m_dlg->Kiway().Player( FRAME_PCB_MODULE_VIEWER_MODAL, true, m_dlg );
 
             if( frame->ShowModal( &fpid, m_dlg ) )
-                m_grid->SetCellValue( m_grid->GetGridCursorRow(), FOOTPRINT, fpid );
+                m_grid->SetCellValue( m_grid->GetGridCursorRow(), colNumber( FOOTPRINT ), fpid );
 
             frame->Destroy();
         }
         else if (event.GetId() == MYID_SHOW_DATASHEET )
         {
-            wxString datasheet_uri = m_grid->GetCellValue( m_grid->GetGridCursorRow(), DATASHEET );
+            wxString datasheet_uri = m_grid->GetCellValue( m_grid->GetGridCursorRow(),
+                                                           colNumber( DATASHEET ) );
             datasheet_uri = ResolveUriByEnvVars( datasheet_uri );
             GetAssociatedDocument( m_dlg, datasheet_uri );
         }
@@ -106,7 +116,7 @@ protected:
         {
             // Refresh Show checkboxes from grid columns
             for( int i = 0; i < m_fieldsCtrl->GetItemCount(); ++i )
-                m_fieldsCtrl->SetToggleValue( m_grid->IsColShown( i ), i, 1 );
+                m_fieldsCtrl->SetToggleValue( colNumber( m_grid->IsColShown( i ) ), i, 1 );
         }
     }
 
@@ -140,8 +150,6 @@ struct DATA_MODEL_ROW
 #define FIELD_NAME_COLUMN 0
 #define SHOW_FIELD_COLUMN 1
 #define GROUP_BY_COLUMN   2
-
-#define QUANTITY_COLUMN   ( GetNumberCols() - 1 )
 
 #ifdef __WXMAC__
 #define COLUMN_MARGIN 5
@@ -182,6 +190,7 @@ public:
             m_frame( aFrame ),
             m_componentRefs( aComponentList ),
             m_edited( false ),
+            m_sortColumn( 0 ),
             m_sortAscending( false )
     {
         m_componentRefs.SplitReferences();
@@ -204,16 +213,12 @@ public:
 
     int GetNumberRows() override { return m_rows.size(); }
 
-    // Columns are fieldNames + quantity column
-    int GetNumberCols() override { return m_fieldNames.size() + 1; }
+    int GetNumberCols() override { return m_fieldNames.size(); }
 
 
     wxString GetColLabelValue( int aCol ) override
     {
-        if( aCol == QUANTITY_COLUMN )
-            return _( "Qty" );
-        else
-            return m_fieldNames[ aCol ];
+        return m_fieldNames[ aCol ];
     }
 
 
@@ -225,7 +230,7 @@ public:
 
     wxString GetValue( int aRow, int aCol ) override
     {
-        if( aCol == REFERENCE )
+        if( aCol == QUANTITY_COLUMN )
         {
             // Poor-man's tree controls
             if( m_rows[ aRow ].m_Flag == GROUP_COLLAPSED )
@@ -254,13 +259,17 @@ public:
 
         for( const auto& ref : group.m_Refs )
         {
-            if( aCol == REFERENCE || aCol == QUANTITY_COLUMN )
+            if( aCol == colNumber( REFERENCE ) || aCol == QUANTITY_COLUMN )
             {
                 references.push_back( ref );
             }
             else // Other columns are either a single value or ROW_MULTI_ITEMS
             {
                 timestamp_t compID = ref.GetComp()->GetTimeStamp();
+
+                if( !m_dataStore.count( compID ) ||
+                        !m_dataStore[ compID ].count( m_fieldNames[ aCol ] ) )
+                    return INDETERMINATE;
 
                 if( &ref == &group.m_Refs.front() )
                     fieldValue = m_dataStore[ compID ][ m_fieldNames[ aCol ] ];
@@ -269,7 +278,7 @@ public:
             }
         }
 
-        if( aCol == REFERENCE || aCol == QUANTITY_COLUMN )
+        if( aCol == colNumber( REFERENCE ) || aCol == QUANTITY_COLUMN )
         {
             // Remove duplicates (other units of multi-unit parts)
             std::sort( references.begin(), references.end(),
@@ -277,7 +286,7 @@ public:
                        {
                            wxString l_ref( l.GetRef() << l.GetRefNumber() );
                            wxString r_ref( r.GetRef() << r.GetRefNumber() );
-                           return RefDesStringCompare( l_ref, r_ref ) < 0;
+                           return UTIL::RefDesStringCompare( l_ref, r_ref ) < 0;
                        } );
 
             auto logicalEnd = std::unique( references.begin(), references.end(),
@@ -295,7 +304,7 @@ public:
             references.erase( logicalEnd, references.end() );
         }
 
-        if( aCol == REFERENCE )
+        if( aCol == colNumber( REFERENCE ) )
         {
             fieldValue = SCH_REFERENCE_LIST::Shorthand( references );
         }
@@ -310,7 +319,7 @@ public:
 
     void SetValue( int aRow, int aCol, const wxString &aValue ) override
     {
-        if( aCol == REFERENCE || aCol == QUANTITY_COLUMN )
+        if( aCol == colNumber( REFERENCE ) || aCol == QUANTITY_COLUMN )
             return;             // Can't modify references or quantity
 
         wxString value = EscapeString( aValue );
@@ -336,16 +345,16 @@ public:
 
         bool retVal;
 
-        // Primary sort key is sortCol; secondary is always REFERENCE (column 0)
+        // Primary sort key is sortCol; secondary is always REFERENCE (column 1)
 
         wxString lhs = dataModel->GetValue( (DATA_MODEL_ROW&) lhGroup, sortCol );
         wxString rhs = dataModel->GetValue( (DATA_MODEL_ROW&) rhGroup, sortCol );
 
-        if( lhs == rhs || sortCol == REFERENCE )
+        if( lhs == rhs || sortCol == colNumber( REFERENCE ) )
         {
             wxString lhRef = lhGroup.m_Refs[ 0 ].GetRef() + lhGroup.m_Refs[ 0 ].GetRefNumber();
             wxString rhRef = rhGroup.m_Refs[ 0 ].GetRef() + rhGroup.m_Refs[ 0 ].GetRefNumber();
-            retVal = RefDesStringCompare( lhRef, rhRef ) < 0;
+            retVal = UTIL::RefDesStringCompare( lhRef, rhRef ) < 0;
         }
         else
             retVal = ValueStringCompare( lhs, rhs ) < 0;
@@ -609,7 +618,7 @@ public:
     {
         int width = 0;
 
-        if( aCol == REFERENCE )
+        if( aCol == colNumber( REFERENCE ) )
         {
             for( int row = 0; row < GetNumberRows(); ++row )
             {
@@ -699,9 +708,9 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
     for( int i = 0; i < m_fieldsCtrl->GetItemCount(); ++i )
     {
         if( m_fieldsCtrl->GetToggleValue( i, 1 ) )
-            m_grid->ShowCol( i );
+            m_grid->ShowCol( colNumber( i ) );
         else
-            m_grid->HideCol( i );
+            m_grid->HideCol( colNumber( i ) );
     }
 
     // add Cut, Copy, and Paste to wxGrid
@@ -713,23 +722,23 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
     // set reference column attributes
     wxGridCellAttr* attr = new wxGridCellAttr;
     attr->SetReadOnly();
-    m_grid->SetColAttr( REFERENCE, attr );
+    m_grid->SetColAttr( colNumber( REFERENCE ), attr );
 
     // set footprint column browse button
     attr = new wxGridCellAttr;
     attr->SetEditor( new GRID_CELL_FOOTPRINT_ID_EDITOR( this ) );
-    m_grid->SetColAttr( FOOTPRINT, attr );
+    m_grid->SetColAttr( colNumber( FOOTPRINT ), attr );
 
     // set datasheet column viewer button
     attr = new wxGridCellAttr;
     attr->SetEditor( new GRID_CELL_URL_EDITOR( this ) );
-    m_grid->SetColAttr( DATASHEET, attr );
+    m_grid->SetColAttr( colNumber( DATASHEET ), attr );
 
     // set quantities column attributes
     attr = new wxGridCellAttr;
     attr->SetReadOnly();
-    m_grid->SetColAttr( m_dataModel->GetColsCount() - 1, attr );
-    m_grid->SetColFormatNumber( m_dataModel->GetColsCount() - 1 );
+    m_grid->SetColAttr( QUANTITY_COLUMN, attr );
+    m_grid->SetColFormatNumber( QUANTITY_COLUMN );
 
     m_grid->AutoSizeColumns( false );
     for( int col = 0; col < m_grid->GetNumberCols(); ++ col )
@@ -741,7 +750,7 @@ DIALOG_FIELDS_EDITOR_GLOBAL::DIALOG_FIELDS_EDITOR_GLOBAL( SCH_EDIT_FRAME* parent
             int textWidth = m_dataModel->GetDataWidth( col ) + COLUMN_MARGIN;
             int maxWidth = defaultDlgSize.x / 3;
 
-            if( col == m_grid->GetNumberCols() - 1 )
+            if( col == QUANTITY_COLUMN )
                 m_grid->SetColSize( col, std::min( std::max( 50, textWidth ), maxWidth ) );
             else
                 m_grid->SetColSize( col, std::min( std::max( 100, textWidth ), maxWidth ) );
@@ -834,6 +843,7 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::LoadFieldNames()
             userFieldNames.insert( comp->GetField( j )->GetName() );
     }
 
+    m_dataModel->AddColumn( _( "Qty" ) );
     AddField( _( "Reference" ), true, true  );
     AddField( _( "Value" ),     true, true  );
     AddField( _( "Footprint" ), true, true  );
@@ -851,11 +861,6 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::LoadFieldNames()
 
 void DIALOG_FIELDS_EDITOR_GLOBAL::OnAddField( wxCommandEvent& event )
 {
-    // quantities column will become new field column, so it needs to be reset
-    auto attr = new wxGridCellAttr;
-    m_grid->SetColAttr( m_dataModel->GetColsCount() - 1, attr );
-    m_grid->SetColFormatCustom( m_dataModel->GetColsCount() - 1, wxGRID_VALUE_STRING );
-
     wxTextEntryDialog dlg( this, _( "New field name:" ), _( "Add Field" ) );
 
     if( dlg.ShowModal() != wxID_OK )
@@ -884,13 +889,6 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::OnAddField( wxCommandEvent& event )
 
     wxGridTableMessage msg( m_dataModel, wxGRIDTABLE_NOTIFY_COLS_INSERTED, m_fieldsCtrl->GetItemCount(), 1 );
     m_grid->ProcessTableMessage( msg );
-
-    // set up attributes on the new quantities column
-    attr = new wxGridCellAttr;
-    attr->SetReadOnly();
-    m_grid->SetColAttr( m_dataModel->GetColsCount() - 1, attr );
-    m_grid->SetColFormatNumber( m_dataModel->GetColsCount() - 1 );
-    m_grid->SetColSize( m_dataModel->GetColsCount() - 1, 50 );
 }
 
 
@@ -913,9 +911,9 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::OnColumnItemToggled( wxDataViewEvent& event )
         m_config->Write( "SymbolFieldEditor/Show/" + fieldName, value );
 
         if( value )
-            m_grid->ShowCol( row );
+            m_grid->ShowCol( colNumber( row ) );
         else
-            m_grid->HideCol( row );     // grid's columns map to fieldsCtrl's rows
+            m_grid->HideCol( colNumber( row ) );     // grid's columns map to fieldsCtrl's rows
         break;
     }
 
@@ -975,7 +973,7 @@ void DIALOG_FIELDS_EDITOR_GLOBAL::OnRegroupComponents( wxCommandEvent& event )
 
 void DIALOG_FIELDS_EDITOR_GLOBAL::OnTableCellClick( wxGridEvent& event )
 {
-    if( event.GetCol() == REFERENCE )
+    if( event.GetCol() == QUANTITY_COLUMN )
     {
         m_grid->ClearSelection();
         m_grid->SetGridCursor( event.GetRow(), event.GetCol() );
