@@ -1,7 +1,7 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 1992-2018 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2019 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -125,6 +125,20 @@ bool PANEL_MODEDIT_DEFAULTS::TransferDataToWindow()
     m_textCtrlValueText->SetValue( m_brdSettings.m_ValueDefaultText );
     m_choiceLayerValue->SetSelection( m_brdSettings.m_ValueDefaultlayer == F_SilkS ? 0 : 1 );
     m_choiceVisibleValue->SetSelection( m_brdSettings.m_ValueDefaultVisibility ? 0 : 1 );
+
+    for( int col = 0; col < m_grid->GetNumberCols(); col++ )
+    {
+        // Set the minimal width to the column label size.
+        m_grid->SetColMinimalWidth( col, m_grid->GetVisibleWidth( col, true, false, false ) );
+
+        // Set the width to see the full contents
+        if( m_grid->IsColShown( col ) )
+            m_grid->SetColSize( col, m_grid->GetVisibleWidth( col, true, true, true ) );
+    }
+
+    m_grid->SetRowLabelSize( m_grid->GetVisibleWidth( -1, true, true, true ) );
+
+    Layout();
 
     return true;
 }

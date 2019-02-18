@@ -12,7 +12,6 @@ include_directories(
     dialogs
     ../common
     ../3d-viewer
-    ../polygon
     ${INC_AFTER}
     )
 
@@ -119,7 +118,6 @@ target_link_libraries( gerbview
     #singletop  # replaces common, giving us restrictive control and link warnings.
     # There's way too much crap coming in from common yet.
     common
-    bitmaps
     gal
     legacy_wx
     ${wxWidgets_LIBRARIES}
@@ -144,18 +142,12 @@ set_target_properties( gerbview_kiface PROPERTIES
     )
 target_link_libraries( gerbview_kiface
     common
-    polygon
-    bitmaps
     gal
     legacy_wx
     common
-    polygon
-    bitmaps
     gal
     legacy_wx
     common
-    polygon
-    bitmaps
     gal
     legacy_wx
     ${wxWidgets_LIBRARIES}

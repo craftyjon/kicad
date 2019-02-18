@@ -252,7 +252,7 @@ bool DIALOG_FOOTPRINT_FP_EDITOR::TransferDataToWindow()
     if( m_footprint->GetLocalSolderPasteMargin() == 0 )
         m_SolderPasteMarginCtrl->SetValue( wxT( "-" ) + m_SolderPasteMarginCtrl->GetValue() );
 
-    // Add solder paste margin ratio in per cent
+    // Add solder paste margin ratio in percent
     // for the usual default value 0.0, display -0.0 (or -0,0 in some countries)
     wxString msg;
     msg.Printf( wxT( "%f" ), m_footprint->GetLocalSolderPasteMarginRatio() * 100.0 );
@@ -292,6 +292,23 @@ bool DIALOG_FOOTPRINT_FP_EDITOR::TransferDataToWindow()
     }
 
     select3DModel( 0 );   // will clamp idx within bounds
+
+    for( int col = 0; col < m_itemsGrid->GetNumberCols(); col++ )
+    {
+        // Adjust min size to the column label size
+        m_itemsGrid->SetColMinimalWidth( col, m_itemsGrid->GetVisibleWidth( col, true, false, false ) );
+        // Adjust the column size. The column 6 has a small bitmap, so its width must be taken in account
+        int col_size = m_itemsGrid->GetVisibleWidth( col, true, true, false );
+
+        if( col == 6 )
+            col_size += 20;
+
+        if( m_itemsGrid->IsColShown( col ) )
+            m_itemsGrid->SetColSize( col, col_size );
+    }
+
+    m_itemsGrid->SetRowLabelSize( m_itemsGrid->GetVisibleWidth( -1, true, true, true ) );
+    m_modelsGrid->SetColSize( 1, m_modelsGrid->GetVisibleWidth( 1, true, false, false ) );
 
     Layout();
     adjustGridColumns( m_itemsGrid->GetRect().GetWidth());
@@ -764,7 +781,9 @@ void DIALOG_FOOTPRINT_FP_EDITOR::adjustGridColumns( int aWidth )
     for( int i = 1; i < m_itemsGrid->GetNumberCols(); i++ )
         itemsWidth -= m_itemsGrid->GetColSize( i );
 
-    m_itemsGrid->SetColSize( 0, std::max( itemsWidth, 120 ) );
+    if( itemsWidth > 0 )
+        m_itemsGrid->SetColSize( 0, std::max( itemsWidth,
+                m_itemsGrid->GetVisibleWidth( 0, true, false, false ) ) );
 
     m_modelsGrid->SetColSize( 0, modelsWidth - m_modelsGrid->GetColSize( 1 ) - 5 );
 }

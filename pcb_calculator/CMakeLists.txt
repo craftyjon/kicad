@@ -5,7 +5,6 @@ include_directories(
     dialogs
     transline
     attenuators
-    ../polygon
     ../common
     ${INC_AFTER}
     )
@@ -67,7 +66,6 @@ target_link_libraries( pcb_calculator
     #singletop  # replaces common, giving us restrictive control and link warnings.
     # There's way too much crap coming in from common yet.
     common
-    bitmaps
     gal
     ${wxWidgets_LIBRARIES}
     )
@@ -89,8 +87,6 @@ set_target_properties( pcb_calculator_kiface PROPERTIES
     )
 target_link_libraries( pcb_calculator_kiface
     common
-    bitmaps
-    polygon
     ${wxWidgets_LIBRARIES}
     )
 set_source_files_properties( pcb_calculator.cpp PROPERTIES

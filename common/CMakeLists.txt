@@ -17,7 +17,6 @@ include_directories(
     ${CURL_INCLUDE_DIRS}
     ../3d-viewer
     ../pcbnew
-    ../polygon
     ${INC_AFTER}
     ${OCE_INCLUDE_DIRS}
     ${OCC_INCLUDE_DIR}
@@ -93,7 +92,12 @@ add_library( legacy_wx STATIC ${LEGACY_WX_SRCS} )
 target_include_directories( legacy_wx PUBLIC ../include/legacy_wx )
 target_include_directories( legacy_gal PUBLIC ../include/legacy_gal )
 
+target_link_libraries( legacy_wx PRIVATE bitmaps polygon )
+target_link_libraries( legacy_gal PRIVATE bitmaps polygon )
+
 target_link_libraries( gal
+    polygon
+    bitmaps
     ${GLEW_LIBRARIES}
     ${CAIRO_LIBRARIES}
     ${PIXMAN_LIBRARIES}
@@ -419,6 +423,7 @@ add_library( common STATIC ${COMMON_SRCS} )
 add_dependencies( common version_header )
 target_link_libraries( common
     bitmaps
+    polygon
     gal
     ${Boost_LIBRARIES}
     ${CURL_LIBRARIES}
@@ -498,6 +503,10 @@ add_library( pcbcommon STATIC ${PCB_COMMON_SRCS} )
 
 target_include_directories( pcbcommon PUBLIC
     ../include/legacy_wx
+)
+
+target_link_libraries( pcbcommon PUBLIC
+    common
 )
 
 
@@ -603,7 +612,7 @@ add_dependencies( common page_layout_lexer_source_files )
 add_executable( dsntest EXCLUDE_FROM_ALL dsnlexer.cpp )
 target_link_libraries( dsntest common ${wxWidgets_LIBRARIES} rt )
 
-target_link_libraries( pcbcommon )
+target_link_libraries( pcbcommon PUBLIC bitmaps )
 
 
 # _kiway.so
@@ -646,7 +655,6 @@ if( false ) # future
 
     swig_link_libraries( kiway
         common
-        bitmaps
         ${wxWidgets_LIBRARIES}
         ${PYTHON_LIBRARIES}
         )

@@ -23,6 +23,7 @@
 
 #include <wx/tokenzr.h>
 #include <wx/dc.h>
+#include <wx/wx.h>
 #include "wx_grid.h"
 
 
@@ -43,6 +44,16 @@ WX_GRID::~WX_GRID()
 }
 
 
+void WX_GRID::SetColLabelSize( int aHeight )
+{
+    // correct wxFormBuilder height for large fonts
+    wxFont guiFont = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT );
+    int minHeight = guiFont.GetPixelSize().y + 2 * MIN_GRIDCELL_MARGIN;
+
+    wxGrid::SetColLabelSize( std::max( aHeight, minHeight ) );
+}
+
+
 void WX_GRID::SetTable( wxGridTableBase* aTable, bool aTakeOwnership )
 {
     // wxGrid::SetTable() messes up the column widths from wxFormBuilder so we have to save
@@ -54,8 +65,8 @@ void WX_GRID::SetTable( wxGridTableBase* aTable, bool aTakeOwnership )
         formBuilderColWidths[ i ] = GetColSize( i );
 
     wxGrid::SetTable( aTable );
-    // wxGrid::SetTable() may change the number of columns,
-    // so prevent out-of-bounds access to formBuildColWidths
+    // wxGrid::SetTable() may change the number of columns, so prevent out-of-bounds access
+    // to formBuilderColWidths
     numberCols = std::min( numberCols, GetNumberCols() );
 
     for( int i = 0; i < numberCols; ++i )
@@ -206,4 +217,45 @@ void WX_GRID::onGridColMove( wxGridEvent& aEvent )
 {
     // wxWidgets won't move an open editor, so better just to close it
     CommitPendingChanges( true );
+}
+
+
+int WX_GRID::GetVisibleWidth( int aCol, bool aHeader, bool aContents, bool aKeep )
+{
+    int size = 0;
+
+    if( aCol < 0 )
+    {
+        if( aKeep )
+            size = GetRowLabelSize();
+
+        // The 1.1 scale factor is due to the fact row labels use a bold font, bigger than the normal font
+        // TODO: use a better way to evaluate the text size, for bold font
+        for( int row = 0; aContents && row < GetNumberRows(); row++ )
+            size = std::max( size, int( GetTextExtent( GetRowLabelValue( row ) + "M" ).x * 1.1 ) );
+    }
+    else
+    {
+        if( aKeep )
+            size = GetColSize( aCol );
+
+        // 'M' is generally the widest character, so we buffer the column width by default to ensure
+        // we don't write a continuous line of text at the column header
+        if( aHeader )
+        {
+            // The 1.1 scale factor is due to the fact headers use a bold font, bigger than the normal font
+            size = std::max( size, int( GetTextExtent( GetColLabelValue( aCol ) + "M" ).x * 1.1 ) );
+        }
+
+        for( int row = 0; aContents && row < GetNumberRows(); row++ )
+        {
+            // If we have text, get the size.  Otherwise, use a placeholder for the checkbox
+            if( GetTable()->CanGetValueAs( row, aCol, wxGRID_VALUE_STRING ) )
+                size = std::max( size, GetTextExtent( GetCellValue( row, aCol ) + "M" ).x );
+            else
+                size = std::max( size, GetTextExtent( "MM" ).x );
+        }
+    }
+
+    return size;
 }

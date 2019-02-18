@@ -125,6 +125,14 @@ bool PANEL_SETUP_TEXT_AND_GRAPHICS::TransferDataToWindow()
         }
     }
 
+    // Work around an issue where wxWidgets doesn't calculate the row width on its own
+    for( int col = 0; col < m_grid->GetNumberCols(); col++ )
+        m_grid->SetColMinimalWidth( col, m_grid->GetVisibleWidth( col, true, true, false ) );
+
+    m_grid->SetRowLabelSize( m_grid->GetVisibleWidth( -1, true, true, true ) );
+
+    Layout();
+
     return true;
 }
 

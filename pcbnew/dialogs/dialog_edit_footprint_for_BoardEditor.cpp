@@ -4,7 +4,7 @@
  * Copyright (C) 2016 Mario Luzeiro <mrluzeiro@ua.pt>
  * Copyright (C) 2018 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2015 Dick Hollenbeck, dick@softplc.com
- * Copyright (C) 2004-2018 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2004-2019 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -64,6 +64,7 @@ DIALOG_FOOTPRINT_BOARD_EDITOR::DIALOG_FOOTPRINT_BOARD_EDITOR( PCB_EDIT_FRAME* aP
     m_netClearance( aParent, m_NetClearanceLabel, m_NetClearanceCtrl, m_NetClearanceUnits, false, 0 ),
     m_solderMask( aParent, m_SolderMaskMarginLabel, m_SolderMaskMarginCtrl, m_SolderMaskMarginUnits ),
     m_solderPaste( aParent, m_SolderPasteMarginLabel, m_SolderPasteMarginCtrl, m_SolderPasteMarginUnits ),
+    m_initialFocus( true ),
     m_inSelect( false )
 {
     m_config = Kiface().KifaceSettings();
@@ -287,11 +288,11 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::TransferDataToWindow()
         m_AutoPlaceCtrl->SetSelection( 0 );
 
     m_AutoPlaceCtrl->SetItemToolTip( 0, _( "Component can be freely moved and auto placed. User "
-                                                   "can arbitrarily select and edit component's pads." ) );
+                                           "can arbitrarily select and edit component's pads." ) );
     m_AutoPlaceCtrl->SetItemToolTip( 1, _( "Component can be freely moved and auto placed, but "
-                                                   "its pads cannot be selected or edited." ) );
+                                           "its pads cannot be selected or edited." ) );
     m_AutoPlaceCtrl->SetItemToolTip( 2, _( "Component is locked: it cannot be freely moved or "
-                                                   "auto placed." ) );
+                                           "auto placed." ) );
 
     m_CostRot90Ctrl->SetValue( m_footprint->GetPlacementCost90() );
     m_CostRot180Ctrl->SetValue( m_footprint->GetPlacementCost180() );
@@ -300,8 +301,8 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::TransferDataToWindow()
             "Footprints with this option are not put in the footprint position list file" ) );
     m_AttributsCtrl->SetItemToolTip( 1, _( "Use this attribute for SMD footprints.\n"
             "Only footprints with this option are put in the footprint position list file" ) );
-    m_AttributsCtrl->SetItemToolTip( 2, _( "Use this attribute for \"virtual\" footprints drawn on board\n"
-            "such as an edge connector (old ISA PC bus for instance)" ) );
+    m_AttributsCtrl->SetItemToolTip( 2, _( "Use this attribute for \"virtual\" footprints drawn "
+            "on board\nsuch as an edge connector (old ISA PC bus for instance)" ) );
 
     switch( m_footprint->GetAttributes() & 255 )
     {
@@ -321,7 +322,7 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::TransferDataToWindow()
     if( m_footprint->GetLocalSolderPasteMargin() == 0 )
         m_SolderPasteMarginCtrl->SetValue( wxT( "-" ) + m_SolderPasteMarginCtrl->GetValue() );
 
-    // Add solder paste margin ratio in per cent
+    // Add solder paste margin ratio in percent
     // for the usual default value 0.0, display -0.0 (or -0,0 in some countries)
     wxString msg;
     msg.Printf( wxT( "%f" ), m_footprint->GetLocalSolderPasteMarginRatio() * 100.0 );
@@ -370,9 +371,28 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::TransferDataToWindow()
     }
 
     select3DModel( 0 );   // will clamp idx within bounds
+    m_PreviewPane->UpdateDummyModule();
 
     // Show the footprint's ID.
     m_staticLibraryID->SetLabel( m_footprint->GetFPID().Format() );
+
+    for( int col = 0; col < m_itemsGrid->GetNumberCols(); col++ )
+    {
+        m_itemsGrid->SetColMinimalWidth( col, m_itemsGrid->GetVisibleWidth( col, true, false,
+                                                                            false ) );
+        // Adjust the column size. The column 6 has a small bitmap, so its width must be
+        // taken in account
+        int col_size = m_itemsGrid->GetVisibleWidth( col, true, true, false );
+
+        if( col == 6 )
+            col_size += 20;
+
+        if( m_itemsGrid->IsColShown( col ) )
+            m_itemsGrid->SetColSize( col, col_size );
+    }
+
+    m_itemsGrid->SetRowLabelSize( m_itemsGrid->GetVisibleWidth( -1, false, true, true ) );
+    m_modelsGrid->SetColSize( 1, m_modelsGrid->GetVisibleWidth( 1, true, false, false ) );
 
     Layout();
     adjustGridColumns( m_itemsGrid->GetRect().GetWidth());
@@ -476,7 +496,7 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::OnAdd3DModel( wxCommandEvent&  )
     int filter = 0;
 
     // If the PROJECT::VIEWER_3D_PATH hasn't been set yet, use the KISYS3DMOD environment
-    // varaible and fall back to the project path if necessary.
+    // variable and fall back to the project path if necessary.
     if( initialpath.IsEmpty() )
     {
         if( !wxGetEnv( "KISYS3DMOD", &initialpath ) || initialpath.IsEmpty() )
@@ -510,7 +530,7 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::OnAdd3DModel( wxCommandEvent&  )
         filename = alias + wxT( ":" ) + shortPath;
 
 #ifdef __WINDOWS__
-    // In Kicad files, filenames and paths are stored using Unix notation
+    // In KiCad files, filenames and paths are stored using Unix notation
     model.m_Filename.Replace( "\\", "/" );
 #endif
 
@@ -613,7 +633,7 @@ bool DIALOG_FOOTPRINT_BOARD_EDITOR::TransferDataFromWindow()
 
     size_t i = 2;
     BOARD_ITEM* next;
-    
+
     for( BOARD_ITEM* item = m_footprint->GraphicalItemsList().GetFirst(); item; item = next )
     {
         next = item->Next();
@@ -808,7 +828,9 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::adjustGridColumns( int aWidth )
     for( int i = 1; i < m_itemsGrid->GetNumberCols(); i++ )
         itemsWidth -= m_itemsGrid->GetColSize( i );
 
-    m_itemsGrid->SetColSize( 0, std::max( itemsWidth, 120 ) );
+    if( itemsWidth > 0 )
+        m_itemsGrid->SetColSize( 0, std::max( itemsWidth,
+                m_itemsGrid->GetVisibleWidth( 0, true, false, false ) ) );
 
     m_modelsGrid->SetColSize( 0, modelsWidth - m_modelsGrid->GetColSize( 1 ) - 5 );
 }
@@ -845,17 +867,23 @@ void DIALOG_FOOTPRINT_BOARD_EDITOR::OnUpdateUI( wxUpdateUIEvent&  )
 
         grid->SetFocus();
         grid->MakeCellVisible( row, col );
-        grid->SetGridCursor( row, col );
 
-        grid->EnableCellEditControl( true );
-        grid->ShowCellEditControl();
-
-        if( grid == m_itemsGrid && row == 0 && col == 0 )
+        // Selecting the first grid item only makes sense for the
+        // items grid
+        if( !m_initialFocus || grid == m_itemsGrid )
         {
-            auto referenceEditor = grid->GetCellEditor( 0, 0 );
-            SelectReferenceNumber( dynamic_cast<wxTextEntry*>( referenceEditor->GetControl() ) );
-            referenceEditor->DecRef();
+            grid->SetGridCursor( row, col );
+            grid->EnableCellEditControl( true );
+            grid->ShowCellEditControl();
+
+            if( grid == m_itemsGrid && row == 0 && col == 0 )
+            {
+                auto referenceEditor = grid->GetCellEditor( 0, 0 );
+                SelectReferenceNumber( dynamic_cast<wxTextEntry*>( referenceEditor->GetControl() ) );
+                referenceEditor->DecRef();
+            }
         }
+        m_initialFocus = false;
     }
 }
 

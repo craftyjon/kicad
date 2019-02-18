@@ -4,7 +4,6 @@ include_directories(
     ./
     ../
     ../../include
-    ../../polygon
     ${INC_AFTER}
 )
 
@@ -15,3 +14,7 @@ set( PCBNEW_CONN_SRCS
 )
 
 add_library( connectivity STATIC ${PCBNEW_CONN_SRCS} )
+
+target_link_libraries( connectivity PRIVATE
+    common
+)

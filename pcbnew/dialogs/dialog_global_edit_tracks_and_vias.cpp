@@ -117,8 +117,8 @@ DIALOG_GLOBAL_EDIT_TRACKS_AND_VIAS::DIALOG_GLOBAL_EDIT_TRACKS_AND_VIAS( PCB_EDIT
 
     buildFilterLists();
 
-    m_parent->UpdateTrackWidthSelectBox( m_trackWidthSelectBox );
-    m_parent->UpdateViaSizeSelectBox( m_viaSizesSelectBox );
+    m_parent->UpdateTrackWidthSelectBox( m_trackWidthSelectBox, false );
+    m_parent->UpdateViaSizeSelectBox( m_viaSizesSelectBox, false );
 
     m_layerBox->SetBoardFrame( m_parent );
     m_layerBox->SetLayersHotkeys( false );
@@ -280,7 +280,7 @@ void DIALOG_GLOBAL_EDIT_TRACKS_AND_VIAS::processItem( PICKED_ITEMS_LIST* aUndoLi
             brdSettings.SetTrackWidthIndex( (unsigned) m_trackWidthSelectBox->GetSelection() );
             brdSettings.SetViaSizeIndex( (unsigned) m_viaSizesSelectBox->GetSelection() );
 
-            if( !m_parent->SetTrackSegmentWidth( aItem, aUndoList, false ) )
+            if( m_parent->SetTrackSegmentWidth( aItem, aUndoList, false ) == TRACK_ACTION_DRC_ERROR )
                 m_failedDRC = true;
         }
         brdSettings.SetTrackWidthIndex( prevTrackWidthIndex );
@@ -301,7 +301,7 @@ void DIALOG_GLOBAL_EDIT_TRACKS_AND_VIAS::processItem( PICKED_ITEMS_LIST* aUndoLi
     }
     else
     {
-        if( !m_parent->SetTrackSegmentWidth( aItem, aUndoList, true ) )
+        if( m_parent->SetTrackSegmentWidth( aItem, aUndoList, true ) == TRACK_ACTION_DRC_ERROR )
             m_failedDRC = true;
     }
 }

@@ -1,9 +1,9 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 2015 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 2019 Jean-Pierre Charras, jp.charras at wanadoo.fr
  * Copyright (C) 2008 Wayne Stambaugh <stambaughw@gmail.com>
- * Copyright (C) 2004-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 2004-2019 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -151,6 +151,22 @@ bool LIB_EDIT_FRAME::LoadComponentFromCurrentLib( const wxString& aAliasName, in
     return true;
 }
 
+/**
+ * Synchronise screen settings from a current screen into another screen.
+ *
+ * This can be used, for example, when loading a new screen into a frame,
+ * but you want the new screen to inherit some settings (e.g. grids) from the
+ * frame's current screen.
+ *
+ * @param aCurrentScreen    the existing frame screen
+ * @param aIncomingScreen   a screen that is intended to replace the current screen
+ */
+static void synchronizeLibEditScreenSettings(
+        const SCH_SCREEN& aCurrentScreen, SCH_SCREEN& aIncomingScreen )
+{
+    aIncomingScreen.SetGrid( aCurrentScreen.GetGridSize() );
+}
+
 
 bool LIB_EDIT_FRAME::LoadOneLibraryPartAux( LIB_ALIAS* aEntry, const wxString& aLibrary,
                                             int aUnit, int aConvert )
@@ -172,8 +188,18 @@ bool LIB_EDIT_FRAME::LoadOneLibraryPartAux( LIB_ALIAS* aEntry, const wxString& a
     m_unit = aUnit > 0 ? aUnit : 1;
     m_convert = aConvert > 0 ? aConvert : 1;
 
-    auto s = m_libMgr->GetScreen( lib_part->GetName(), aLibrary );
-    SetScreen( s );
+    // The buffered screen for the part
+    SCH_SCREEN* part_screen = m_libMgr->GetScreen( lib_part->GetName(), aLibrary );
+
+    const SCH_SCREEN* curr_screen = GetScreen();
+
+    // Before we set the frame screen, transfer any settings from the current
+    // screen that we want to keep to the incoming (buffered) part's screen
+    // which could be out of date relative to the current screen.
+    if( curr_screen )
+        synchronizeLibEditScreenSettings( *curr_screen, *part_screen );
+
+    SetScreen( part_screen );
     SetCurPart( new LIB_PART( *lib_part ) );
     SetCurLib( aLibrary );
 
@@ -642,7 +668,7 @@ void LIB_EDIT_FRAME::loadPart( const wxString& aAlias, const wxString& aLibrary,
     // and if units are interchangeable, graphic items are common to units
     m_drawSpecificUnit = part->UnitsLocked() ? true : false;
 
-    LoadOneLibraryPartAux( alias, aLibrary, m_unit, 0 );
+    LoadOneLibraryPartAux( alias, aLibrary, aUnit, 0 );
 }
 
 

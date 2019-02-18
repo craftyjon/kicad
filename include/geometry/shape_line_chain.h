@@ -34,7 +34,8 @@
 #include <math/vector2d.h>
 #include <geometry/shape.h>
 #include <geometry/seg.h>
-#include <../polygon/clipper.hpp>
+
+#include <clipper.hpp>
 
 /**
  * Class SHAPE_LINE_CHAIN
@@ -563,6 +564,15 @@ public:
      * @return true if the point lies on the edge.
      */
     bool PointOnEdge( const VECTOR2I& aP ) const;
+
+    /**
+     * Function EdgeContainingPoint()
+     *
+     * Checks if point aP lies on an edge or vertex of the line chain.
+     * @param aP point to check
+     * @return index of the first edge containing the point, otherwise negative
+     */
+    int EdgeContainingPoint( const VECTOR2I& aP ) const;
 
     /**
      * Function CheckClearance()

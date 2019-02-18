@@ -2,7 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2007 Jean-Pierre Charras, jp.charras at wanadoo.fr
- * Copyright (C) 1992-2017 KiCad Developers, see AUTHORS.txt for contributors.
+ * Copyright (C) 1992-2019 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -52,7 +52,8 @@ KIDIALOG::KIDIALOG( wxWindow* aParent, const wxString& aMessage,
 
 KIDIALOG::KIDIALOG( wxWindow* aParent, const wxString& aMessage,
         KD_TYPE aType, const wxString& aCaption )
-    : wxRichMessageDialog( aParent, aMessage, getCaption( aType, aCaption ), getStyle( aType ) )
+    : wxRichMessageDialog( aParent, aMessage, getCaption( aType, aCaption ), getStyle( aType ) ),
+      m_hash( 0 )
 {
 }
 
@@ -161,13 +162,11 @@ public:
     {
         m_bitmap->SetBitmap( KiBitmap( dialog_warning_xpm ) );
         m_TextInfo->SetLabel( aWarning );
-        m_staticText2->SetLabel( aMessage );
+        m_staticTextWarningMessage->SetLabel( aMessage );
 
-        m_sdbSizer1OK->SetLabel( aOKLabel );
-        m_sdbSizer1Cancel->SetLabel( aCancelLabel );
-        m_sdbSizer1OK->SetDefault();
-
-        Layout();
+        m_sdbSizerOK->SetLabel( aOKLabel );
+        m_sdbSizerCancel->SetLabel( aCancelLabel );
+        m_sdbSizerOK->SetDefault();
 
         FinishDialogSettings();
     };
@@ -295,6 +294,7 @@ bool IsOK( wxWindow* aParent, const wxString& aMessage )
 {
     wxMessageDialog dlg( aParent, aMessage, _( "Confirmation" ),
                          wxYES_NO | wxCENTRE | wxICON_QUESTION | wxSTAY_ON_TOP );
+    dlg.SetEscapeId( wxID_NO );
 
     return dlg.ShowModal() == wxID_YES;
 }

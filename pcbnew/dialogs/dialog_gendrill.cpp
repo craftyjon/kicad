@@ -5,8 +5,8 @@
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
- * Copyright (C) 1992-2017 Jean_Pierre Charras <jp.charras at wanadoo.fr>
- * Copyright (C) 1992-2017 KiCad Developers, see change_log.txt for contributors.
+ * Copyright (C) 1992-2019 Jean_Pierre Charras <jp.charras at wanadoo.fr>
+ * Copyright (C) 1992-2019 KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -47,7 +47,7 @@
 #include <wx/stdpaths.h>
 
 
-// Keywords for read and write config
+// Keywords for read and write parameters in project config
 #define ZerosFormatKey          wxT( "DrillZerosFormat" )
 #define MirrorKey               wxT( "DrillMirrorYOpt" )
 #define MinimalHeaderKey        wxT( "DrillMinHeader" )
@@ -55,10 +55,12 @@
 #define UnitDrillInchKey        wxT( "DrillUnit" )
 #define DrillMapFileTypeKey     wxT( "DrillMapFileType" )
 #define DrillFileFormatKey      wxT( "DrillFileType" )
+#define OvalHolesRouteModeKey   wxT( "OvalHolesRouteMode" )
 
 // list of allowed precision for EXCELLON files, for integer format:
 // Due to difference between inches and mm,
 // there are 2 precision values, one for inches and one for metric
+// Note: for decimla format, the precision is not used
 static DRILL_PRECISION precisionListForInches( 2, 4 );
 static DRILL_PRECISION precisionListForMetric( 3, 3 );
 
@@ -67,28 +69,28 @@ static DRILL_PRECISION precisionListForMetric( 3, 3 );
  */
 void PCB_EDIT_FRAME::InstallDrillFrame( wxCommandEvent& event )
 {
-    DIALOG_GENDRILL dlg( this );
+    DIALOG_GENDRILL dlg( this, this );
 
     dlg.ShowModal();
 }
 
 
-DIALOG_GENDRILL::DIALOG_GENDRILL( PCB_EDIT_FRAME* parent ) :
-    DIALOG_GENDRILL_BASE( parent )
+DIALOG_GENDRILL::DIALOG_GENDRILL(  PCB_EDIT_FRAME* aPcbEditFrame, wxWindow* aParent  ) :
+    DIALOG_GENDRILL_BASE( aParent )
 {
-    m_parent = parent;
-    m_board  = parent->GetBoard();
+    m_pcbEditFrame = aPcbEditFrame;
+    m_board  = m_pcbEditFrame->GetBoard();
     m_config = Kiface().KifaceSettings();
-    m_plotOpts = m_parent->GetPlotSettings();
+    m_plotOpts = m_pcbEditFrame->GetPlotSettings();
 
     // We use a sdbSizer to get platform-dependent ordering of the action buttons, but
     // that requires us to correct the button labels here.
-    m_sdbSizer1OK->SetLabel( _( "Generate Drill File" ) );
-    m_sdbSizer1Apply->SetLabel( _( "Generate Map File" ) );
-    m_sdbSizer1Cancel->SetLabel( _( "Close" ) );
+    m_sdbSizerOK->SetLabel( _( "Generate Drill File" ) );
+    m_sdbSizerApply->SetLabel( _( "Generate Map File" ) );
+    m_sdbSizerCancel->SetLabel( _( "Close" ) );
     m_buttonsSizer->Layout();
 
-    m_sdbSizer1OK->SetDefault();
+    m_sdbSizerOK->SetDefault();
     SetReturnCode( 1 );
     initDialog();
     GetSizer()->SetSizeHints( this );
@@ -103,11 +105,10 @@ bool DIALOG_GENDRILL::m_Mirror = false;             // Only for Excellon format
 bool DIALOG_GENDRILL::m_Merge_PTH_NPTH  = false;    // Only for Excellon format
 int DIALOG_GENDRILL::m_mapFileType      = 1;
 int DIALOG_GENDRILL::m_drillFileType    = 0;
-
+bool DIALOG_GENDRILL::m_UseRouteModeForOvalHoles = true;    // Use G00 route mode to "drill" oval holes
 
 DIALOG_GENDRILL::~DIALOG_GENDRILL()
 {
-    UpdateConfig();
 }
 
 
@@ -121,6 +122,7 @@ void DIALOG_GENDRILL::initDialog()
     m_drillOriginIsAuxAxis = m_plotOpts.GetUseAuxOrigin();
     m_config->Read( DrillMapFileTypeKey, &m_mapFileType );
     m_config->Read( DrillFileFormatKey, &m_drillFileType );
+    m_config->Read( OvalHolesRouteModeKey, &m_UseRouteModeForOvalHoles );
 
     InitDisplayParams();
 }
@@ -143,6 +145,7 @@ void DIALOG_GENDRILL::InitDisplayParams()
     m_Check_Mirror->SetValue( m_Mirror );
     m_Check_Merge_PTH_NPTH->SetValue( m_Merge_PTH_NPTH );
     m_Choice_Drill_Map->SetSelection( m_mapFileType );
+    m_radioBoxOvalHoleMode->SetSelection( m_UseRouteModeForOvalHoles ? 0 : 1 );
 
     m_platedPadsHoleCount    = 0;
     m_notplatedPadsHoleCount = 0;
@@ -150,7 +153,7 @@ void DIALOG_GENDRILL::InitDisplayParams()
     m_microViasCount   = 0;
     m_blindOrBuriedViasCount = 0;
 
-    for( MODULE* module = m_parent->GetBoard()->m_Modules;  module;  module = module->Next() )
+    for( MODULE* module = m_board->m_Modules;  module;  module = module->Next() )
     {
         for( D_PAD* pad = module->PadsList(); pad != NULL; pad = pad->Next() )
         {
@@ -177,7 +180,7 @@ void DIALOG_GENDRILL::InitDisplayParams()
         }
     }
 
-    for( TRACK* track = m_parent->GetBoard()->m_Track; track != NULL; track = track->Next() )
+    for( TRACK* track = m_board->m_Track; track != NULL; track = track->Next() )
     {
         const VIA *via = dynamic_cast<const VIA*>( track );
         if( via )
@@ -228,6 +231,7 @@ void DIALOG_GENDRILL::onFileFormatSelection( wxCommandEvent& event )
     m_Check_Mirror->Enable( enbl_Excellon );
     m_Check_Minimal->Enable( enbl_Excellon );
     m_Check_Merge_PTH_NPTH->Enable( enbl_Excellon );
+    m_radioBoxOvalHoleMode->Enable( enbl_Excellon );
 
     if( enbl_Excellon )
         UpdatePrecisionOptions();
@@ -241,7 +245,7 @@ void DIALOG_GENDRILL::onFileFormatSelection( wxCommandEvent& event )
 
 void DIALOG_GENDRILL::UpdateConfig()
 {
-    SetParams();
+    UpdateDrillParams();
 
     m_config->Write( ZerosFormatKey, m_ZerosFormat );
     m_config->Write( MirrorKey, m_Mirror );
@@ -250,6 +254,7 @@ void DIALOG_GENDRILL::UpdateConfig()
     m_config->Write( UnitDrillInchKey, m_UnitDrillIsInch );
     m_config->Write( DrillMapFileTypeKey, m_mapFileType );
     m_config->Write( DrillFileFormatKey, m_drillFileType );
+    m_config->Write( OvalHolesRouteModeKey, m_UseRouteModeForOvalHoles );
 }
 
 
@@ -308,7 +313,7 @@ void DIALOG_GENDRILL::OnOutputDirectoryBrowseClicked( wxCommandEvent& event )
 
     wxFileName      dirName = wxFileName::DirName( dirDialog.GetPath() );
 
-    fn = Prj().AbsolutePath( m_parent->GetBoard()->GetFileName() );
+    fn = Prj().AbsolutePath( m_board->GetFileName() );
     wxString defaultPath = fn.GetPathWithSep();
     wxString msg;
     msg.Printf( _( "Do you want to use a path relative to\n\"%s\"" ), GetChars( defaultPath ) );
@@ -327,7 +332,7 @@ void DIALOG_GENDRILL::OnOutputDirectoryBrowseClicked( wxCommandEvent& event )
 }
 
 
-void DIALOG_GENDRILL::SetParams()
+void DIALOG_GENDRILL::UpdateDrillParams()
 {
     wxString msg;
 
@@ -346,11 +351,12 @@ void DIALOG_GENDRILL::SetParams()
     m_Mirror = m_Check_Mirror->IsChecked();
     m_Merge_PTH_NPTH = m_Check_Merge_PTH_NPTH->IsChecked();
     m_ZerosFormat = m_Choice_Zeros_Format->GetSelection();
+    m_UseRouteModeForOvalHoles = m_radioBoxOvalHoleMode->GetSelection() == 0;
 
     if( m_Choice_Drill_Offset->GetSelection() == 0 )
         m_FileDrillOffset = wxPoint( 0, 0 );
     else
-        m_FileDrillOffset = m_parent->GetAuxOrigin();
+        m_FileDrillOffset = m_pcbEditFrame->GetAuxOrigin();
 
     if( m_UnitDrillIsInch )
         m_Precision = precisionListForInches;
@@ -365,7 +371,7 @@ void DIALOG_GENDRILL::GenDrillAndMapFiles( bool aGenDrill, bool aGenMap )
 {
     UpdateConfig();     // set params and Save drill options
 
-    m_parent->ClearMsgPanel();
+    m_pcbEditFrame->ClearMsgPanel();
     WX_TEXT_CTRL_REPORTER reporter( m_messagesBox );
 
     const PlotFormat filefmt[6] =
@@ -382,7 +388,7 @@ void DIALOG_GENDRILL::GenDrillAndMapFiles( bool aGenDrill, bool aGenMap )
     // Create output directory if it does not exist (also transform it in
     // absolute form). Bail if it fails
     wxFileName  outputDir = wxFileName::DirName( m_plotOpts.GetOutputDirectory() );
-    wxString    boardFilename = m_parent->GetBoard()->GetFileName();
+    wxString    boardFilename = m_board->GetFileName();
 
     if( !EnsureFileDirectoryExists( &outputDir, boardFilename, &reporter ) )
     {
@@ -395,10 +401,11 @@ void DIALOG_GENDRILL::GenDrillAndMapFiles( bool aGenDrill, bool aGenMap )
 
     if( m_drillFileType == 0 )
     {
-        EXCELLON_WRITER excellonWriter( m_parent->GetBoard() );
+        EXCELLON_WRITER excellonWriter( m_board );
         excellonWriter.SetFormat( !m_UnitDrillIsInch, (EXCELLON_WRITER::ZEROS_FMT) m_ZerosFormat,
                                   m_Precision.m_lhs, m_Precision.m_rhs );
         excellonWriter.SetOptions( m_Mirror, m_MinimalHeader, m_FileDrillOffset, m_Merge_PTH_NPTH );
+        excellonWriter.SetRouteModeForOvalHoles( m_UseRouteModeForOvalHoles );
         excellonWriter.SetMapFileFormat( filefmt[choice] );
 
         excellonWriter.CreateDrillandMapFilesSet( outputDir.GetFullPath(),
@@ -406,7 +413,7 @@ void DIALOG_GENDRILL::GenDrillAndMapFiles( bool aGenDrill, bool aGenMap )
     }
     else
     {
-        GERBER_WRITER gerberWriter( m_parent->GetBoard() );
+        GERBER_WRITER gerberWriter( m_board );
         // Set gerber precision: only 5 or 6 digits for mantissa are allowed
         // (SetFormat() accept 5 or 6, and any other value set the precision to 5)
         // the integer part precision is always 4, and units always mm
@@ -424,7 +431,7 @@ void DIALOG_GENDRILL::OnGenReportFile( wxCommandEvent& event )
 {
     UpdateConfig(); // set params and Save drill options
 
-    wxFileName fn = m_parent->GetBoard()->GetFileName();
+    wxFileName fn = m_board->GetFileName();
 
     fn.SetName( fn.GetName() + wxT( "-drl" ) );
     fn.SetExt( ReportFileExtension );
@@ -446,13 +453,13 @@ void DIALOG_GENDRILL::OnGenReportFile( wxCommandEvent& event )
     // (file ext, Merge PTH/NPTH option)
     if( m_drillFileType == 0 )
     {
-        EXCELLON_WRITER excellonWriter( m_parent->GetBoard() );
+        EXCELLON_WRITER excellonWriter( m_board );
         excellonWriter.SetMergeOption( m_Merge_PTH_NPTH );
         success = excellonWriter.GenDrillReportFile( dlg.GetPath() );
     }
     else
     {
-        GERBER_WRITER gerberWriter( m_parent->GetBoard() );
+        GERBER_WRITER gerberWriter( m_board );
         success = gerberWriter.GenDrillReportFile( dlg.GetPath() );
     }
 

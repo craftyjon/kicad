@@ -71,15 +71,11 @@ if( APPLE )
         )
     target_link_libraries( kicad
         common
-        bitmaps
-        polygon
         ${wxWidgets_LIBRARIES}
         )
 else()
     target_link_libraries( kicad
         common
-        bitmaps
-        polygon
         gal
         ${wxWidgets_LIBRARIES}
         ${GDI_PLUS_LIBRARIES}

@@ -12,7 +12,6 @@ include_directories(
     ../3d-viewer
     ../pcbnew
     ../pcbnew/dialogs
-    ../polygon
     ../common
     ${GLM_INCLUDE_DIR}
     ${INC_AFTER}
@@ -89,7 +88,6 @@ if( false ) # no CVPCB exe any more, only the *.kiface
         #singletop  # replaces common, giving us restrictive control and link warnings.
         # There's way too much crap coming in from common yet.
         common
-        bitmaps
         ${wxWidgets_LIBRARIES}
         )
     if( MAKE_LINK_MAPS )
@@ -147,24 +145,18 @@ target_link_libraries( cvpcb_kiface
     pcad2kicadpcb
     3d-viewer
     common
-    bitmaps
-    polygon
     gal
     legacy_wx
     pcbcommon
     pcad2kicadpcb
     3d-viewer
     common
-    bitmaps
-    polygon
     gal
     legacy_wx
     pcbcommon
     pcad2kicadpcb
     3d-viewer
     common
-    bitmaps
-    polygon
     gal
     legacy_wx
     ${wxWidgets_LIBRARIES}

@@ -41,6 +41,7 @@ set( common_srcs
     test_coroutine.cpp
     test_format_units.cpp
     test_hotkey_store.cpp
+    test_lib_table.cpp
     test_kicad_string.cpp
     test_refdes_utils.cpp
     test_title_block.cpp
@@ -62,8 +63,6 @@ set( common_srcs
 set( common_libs
     common
     legacy_gal
-    polygon
-    bitmaps
     gal
     qa_utils
     unit_test_utils
@@ -90,7 +89,6 @@ include_directories(
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/pcbnew
     ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/polygon
     ${INC_AFTER}
 )
 
