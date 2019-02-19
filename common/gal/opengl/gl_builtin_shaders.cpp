@@ -103,6 +103,8 @@ void computeLineCoords( bool posture, vec2 vs, vec2 vp, vec2 texcoord, vec2 dir,
     float pixelWidth = roundr( w / worldPixelSize, 1.0 );
     float aspect = ( lineLength + w ) / w;
     vec4 color = gl_Color;
+    vec2 s = sign( vec2( gl_ModelViewProjectionMatrix[0][0], gl_ModelViewProjectionMatrix[1][1] ) );
+
 
     if( pixelWidth < 1.0 )
         pixelWidth = 1.0;
@@ -110,7 +112,7 @@ void computeLineCoords( bool posture, vec2 vs, vec2 vp, vec2 texcoord, vec2 dir,
     if ( pixelWidth > 1.0 || pixelSizeMultiplier > 1.0 )
     {
         vec2 offsetNorm = (vs + vp) * pixelWidth / lineLength * 0.5;
-        vec4 screenOffset = vec4( offsetNorm.x  * screenPixelSize.x, -offsetNorm.y  * screenPixelSize.y , 0, 0);
+        vec4 screenOffset = vec4( s.x * offsetNorm.x  * screenPixelSize.x, s.y * offsetNorm.y  * screenPixelSize.y , 0, 0);
         vec4 adjust = vec4(-1, -1, 0, 0);
 
         if( mod( pixelWidth * pixelSizeMultiplier, 2.0 ) > 0.9 )
@@ -146,12 +148,15 @@ void computeLineCoords( bool posture, vec2 vs, vec2 vp, vec2 texcoord, vec2 dir,
 }
 
 
-void computeCircleCoords( float vertexIndex, float radius, float lineWidth )
+void computeCircleCoords( float mode, float vertexIndex, float radius, float lineWidth )
 {
     vec4 delta;
     vec4 center = roundv( gl_ModelViewProjectionMatrix * gl_Vertex + vec4(1, 1, 0, 0), screenPixelSize );
     float pixelWidth = roundr( lineWidth / worldPixelSize, 1.0);
-    float pixelR =  roundr( radius / worldPixelSize, 1.0);
+    float pixelR = roundr( radius / worldPixelSize, 1.0);
+
+    if( mode == SHADER_STROKED_CIRCLE)
+        pixelR += pixelWidth / 2.0;
 
     vec4 adjust = vec4(-1, -1, 0, 0);
 
@@ -225,7 +230,7 @@ void main()
     else if( mode == SHADER_LINE_F )
         computeLineCoords( posture,  -vs, vp,  vec2(  1,  1 ), vec2( -1, 0 ), lineWidth, false );
     else if( mode == SHADER_FILLED_CIRCLE || mode == SHADER_STROKED_CIRCLE)
-        computeCircleCoords( shaderParams.y, shaderParams.z, shaderParams.w );
+        computeCircleCoords( mode, shaderParams.y, shaderParams.z, shaderParams.w );
     else
     {
         // Pass through the coordinates like in the fixed pipeline
