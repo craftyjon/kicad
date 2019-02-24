@@ -2,7 +2,7 @@
  * This program source code file is part of KICAD, a free EDA CAD application.
  *
  * Copyright (C) 2012 Torsten Hueter, torstenhtr <at> gmx.de
- * Copyright (C) 2012 Kicad Developers, see change_log.txt for contributors.
+ * Copyright (C) 2012-2019 Kicad Developers, see change_log.txt for contributors.
  * Copyright (C) 2017-2018 CERN
  * @author Maciej Suminski <maciej.suminski@cern.ch>
  *
@@ -90,6 +90,10 @@ public:
     /// @copydoc GAL::DrawArc()
     virtual void DrawArc( const VECTOR2D& aCenterPoint, double aRadius,
                           double aStartAngle, double aEndAngle ) override;
+
+    /// @copydoc GAL::DrawArcSegment()
+    virtual void DrawArcSegment( const VECTOR2D& aCenterPoint, double aRadius,
+                                 double aStartAngle, double aEndAngle, double aWidth ) override;
 
     /// @copydoc GAL::DrawRectangle()
     virtual void DrawRectangle( const VECTOR2D& aStartPoint, const VECTOR2D& aEndPoint ) override;
@@ -228,8 +232,16 @@ protected:
 
     void resetContext();
 
-    virtual void drawGridLine( const VECTOR2D& aStartPoint, const VECTOR2D& aEndPoint ) override;
-    virtual void drawGridPoint( const VECTOR2D& aPoint, double aSize );
+    /**
+     * @brief Draw a grid line (usually a simplified line function).
+     *
+     * @param aStartPoint is the start point of the line.
+     * @param aEndPoint is the end point of the line.
+     */
+    void drawGridLine( const VECTOR2D& aStartPoint, const VECTOR2D& aEndPoint );
+    void drawGridCross( const VECTOR2D& aPoint );
+    void drawGridPoint( const VECTOR2D& aPoint, double aSize );
+    void drawAxes( const VECTOR2D& aStartPoint, const VECTOR2D& aEndPoint );
 
     /// Super class definition
     typedef GAL super;

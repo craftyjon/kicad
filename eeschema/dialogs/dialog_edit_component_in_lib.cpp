@@ -729,9 +729,21 @@ void DIALOG_EDIT_COMPONENT_IN_LIBRARY::OnDeleteAlias( wxCommandEvent& event )
 
 void DIALOG_EDIT_COMPONENT_IN_LIBRARY::OnFilterDClick( wxMouseEvent& event)
 {
+    int idx = m_FootprintFilterListBox->HitTest( event.GetPosition() );
     wxCommandEvent dummy;
-    OnAddFootprintFilter( dummy );
-    event.Skip();
+
+    if( idx >= 0 )
+        OnEditFootprintFilter( dummy );
+    else
+        OnAddFootprintFilter( dummy );
+}
+
+
+void DIALOG_EDIT_COMPONENT_IN_LIBRARY::OnCancelButtonClick( wxCommandEvent& event )
+{
+    // Running the Footprint Browser gums up the works and causes the automatic cancel
+    // stuff to no longer work.  So we do it here ourselves.
+    EndQuasiModal( wxID_CANCEL );
 }
 
 

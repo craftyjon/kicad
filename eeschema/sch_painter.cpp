@@ -34,6 +34,7 @@
 #include <lib_arc.h>
 #include <lib_field.h>
 #include <lib_text.h>
+#include <lib_bezier.h>
 #include <sch_line.h>
 #include <sch_component.h>
 #include <sch_field.h>
@@ -56,6 +57,7 @@
 #include <colors_design_settings.h>
 #include <connection_graph.h>
 #include <geometry/shape_line_chain.h>
+#include <bezier_curves.h>
 
 #include "sch_painter.h"
 
@@ -198,6 +200,7 @@ bool SCH_PAINTER::Draw( const VIEW_ITEM *aItem, int aLayer )
     HANDLE_ITEM(LIB_ARC_T, LIB_ARC);
     HANDLE_ITEM(LIB_FIELD_T, LIB_FIELD);
     HANDLE_ITEM(LIB_TEXT_T, LIB_TEXT);
+    HANDLE_ITEM(LIB_BEZIER_T, LIB_BEZIER);
     HANDLE_ITEM(SCH_COMPONENT_T, SCH_COMPONENT);
     HANDLE_ITEM(SCH_JUNCTION_T, SCH_JUNCTION);
     HANDLE_ITEM(SCH_LINE_T, SCH_LINE);
@@ -319,6 +322,10 @@ bool SCH_PAINTER::setColors( const LIB_ITEM* aItem, int aLayer )
     {
         COLOR4D color = getOverlayColor( aItem, m_schSettings.GetLayerColor( LAYER_DEVICE_BACKGROUND ), true );
 
+        // These actions place the item over others, so allow a modest transparency here
+        if( aItem->IsMoving() || aItem->IsDragging() || aItem->IsResized() )
+            color = color.WithAlpha( 0.75 );
+
         m_gal->SetIsFill( true );
         m_gal->SetFillColor( color );
 
@@ -328,6 +335,10 @@ bool SCH_PAINTER::setColors( const LIB_ITEM* aItem, int aLayer )
     else if( aLayer == LAYER_DEVICE )
     {
         COLOR4D color = getOverlayColor( aItem, m_schSettings.GetLayerColor( LAYER_DEVICE ), false );
+
+        // These actions place the item over others, so allow a modest transparency here
+        if( aItem->IsMoving() || aItem->IsDragging() || aItem->IsResized() )
+            color = color.WithAlpha( 0.75 );
 
         m_gal->SetIsStroke( true );
         m_gal->SetStrokeColor( color );
@@ -863,6 +874,28 @@ void SCH_PAINTER::draw( LIB_PIN *aPin, int aLayer, bool isDangling, bool isMovin
 
     default:
         wxFAIL_MSG( "Unknown pin orientation" );
+    }
+}
+
+
+void SCH_PAINTER::draw( LIB_BEZIER *aCurve, int aLayer )
+{
+    if( !isUnitAndConversionShown( aCurve ) )
+        return;
+
+    if( setColors( aCurve, aLayer ) )
+    {
+        BEZIER_POLY poly ( aCurve->GetPoints() );
+        std::vector<wxPoint> pts;
+        std::deque<VECTOR2D> pts_xformed;
+        poly.GetPoly( pts );
+
+        for( const auto &p : pts )
+        {
+            pts_xformed.push_back( mapCoords( p ) );
+        }
+
+        m_gal->DrawPolygon( pts_xformed );
     }
 }
 

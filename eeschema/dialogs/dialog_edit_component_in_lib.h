@@ -1,7 +1,3 @@
-/**
- * @file dialog_edit_component_in_lib.h
- */
-
 /*
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
@@ -99,6 +95,7 @@ private:
     void OnEditSpiceModel( wxCommandEvent& event ) override;
     void OnUpdateUI( wxUpdateUIEvent& event ) override;
     void OnFilterDClick( wxMouseEvent& event ) override;
+    void OnCancelButtonClick( wxCommandEvent& event ) override;
 
     void updateAliasName( bool aFromGrid, const wxString& aName );
     bool checkAliasName( const wxString& aName );
@@ -106,5 +103,4 @@ private:
     void adjustAliasGridColumns( int aWidth );
 };
 
-#endif
-    // _DIALOG_EDIT_COMPONENT_IN_LIB_H_
+#endif // _DIALOG_EDIT_COMPONENT_IN_LIB_H_

@@ -146,6 +146,8 @@ BEGIN_EVENT_TABLE( LIB_EDIT_FRAME, EDA_DRAW_FRAME )
     EVT_MENU( ID_HELP_GET_INVOLVED, EDA_DRAW_FRAME::GetKicadContribute )
     EVT_MENU( wxID_ABOUT, EDA_BASE_FRAME::GetKicadAbout )
     EVT_MENU( ID_GRID_SETTINGS, SCH_BASE_FRAME::OnGridSettings )
+    EVT_MENU( ID_MENU_CANVAS_CAIRO, LIB_EDIT_FRAME::OnSwitchCanvas )
+    EVT_MENU( ID_MENU_CANVAS_OPENGL, LIB_EDIT_FRAME::OnSwitchCanvas )
 
     EVT_MENU( wxID_PREFERENCES, LIB_EDIT_FRAME::OnPreferencesOptions )
 
@@ -190,6 +192,8 @@ BEGIN_EVENT_TABLE( LIB_EDIT_FRAME, EDA_DRAW_FRAME )
                          LIB_EDIT_FRAME::OnUpdateEditingPart )
     EVT_UPDATE_UI( ID_LIBEDIT_SHOW_ELECTRICAL_TYPE, LIB_EDIT_FRAME::OnUpdateElectricalType )
     EVT_UPDATE_UI( ID_LIBEDIT_SHOW_HIDE_SEARCH_TREE, LIB_EDIT_FRAME::OnUpdateSearchTreeTool )
+    EVT_UPDATE_UI( ID_MENU_CANVAS_CAIRO, LIB_EDIT_FRAME::OnUpdateSwitchCanvas )
+    EVT_UPDATE_UI( ID_MENU_CANVAS_OPENGL, LIB_EDIT_FRAME::OnUpdateSwitchCanvas )
 
 END_EVENT_TABLE()
 
@@ -1835,4 +1839,14 @@ void LIB_EDIT_FRAME::KiwayMailIn( KIWAY_EXPRESS& mail )
     default:
         ;
     }
+}
+
+
+void LIB_EDIT_FRAME::OnSwitchCanvas( wxCommandEvent& aEvent )
+{
+    // switches currently used canvas ( Cairo / OpenGL):
+    SCH_BASE_FRAME::OnSwitchCanvas( aEvent );
+
+    // Set options specific to symbol editor (axies are always enabled):
+    GetGalCanvas()->GetGAL()->SetAxesEnabled( true );
 }
