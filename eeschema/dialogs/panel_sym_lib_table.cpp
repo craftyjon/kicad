@@ -83,7 +83,7 @@ public:
 class SYMBOL_GRID_TRICKS : public GRID_TRICKS
 {
 public:
-    SYMBOL_GRID_TRICKS( DIALOG_EDIT_LIBRARY_TABLES* aParent, wxGrid* aGrid ) :
+    SYMBOL_GRID_TRICKS( DIALOG_EDIT_LIBRARY_TABLES* aParent, WX_GRID* aGrid ) :
         GRID_TRICKS( aGrid ),
         m_dialog( aParent )
     {
@@ -192,7 +192,8 @@ PANEL_SYM_LIB_TABLE::PANEL_SYM_LIB_TABLE( DIALOG_EDIT_LIBRARY_TABLES* aParent,
         wxGridCellAttr* attr;
 
         attr = new wxGridCellAttr;
-        attr->SetEditor( new GRID_CELL_PATH_EDITOR( m_parent, &m_lastBrowseDir ) );
+        attr->SetEditor( new GRID_CELL_SYMLIB_EDITOR( m_parent, &m_lastBrowseDir,
+                SchematicLibraryFileWildcard() ) );
         g->SetColAttr( COL_URI, attr );
 
         attr = new wxGridCellAttr;

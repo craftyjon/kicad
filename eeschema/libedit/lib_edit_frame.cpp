@@ -617,6 +617,8 @@ void LIB_EDIT_FRAME::OnViewEntryDoc( wxCommandEvent& event )
     else
         filename = part->GetAlias( 0 )->GetDocFileName();
 
+    filename = ResolveUriByEnvVars( filename );
+
     if( !filename.IsEmpty() && filename != wxT( "~" ) )
     {
         SEARCH_STACK* lib_search = Prj().SchSearchS();
@@ -1032,6 +1034,7 @@ void LIB_EDIT_FRAME::OnEditComponentProperties( wxCommandEvent& event )
 {
     bool partLocked = GetCurPart()->UnitsLocked();
     wxString oldName = GetCurPart()->GetName();
+    wxArrayString oldAliases = GetCurPart()->GetAliasNames( false );
 
     m_canvas->EndMouseCapture( ID_NO_TOOL_SELECTED, GetGalCanvas()->GetDefaultCursor() );
 
@@ -1062,7 +1065,12 @@ void LIB_EDIT_FRAME::OnEditComponentProperties( wxCommandEvent& event )
     if( oldName != GetCurPart()->GetName() )
         m_libMgr->UpdatePartAfterRename( GetCurPart(), oldName, GetCurLib() );
     else
+    {
         m_libMgr->UpdatePart( GetCurPart(), GetCurLib() );
+
+        if( oldAliases != GetCurPart()->GetAliasNames( false ) )
+            SyncLibraries( false );
+    }
 
     UpdatePartSelectList();
     updateTitle();
@@ -1637,6 +1645,13 @@ void LIB_EDIT_FRAME::SyncLibraries( bool aShowProgress )
 
             if( found )
                 m_treePane->GetLibTree()->SelectLibId( selected );
+        }
+
+        // If no selection, see if there's a current part to centre
+        if( !selected.IsValid() && GetCurPart() )
+        {
+            LIB_ID current( GetCurLib(), GetCurPart()->GetName() );
+            m_treePane->GetLibTree()->CenterLibId( current );
         }
     }
 }
