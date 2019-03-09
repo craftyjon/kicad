@@ -271,3 +271,14 @@ void REGEX_VALIDATOR::compileRegEx( const wxString& aRegEx, int aFlags )
     m_regExString = aRegEx;
     m_regExFlags = aFlags;
 }
+
+
+void KIUI::ValidatorTransferToWindowWithoutEvents( wxValidator& aValidator )
+{
+    wxWindow* ctrl = aValidator.GetWindow();
+
+    wxCHECK_RET( ctrl != nullptr, "Transferring validator data without a control" );
+
+    wxEventBlocker orient_update_blocker( ctrl, wxEVT_ANY );
+    aValidator.TransferToWindow();
+}
