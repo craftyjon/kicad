@@ -228,6 +228,16 @@ inline GAL_LAYER_ID operator+( const GAL_LAYER_ID& a, int b )
     return t;
 }
 
+///> Transparency controls
+enum TRANSPARENCY_LAYER_ID: int
+{
+    TRANSPARENCY_TRACKS,
+    TRANSPARENCY_PADS,
+    TRANSPARENCY_ZONES,
+
+    TRANSPARENCY_LAYER_ID_COUNT
+};
+
 /// Eeschema drawing layers
 enum SCH_LAYER_ID: int
 {

@@ -171,7 +171,7 @@ public:
      * @param aLayer is the layer.
      * @return The color.
      */
-    virtual const COLOR4D& GetColor( const VIEW_ITEM* aItem, int aLayer ) const = 0;
+    virtual const COLOR4D GetColor( const VIEW_ITEM* aItem, int aLayer ) const = 0;
 
     float GetWorksheetLineWidth() const
     {
@@ -270,6 +270,9 @@ protected:
 
     ///> Colors for all layers (darkened)
     COLOR4D m_layerColorsDark[LAYER_ID_COUNT];
+
+    ///> Transparency settings
+    float m_transparencies[TRANSPARENCY_LAYER_ID_COUNT];
 
     /// Parameters for display modes
     bool    m_hiContrastEnabled;    ///< High contrast display mode on/off

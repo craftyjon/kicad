@@ -70,6 +70,10 @@ PCB_RENDER_SETTINGS::PCB_RENDER_SETTINGS()
     COLORS_DESIGN_SETTINGS dummyCds( FRAME_PCB );
     ImportLegacyColors( &dummyCds );
 
+    m_transparencies[TRANSPARENCY_TRACKS] = 1.0;
+    m_transparencies[TRANSPARENCY_PADS] = 0.8;
+    m_transparencies[TRANSPARENCY_ZONES] = 0.6;
+
     update();
 }
 
@@ -215,7 +219,7 @@ void PCB_RENDER_SETTINGS::LoadDisplayOptions( const PCB_DISPLAY_OPTIONS* aOption
 }
 
 
-const COLOR4D& PCB_RENDER_SETTINGS::GetColor( const VIEW_ITEM* aItem, int aLayer ) const
+const COLOR4D PCB_RENDER_SETTINGS::GetColor( const VIEW_ITEM* aItem, int aLayer ) const
 {
     int netCode = -1;
     const EDA_ITEM* item = dynamic_cast<const EDA_ITEM*>( aItem );
@@ -242,24 +246,55 @@ const COLOR4D& PCB_RENDER_SETTINGS::GetColor( const VIEW_ITEM* aItem, int aLayer
             netCode = conItem->GetNetCode();
 
         if( item->Type() == PCB_MARKER_T )
-            return m_layerColors[aLayer];
+            return ApplyTransparency( aItem, m_layerColors[aLayer] );
     }
 
     // Single net highlight mode
     if( m_highlightEnabled && netCode == m_highlightNetcode )
-        return m_layerColorsHi[aLayer];
+        return ApplyTransparency( aItem, m_layerColorsHi[aLayer] );
 
     // Return grayish color for non-highlighted layers in the high contrast mode
     if( m_hiContrastEnabled && m_activeLayers.count( aLayer ) == 0 )
-        return m_hiContrastColor;
+        return ApplyTransparency( aItem, m_hiContrastColor );
 
     // Catch the case when highlight and high-contraste modes are enabled
     // and we are drawing a not highlighted track
     if( m_highlightEnabled )
-        return m_layerColorsDark[aLayer];
+        return ApplyTransparency( aItem, m_layerColorsDark[aLayer] );
 
     // No special modificators enabled
-    return m_layerColors[aLayer];
+    return ApplyTransparency( aItem, m_layerColors[aLayer] );
+}
+
+
+const COLOR4D PCB_RENDER_SETTINGS::ApplyTransparency( const VIEW_ITEM* aItem,
+                                                      COLOR4D aColor ) const
+{
+    const EDA_ITEM* item = dynamic_cast<const EDA_ITEM*>( aItem );
+
+    if( item )
+    {
+        switch( item->Type() )
+        {
+        case PCB_PAD_T:
+            aColor.a = m_transparencies[TRANSPARENCY_PADS];
+            break;
+
+        case PCB_TRACE_T:
+            aColor.a = m_transparencies[TRANSPARENCY_TRACKS];
+            break;
+
+        case PCB_ZONE_AREA_T:
+        case PCB_SEGZONE_T:
+            aColor.a = m_transparencies[TRANSPARENCY_ZONES];
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    return aColor;
 }
 
 

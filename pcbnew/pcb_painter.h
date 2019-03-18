@@ -102,7 +102,10 @@ public:
     void LoadDisplayOptions( const PCB_DISPLAY_OPTIONS* aOptions, bool aShowPageLimits );
 
     /// @copydoc RENDER_SETTINGS::GetColor()
-    virtual const COLOR4D& GetColor( const VIEW_ITEM* aItem, int aLayer ) const override;
+    virtual const COLOR4D GetColor( const VIEW_ITEM* aItem, int aLayer ) const override;
+
+    const COLOR4D ApplyTransparency( const VIEW_ITEM* aItem,
+                                     COLOR4D aColor ) const;
 
     /**
      * Function SetSketchMode
