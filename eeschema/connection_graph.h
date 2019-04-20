@@ -61,7 +61,7 @@ class CONNECTION_SUBGRAPH
 {
 public:
     CONNECTION_SUBGRAPH( SCH_EDIT_FRAME* aFrame ) :
-        m_dirty( false ), m_code( -1 ), m_multiple_drivers( false ),
+        m_dirty( false ), m_absorbed( false ), m_code( -1 ), m_multiple_drivers( false ),
         m_strong_driver( false ), m_no_connect( nullptr ), m_bus_entry( nullptr ),
         m_driver( nullptr ), m_frame( aFrame ), m_driver_connection( nullptr )
     {}
@@ -79,15 +79,26 @@ public:
     /**
      * Returns the fully-qualified net name for this subgraph (if one exists)
      */
-    wxString GetNetName();
+    wxString GetNetName() const;
 
     /// Returns all the bus labels attached to this subgraph (if any)
-    std::vector<SCH_ITEM*> GetBusLabels();
+    std::vector<SCH_ITEM*> GetBusLabels() const;
 
-    // Returns the candidate net name for a driver
-    wxString GetNameForDriver( SCH_ITEM* aItem );
+    /// Returns the candidate net name for a driver
+    wxString GetNameForDriver( SCH_ITEM* aItem ) const;
+
+    /// Combines another subgraph on the same sheet into this one.
+    void Absorb( CONNECTION_SUBGRAPH* aOther );
+
+    /// Adds a new item to the subgraph
+    void AddItem( SCH_ITEM* aItem );
+
+    /// Updates all items to match the driver connection
+    void UpdateItemConnections();
 
     bool m_dirty;
+
+    bool m_absorbed;
 
     long m_code;
 
@@ -125,16 +136,14 @@ public:
     SCH_CONNECTION* m_driver_connection;
 
     /**
-     * This map stores pointers to other subgraphs on the same sheet as this one
-     * which should be connected to this one.
+     * If a subgraph is a bus, this map contains links between the bus members and any
+     * local sheet neighbors with the same connection name.
      *
-     * For example, if this subgraph is part of the bus D[7..0] and there is
-     * another subgraph on this sheet with connection D7, this map will include
-     * a pointer to that subgraph under the key D7 (where the key comes from
-     * the m_members list of the SCH_CONNECTION that drives this subgraph)
+     * For example, if this subgraph is a bus D[7..0], and on the same sheet there is
+     * a net with label D7, this map will contain an entry for the D7 bus member, and
+     * the vector will contain a pointer to the D7 net subgraph.
      */
-    std::unordered_map< std::shared_ptr<SCH_CONNECTION>,
-                        std::vector<CONNECTION_SUBGRAPH*> > m_neighbor_map;
+    std::unordered_map< SCH_CONNECTION*, std::vector<CONNECTION_SUBGRAPH*> > m_bus_neighbors;
 };
 
 
@@ -173,7 +182,7 @@ public:
      * @return a list of subgraphs that need migration
      */
 
-    std::vector<CONNECTION_SUBGRAPH*> GetBusesNeedingMigration();
+    std::vector<const CONNECTION_SUBGRAPH*> GetBusesNeedingMigration();
 
     /**
      * Returns true if the graph makes use of any of the new bus features
@@ -204,18 +213,18 @@ private:
 
     std::vector<CONNECTION_SUBGRAPH*> m_subgraphs;
 
-    std::vector<SCH_PIN*> m_invisible_power_pins;
+    std::vector<std::pair<SCH_SHEET_PATH, SCH_PIN*>> m_invisible_power_pins;
 
-    std::unordered_map<wxString, std::shared_ptr<BUS_ALIAS>> m_bus_alias_cache;
+    std::unordered_map< wxString, std::shared_ptr<BUS_ALIAS> > m_bus_alias_cache;
 
     std::map<wxString, int> m_net_name_to_code_map;
 
     std::map<wxString, int> m_bus_name_to_code_map;
 
-    std::map<wxString, std::vector<CONNECTION_SUBGRAPH*>> m_global_label_cache;
+    std::map<wxString, std::vector<const CONNECTION_SUBGRAPH*>> m_global_label_cache;
 
     std::map< std::pair<SCH_SHEET_PATH, wxString>,
-              std::vector<CONNECTION_SUBGRAPH*> > m_local_label_cache;
+              std::vector<const CONNECTION_SUBGRAPH*> > m_local_label_cache;
 
     int m_last_net_code;
 
@@ -281,6 +290,12 @@ private:
     int assignNewNetCode( SCH_CONNECTION& aConnection );
 
     /**
+     * Ensures all members of the bus connection have a valid net code assigned
+     * @param aConnection is a bus connection
+     */
+    void assignNetCodesToBus( SCH_CONNECTION* aConnection );
+
+    /**
      * Checks one subgraph for conflicting connections between net and bus labels
      *
      * For example, a net wire connected to a bus port/pin, or vice versa
@@ -289,7 +304,7 @@ private:
      * @param  aCreateMarkers controls whether error markers are created
      * @return                true for no errors, false for errors
      */
-    bool ercCheckBusToNetConflicts( CONNECTION_SUBGRAPH* aSubgraph,
+    bool ercCheckBusToNetConflicts( const CONNECTION_SUBGRAPH* aSubgraph,
                                     bool aCreateMarkers );
 
     /**
@@ -303,7 +318,7 @@ private:
      * @param  aCreateMarkers controls whether error markers are created
      * @return                true for no errors, false for errors
      */
-    bool ercCheckBusToBusConflicts( CONNECTION_SUBGRAPH* aSubgraph,
+    bool ercCheckBusToBusConflicts( const CONNECTION_SUBGRAPH* aSubgraph,
                                     bool aCreateMarkers );
 
     /**
@@ -319,7 +334,7 @@ private:
      * @param  aCreateMarkers controls whether error markers are created
      * @return                true for no errors, false for errors
      */
-    bool ercCheckBusToBusEntryConflicts( CONNECTION_SUBGRAPH* aSubgraph,
+    bool ercCheckBusToBusEntryConflicts( const CONNECTION_SUBGRAPH* aSubgraph,
                                          bool aCreateMarkers );
 
     /**
@@ -332,7 +347,7 @@ private:
      * @param  aCreateMarkers controls whether error markers are created
      * @return                true for no errors, false for errors
      */
-    bool ercCheckNoConnects( CONNECTION_SUBGRAPH* aSubgraph,
+    bool ercCheckNoConnects( const CONNECTION_SUBGRAPH* aSubgraph,
                              bool aCreateMarkers );
 
     /**
@@ -344,9 +359,9 @@ private:
      * @param  aCreateMarkers controls whether error markers are created
      * @return                true for no errors, false for errors
      */
-    bool ercCheckLabels( CONNECTION_SUBGRAPH* aSubgraph, bool aCreateMarkers );
+    bool ercCheckLabels( const CONNECTION_SUBGRAPH* aSubgraph, bool aCreateMarkers );
 
-    void ercReportIsolatedGlobalLabel( CONNECTION_SUBGRAPH* aSubgraph, SCH_ITEM* aLabel );
+    void ercReportIsolatedGlobalLabel( const CONNECTION_SUBGRAPH* aSubgraph, SCH_ITEM* aLabel );
 };
 
 #endif
