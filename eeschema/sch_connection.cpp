@@ -140,14 +140,14 @@ void SCH_CONNECTION::ConfigureFromLabel( wxString aLabel )
         if( ParseBusGroup( aLabel, &group_name, members ) )
         {
             // Named bus groups generate a net prefix, unnamed ones don't
-            auto prefix = ( group_name != "" ) ? ( group_name + "." ) : "";
+            auto prefix = group_name.IsEmpty() ? ( group_name + "." ) : "";
 
-            for( auto group_member : members )
+            for( const auto& group_member : members )
             {
                 // Handle alias inside bus group member list
                 if( auto alias = g_ConnectionGraph->GetBusAlias( group_member ) )
                 {
-                    for( auto alias_member : alias->Members() )
+                    for( const auto& alias_member : alias->Members() )
                     {
                         auto member = std::make_shared< SCH_CONNECTION >( m_parent, m_sheet );
                         member->SetPrefix( prefix );

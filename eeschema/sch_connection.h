@@ -147,7 +147,7 @@ public:
 
     wxString Name( bool aIgnoreSheet = false ) const;
 
-    void SetName( const wxString aName )
+    void SetName( const wxString& aName )
     {
         m_name = aName;
     }
@@ -162,12 +162,12 @@ public:
         return m_suffix;
     }
 
-    void SetPrefix( wxString aPrefix )
+    void SetPrefix( const wxString& aPrefix )
     {
         m_prefix = aPrefix;
     }
 
-    void SetSuffix( wxString aSuffix )
+    void SetSuffix( const wxString& aSuffix )
     {
         m_suffix = aSuffix;
     }
