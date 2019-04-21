@@ -35,17 +35,15 @@
 // #define CONNECTIVITY_DEBUG
 #endif
 
-// Uncomment this line to enable real-time connectivity updates
-// TODO(JE) re-enable this once performance concerns are sorted out
-// #define CONNECTIVITY_REAL_TIME
-
-class SCH_PIN;
 
 class SCH_EDIT_FRAME;
+class SCH_HIERLABEL;
+class SCH_PIN;
+class SCH_SHEET_PIN;
 
 
 /**
- * A subgraph is a set of items that are "physically" connected in the schematic.
+ * A subgraph is a set of items that are electrically connected on a single sheet.
  *
  * For example, a label connected to a wire and so on.
  * A net is composed of one or more subgraphs.
@@ -143,7 +141,14 @@ public:
      * a net with label D7, this map will contain an entry for the D7 bus member, and
      * the vector will contain a pointer to the D7 net subgraph.
      */
-    std::unordered_map< SCH_CONNECTION*, std::vector<CONNECTION_SUBGRAPH*> > m_bus_neighbors;
+    std::unordered_map< std::shared_ptr<SCH_CONNECTION>,
+                        std::vector<CONNECTION_SUBGRAPH*> > m_bus_neighbors;
+
+    // Cache for lookup of any hierarchical (sheet) pins on this subgraph (for referring down)
+    std::vector<SCH_SHEET_PIN*> m_hier_pins;
+
+    // Cache for lookup of any hierarchical ports on this subgraph (for referring up)
+    std::vector<SCH_HIERLABEL*> m_hier_ports;
 };
 
 
@@ -294,6 +299,14 @@ private:
      * @param aConnection is a bus connection
      */
     void assignNetCodesToBus( SCH_CONNECTION* aConnection );
+
+    /**
+     * Updates all neighbors of a subgraph with this one's connectivity info
+     *
+     * If this subgraph contains hierarchical links, this method will descent the
+     * hierarchy and propagate the connectivity across all linked sheets.
+     */
+    void propagateToNeighbors( CONNECTION_SUBGRAPH* aSubgraph );
 
     /**
      * Checks one subgraph for conflicting connections between net and bus labels

@@ -147,6 +147,11 @@ public:
 
     wxString Name( bool aIgnoreSheet = false ) const;
 
+    wxString RawName() const
+    {
+        return m_name;
+    }
+
     void SetName( const wxString& aName )
     {
         m_name = aName;
