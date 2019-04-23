@@ -499,10 +499,6 @@ public:
      */
     wxPoint GetFileNamePosition();
 
-    void GetEndPoints( std::vector <DANGLING_END_ITEM>& aItemList ) override;
-
-    bool UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList ) override;
-
     bool IsConnectable() const override { return true; }
 
     bool CanConnect( const SCH_ITEM* aItem ) const override

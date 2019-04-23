@@ -166,13 +166,15 @@ public:
 
     bool IsParallel( SCH_LINE* aLine );
 
-    void GetEndPoints( std::vector<DANGLING_END_ITEM>& aItemList ) override;
-
-    bool UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList ) override;
-
     bool IsStartDangling() const { return m_startIsDangling; }
+
     bool IsEndDangling() const { return m_endIsDangling; }
+
     bool IsDangling() const override { return m_startIsDangling || m_endIsDangling; }
+
+    void SetStartDangling( bool aIsDangling ) { m_startIsDangling = aIsDangling; }
+
+    void SetEndDangling( bool aIsDangling ) { m_endIsDangling = aIsDangling; }
 
     bool IsConnectable() const override;
 

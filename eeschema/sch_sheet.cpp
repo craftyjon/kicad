@@ -749,31 +749,6 @@ void SCH_SHEET::renumberPins()
 }
 
 
-void SCH_SHEET::GetEndPoints( std::vector <DANGLING_END_ITEM>& aItemList )
-{
-    for( unsigned ii = 0; ii < GetPins().size(); ii++ )
-    {
-        SCH_SHEET_PIN &pinsheet = GetPins()[ii];
-
-        wxCHECK2_MSG( pinsheet.Type() == SCH_SHEET_PIN_T, continue,
-                      wxT( "Invalid item in schematic sheet pin list.  Bad programmer!" ) );
-
-        pinsheet.GetEndPoints( aItemList );
-    }
-}
-
-
-bool SCH_SHEET::UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList )
-{
-    bool changed = false;
-
-    for( SCH_SHEET_PIN& pinsheet : GetPins() )
-        changed |= pinsheet.UpdateDanglingState( aItemList );
-
-    return changed;
-}
-
-
 void SCH_SHEET::GetConnectionPoints( std::vector< wxPoint >& aPoints ) const
 {
     for( size_t i = 0; i < GetPins().size(); i++ )

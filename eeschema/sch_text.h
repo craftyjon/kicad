@@ -170,10 +170,6 @@ public:
 
     virtual bool IsReplaceable() const override { return true; }
 
-    void GetEndPoints( std::vector< DANGLING_END_ITEM >& aItemList ) override;
-
-    bool UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList ) override;
-
     bool IsDangling() const override { return m_isDangling; }
     void SetIsDangling( bool aIsDangling ) { m_isDangling = aIsDangling; }
 

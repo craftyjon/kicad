@@ -555,21 +555,6 @@ public:
 
     bool Matches( wxFindReplaceData& aSearchData, void* aAuxData ) override;
 
-    void GetEndPoints( std::vector<DANGLING_END_ITEM>& aItemList ) override;
-
-    /**
-     * Test if the component's dangling state has changed for all pins.
-     *
-     * As a side effect, actually update the dangling status for all pins.
-     *
-     * @note This does not test for  short circuits.
-     *
-     * @param aItemList is list of all #DANGLING_END_ITEM items to be tested.
-     *
-     * @return true if any pin's state has changed.
-     */
-    bool UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList ) override;
-
     wxPoint GetPinPhysicalPosition( const LIB_PIN* Pin ) const;
 
     bool IsConnectable() const override { return true; }
