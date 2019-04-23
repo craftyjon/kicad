@@ -487,63 +487,6 @@ EDA_ITEM* SCH_LINE::MergeOverlap( SCH_LINE* aLine )
 }
 
 
-void SCH_LINE::GetEndPoints( std::vector <DANGLING_END_ITEM>& aItemList )
-{
-    if( GetLayer() == LAYER_NOTES )
-        return;
-
-    if( ( GetLayer() == LAYER_BUS ) || ( GetLayer() == LAYER_WIRE ) )
-    {
-        DANGLING_END_ITEM item( (GetLayer() == LAYER_BUS) ? BUS_START_END : WIRE_START_END, this,
-                                m_start );
-        aItemList.push_back( item );
-
-        DANGLING_END_ITEM item1( (GetLayer() == LAYER_BUS) ? BUS_END_END : WIRE_END_END, this,
-                                 m_end );
-        aItemList.push_back( item1 );
-    }
-}
-
-
-bool SCH_LINE::UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList )
-{
-    bool previousStartState = m_startIsDangling;
-    bool previousEndState = m_endIsDangling;
-
-    m_startIsDangling = m_endIsDangling = true;
-
-    if( GetLayer() == LAYER_WIRE )
-    {
-        for( DANGLING_END_ITEM item : aItemList )
-        {
-            if( item.GetItem() == this )
-                continue;
-
-            if(     item.GetType() == BUS_START_END ||
-                    item.GetType() == BUS_END_END  ||
-                    item.GetType() == BUS_ENTRY_END )
-                continue;
-
-            if( m_start == item.GetPosition() )
-                m_startIsDangling = false;
-
-            if( m_end == item.GetPosition() )
-                m_endIsDangling = false;
-
-            if( (m_startIsDangling == false) && (m_endIsDangling == false) )
-                break;
-        }
-    }
-    else if( GetLayer() == LAYER_BUS || GetLayer() == LAYER_NOTES )
-    {
-        // Lines on the notes layer and the bus layer cannot be tested for dangling ends.
-        previousStartState = previousEndState = m_startIsDangling = m_endIsDangling = false;
-    }
-
-    return ( previousStartState != m_startIsDangling ) || ( previousEndState != m_endIsDangling );
-}
-
-
 bool SCH_LINE::IsSelectStateChanged( const wxRect& aRect )
 {
     bool previousState = IsSelected();

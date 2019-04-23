@@ -390,15 +390,6 @@ void CONNECTION_GRAPH::Recalculate( SCH_SHEET_LIST aSheetList, bool aUncondition
     phase1.Stop();
     wxLogTrace( "CONN_PROFILE", "UpdateItemConnectivity() %0.4f ms", phase1.msecs() );
 
-    PROF_COUNTER tde;
-
-    // IsDanglingStateChanged() also adds connected items for things like SCH_TEXT
-    SCH_SCREENS schematic;
-    schematic.TestDanglingEnds();
-
-    tde.Stop();
-    wxLogTrace( "CONN_PROFILE", "TestDanglingEnds() %0.4f ms", tde.msecs() );
-
     buildConnectionGraph();
 }
 
@@ -407,6 +398,9 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
                                                std::vector<SCH_ITEM*> aItemList )
 {
     std::unordered_map< wxPoint, std::vector<SCH_ITEM*> > connection_map;
+
+    std::vector<SCH_TEXT*> all_labels;
+    std::vector<SCH_LINE*> all_lines;
 
     for( auto item : aItemList )
     {
@@ -464,6 +458,7 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
             {
             case SCH_LINE_T:
                 conn->SetType( item->GetLayer() == LAYER_BUS ? CONNECTION_BUS : CONNECTION_NET );
+                all_lines.push_back( static_cast<SCH_LINE*>( item ) );
                 break;
 
             case SCH_BUS_BUS_ENTRY_T:
@@ -473,6 +468,12 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
             case SCH_PIN_T:
             case SCH_BUS_WIRE_ENTRY_T:
                 conn->SetType( CONNECTION_NET );
+                break;
+
+            case SCH_LABEL_T:
+            case SCH_HIER_LABEL_T:
+            case SCH_GLOBAL_LABEL_T:
+                all_labels.push_back( static_cast<SCH_TEXT*>( item ) );
                 break;
 
             default:
@@ -488,14 +489,30 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
         item->SetConnectivityDirty( false );
     }
 
+    // For labels, we need to scan all lines to hit test them
+    for( SCH_TEXT* label : all_labels )
+    {
+        wxPoint pos = label->GetPosition();
+
+        for( SCH_LINE* line : all_lines )
+        {
+            if( IsPointOnSegment( line->GetStartPoint(), line->GetEndPoint(), pos ) )
+                connection_map[ pos ].push_back( line );
+        }
+    }
+
     for( const auto& it : connection_map )
     {
+        wxPoint pos = it.first;
         auto connection_vec = it.second;
         SCH_ITEM* junction = nullptr;
 
         for( auto primary_it = connection_vec.begin(); primary_it != connection_vec.end(); primary_it++ )
         {
             auto connected_item = *primary_it;
+
+            // Update the dangling state for the item
+            updateDanglingState( connected_item, pos, ( connection_vec.size() == 1 ) );
 
             // Look for junctions.  For points that have a junction, we want all
             // items to connect to the junction but not to each other.
@@ -520,7 +537,7 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
                 if( connection_vec.size() == 1 )
                 {
                     auto screen = aSheet.LastScreen();
-                    auto bus = screen->GetBus( it.first );
+                    auto bus = screen->GetBus( pos );
 
                     if( bus )
                     {
@@ -536,7 +553,7 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
                 if( connection_vec.size() < 2 )
                 {
                     auto screen = aSheet.LastScreen();
-                    auto bus = screen->GetBus( it.first );
+                    auto bus = screen->GetBus( pos );
 
                     if( bus )
                     {
@@ -592,7 +609,7 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
                 if( !bus_entry->m_connected_bus_item )
                 {
                     auto screen = aSheet.LastScreen();
-                    auto bus = screen->GetBus( it.first );
+                    auto bus = screen->GetBus( pos );
 
                     if( bus )
                         bus_entry->m_connected_bus_item = bus;
@@ -600,6 +617,66 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
             }
         }
     }
+}
+
+
+void CONNECTION_GRAPH::updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, bool aDangling )
+{
+    // Assumption: aPoint will always be a valid connection point of aItem, because this
+    // should only be called from updateItemConnectivity which grabs the connection points
+
+    switch( aItem->Type() )
+    {
+    case SCH_PIN_T:
+    {
+        static_cast<SCH_PIN*>( aItem )->SetIsDangling( aDangling );
+        break;
+    }
+
+    case SCH_SHEET_PIN_T:
+    {
+        static_cast<SCH_SHEET_PIN*>( aItem )->SetIsDangling( aDangling );
+        break;
+    }
+
+    case SCH_LABEL_T:
+    case SCH_GLOBAL_LABEL_T:
+    case SCH_HIER_LABEL_T:
+    {
+        static_cast<SCH_TEXT*>( aItem )->SetIsDangling( aDangling );
+        break;
+    }
+
+    case SCH_LINE_T:
+    {
+        auto line = static_cast<SCH_LINE*>( aItem );
+
+        if( aPoint == line->GetStartPoint() )
+            line->SetStartDangling( aDangling );
+        else
+            line->SetEndDangling( aDangling );
+
+        break;
+    }
+
+    case SCH_BUS_BUS_ENTRY_T:
+    case SCH_BUS_WIRE_ENTRY_T:
+    {
+        auto entry = static_cast<SCH_BUS_ENTRY_BASE*>( aItem );
+
+        if( aPoint == entry->GetPosition() )
+            entry->SetStartDangling( aDangling );
+        else
+            entry->SetEndDangling( aDangling );
+
+        break;
+    }
+
+    default:
+        break;
+    }
+
+    // TODO(JE) Need to call VIEW::Update( item, KIGFX::REPAINT ) if the state changed
 }
 
 

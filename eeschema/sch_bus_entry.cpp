@@ -139,26 +139,6 @@ int SCH_BUS_BUS_ENTRY::GetPenSize() const
 }
 
 
-void SCH_BUS_WIRE_ENTRY::GetEndPoints( std::vector< DANGLING_END_ITEM >& aItemList )
-{
-    DANGLING_END_ITEM item( WIRE_ENTRY_END, this, m_pos );
-    aItemList.push_back( item );
-
-    DANGLING_END_ITEM item1( WIRE_ENTRY_END, this, m_End() );
-    aItemList.push_back( item1 );
-}
-
-
-void SCH_BUS_BUS_ENTRY::GetEndPoints( std::vector< DANGLING_END_ITEM >& aItemList )
-{
-    DANGLING_END_ITEM item( BUS_ENTRY_END, this, m_pos );
-    aItemList.push_back( item );
-
-    DANGLING_END_ITEM item1( BUS_ENTRY_END, this, m_End() );
-    aItemList.push_back( item1 );
-}
-
-
 void SCH_BUS_ENTRY_BASE::Draw( EDA_DRAW_PANEL* aPanel, wxDC* aDC, const wxPoint& aOffset )
 {
     COLOR4D   color = GetLayerColor( m_Layer );
@@ -187,109 +167,6 @@ void SCH_BUS_ENTRY_BASE::Rotate( wxPoint aPosition )
 {
     RotatePoint( &m_pos, aPosition, 900 );
     RotatePoint( &m_size.x, &m_size.y, 900 );
-}
-
-
-bool SCH_BUS_WIRE_ENTRY::UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList )
-{
-    bool previousStateStart = m_isDanglingStart;
-    bool previousStateEnd = m_isDanglingEnd;
-
-    m_isDanglingStart = m_isDanglingEnd = true;
-
-    // Wires and buses are stored in the list as a pair, start and end. This
-    // variable holds the start position from one iteration so it can be used
-    // when the end position is found.
-    wxPoint seg_start;
-
-    // Store the connection type and state for the start (0) and end (1)
-    bool has_wire[2] = { false };
-    bool has_bus[2] = { false };
-
-    for( DANGLING_END_ITEM& each_item : aItemList )
-    {
-        if( each_item.GetItem() == this )
-            continue;
-
-        switch( each_item.GetType() )
-        {
-        case WIRE_START_END:
-        case BUS_START_END:
-            seg_start = each_item.GetPosition();
-            break;
-
-        case WIRE_END_END:
-            if( IsPointOnSegment( seg_start, each_item.GetPosition(), m_pos ) )
-                has_wire[0] = true;
-
-            if( IsPointOnSegment( seg_start, each_item.GetPosition(), m_End() ) )
-                has_wire[1] = true;
-
-            break;
-
-        case BUS_END_END:
-            if( IsPointOnSegment( seg_start, each_item.GetPosition(), m_pos ) )
-                has_bus[0] = true;
-
-            if( IsPointOnSegment( seg_start, each_item.GetPosition(), m_End() ) )
-                has_bus[1] = true;
-
-            break;
-
-        default:
-            break;
-        }
-    }
-
-    /**
-     * A bus-wire entry is connected at both ends if it has a bus and a wire on its
-     * ends.  Otherwise, we connect only one end (in the case of a wire-wire or bus-bus)
-     */
-    if( ( has_wire[0] && has_bus[1] ) || ( has_wire[1] && has_bus[0] ) )
-        m_isDanglingEnd = m_isDanglingStart = false;
-    else if( has_wire[0] || has_bus[0] )
-        m_isDanglingStart = false;
-    else if( has_wire[1] || has_bus[1] )
-        m_isDanglingEnd = false;
-
-    return (previousStateStart != m_isDanglingStart) || (previousStateEnd != m_isDanglingEnd);
-}
-
-
-bool SCH_BUS_BUS_ENTRY::UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList )
-{
-    bool previousStateStart = m_isDanglingStart;
-    bool previousStateEnd = m_isDanglingEnd;
-
-    m_isDanglingStart = m_isDanglingEnd = true;
-
-    // Wires and buses are stored in the list as a pair, start and end. This
-    // variable holds the start position from one iteration so it can be used
-    // when the end position is found.
-    wxPoint seg_start;
-
-    for( DANGLING_END_ITEM& each_item : aItemList )
-    {
-        if( each_item.GetItem() == this )
-            continue;
-
-        switch( each_item.GetType() )
-        {
-        case BUS_START_END:
-            seg_start = each_item.GetPosition();
-            break;
-        case BUS_END_END:
-            if( IsPointOnSegment( seg_start, each_item.GetPosition(), m_pos ) )
-                m_isDanglingStart = false;
-            if( IsPointOnSegment( seg_start, each_item.GetPosition(), m_End() ) )
-                m_isDanglingEnd = false;
-            break;
-        default:
-            break;
-        }
-    }
-
-    return (previousStateStart != m_isDanglingStart) || (previousStateEnd != m_isDanglingEnd);
 }
 
 
