@@ -50,6 +50,7 @@ class DRAWSEGMENT;
 class GENERAL_COLLECTOR;
 class GENERAL_COLLECTORS_GUIDE;
 class PCB_LAYER_WIDGET;
+class APPEARANCE_PANEL;
 class MARKER_PCB;
 class BOARD_ITEM;
 class PCB_LAYER_BOX_SELECTOR;
@@ -97,12 +98,14 @@ class PCB_EDIT_FRAME : public PCB_BASE_EDIT_FRAME
 {
     friend struct PCB::IFACE;
     friend class PCB_LAYER_WIDGET;
+    friend class APPEARANCE_PANEL;
 
     /// The auxiliary right vertical tool bar used to access the microwave tools.
     ACTION_TOOLBAR*   m_microWaveToolBar;
 
 protected:
     PCB_LAYER_WIDGET* m_Layers;
+    APPEARANCE_PANEL* m_appearance_panel;
 
     PARAM_CFG_ARRAY   m_configParams;           // List of Pcbnew configuration settings.
     PARAM_CFG_ARRAY   m_projectFileParams;

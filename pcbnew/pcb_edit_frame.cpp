@@ -36,6 +36,7 @@
 #include <tools/drc.h>
 #include <layer_widget.h>
 #include <pcb_layer_widget.h>
+#include <common/widgets/appearance_panel.h>
 #include <config_params.h>
 #include <footprint_edit_frame.h>
 #include <dialog_helpers.h>
@@ -210,6 +211,7 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     // Create the PCB_LAYER_WIDGET *after* SetBoard():
     m_Layers = new PCB_LAYER_WIDGET( this, GetCanvas() );
+    m_appearance_panel = new APPEARANCE_PANEL( this, GetCanvas() );
 
     wxIcon  icon;
     icon.CopyFromBitmap( KiBitmap( icon_pcbnew_xpm ) );
@@ -251,9 +253,14 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     m_auimgr.AddPane( m_microWaveToolBar, EDA_PANE().VToolbar().Name( "MicrowaveToolbar" ).Right().Layer(1) );
     m_auimgr.AddPane( m_drawToolBar, EDA_PANE().VToolbar().Name( "ToolsToolbar" ).Right().Layer(2) );
+#if 0
     m_auimgr.AddPane( m_Layers, EDA_PANE().Palette().Name( "LayersManager" ).Right().Layer(3)
                       .Caption( _( "Layers Manager" ) ).PaneBorder( false )
                       .MinSize( 80, -1 ).BestSize( m_Layers->GetBestSize() ) );
+#endif
+    m_auimgr.AddPane( m_appearance_panel, EDA_PANE().Palette().Name( "Appearance" ).Right().Layer(3)
+            .Caption( _( "Appearance" ) ).PaneBorder( false )
+            .MinSize( 80, -1 ).BestSize( m_appearance_panel->GetBestSize() ) );
 
     m_auimgr.AddPane( GetCanvas(), EDA_PANE().Canvas().Name( "DrawFrame" ).Center() );
 

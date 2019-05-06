@@ -335,6 +335,8 @@ set( PCBNEW_COMMON_SRCS
     ../common/dialogs/dialog_page_settings.cpp
     ../common/base_units.cpp
     ../common/hotkeys_basic.cpp
+    ../common/widgets/appearance_panel.cpp
+    ../common/widgets/appearance_panel_base.cpp
     )
 
 set( PCBNEW_SCRIPTING_DIALOGS
