@@ -11,7 +11,7 @@
 
 APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name ) : wxPanel( parent, id, pos, size, style, name )
 {
-	this->SetFont( wxFont( 10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
+	this->SetFont( wxFont( 8, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
 
 	wxBoxSizer* m_outer_sizer;
 	m_outer_sizer = new wxBoxSizer( wxVERTICAL );
@@ -31,7 +31,7 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	wxBoxSizer* bSizer12;
 	bSizer12 = new wxBoxSizer( wxHORIZONTAL );
 
-	m_staticText9 = new wxStaticText( m_layers_panel, wxID_ANY, wxT("All Layers"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticText9 = new wxStaticText( m_layers_panel, wxID_ANY, wxT("Layer Opacity"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticText9->Wrap( -1 );
 	bSizer12->Add( m_staticText9, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
@@ -43,45 +43,6 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 
 	m_cb_active_layer_opaque = new wxCheckBox( m_layers_panel, wxID_ANY, wxT("Make Active Layer Opaque"), wxDefaultPosition, wxDefaultSize, 0 );
 	bSizer11->Add( m_cb_active_layer_opaque, 0, wxALL, 5 );
-
-	m_staticline3 = new wxStaticLine( m_layers_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-	bSizer11->Add( m_staticline3, 0, wxEXPAND | wxALL, 5 );
-
-	wxBoxSizer* bSizer13;
-	bSizer13 = new wxBoxSizer( wxHORIZONTAL );
-
-	m_staticText10 = new wxStaticText( m_layers_panel, wxID_ANY, wxT("Stored Settings"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_staticText10->Wrap( -1 );
-	m_staticText10->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
-
-	bSizer13->Add( m_staticText10, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-	m_combo_stored_settings_name = new wxComboBox( m_layers_panel, wxID_ANY, wxT("Default"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0 );
-	bSizer13->Add( m_combo_stored_settings_name, 1, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-
-	bSizer11->Add( bSizer13, 0, 0, 5 );
-
-	wxBoxSizer* bSizer14;
-	bSizer14 = new wxBoxSizer( wxHORIZONTAL );
-
-	m_btn_stored_settings_new = new wxButton( m_layers_panel, wxID_ANY, wxT("New"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_btn_stored_settings_new->SetMinSize( wxSize( 50,-1 ) );
-
-	bSizer14->Add( m_btn_stored_settings_new, 1, wxALL, 5 );
-
-	m_btn_stored_settings_save = new wxButton( m_layers_panel, wxID_ANY, wxT("Save"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_btn_stored_settings_save->SetMinSize( wxSize( 50,-1 ) );
-
-	bSizer14->Add( m_btn_stored_settings_save, 1, wxALL, 5 );
-
-	m_btn_stored_settings_delete = new wxButton( m_layers_panel, wxID_ANY, wxT("Delete"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_btn_stored_settings_delete->SetMinSize( wxSize( 50,-1 ) );
-
-	bSizer14->Add( m_btn_stored_settings_delete, 1, wxALL, 5 );
-
-
-	bSizer11->Add( bSizer14, 0, wxEXPAND, 5 );
 
 
 	m_layers_panel->SetSizer( bSizer11 );
@@ -138,9 +99,43 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	m_nets_panel->SetSizer( bSizer16 );
 	m_nets_panel->Layout();
 	bSizer16->Fit( m_nets_panel );
-	m_notebook->AddPage( m_nets_panel, wxT("Nets"), false );
+	m_notebook->AddPage( m_nets_panel, wxT("Nets"), true );
 
 	m_outer_sizer->Add( m_notebook, 1, wxEXPAND | wxALL, 5 );
+
+	wxBoxSizer* bSizer18;
+	bSizer18 = new wxBoxSizer( wxHORIZONTAL );
+
+	m_staticText12 = new wxStaticText( this, wxID_ANY, wxT("Stored Settings"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticText12->Wrap( -1 );
+	bSizer18->Add( m_staticText12, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+
+	m_combo_stored_settings_name = new wxComboBox( this, wxID_ANY, wxT("Default"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0 );
+	bSizer18->Add( m_combo_stored_settings_name, 1, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+
+
+	m_outer_sizer->Add( bSizer18, 0, wxEXPAND|wxLEFT, 5 );
+
+	wxBoxSizer* bSizer14;
+	bSizer14 = new wxBoxSizer( wxHORIZONTAL );
+
+	m_btn_stored_settings_new = new wxButton( this, wxID_ANY, wxT("New"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_btn_stored_settings_new->SetMinSize( wxSize( 50,-1 ) );
+
+	bSizer14->Add( m_btn_stored_settings_new, 1, wxALL, 5 );
+
+	m_btn_stored_settings_save = new wxButton( this, wxID_ANY, wxT("Save"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_btn_stored_settings_save->SetMinSize( wxSize( 50,-1 ) );
+
+	bSizer14->Add( m_btn_stored_settings_save, 1, wxALL, 5 );
+
+	m_btn_stored_settings_delete = new wxButton( this, wxID_ANY, wxT("Delete"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_btn_stored_settings_delete->SetMinSize( wxSize( 50,-1 ) );
+
+	bSizer14->Add( m_btn_stored_settings_delete, 1, wxALL, 5 );
+
+
+	m_outer_sizer->Add( bSizer14, 0, wxEXPAND, 5 );
 
 
 	this->SetSizer( m_outer_sizer );

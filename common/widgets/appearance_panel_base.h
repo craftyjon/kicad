@@ -20,14 +20,14 @@
 #include <wx/slider.h>
 #include <wx/sizer.h>
 #include <wx/checkbox.h>
-#include <wx/combobox.h>
+#include <wx/panel.h>
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/icon.h>
 #include <wx/button.h>
-#include <wx/panel.h>
 #include <wx/radiobox.h>
 #include <wx/notebook.h>
+#include <wx/combobox.h>
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -47,12 +47,6 @@ class APPEARANCE_PANEL_BASE : public wxPanel
 		wxStaticText* m_staticText9;
 		wxSlider* m_slider_all_layers;
 		wxCheckBox* m_cb_active_layer_opaque;
-		wxStaticLine* m_staticline3;
-		wxStaticText* m_staticText10;
-		wxComboBox* m_combo_stored_settings_name;
-		wxButton* m_btn_stored_settings_new;
-		wxButton* m_btn_stored_settings_save;
-		wxButton* m_btn_stored_settings_delete;
 		wxPanel* m_objects_panel;
 		wxScrolledWindow* m_objects_window;
 		wxPanel* m_nets_panel;
@@ -61,6 +55,11 @@ class APPEARANCE_PANEL_BASE : public wxPanel
 		wxButton* m_btn_hide_all_nets;
 		wxButton* m_btn_show_all_nets;
 		wxRadioBox* m_radio_net_color_mode;
+		wxStaticText* m_staticText12;
+		wxComboBox* m_combo_stored_settings_name;
+		wxButton* m_btn_stored_settings_new;
+		wxButton* m_btn_stored_settings_save;
+		wxButton* m_btn_stored_settings_delete;
 
 	public:
 
