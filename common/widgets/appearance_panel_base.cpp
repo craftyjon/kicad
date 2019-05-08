@@ -48,7 +48,7 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	m_layers_panel->SetSizer( bSizer11 );
 	m_layers_panel->Layout();
 	bSizer11->Fit( m_layers_panel );
-	m_notebook->AddPage( m_layers_panel, wxT("Layers"), false );
+	m_notebook->AddPage( m_layers_panel, wxT("Layers"), true );
 	m_objects_panel = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* bSizer15;
 	bSizer15 = new wxBoxSizer( wxVERTICAL );
@@ -99,7 +99,7 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	m_nets_panel->SetSizer( bSizer16 );
 	m_nets_panel->Layout();
 	bSizer16->Fit( m_nets_panel );
-	m_notebook->AddPage( m_nets_panel, wxT("Nets"), true );
+	m_notebook->AddPage( m_nets_panel, wxT("Nets"), false );
 
 	m_outer_sizer->Add( m_notebook, 1, wxEXPAND | wxALL, 5 );
 
