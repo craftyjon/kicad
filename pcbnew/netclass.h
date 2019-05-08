@@ -50,12 +50,11 @@ public:
     NET_RATSNEST_PREFS() {};
     ~NET_RATSNEST_PREFS() {};
 
-    void Format( OUTPUTFORMATTER* aFormatter, int aNestLevel, int aControlBits ) const
-        throw( IO_ERROR );
+    void Format( OUTPUTFORMATTER* aFormatter, int aNestLevel, int aControlBits ) const;
 
-    bool        m_showRatsnest = true;
-    bool m_useCustomColor = false;
-    KIGFX::COLOR4D     m_color;
+    bool            m_showRatsnest = true;
+    bool            m_useCustomColor = false;
+    KIGFX::COLOR4D  m_color;
 };
 
 DECL_SET_FOR_SWIG( STRINGSET, wxString )

@@ -291,9 +291,13 @@ void NETCLASS::Format( OUTPUTFORMATTER* aFormatter, int aNestLevel, int aControl
     aFormatter->Print( aNestLevel, ")\n\n" );
 }
 
-void NET_RATSNEST_PREFS::Format( OUTPUTFORMATTER* aFormatter, int aNestLevel, int aControlBits ) const throw( IO_ERROR )
+void NET_RATSNEST_PREFS::Format( OUTPUTFORMATTER* aFormatter, int aNestLevel, int aControlBits ) const
 {
     aFormatter->Print( aNestLevel+1, "(net_visible %d)\n", !!m_showRatsnest );
+
     if( m_useCustomColor )
-        aFormatter->Print( aNestLevel+1, "(net_custom_color %.0f %.0f %.0f %.0f)\n", 255.0 * m_color.r, 255.0 * m_color.g, 255.0 * m_color.b, 255.0 * m_color.a );
+    {
+        aFormatter->Print( aNestLevel + 1, "(net_custom_color %.0f %.0f %.0f %.0f)\n",
+                255.0 * m_color.r, 255.0 * m_color.g, 255.0 * m_color.b, 255.0 * m_color.a );
+    }
 }
