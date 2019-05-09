@@ -28,11 +28,41 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	m_staticline2 = new wxStaticLine( m_layers_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
 	bSizer11->Add( m_staticline2, 0, wxEXPAND | wxALL, 5 );
 
+	m_staticText13 = new wxStaticText( m_layers_panel, wxID_ANY, wxT("Show Non-Active Layers As:"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticText13->Wrap( -1 );
+	bSizer11->Add( m_staticText13, 0, wxALL, 5 );
+
+	wxBoxSizer* bSizer19;
+	bSizer19 = new wxBoxSizer( wxHORIZONTAL );
+
+	m_radioBtn1 = new wxRadioButton( m_layers_panel, wxID_ANY, wxT("Normal"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_radioBtn1->SetToolTip( wxT("Non-Active layers will be shown in full color") );
+
+	bSizer19->Add( m_radioBtn1, 0, wxALL, 5 );
+
+	m_radioBtn2 = new wxRadioButton( m_layers_panel, wxID_ANY, wxT("Dimmed"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_radioBtn2->SetToolTip( wxT("Non-active layers will be grayscale and dimmed") );
+
+	bSizer19->Add( m_radioBtn2, 0, wxALL, 5 );
+
+	m_radioBtn3 = new wxRadioButton( m_layers_panel, wxID_ANY, wxT("Off"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_radioBtn3->SetToolTip( wxT("Non-active layers will be hidden") );
+
+	bSizer19->Add( m_radioBtn3, 0, wxALL, 5 );
+
+
+	bSizer11->Add( bSizer19, 0, wxEXPAND, 5 );
+
+	m_staticline5 = new wxStaticLine( m_layers_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+	bSizer11->Add( m_staticline5, 0, wxEXPAND | wxALL, 5 );
+
 	wxBoxSizer* bSizer12;
 	bSizer12 = new wxBoxSizer( wxHORIZONTAL );
 
 	m_staticText9 = new wxStaticText( m_layers_panel, wxID_ANY, wxT("Layer Opacity"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_staticText9->Wrap( -1 );
+	m_staticText9->SetToolTip( wxT("Set the opacity for all layers") );
+
 	bSizer12->Add( m_staticText9, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
 	m_slider_all_layers = new wxSlider( m_layers_panel, wxID_ANY, 100, 0, 100, wxDefaultPosition, wxDefaultSize, wxSL_HORIZONTAL );
@@ -42,6 +72,8 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	bSizer11->Add( bSizer12, 0, wxEXPAND|wxRIGHT, 5 );
 
 	m_cb_active_layer_opaque = new wxCheckBox( m_layers_panel, wxID_ANY, wxT("Make Active Layer Opaque"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_cb_active_layer_opaque->SetToolTip( wxT("Make the active layer opaque even if layer opacity is not at maximum") );
+
 	bSizer11->Add( m_cb_active_layer_opaque, 0, wxALL, 5 );
 
 
@@ -66,9 +98,39 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	wxBoxSizer* bSizer16;
 	bSizer16 = new wxBoxSizer( wxVERTICAL );
 
+	m_txt_net_search = new wxTextCtrl( m_nets_panel, wxID_ANY, wxT("Search nets..."), wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer16->Add( m_txt_net_search, 0, wxALL|wxEXPAND, 5 );
+
 	m_nets_window = new wxScrolledWindow( m_nets_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL|wxVSCROLL );
 	m_nets_window->SetScrollRate( 5, 5 );
 	bSizer16->Add( m_nets_window, 1, wxEXPAND | wxALL, 5 );
+
+	wxBoxSizer* bSizer20;
+	bSizer20 = new wxBoxSizer( wxHORIZONTAL );
+
+	m_staticText14 = new wxStaticText( m_nets_panel, wxID_ANY, wxT("Net Classes"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticText14->Wrap( -1 );
+	m_staticText14->SetFont( wxFont( 9, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
+
+	bSizer20->Add( m_staticText14, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+
+
+	bSizer20->Add( 0, 0, 1, wxEXPAND, 5 );
+
+	m_btn_configure_net_classes = new wxBitmapButton( m_nets_panel, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW|wxBORDER_NONE );
+	m_btn_configure_net_classes->SetToolTip( wxT("Configure Net Classes...") );
+
+	bSizer20->Add( m_btn_configure_net_classes, 0, wxALL, 5 );
+
+
+	bSizer16->Add( bSizer20, 0, wxEXPAND, 5 );
+
+	m_txt_search_net_classes = new wxTextCtrl( m_nets_panel, wxID_ANY, wxT("Search net classes..."), wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer16->Add( m_txt_search_net_classes, 0, wxALL|wxEXPAND, 5 );
+
+	m_net_classes_window = new wxScrolledWindow( m_nets_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL|wxVSCROLL );
+	m_net_classes_window->SetScrollRate( 5, 5 );
+	bSizer16->Add( m_net_classes_window, 1, wxEXPAND | wxALL, 5 );
 
 	m_staticline4 = new wxStaticLine( m_nets_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
 	bSizer16->Add( m_staticline4, 0, wxEXPAND | wxALL, 5 );
@@ -77,11 +139,13 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	bSizer17 = new wxBoxSizer( wxHORIZONTAL );
 
 	m_btn_hide_all_nets = new wxButton( m_nets_panel, wxID_ANY, wxT("Hide All"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_btn_hide_all_nets->SetToolTip( wxT("Hide All Nets") );
 	m_btn_hide_all_nets->SetMaxSize( wxSize( 150,-1 ) );
 
 	bSizer17->Add( m_btn_hide_all_nets, 1, wxALL, 5 );
 
 	m_btn_show_all_nets = new wxButton( m_nets_panel, wxID_ANY, wxT("Show All"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_btn_show_all_nets->SetToolTip( wxT("Show All Nets") );
 	m_btn_show_all_nets->SetMaxSize( wxSize( 150,-1 ) );
 
 	bSizer17->Add( m_btn_show_all_nets, 1, wxALL, 5 );
@@ -120,16 +184,21 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	bSizer14 = new wxBoxSizer( wxHORIZONTAL );
 
 	m_btn_stored_settings_new = new wxButton( this, wxID_ANY, wxT("New"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_btn_stored_settings_new->SetToolTip( wxT("Create a New Appearance Setting") );
 	m_btn_stored_settings_new->SetMinSize( wxSize( 50,-1 ) );
 
 	bSizer14->Add( m_btn_stored_settings_new, 1, wxALL, 5 );
 
 	m_btn_stored_settings_save = new wxButton( this, wxID_ANY, wxT("Save"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_btn_stored_settings_save->Enable( false );
+	m_btn_stored_settings_save->SetToolTip( wxT("Save the Current Appearance Setting") );
 	m_btn_stored_settings_save->SetMinSize( wxSize( 50,-1 ) );
 
 	bSizer14->Add( m_btn_stored_settings_save, 1, wxALL, 5 );
 
 	m_btn_stored_settings_delete = new wxButton( this, wxID_ANY, wxT("Delete"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_btn_stored_settings_delete->Enable( false );
+	m_btn_stored_settings_delete->SetToolTip( wxT("Delete the Current Appearance Setting") );
 	m_btn_stored_settings_delete->SetMinSize( wxSize( 50,-1 ) );
 
 	bSizer14->Add( m_btn_stored_settings_delete, 1, wxALL, 5 );

@@ -17,13 +17,16 @@
 #include <wx/string.h>
 #include <wx/statline.h>
 #include <wx/stattext.h>
-#include <wx/slider.h>
+#include <wx/radiobut.h>
 #include <wx/sizer.h>
+#include <wx/slider.h>
 #include <wx/checkbox.h>
 #include <wx/panel.h>
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/icon.h>
+#include <wx/textctrl.h>
+#include <wx/bmpbuttn.h>
 #include <wx/button.h>
 #include <wx/radiobox.h>
 #include <wx/notebook.h>
@@ -44,13 +47,23 @@ class APPEARANCE_PANEL_BASE : public wxPanel
 		wxPanel* m_layers_panel;
 		wxScrolledWindow* m_layers_window;
 		wxStaticLine* m_staticline2;
+		wxStaticText* m_staticText13;
+		wxRadioButton* m_radioBtn1;
+		wxRadioButton* m_radioBtn2;
+		wxRadioButton* m_radioBtn3;
+		wxStaticLine* m_staticline5;
 		wxStaticText* m_staticText9;
 		wxSlider* m_slider_all_layers;
 		wxCheckBox* m_cb_active_layer_opaque;
 		wxPanel* m_objects_panel;
 		wxScrolledWindow* m_objects_window;
 		wxPanel* m_nets_panel;
+		wxTextCtrl* m_txt_net_search;
 		wxScrolledWindow* m_nets_window;
+		wxStaticText* m_staticText14;
+		wxBitmapButton* m_btn_configure_net_classes;
+		wxTextCtrl* m_txt_search_net_classes;
+		wxScrolledWindow* m_net_classes_window;
 		wxStaticLine* m_staticline4;
 		wxButton* m_btn_hide_all_nets;
 		wxButton* m_btn_show_all_nets;
@@ -63,7 +76,7 @@ class APPEARANCE_PANEL_BASE : public wxPanel
 
 	public:
 
-		APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( 240,480 ), long style = wxTAB_TRAVERSAL, const wxString& name = wxEmptyString );
+		APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( 240,600 ), long style = wxTAB_TRAVERSAL, const wxString& name = wxEmptyString );
 		~APPEARANCE_PANEL_BASE();
 
 };
