@@ -116,6 +116,8 @@ private:
     void rebuildStoredSettings();
 
     void onLayerClick( wxMouseEvent& aEvent );
+
+    void onLayerVisibilityChanged( int aLayer, bool isVisible, bool isFinal );
 };
 
 

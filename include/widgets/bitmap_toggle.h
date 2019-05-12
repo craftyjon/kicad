@@ -31,6 +31,9 @@
 
 #include <gal/color4d.h>
 
+
+wxDECLARE_EVENT( TOGGLE_CHANGED, wxCommandEvent );
+
 /**
  * A checkbox control except with custom bitmaps for the checked and unchecked states
  *

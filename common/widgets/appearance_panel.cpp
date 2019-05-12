@@ -22,7 +22,9 @@
 
 #include <bitmaps.h>
 #include <class_board.h>
+#include <class_drawpanel.h>
 #include <pcb_base_frame.h>
+#include <view/view.h>
 #include <widgets/bitmap_toggle.h>
 #include <widgets/color_swatch.h>
 #include <widgets/indicator_icon.h>
@@ -160,6 +162,12 @@ void APPEARANCE_PANEL::rebuildLayers()
         indicator->Bind( wxEVT_LEFT_DOWN, &APPEARANCE_PANEL::onLayerClick, this );
         swatch->Bind( wxEVT_LEFT_DOWN, &APPEARANCE_PANEL::onLayerClick, this );
         label->Bind( wxEVT_LEFT_DOWN, &APPEARANCE_PANEL::onLayerClick, this );
+
+        btn_visible->Bind( TOGGLE_CHANGED, [this] ( wxCommandEvent& aEvent ) {
+            int layer = static_cast<wxWindow*>( aEvent.GetEventObject() )->GetId();
+            bool is_visible = aEvent.GetInt();
+            onLayerVisibilityChanged( layer, is_visible, true );
+        } );
 
         m_layer_settings.emplace_back( aSetting );
     };
@@ -304,6 +312,29 @@ void APPEARANCE_PANEL::onLayerClick( wxMouseEvent& aEvent )
 #endif
 
     frame->SetActiveLayer( layer );
+}
+
+
+void APPEARANCE_PANEL::onLayerVisibilityChanged( int aLayer, bool isVisible, bool isFinal )
+{
+    auto frame = static_cast<PCB_BASE_FRAME*>( GetParent() );
+    BOARD* board = frame->GetBoard();
+
+    LSET visibleLayers = board->GetVisibleLayers();
+
+    if( visibleLayers.test( aLayer ) != isVisible )
+    {
+        visibleLayers.set( aLayer, isVisible );
+
+        board->SetVisibleLayers( visibleLayers );
+
+        frame->OnModify();
+
+        frame->GetGalCanvas()->GetView()->SetLayerVisible( aLayer, isVisible );
+    }
+
+    if( isFinal )
+        frame->GetCanvas()->Refresh();
 }
 
 

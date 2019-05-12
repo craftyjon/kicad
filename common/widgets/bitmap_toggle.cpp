@@ -25,6 +25,9 @@
 #include <widgets/bitmap_toggle.h>
 
 
+wxDEFINE_EVENT( TOGGLE_CHANGED, wxCommandEvent );
+
+
 BITMAP_TOGGLE::BITMAP_TOGGLE( wxWindow *aParent, wxWindowID aId, const wxBitmap& aCheckedBitmap,
                               const wxBitmap& aUncheckedBitmap, bool aChecked ) :
         wxPanel( aParent, aId ),
@@ -42,6 +45,10 @@ BITMAP_TOGGLE::BITMAP_TOGGLE( wxWindow *aParent, wxWindowID aId, const wxBitmap&
 
     m_bitmap->Bind( wxEVT_LEFT_UP, [this] ( wxMouseEvent& ) {
         SetValue( !GetValue() );
+        wxCommandEvent event( TOGGLE_CHANGED );
+        event.SetInt( m_checked );
+        event.SetEventObject( this );
+        wxPostEvent( this, event );
     } );
 
     m_bitmap->Bind( wxEVT_RIGHT_UP, [this] ( wxEvent& aEvent ) {
