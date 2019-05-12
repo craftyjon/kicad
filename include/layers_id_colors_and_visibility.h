@@ -211,6 +211,11 @@ enum GAL_LAYER_ID: int
 
     /// Add new GAL layers here
 
+    // TODO(JE) These should be persisted; need more than 32 bits for visibility
+    LAYER_META_VIAS,            ///< Meta control for all vias opacity (visibility / color ignored)
+    LAYER_META_PADS,            ///< Meta control for all pads opacity (visibility / color ignored)
+    LAYER_ZONES,                ///< Control for copper zone opacity
+
     GAL_LAYER_ID_END
 };
 

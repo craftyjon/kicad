@@ -47,6 +47,7 @@ public:
         bool        visible;
         bool        can_control_visibility;
         bool        can_control_opacity;
+        bool        spacer;
 
         wxPanel*        ctl_panel;
         INDICATOR_ICON* ctl_indicator;
@@ -57,7 +58,7 @@ public:
 
         APPEARANCE_SETTING( const wxString& aLabel, int aId, COLOR4D aColor = COLOR4D::UNSPECIFIED,
                             const wxString& aTooltip = wxEmptyString, bool aVisible = true,
-                            bool aCanControlVisibility = true, bool aCanControlOpacity = true )
+                            bool aCanControlVisibility = true, bool aCanControlOpacity = false )
         {
             label   = aLabel;
             id      = aId;
@@ -66,6 +67,8 @@ public:
             tooltip = aTooltip;
             can_control_visibility = aCanControlVisibility;
             can_control_opacity = aCanControlOpacity;
+
+            spacer = false;
 
             ctl_panel = nullptr;
             ctl_indicator = nullptr;
@@ -77,7 +80,7 @@ public:
 
         APPEARANCE_SETTING() : id( -1 ), label( "" ), tooltip( "" ), color( COLOR4D::UNSPECIFIED ),
                                visible( false ), can_control_visibility( false ),
-                               can_control_opacity( false )
+                               can_control_opacity( false ), spacer( true )
         {}
     };
 
@@ -97,7 +100,7 @@ private:
 
     PCB_BASE_FRAME* m_frame;
 
-    static const APPEARANCE_SETTING s_render_rows[];
+    static const APPEARANCE_SETTING s_object_settings[];
 
     ROW_ICON_PROVIDER* m_IconProvider;
 

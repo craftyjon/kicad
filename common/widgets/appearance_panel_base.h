@@ -56,8 +56,16 @@ class APPEARANCE_PANEL_BASE : public wxPanel
 		wxStaticText* m_staticText9;
 		wxSlider* m_slider_all_layers;
 		wxCheckBox* m_cb_active_layer_opaque;
+		wxStaticLine* m_staticline7;
+		wxCheckBox* m_cb_flip_board;
 		wxPanel* m_objects_panel;
 		wxScrolledWindow* m_objects_window;
+		wxBoxSizer* m_objects_outer_sizer;
+		wxStaticLine* m_staticline6;
+		wxStaticText* m_staticText16;
+		wxRadioButton* m_btn_zones_filled;
+		wxRadioButton* m_btn_zones_outline;
+		wxRadioButton* m_btn_zones_hidden;
 		wxPanel* m_nets_panel;
 		wxTextCtrl* m_txt_net_search;
 		wxScrolledWindow* m_nets_window;

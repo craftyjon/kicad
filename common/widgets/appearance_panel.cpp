@@ -34,12 +34,17 @@
 
 
 /// This is a read only template that is copied and modified before adding to LAYER_WIDGET
-const APPEARANCE_PANEL::APPEARANCE_SETTING APPEARANCE_PANEL::s_render_rows[] = {
+const APPEARANCE_PANEL::APPEARANCE_SETTING APPEARANCE_PANEL::s_object_settings[] = {
 
 #define RR  APPEARANCE_PANEL::APPEARANCE_SETTING   // Render Row abbreviation to reduce source width
 #define NOCOLOR COLOR4D::UNSPECIFIED    // specify rows that do not have a color selector icon
 
         // text                     id                    color     tooltip
+    RR( _( "Tracks" ),              LAYER_TRACKS,         NOCOLOR,  _( "Show tracks" ), true, true, true ),
+    RR( _( "Vias" ),                LAYER_META_VIAS,      NOCOLOR,  _( "Show all vias" ), true, true, true ),
+    RR( _( "Pads" ),                LAYER_META_PADS,      NOCOLOR,  _( "Show all pads" ), true, true, true ),
+    RR( _( "Zones" ),               LAYER_ZONES,          NOCOLOR,  _( "Show copper zones" ), true, true, true ),
+    RR(),
     RR( _( "Footprints Front" ),    LAYER_MOD_FR,         NOCOLOR,  _( "Show footprints that are on board's front") ),
     RR( _( "Footprints Back" ),     LAYER_MOD_BK,         NOCOLOR,  _( "Show footprints that are on board's back") ),
     RR( _( "Values" ),              LAYER_MOD_VALUES,     NOCOLOR,  _( "Show footprint values") ),
@@ -51,7 +56,6 @@ const APPEARANCE_PANEL::APPEARANCE_SETTING APPEARANCE_PANEL::s_render_rows[] = {
     RR( _( "Pads Back" ),           LAYER_PAD_BK,         WHITE,    _( "Show footprint pads on board's back" ) ),
     RR( _( "Through Hole Pads" ),   LAYER_PADS_TH,        YELLOW,   _( "Show through hole pads in specific color") ),
     RR(),
-    RR( _( "Tracks" ),              LAYER_TRACKS,         NOCOLOR,  _( "Show tracks" ) ),
     RR( _( "Through Via" ),         LAYER_VIA_THROUGH,    WHITE,    _( "Show through vias" ) ),
     RR( _( "Bl/Buried Via" ),       LAYER_VIA_BBLIND,     WHITE,    _( "Show blind or buried vias" )  ),
     RR( _( "Micro Via" ),           LAYER_VIA_MICROVIA,   WHITE,    _( "Show micro vias") ),
@@ -118,7 +122,7 @@ APPEARANCE_PANEL::APPEARANCE_PANEL( PCB_BASE_FRAME* aParent, wxWindow* aFocusOwn
 
 wxSize APPEARANCE_PANEL::GetBestSize() const
 {
-    wxSize size( 240, 200 );
+    wxSize size( 240, 480 );
     // TODO(JE) appropriate logic
     return size;
 }
@@ -179,14 +183,14 @@ void APPEARANCE_PANEL::rebuildLayers()
         auto indicator = new INDICATOR_ICON( panel, *m_IconProvider,
                                              ROW_ICON_PROVIDER::STATE::OFF, aSetting.id );
 
+        auto swatch = new COLOR_SWATCH( panel, COLOR4D::UNSPECIFIED, aSetting.id, bg_color );
+        swatch->SetToolTip( _("Left double click or middle click for color change, right click for menu" ) );
+
         auto btn_visible = new BITMAP_TOGGLE( panel, aSetting.id,
                                               KiBitmap( visibility_xpm ),
                                               KiBitmap( visibility_off_xpm ),
                                               aSetting.visible );
         btn_visible->SetToolTip( _( "Show or hide this layer" ) );
-
-        auto swatch = new COLOR_SWATCH( panel, COLOR4D::UNSPECIFIED, aSetting.id, bg_color );
-        swatch->SetToolTip( _("Left double click or middle click for color change, right click for menu" ) );
 
         auto label = new wxStaticText( panel, aSetting.id, aSetting.label );
         label->Wrap( -1 );
@@ -197,8 +201,8 @@ void APPEARANCE_PANEL::rebuildLayers()
 //        slider->SetMinSize( wxSize( 100, -1 ) );
 
         sizer->Add( indicator,   0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 2 );
-        sizer->Add( btn_visible, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
         sizer->Add( swatch,      0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
+        sizer->Add( btn_visible, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
         sizer->Add( label,       1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
         //sizer->Add( slider,      0, wxALIGN_CENTER_VERTICAL | wxALL, 5 );
 
@@ -415,13 +419,132 @@ void APPEARANCE_PANEL::onLayersOpacityChanged( float aOpacity )
         view->UpdateLayerColor( GetNetnameLayer( layer ) );
     }
 
-    m_frame->GetCanvas()->Refresh();
+    m_frame->GetGalCanvas()->Refresh();
 }
 
 
 void APPEARANCE_PANEL::rebuildObjects()
 {
+    static wxSize swatch_size = m_frame->ConvertDialogToPixels( COLOR_SWATCH::SWATCH_SIZE_DU );
+    static wxSize btn_size = KiBitmap( visibility_xpm ).GetSize();
 
+    BOARD* board = m_frame->GetBoard();
+    BOARD_DESIGN_SETTINGS& settings = board->GetDesignSettings();
+
+    COLOR4D bg_color = m_frame->Settings().Colors().GetLayerColor( LAYER_PCB_BACKGROUND );
+
+    m_object_settings.clear();
+
+    // TODO(JE) probably need to use a grid sizer here after all
+    m_objects_outer_sizer->Clear( true );
+
+    auto appendObject = [&] ( APPEARANCE_SETTING aSetting ) {
+
+        auto panel = new wxPanel( m_objects_window, aSetting.id );
+        auto sizer = new wxBoxSizer( wxHORIZONTAL );
+
+        panel->SetSizer( sizer );
+
+        if( aSetting.color != COLOR4D::UNSPECIFIED )
+        {
+            auto swatch = new COLOR_SWATCH( panel, aSetting.color, aSetting.id, bg_color );
+            swatch->SetToolTip( _( "Left double click or middle click for color change, right click for menu" ) );
+
+            sizer->Add( swatch, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
+            aSetting.ctl_color = swatch;
+        }
+        else
+        {
+            auto blank = new wxPanel( m_objects_window, wxID_ANY, wxDefaultPosition, swatch_size );
+            sizer->Add( blank, 0, wxRIGHT, 5 );
+        }
+
+        if( aSetting.can_control_visibility )
+        {
+            auto btn_visible = new BITMAP_TOGGLE( panel, aSetting.id, KiBitmap( visibility_xpm ),
+                    KiBitmap( visibility_off_xpm ), aSetting.visible );
+            btn_visible->SetToolTip( _( "Show or hide" ) );
+
+            sizer->Add( btn_visible, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
+            aSetting.ctl_visibility = btn_visible;
+
+            btn_visible->Bind( TOGGLE_CHANGED, [this] ( wxCommandEvent& aEvent ) {
+                int layer = static_cast<wxWindow*>( aEvent.GetEventObject() )->GetId();
+                bool is_visible = aEvent.GetInt();
+                onLayerVisibilityChanged( layer, is_visible, true );
+            } );
+        }
+        else
+        {
+            auto blank = new wxPanel( m_objects_window, wxID_ANY, wxDefaultPosition, btn_size );
+            sizer->Add( blank, 0, wxRIGHT, 5 );
+        }
+
+        auto label = new wxStaticText( panel, aSetting.id, aSetting.label );
+        label->Wrap( -1 );
+        label->SetToolTip( aSetting.tooltip );
+        sizer->Add( label, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
+
+        if( aSetting.can_control_opacity )
+        {
+            auto slider = new wxSlider( panel, wxID_ANY, 100, 0, 100,
+                    wxDefaultPosition, wxDefaultSize, wxSL_HORIZONTAL );
+            slider->SetMinSize( wxSize( 100, -1 ) );
+
+            sizer->Add( slider, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
+            aSetting.ctl_opacity = slider;
+        }
+        else
+        {
+            sizer->AddStretchSpacer();
+        }
+
+        m_objects_outer_sizer->Add( panel, 0, wxEXPAND, 0 );
+
+        aSetting.ctl_panel = panel;
+        aSetting.ctl_text = label;
+
+        m_object_settings.emplace_back( aSetting );
+    };
+
+    // Create the controls for objects with adjustable opacity directly
+
+
+    // Because s_render_rows is created static, we must explicitly call
+    // wxGetTranslation for texts which are internationalized (tool tips
+    // and item names)
+    for( unsigned row = 0; row < arrayDim(s_object_settings); ++row )
+    {
+        APPEARANCE_SETTING setting = s_object_settings[row];
+
+#ifdef NOTYET
+        if( m_fp_editor_mode && !isAllowedInFpMode( setting.id ) )
+            continue;
+#endif
+
+        if( setting.id == LAYER_VIA_MICROVIA && !settings.m_MicroViasAllowed )
+            continue;
+
+        if( setting.id == LAYER_VIA_BBLIND && !settings.m_BlindBuriedViaAllowed )
+            continue;
+
+        if( !setting.spacer )
+        {
+            setting.tooltip = wxGetTranslation( s_object_settings[row].tooltip );
+            setting.label = wxGetTranslation( s_object_settings[row].label );
+
+            if( setting.color != COLOR4D::UNSPECIFIED )       // does this row show a color?
+            {
+                // this window frame must have an established BOARD, i.e. after SetBoard()
+                setting.color = m_frame->Settings().Colors().GetItemColor(
+                        static_cast<GAL_LAYER_ID>( setting.id ) );
+            }
+
+            setting.visible = board->IsElementVisible( static_cast<GAL_LAYER_ID>( setting.id ) );
+        }
+
+        appendObject( setting );
+    }
 }
 
 

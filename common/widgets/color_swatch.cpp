@@ -31,7 +31,7 @@ wxDEFINE_EVENT(COLOR_SWATCH_CHANGED, wxCommandEvent);
 using KIGFX::COLOR4D;
 
 
-const static wxSize SWATCH_SIZE_DU( 8, 6 );
+const wxSize COLOR_SWATCH::SWATCH_SIZE_DU( 8, 6 );
 
 // See selcolor.cpp:
 extern COLOR4D DisplayColorFrame( wxWindow* aParent, COLOR4D aOldColor );
@@ -70,7 +70,7 @@ wxBitmap COLOR_SWATCH::MakeBitmap( COLOR4D aColor, COLOR4D aBackground, wxSize a
 static std::unique_ptr<wxStaticBitmap> makeColorSwatch( wxWindow* aParent, COLOR4D aColor,
                                                         COLOR4D aBackground, int aID )
 {
-    static wxSize size = aParent->ConvertDialogToPixels( SWATCH_SIZE_DU );
+    static wxSize size = aParent->ConvertDialogToPixels( COLOR_SWATCH::SWATCH_SIZE_DU );
 
     wxBitmap bitmap = COLOR_SWATCH::MakeBitmap( aColor, aBackground, size );
     auto ret = std::make_unique<wxStaticBitmap>( aParent, aID, bitmap );

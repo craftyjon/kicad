@@ -48,6 +48,8 @@ public:
      */
     COLOR_SWATCH( wxWindow* aParent, KIGFX::COLOR4D aColor, int aID, KIGFX::COLOR4D aBackground );
 
+    const static wxSize SWATCH_SIZE_DU;
+
     /**
      * Set the current swatch color directly.
      */

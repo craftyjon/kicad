@@ -83,6 +83,12 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 
 	bSizer11->Add( m_cb_active_layer_opaque, 0, wxALL, 5 );
 
+	m_staticline7 = new wxStaticLine( m_layers_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+	bSizer11->Add( m_staticline7, 0, wxEXPAND | wxALL, 5 );
+
+	m_cb_flip_board = new wxCheckBox( m_layers_panel, wxID_ANY, wxT("Flip Board View"), wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer11->Add( m_cb_flip_board, 0, wxALL, 5 );
+
 
 	m_layers_panel->SetSizer( bSizer11 );
 	m_layers_panel->Layout();
@@ -93,8 +99,37 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	bSizer15 = new wxBoxSizer( wxVERTICAL );
 
 	m_objects_window = new wxScrolledWindow( m_objects_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL|wxVSCROLL );
-	m_objects_window->SetScrollRate( 5, 5 );
+	m_objects_window->SetScrollRate( 0, 5 );
+	m_objects_outer_sizer = new wxBoxSizer( wxVERTICAL );
+
+
+	m_objects_window->SetSizer( m_objects_outer_sizer );
+	m_objects_window->Layout();
+	m_objects_outer_sizer->Fit( m_objects_window );
 	bSizer15->Add( m_objects_window, 1, wxEXPAND | wxALL, 5 );
+
+	m_staticline6 = new wxStaticLine( m_objects_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+	bSizer15->Add( m_staticline6, 0, wxEXPAND | wxALL, 5 );
+
+	m_staticText16 = new wxStaticText( m_objects_panel, wxID_ANY, wxT("Zone Display:"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_staticText16->Wrap( -1 );
+	bSizer15->Add( m_staticText16, 0, wxALL, 5 );
+
+	wxBoxSizer* bSizer24;
+	bSizer24 = new wxBoxSizer( wxHORIZONTAL );
+
+	m_btn_zones_filled = new wxRadioButton( m_objects_panel, wxID_ANY, wxT("Filled"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP );
+	m_btn_zones_filled->SetValue( true );
+	bSizer24->Add( m_btn_zones_filled, 0, wxALL, 5 );
+
+	m_btn_zones_outline = new wxRadioButton( m_objects_panel, wxID_ANY, wxT("Outline"), wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer24->Add( m_btn_zones_outline, 0, wxALL, 5 );
+
+	m_btn_zones_hidden = new wxRadioButton( m_objects_panel, wxID_ANY, wxT("Hidden"), wxDefaultPosition, wxDefaultSize, 0 );
+	bSizer24->Add( m_btn_zones_hidden, 0, wxALL, 5 );
+
+
+	bSizer15->Add( bSizer24, 0, wxEXPAND, 5 );
 
 
 	m_objects_panel->SetSizer( bSizer15 );
