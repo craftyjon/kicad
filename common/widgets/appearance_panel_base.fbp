@@ -36,7 +36,7 @@
             <property name="enabled">1</property>
             <property name="event_handler">impl_virtual</property>
             <property name="fg"></property>
-            <property name="font">,90,90,8,70,0</property>
+            <property name="font">,90,90,9,70,0</property>
             <property name="hidden">0</property>
             <property name="id">wxID_ANY</property>
             <property name="maximum_size"></property>
@@ -218,7 +218,7 @@
                                             <property name="pin_button">1</property>
                                             <property name="pos"></property>
                                             <property name="resize">Resizable</property>
-                                            <property name="scroll_rate_x">5</property>
+                                            <property name="scroll_rate_x">0</property>
                                             <property name="scroll_rate_y">5</property>
                                             <property name="show">1</property>
                                             <property name="size"></property>
@@ -228,6 +228,12 @@
                                             <property name="window_extra_style"></property>
                                             <property name="window_name"></property>
                                             <property name="window_style">wxHSCROLL|wxVSCROLL</property>
+                                            <object class="wxBoxSizer" expanded="1">
+                                                <property name="minimum_size"></property>
+                                                <property name="name">m_layers_outer_sizer</property>
+                                                <property name="orient">wxVERTICAL</property>
+                                                <property name="permission">protected</property>
+                                            </object>
                                         </object>
                                     </object>
                                     <object class="sizeritem" expanded="0">
@@ -411,7 +417,7 @@
                                                     <property name="style"></property>
                                                     <property name="subclass">; ; forward_declare</property>
                                                     <property name="toolbar_pane">0</property>
-                                                    <property name="tooltip">Non-Active layers will be shown in full color</property>
+                                                    <property name="tooltip">Non-active layers will be shown in full color</property>
                                                     <property name="validator_data_type"></property>
                                                     <property name="validator_style">wxFILTER_NONE</property>
                                                     <property name="validator_type">wxDefaultValidator</property>

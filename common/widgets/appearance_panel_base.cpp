@@ -11,7 +11,7 @@
 
 APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name ) : wxPanel( parent, id, pos, size, style, name )
 {
-	this->SetFont( wxFont( 8, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
+	this->SetFont( wxFont( 9, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
 
 	wxBoxSizer* m_outer_sizer;
 	m_outer_sizer = new wxBoxSizer( wxVERTICAL );
@@ -22,7 +22,13 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	bSizer11 = new wxBoxSizer( wxVERTICAL );
 
 	m_layers_window = new wxScrolledWindow( m_layers_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL|wxVSCROLL );
-	m_layers_window->SetScrollRate( 5, 5 );
+	m_layers_window->SetScrollRate( 0, 5 );
+	m_layers_outer_sizer = new wxBoxSizer( wxVERTICAL );
+
+
+	m_layers_window->SetSizer( m_layers_outer_sizer );
+	m_layers_window->Layout();
+	m_layers_outer_sizer->Fit( m_layers_window );
 	bSizer11->Add( m_layers_window, 1, wxEXPAND | wxALL, 5 );
 
 	m_staticline2 = new wxStaticLine( m_layers_panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
@@ -36,7 +42,7 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	bSizer19 = new wxBoxSizer( wxHORIZONTAL );
 
 	m_radioBtn1 = new wxRadioButton( m_layers_panel, wxID_ANY, wxT("Normal"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_radioBtn1->SetToolTip( wxT("Non-Active layers will be shown in full color") );
+	m_radioBtn1->SetToolTip( wxT("Non-active layers will be shown in full color") );
 
 	bSizer19->Add( m_radioBtn1, 0, wxALL, 5 );
 

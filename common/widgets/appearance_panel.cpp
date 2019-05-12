@@ -18,8 +18,14 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <common/widgets/appearance_panel.h>
+#include <widgets/appearance_panel.h>
+
+#include <bitmaps.h>
+#include <class_board.h>
 #include <pcb_base_frame.h>
+#include <widgets/bitmap_toggle.h>
+#include <widgets/color_swatch.h>
+#include <widgets/indicator_icon.h>
 
 
 /// This is a read only template that is copied and modified before adding to LAYER_WIDGET
@@ -62,19 +68,235 @@ APPEARANCE_PANEL::APPEARANCE_PANEL( PCB_BASE_FRAME* aParent, wxWindow* aFocusOwn
         APPEARANCE_PANEL_BASE( aParent ),
         m_focus_owner( aFocusOwner )
 {
+    int indicatorSize = ConvertDialogToPixels( wxSize( 6, 6 ) ).x;
+    m_IconProvider = new ROW_ICON_PROVIDER( indicatorSize );
+
+    int pointSize = wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT ).GetPointSize();
+    int screenHeight = wxSystemSettings::GetMetric( wxSYS_SCREEN_Y );
+
+    if( screenHeight <= 900 && pointSize >= indicatorSize )
+        pointSize = pointSize * 8 / 10;
+
+    // TODO(JE) Check and do something with calculated point size
+
+    Rebuild();
 }
 
 
 wxSize APPEARANCE_PANEL::GetBestSize() const
 {
     wxSize size( 240, 200 );
-
-
+    // TODO(JE) appropriate logic
     return size;
 }
 
 
-void APPEARANCE_PANEL::rebuild()
+void APPEARANCE_PANEL::Rebuild()
+{
+    rebuildLayers();
+    rebuildObjects();
+    rebuildNets();
+    rebuildStoredSettings();
+
+    UpdateLayers();
+}
+
+
+void APPEARANCE_PANEL::rebuildLayers()
+{
+    auto frame = static_cast<PCB_BASE_FRAME*>( GetParent() );
+    BOARD* board = frame->GetBoard();
+    LSET enabled = board->GetEnabledLayers();
+    LSET visible = board->GetVisibleLayers();
+
+    COLOR4D bg_color = frame->Settings().Colors().GetLayerColor( LAYER_PCB_BACKGROUND );
+
+    m_layer_settings.clear();
+    m_layers_outer_sizer->Clear( true );
+
+    auto appendLayer = [&] ( APPEARANCE_SETTING aSetting ) {
+
+        auto panel = new wxPanel( m_layers_window );
+        auto sizer = new wxBoxSizer( wxHORIZONTAL );
+
+        panel->SetSizer( sizer );
+
+        // TODO(JE) consider restyling this indicator
+        auto indicator = new INDICATOR_ICON( panel, *m_IconProvider,
+                                             ROW_ICON_PROVIDER::STATE::OFF, aSetting.id );
+
+        auto btn_visible = new BITMAP_TOGGLE( panel, wxID_ANY,
+                                              KiBitmap( visibility_xpm ),
+                                              KiBitmap( visibility_off_xpm ),
+                                              aSetting.visible );
+
+        auto swatch = new COLOR_SWATCH( panel, COLOR4D::UNSPECIFIED,
+                aSetting.id, true, bg_color );
+
+        auto label = new wxStaticText( panel, wxID_ANY, aSetting.label );
+        label->Wrap( -1 );
+
+//        auto slider = new wxSlider( panel, wxID_ANY, aSetting.color.a * 100, 0, 100,
+//                                    wxDefaultPosition, wxDefaultSize, wxSL_HORIZONTAL );
+//        slider->SetMinSize( wxSize( 100, -1 ) );
+
+        sizer->Add( indicator,   0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
+        sizer->Add( btn_visible, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
+        sizer->Add( swatch,      0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
+        sizer->Add( label,       1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
+        //sizer->Add( slider,      0, wxALIGN_CENTER_VERTICAL | wxALL, 5 );
+
+        m_layers_outer_sizer->Add( panel, 0, wxEXPAND, 0 );
+
+        aSetting.ctl_panel = panel;
+        aSetting.ctl_indicator = indicator;
+        aSetting.ctl_visibility = btn_visible;
+        aSetting.ctl_color = swatch;
+        aSetting.ctl_text = label;
+
+        m_layer_settings.emplace_back( aSetting );
+    };
+
+    wxString dsc;
+
+    // show all coppers first, with front on top, back on bottom, then technical layers
+    for( LSEQ cu_stack = enabled.CuStack(); cu_stack; ++cu_stack )
+    {
+        PCB_LAYER_ID layer = *cu_stack;
+
+        switch( layer )
+        {
+            case F_Cu:
+                dsc = _( "Front copper layer" );
+                break;
+
+            case B_Cu:
+                dsc = _( "Back copper layer" );
+                break;
+
+            default:
+                dsc = _( "Inner copper layer" );
+                break;
+        }
+
+        appendLayer( APPEARANCE_SETTING( board->GetLayerName( layer ), layer,
+                                         frame->Settings().Colors().GetLayerColor( layer ),
+                                         dsc, visible[layer] ) );
+
+#ifdef NOTYET
+        if( m_fp_editor_mode && LSET::ForbiddenFootprintLayers().test( layer ) )
+        {
+            getLayerComp( GetLayerRowCount()-1, COLUMN_COLOR_LYRNAME )->Enable( false );
+            getLayerComp( GetLayerRowCount()-1, COLUMN_COLORBM )->SetToolTip( wxEmptyString );
+        }
+#endif
+    }
+
+    // technical layers are shown in this order:
+    // Because they are static, wxGetTranslation must be explicitly
+    // called for tooltips.
+    static const struct {
+        PCB_LAYER_ID layerId;
+        wxString     tooltip;
+    } non_cu_seq[] = {
+        { F_Adhes,          _( "Adhesive on board's front" ) },
+        { B_Adhes,          _( "Adhesive on board's back" ) },
+        { F_Paste,          _( "Solder paste on board's front" ) },
+        { B_Paste,          _( "Solder paste on board's back" ) },
+        { F_SilkS,          _( "Silkscreen on board's front" ) },
+        { B_SilkS,          _( "Silkscreen on board's back" ) },
+        { F_Mask,           _( "Solder mask on board's front" ) },
+        { B_Mask,           _( "Solder mask on board's back" ) },
+        { Dwgs_User,        _( "Explanatory drawings" ) },
+        { Cmts_User,        _( "Explanatory comments" ) },
+        { Eco1_User,        _( "User defined meaning" ) },
+        { Eco2_User,        _( "User defined meaning" ) },
+        { Edge_Cuts,        _( "Board's perimeter definition" ) },
+        { Margin,           _( "Board's edge setback outline" ) },
+        { F_CrtYd,          _( "Footprint courtyards on board's front" ) },
+        { B_CrtYd,          _( "Footprint courtyards on board's back" ) },
+        { F_Fab,            _( "Footprint assembly on board's front" ) },
+        { B_Fab,            _( "Footprint assembly on board's back" ) }
+    };
+
+    for( const auto& entry : non_cu_seq )
+    {
+        PCB_LAYER_ID layer = entry.layerId;
+
+        if( !enabled[layer] )
+            continue;
+
+        appendLayer( APPEARANCE_SETTING( board->GetLayerName( layer ), layer,
+                                         frame->Settings().Colors().GetLayerColor( layer ),
+                                         wxGetTranslation( entry.tooltip ), visible[layer] ) );
+
+#ifdef NOTYET
+        if( m_fp_editor_mode && LSET::ForbiddenFootprintLayers().test( layer ) )
+        {
+            getLayerComp( GetLayerRowCount()-1, COLUMN_COLOR_LYRNAME )->Enable( false );
+            getLayerComp( GetLayerRowCount()-1, COLUMN_COLORBM )->SetToolTip( wxEmptyString );
+        }
+#endif
+    }
+
+    m_layers_outer_sizer->Layout();
+}
+
+
+void APPEARANCE_PANEL::UpdateLayers()
+{
+    auto frame = static_cast<PCB_BASE_FRAME*>( GetParent() );
+    BOARD* board = frame->GetBoard();
+    LSET visible = board->GetVisibleLayers();
+    PCB_LAYER_ID current_layer = board->GetLayer();
+
+    for( APPEARANCE_SETTING& setting : m_layer_settings )
+    {
+        LAYER_NUM layer = setting.id;
+
+        setting.color = frame->Settings().Colors().GetLayerColor( layer );
+
+        if( setting.ctl_panel )
+        {
+            setting.ctl_panel->SetBackgroundColour( current_layer == layer ?
+                    wxSystemSettings::GetColour( wxSYS_COLOUR_HIGHLIGHT ) :
+                    wxSystemSettings::GetColour( wxSYS_COLOUR_FRAMEBK ) );
+        }
+
+        if( setting.ctl_indicator )
+        {
+            setting.ctl_indicator->SetIndicatorState( current_layer == layer ?
+                                                      ROW_ICON_PROVIDER::STATE::ON :
+                                                      ROW_ICON_PROVIDER::STATE::OFF );
+        }
+
+        if( setting.ctl_visibility )
+            setting.ctl_visibility->SetValue( visible[setting.id] );
+
+        if( setting.ctl_color )
+        {
+            // Remove alpha component from swatch
+            COLOR4D color = setting.color;
+            color.a = 1.0;
+            setting.ctl_color->SetSwatchColor( color, false );
+        }
+    }
+}
+
+
+void APPEARANCE_PANEL::rebuildObjects()
+{
+
+}
+
+
+void APPEARANCE_PANEL::rebuildNets()
+{
+
+}
+
+
+void APPEARANCE_PANEL::rebuildStoredSettings()
 {
 
 }

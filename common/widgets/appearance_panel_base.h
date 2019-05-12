@@ -9,8 +9,9 @@
 
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
-#include <wx/scrolwin.h>
+#include <wx/sizer.h>
 #include <wx/gdicmn.h>
+#include <wx/scrolwin.h>
 #include <wx/font.h>
 #include <wx/colour.h>
 #include <wx/settings.h>
@@ -18,7 +19,6 @@
 #include <wx/statline.h>
 #include <wx/stattext.h>
 #include <wx/radiobut.h>
-#include <wx/sizer.h>
 #include <wx/slider.h>
 #include <wx/checkbox.h>
 #include <wx/panel.h>
@@ -46,6 +46,7 @@ class APPEARANCE_PANEL_BASE : public wxPanel
 		wxNotebook* m_notebook;
 		wxPanel* m_layers_panel;
 		wxScrolledWindow* m_layers_window;
+		wxBoxSizer* m_layers_outer_sizer;
 		wxStaticLine* m_staticline2;
 		wxStaticText* m_staticText13;
 		wxRadioButton* m_radioBtn1;
