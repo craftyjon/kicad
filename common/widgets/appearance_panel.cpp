@@ -22,8 +22,10 @@
 
 #include <bitmaps.h>
 #include <class_board.h>
-#include <class_drawpanel.h>
 #include <pcb_base_frame.h>
+#include <pcb_display_options.h>
+#include <tool/tool_manager.h>
+#include <tools/pcb_actions.h>
 #include <view/view.h>
 #include <widgets/bitmap_toggle.h>
 #include <widgets/color_swatch.h>
@@ -68,7 +70,8 @@ const APPEARANCE_PANEL::APPEARANCE_SETTING APPEARANCE_PANEL::s_render_rows[] = {
 APPEARANCE_PANEL::APPEARANCE_PANEL( PCB_BASE_FRAME* aParent, wxWindow* aFocusOwner,
                                     bool aFpEditorMode ) :
         APPEARANCE_PANEL_BASE( aParent ),
-        m_focus_owner( aFocusOwner )
+        m_focus_owner( aFocusOwner ),
+        m_frame( aParent )
 {
     int indicatorSize = ConvertDialogToPixels( wxSize( 6, 6 ) ).x;
     m_IconProvider = new ROW_ICON_PROVIDER( indicatorSize );
@@ -80,6 +83,25 @@ APPEARANCE_PANEL::APPEARANCE_PANEL( PCB_BASE_FRAME* aParent, wxWindow* aFocusOwn
         pointSize = pointSize * 8 / 10;
 
     // TODO(JE) Check and do something with calculated point size
+
+    auto update_layer_display = [=] ( PCB_DISPLAY_OPTIONS::HIGH_CONTRAST_DISPLAY_MODE_T aMode ) {
+        auto options = static_cast<PCB_DISPLAY_OPTIONS*>( m_frame->GetDisplayOptions() );
+        options->m_ContrastModeDisplay = aMode;
+
+        m_frame->GetToolManager()->RunAction( PCB_ACTIONS::highContrastMode, true );
+    };
+
+    m_btn_layers_normal->Bind( wxEVT_RADIOBUTTON, [=] ( wxCommandEvent& ) {
+        update_layer_display( PCB_DISPLAY_OPTIONS::LAYERS_NORMAL );
+    } );
+
+    m_btn_layers_dimmed->Bind( wxEVT_RADIOBUTTON, [=] ( wxCommandEvent& ) {
+        update_layer_display( PCB_DISPLAY_OPTIONS::LAYERS_DIMMED );
+    } );
+
+    m_btn_layers_off->Bind( wxEVT_RADIOBUTTON, [=] ( wxCommandEvent& ) {
+        update_layer_display( PCB_DISPLAY_OPTIONS::LAYERS_OFF );
+    } );
 
     Rebuild();
 }
@@ -100,18 +122,39 @@ void APPEARANCE_PANEL::Rebuild()
     rebuildNets();
     rebuildStoredSettings();
 
+    UpdateDisplayOptions();
     UpdateLayers();
+}
+
+
+void APPEARANCE_PANEL::UpdateDisplayOptions()
+{
+    auto options = static_cast<PCB_DISPLAY_OPTIONS*>( m_frame->GetDisplayOptions() );
+
+    switch( options->m_ContrastModeDisplay )
+    {
+    case PCB_DISPLAY_OPTIONS::LAYERS_NORMAL:
+        m_btn_layers_normal->SetValue( true );
+        break;
+
+    case PCB_DISPLAY_OPTIONS::LAYERS_DIMMED:
+        m_btn_layers_dimmed->SetValue( true );
+        break;
+
+    case PCB_DISPLAY_OPTIONS::LAYERS_OFF:
+        m_btn_layers_off->SetValue( true );
+        break;
+    }
 }
 
 
 void APPEARANCE_PANEL::rebuildLayers()
 {
-    auto frame = static_cast<PCB_BASE_FRAME*>( GetParent() );
-    BOARD* board = frame->GetBoard();
+    BOARD* board = m_frame->GetBoard();
     LSET enabled = board->GetEnabledLayers();
     LSET visible = board->GetVisibleLayers();
 
-    COLOR4D bg_color = frame->Settings().Colors().GetLayerColor( LAYER_PCB_BACKGROUND );
+    COLOR4D bg_color = m_frame->Settings().Colors().GetLayerColor( LAYER_PCB_BACKGROUND );
 
     m_layer_settings.clear();
     m_layers_outer_sizer->Clear( true );
@@ -195,7 +238,7 @@ void APPEARANCE_PANEL::rebuildLayers()
         }
 
         appendLayer( APPEARANCE_SETTING( board->GetLayerName( layer ), layer,
-                                         frame->Settings().Colors().GetLayerColor( layer ),
+                                         m_frame->Settings().Colors().GetLayerColor( layer ),
                                          dsc, visible[layer] ) );
 
 #ifdef NOTYET
@@ -242,7 +285,7 @@ void APPEARANCE_PANEL::rebuildLayers()
             continue;
 
         appendLayer( APPEARANCE_SETTING( board->GetLayerName( layer ), layer,
-                                         frame->Settings().Colors().GetLayerColor( layer ),
+                                         m_frame->Settings().Colors().GetLayerColor( layer ),
                                          wxGetTranslation( entry.tooltip ), visible[layer] ) );
 
 #ifdef NOTYET
@@ -260,16 +303,15 @@ void APPEARANCE_PANEL::rebuildLayers()
 
 void APPEARANCE_PANEL::UpdateLayers()
 {
-    auto frame = static_cast<PCB_BASE_FRAME*>( GetParent() );
-    BOARD* board = frame->GetBoard();
+    BOARD* board = m_frame->GetBoard();
     LSET visible = board->GetVisibleLayers();
-    PCB_LAYER_ID current_layer = frame->GetActiveLayer();
+    PCB_LAYER_ID current_layer = m_frame->GetActiveLayer();
 
     for( APPEARANCE_SETTING& setting : m_layer_settings )
     {
         LAYER_NUM layer = setting.id;
 
-        setting.color = frame->Settings().Colors().GetLayerColor( layer );
+        setting.color = m_frame->Settings().Colors().GetLayerColor( layer );
 
         if( setting.ctl_panel )
         {
@@ -301,7 +343,6 @@ void APPEARANCE_PANEL::UpdateLayers()
 
 void APPEARANCE_PANEL::onLayerClick( wxMouseEvent& aEvent )
 {
-    auto frame = static_cast<PCB_BASE_FRAME*>( GetParent() );
     auto eventSource = static_cast<wxWindow*>( aEvent.GetEventObject() );
 
     PCB_LAYER_ID layer = ToLAYER_ID( eventSource->GetId() );
@@ -311,14 +352,13 @@ void APPEARANCE_PANEL::onLayerClick( wxMouseEvent& aEvent )
         return false;
 #endif
 
-    frame->SetActiveLayer( layer );
+    m_frame->SetActiveLayer( layer );
 }
 
 
 void APPEARANCE_PANEL::onLayerVisibilityChanged( int aLayer, bool isVisible, bool isFinal )
 {
-    auto frame = static_cast<PCB_BASE_FRAME*>( GetParent() );
-    BOARD* board = frame->GetBoard();
+    BOARD* board = m_frame->GetBoard();
 
     LSET visibleLayers = board->GetVisibleLayers();
 
@@ -328,13 +368,13 @@ void APPEARANCE_PANEL::onLayerVisibilityChanged( int aLayer, bool isVisible, boo
 
         board->SetVisibleLayers( visibleLayers );
 
-        frame->OnModify();
+        m_frame->OnModify();
 
-        frame->GetGalCanvas()->GetView()->SetLayerVisible( aLayer, isVisible );
+        m_frame->GetCanvas()->GetView()->SetLayerVisible( aLayer, isVisible );
     }
 
     if( isFinal )
-        frame->GetCanvas()->Refresh();
+        m_frame->GetCanvas()->Refresh();
 }
 
 

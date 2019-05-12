@@ -87,6 +87,14 @@ public:
         DZ_SHOW_OUTLINED
     };
 
+    ///> Determines how inactive layers should be displayed
+    enum INACTIVE_LAYER_MODE
+    {
+        IL_NORMAL = 0,
+        IL_DIMMED,
+        IL_OFF
+    };
+
     PCB_RENDER_SETTINGS();
 
     /// @copydoc RENDER_SETTINGS::ImportLegacyColors()
@@ -216,6 +224,9 @@ protected:
 
     ///> Color used for highlighting selection candidates
     COLOR4D m_selectionCandidateColor;
+
+    ///> How to display inactive layers
+    INACTIVE_LAYER_MODE m_contrastModeDisplay;
 };
 
 

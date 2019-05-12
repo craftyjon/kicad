@@ -346,7 +346,7 @@ void PCB_EDIT_FRAME::ReCreateOptToolbar()
     m_optionsToolBar->Add( PCB_ACTIONS::padDisplayMode,       ACTION_TOOLBAR::TOGGLE );
     m_optionsToolBar->Add( PCB_ACTIONS::viaDisplayMode,       ACTION_TOOLBAR::TOGGLE );
     m_optionsToolBar->Add( PCB_ACTIONS::trackDisplayMode,     ACTION_TOOLBAR::TOGGLE );
-    m_optionsToolBar->Add( ACTIONS::highContrastMode,         ACTION_TOOLBAR::TOGGLE );
+    m_optionsToolBar->Add( ACTIONS::highContrastModeToggle,   ACTION_TOOLBAR::TOGGLE );
 
     // Tools to show/hide toolbars:
     KiScaledSeparator( m_optionsToolBar, this );
@@ -705,7 +705,7 @@ void PCB_EDIT_FRAME::SyncToolbars()
     m_optionsToolBar->Toggle( PCB_ACTIONS::trackDisplayMode,     !opts->m_DisplayPcbTrackFill );
     m_optionsToolBar->Toggle( PCB_ACTIONS::viaDisplayMode,       !opts->m_DisplayViaFill );
     m_optionsToolBar->Toggle( PCB_ACTIONS::padDisplayMode,       !opts->m_DisplayPadFill );
-    m_optionsToolBar->Toggle( ACTIONS::highContrastMode,         opts->m_ContrastModeDisplay );
+    m_optionsToolBar->Toggle( ACTIONS::highContrastModeToggle,   opts->m_ContrastModeDisplay );
     m_optionsToolBar->Refresh();
 
     TOGGLE_TOOL( m_drawToolBar, ACTIONS::selectionTool );

@@ -90,8 +90,12 @@ public:
 
     void UpdateLayers();
 
+    void UpdateDisplayOptions();
+
 private:
     wxWindow* m_focus_owner;
+
+    PCB_BASE_FRAME* m_frame;
 
     static const APPEARANCE_SETTING s_render_rows[];
 

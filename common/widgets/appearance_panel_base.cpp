@@ -41,20 +41,21 @@ APPEARANCE_PANEL_BASE::APPEARANCE_PANEL_BASE( wxWindow* parent, wxWindowID id, c
 	wxBoxSizer* bSizer19;
 	bSizer19 = new wxBoxSizer( wxHORIZONTAL );
 
-	m_radioBtn1 = new wxRadioButton( m_layers_panel, wxID_ANY, wxT("Normal"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_radioBtn1->SetToolTip( wxT("Non-active layers will be shown in full color") );
+	m_btn_layers_normal = new wxRadioButton( m_layers_panel, wxID_ANY, wxT("Normal"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP );
+	m_btn_layers_normal->SetValue( true );
+	m_btn_layers_normal->SetToolTip( wxT("Non-active layers will be shown in full color") );
 
-	bSizer19->Add( m_radioBtn1, 0, wxALL, 5 );
+	bSizer19->Add( m_btn_layers_normal, 0, wxALL, 5 );
 
-	m_radioBtn2 = new wxRadioButton( m_layers_panel, wxID_ANY, wxT("Dimmed"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_radioBtn2->SetToolTip( wxT("Non-active layers will be grayscale and dimmed") );
+	m_btn_layers_dimmed = new wxRadioButton( m_layers_panel, wxID_ANY, wxT("Dimmed"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_btn_layers_dimmed->SetToolTip( wxT("Non-active layers will be grayscale and dimmed") );
 
-	bSizer19->Add( m_radioBtn2, 0, wxALL, 5 );
+	bSizer19->Add( m_btn_layers_dimmed, 0, wxALL, 5 );
 
-	m_radioBtn3 = new wxRadioButton( m_layers_panel, wxID_ANY, wxT("Off"), wxDefaultPosition, wxDefaultSize, 0 );
-	m_radioBtn3->SetToolTip( wxT("Non-active layers will be hidden") );
+	m_btn_layers_off = new wxRadioButton( m_layers_panel, wxID_ANY, wxT("Off"), wxDefaultPosition, wxDefaultSize, 0 );
+	m_btn_layers_off->SetToolTip( wxT("Non-active layers will be hidden") );
 
-	bSizer19->Add( m_radioBtn3, 0, wxALL, 5 );
+	bSizer19->Add( m_btn_layers_off, 0, wxALL, 5 );
 
 
 	bSizer11->Add( bSizer19, 0, wxEXPAND, 5 );

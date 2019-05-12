@@ -309,6 +309,7 @@ public:
     // Declare a few color shortcuts that are used for comparisons frequently
     static const COLOR4D WHITE;
     static const COLOR4D BLACK;
+    static const COLOR4D TRANSPARENT;
 };
 
 /// @brief Equality operator, are two colors equal

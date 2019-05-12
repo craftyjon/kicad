@@ -392,6 +392,7 @@ public:
     void SaveSettings( wxConfigBase* aCfg ) override;
 
     void CommonSettingsChanged( bool aEnvVarsChanged ) override;
+    virtual void OnDisplayOptionsChanged() {}
 
     void OnTogglePadDrawMode( wxCommandEvent& aEvent );
     void OnToggleGraphicDrawMode( wxCommandEvent& aEvent );

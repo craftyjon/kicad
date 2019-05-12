@@ -270,9 +270,38 @@ int PCBNEW_CONTROL::HighContrastMode( const TOOL_EVENT& aEvent )
 {
     auto opts = displayOptions();
 
-    Flip( opts->m_ContrastModeDisplay );
     view()->UpdateDisplayOptions( opts );
     canvas()->SetHighContrastLayer( m_frame->GetActiveLayer() );
+    m_frame->OnDisplayOptionsChanged();
+
+    canvas()->Refresh();
+
+    return 0;
+}
+
+
+int PCBNEW_CONTROL::HighContrastModeToggle( const TOOL_EVENT& aEvent )
+{
+    auto opts = displayOptions();
+
+    switch( opts->m_ContrastModeDisplay )
+    {
+    case PCB_DISPLAY_OPTIONS::LAYERS_NORMAL:
+        opts->m_ContrastModeDisplay = PCB_DISPLAY_OPTIONS::LAYERS_DIMMED;
+        break;
+
+    case PCB_DISPLAY_OPTIONS::LAYERS_DIMMED:
+        opts->m_ContrastModeDisplay = PCB_DISPLAY_OPTIONS::LAYERS_OFF;
+        break;
+
+    case PCB_DISPLAY_OPTIONS::LAYERS_OFF:
+        opts->m_ContrastModeDisplay = PCB_DISPLAY_OPTIONS::LAYERS_NORMAL;
+        break;
+    }
+
+    view()->UpdateDisplayOptions( opts );
+    canvas()->SetHighContrastLayer( m_frame->GetActiveLayer() );
+    m_frame->OnDisplayOptionsChanged();
 
     return 0;
 }
@@ -958,6 +987,7 @@ void PCBNEW_CONTROL::setTransitions()
     Go( &PCBNEW_CONTROL::ZoneDisplayMode,      PCB_ACTIONS::zoneDisplayOutlines.MakeEvent() );
     Go( &PCBNEW_CONTROL::ZoneDisplayMode,      PCB_ACTIONS::zoneDisplayToggle.MakeEvent() );
     Go( &PCBNEW_CONTROL::HighContrastMode,     ACTIONS::highContrastMode.MakeEvent() );
+    Go( &PCBNEW_CONTROL::HighContrastModeToggle, ACTIONS::highContrastModeToggle.MakeEvent() );
 
     // Layer control
     Go( &PCBNEW_CONTROL::LayerSwitch,          PCB_ACTIONS::layerTop.MakeEvent() );
@@ -1021,5 +1051,3 @@ void PCBNEW_CONTROL::setTransitions()
     Go( &PCBNEW_CONTROL::UpdateMessagePanel,   EVENTS::ClearedEvent );
     Go( &PCBNEW_CONTROL::UpdateMessagePanel,   EVENTS::SelectedItemsModified );
 }
-
-

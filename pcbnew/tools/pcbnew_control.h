@@ -62,7 +62,12 @@ public:
     int ViaDisplayMode( const TOOL_EVENT& aEvent );
     int GraphicDisplayMode( const TOOL_EVENT& aEvent );
     int ModuleEdgeOutlines( const TOOL_EVENT& aEvent );
+
+    // Update the view with the new high-contrast mode from the display settings
     int HighContrastMode( const TOOL_EVENT& aEvent );
+
+    // Rotate through the available high-contrast modes
+    int HighContrastModeToggle( const TOOL_EVENT& aEvent );
 
     // Layer control
     int LayerSwitch( const TOOL_EVENT& aEvent );

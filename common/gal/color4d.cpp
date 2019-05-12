@@ -365,3 +365,4 @@ COLOR4D& COLOR4D::Saturate( double aFactor )
 const COLOR4D COLOR4D::UNSPECIFIED( 0, 0, 0, 0 );
 const COLOR4D COLOR4D::WHITE( 1, 1, 1, 1 );
 const COLOR4D COLOR4D::BLACK( 0, 0, 0, 1 );
+const COLOR4D COLOR4D::TRANSPARENT( 1, 0, 1, 0 );

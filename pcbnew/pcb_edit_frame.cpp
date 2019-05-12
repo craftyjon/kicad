@@ -703,6 +703,12 @@ void PCB_EDIT_FRAME::syncLayerVisibilities()
 }
 
 
+void PCB_EDIT_FRAME::OnDisplayOptionsChanged()
+{
+    m_appearance_panel->UpdateDisplayOptions();
+}
+
+
 void PCB_EDIT_FRAME::OnUpdateLayerAlpha( wxUpdateUIEvent & )
 {
     m_Layers->SyncLayerAlphaIndicators();

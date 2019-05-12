@@ -512,6 +512,8 @@ public:
      */
     void OnUpdateLayerAlpha( wxUpdateUIEvent& aEvent ) override;
 
+    void OnDisplayOptionsChanged() override;
+
     /**
      * Function IsElementVisible
      * tests whether a given element category is visible. Keep this as an

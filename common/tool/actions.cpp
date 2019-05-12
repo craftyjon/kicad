@@ -463,11 +463,15 @@ TOOL_ACTION ACTIONS::toggleCursorStyle( "common.Control.toggleCursorStyle",
         _( "Full-Window Crosshairs" ), _( "Switch display of full-window crosshairs" ),
         cursor_shape_xpm );
 
-TOOL_ACTION ACTIONS::highContrastMode( "common.Control.highContrastMode",
+TOOL_ACTION ACTIONS::highContrastModeToggle( "common.Control.highContrastModeToggle",
         AS_GLOBAL,
         MD_CTRL + 'H', LEGACY_HK_NAME( "Toggle High Contrast Mode" ),
         _( "High Contrast Mode" ), _( "Use high contrast display mode" ),
         contrast_mode_xpm );
+
+TOOL_ACTION ACTIONS::highContrastMode( "common.Control.highContrastMode",
+        AS_GLOBAL, 0, "",
+        "", "" );
 
 TOOL_ACTION ACTIONS::selectionTool( "common.InteractiveSelection.selectionTool",
         AS_GLOBAL, 0, "", 

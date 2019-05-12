@@ -215,7 +215,7 @@ void GERBVIEW_FRAME::ReCreateMenuBar()
     viewMenu->AddCheckItem( GERBVIEW_ACTIONS::dcodeDisplay,            showDcodes );
     viewMenu->AddCheckItem( GERBVIEW_ACTIONS::negativeObjectDisplay,   showNegativeObjects );
     viewMenu->AddCheckItem( GERBVIEW_ACTIONS::toggleDiffMode,          diffModeCondition );
-    viewMenu->AddCheckItem( ACTIONS::highContrastMode,                 contrastModeCondition );
+    viewMenu->AddCheckItem( ACTIONS::highContrastModeToggle,           contrastModeCondition );
 
     viewMenu->Resolve();
 

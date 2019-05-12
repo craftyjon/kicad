@@ -215,6 +215,21 @@ void PCB_RENDER_SETTINGS::LoadDisplayOptions( const PCB_DISPLAY_OPTIONS* aOption
     if( aOptions->m_DisplayPadIsol )
         m_clearance |= CL_PADS;
 
+    switch( aOptions->m_ContrastModeDisplay )
+    {
+    case PCB_DISPLAY_OPTIONS::LAYERS_NORMAL:
+        m_contrastModeDisplay = IL_NORMAL;
+        break;
+
+    case PCB_DISPLAY_OPTIONS::LAYERS_DIMMED:
+        m_contrastModeDisplay = IL_DIMMED;
+        break;
+
+    case PCB_DISPLAY_OPTIONS::LAYERS_OFF:
+        m_contrastModeDisplay = IL_OFF;
+        break;
+    }
+
     m_showPageLimits = aShowPageLimits;
 }
 
@@ -223,6 +238,15 @@ const COLOR4D& PCB_RENDER_SETTINGS::GetColor( const VIEW_ITEM* aItem, int aLayer
 {
     int netCode = -1;
     const EDA_ITEM* item = dynamic_cast<const EDA_ITEM*>( aItem );
+
+    // Make items invisible in "off" contrast mode
+    if( m_contrastModeDisplay == IL_OFF && m_activeLayers.count( aLayer ) == 0 )
+        return COLOR4D::TRANSPARENT;
+
+    // Hide net names in "dimmed" contrast mode
+    if( m_contrastModeDisplay != IL_NORMAL && IsNetnameLayer( aLayer )
+        && m_activeLayers.count( aLayer ) == 0 )
+        return COLOR4D::TRANSPARENT;
 
     if( item )
     {
@@ -262,7 +286,7 @@ const COLOR4D& PCB_RENDER_SETTINGS::GetColor( const VIEW_ITEM* aItem, int aLayer
         return m_layerColorsHi[aLayer];
 
     // Return grayish color for non-highlighted layers in the high contrast mode
-    if( m_hiContrastEnabled && m_activeLayers.count( aLayer ) == 0 )
+    if( m_contrastModeDisplay == IL_DIMMED && m_activeLayers.count( aLayer ) == 0 )
         return m_hiContrastColor[aLayer];
 
     // Catch the case when highlight and high-contraste modes are enabled

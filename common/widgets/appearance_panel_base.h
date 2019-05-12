@@ -49,9 +49,9 @@ class APPEARANCE_PANEL_BASE : public wxPanel
 		wxBoxSizer* m_layers_outer_sizer;
 		wxStaticLine* m_staticline2;
 		wxStaticText* m_staticText13;
-		wxRadioButton* m_radioBtn1;
-		wxRadioButton* m_radioBtn2;
-		wxRadioButton* m_radioBtn3;
+		wxRadioButton* m_btn_layers_normal;
+		wxRadioButton* m_btn_layers_dimmed;
+		wxRadioButton* m_btn_layers_off;
 		wxStaticLine* m_staticline5;
 		wxStaticText* m_staticText9;
 		wxSlider* m_slider_all_layers;
