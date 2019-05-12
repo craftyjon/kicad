@@ -185,6 +185,7 @@ set( COMMON_DLG_SRCS
     )
 
 set( COMMON_WIDGET_SRCS
+    widgets/bitmap_toggle.cpp
     widgets/button_row_panel.cpp
     widgets/color_swatch.cpp
     widgets/footprint_choice.cpp
