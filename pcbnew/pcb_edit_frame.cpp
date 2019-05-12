@@ -211,7 +211,6 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
 
     // Create the PCB_LAYER_WIDGET *after* SetBoard():
     m_Layers = new PCB_LAYER_WIDGET( this, GetCanvas() );
-    m_appearance_panel = new APPEARANCE_PANEL( this, GetCanvas() );
 
     wxIcon  icon;
     icon.CopyFromBitmap( KiBitmap( icon_pcbnew_xpm ) );
@@ -239,6 +238,8 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
     ReCreateVToolbar();
     ReCreateOptToolbar();
     ReCreateMicrowaveVToolbar();
+
+    m_appearance_panel = new APPEARANCE_PANEL( this, GetCanvas() );
 
     m_auimgr.SetManagedWindow( this );
     m_auimgr.SetArtProvider( new EDA_DOCKART() );

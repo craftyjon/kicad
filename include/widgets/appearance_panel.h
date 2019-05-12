@@ -114,6 +114,8 @@ private:
     void rebuildNets();
 
     void rebuildStoredSettings();
+
+    void onLayerClick( wxMouseEvent& aEvent );
 };
 
 

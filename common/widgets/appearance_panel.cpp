@@ -116,7 +116,7 @@ void APPEARANCE_PANEL::rebuildLayers()
 
     auto appendLayer = [&] ( APPEARANCE_SETTING aSetting ) {
 
-        auto panel = new wxPanel( m_layers_window );
+        auto panel = new wxPanel( m_layers_window, aSetting.id );
         auto sizer = new wxBoxSizer( wxHORIZONTAL );
 
         panel->SetSizer( sizer );
@@ -125,22 +125,24 @@ void APPEARANCE_PANEL::rebuildLayers()
         auto indicator = new INDICATOR_ICON( panel, *m_IconProvider,
                                              ROW_ICON_PROVIDER::STATE::OFF, aSetting.id );
 
-        auto btn_visible = new BITMAP_TOGGLE( panel, wxID_ANY,
+        auto btn_visible = new BITMAP_TOGGLE( panel, aSetting.id,
                                               KiBitmap( visibility_xpm ),
                                               KiBitmap( visibility_off_xpm ),
                                               aSetting.visible );
+        btn_visible->SetToolTip( _( "Show or hide this layer" ) );
 
-        auto swatch = new COLOR_SWATCH( panel, COLOR4D::UNSPECIFIED,
-                aSetting.id, true, bg_color );
+        auto swatch = new COLOR_SWATCH( panel, COLOR4D::UNSPECIFIED, aSetting.id, bg_color );
+        swatch->SetToolTip( _("Left double click or middle click for color change, right click for menu" ) );
 
-        auto label = new wxStaticText( panel, wxID_ANY, aSetting.label );
+        auto label = new wxStaticText( panel, aSetting.id, aSetting.label );
         label->Wrap( -1 );
+        label->SetToolTip( aSetting.tooltip );
 
 //        auto slider = new wxSlider( panel, wxID_ANY, aSetting.color.a * 100, 0, 100,
 //                                    wxDefaultPosition, wxDefaultSize, wxSL_HORIZONTAL );
 //        slider->SetMinSize( wxSize( 100, -1 ) );
 
-        sizer->Add( indicator,   0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
+        sizer->Add( indicator,   0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 2 );
         sizer->Add( btn_visible, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
         sizer->Add( swatch,      0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
         sizer->Add( label,       1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 5 );
@@ -153,6 +155,11 @@ void APPEARANCE_PANEL::rebuildLayers()
         aSetting.ctl_visibility = btn_visible;
         aSetting.ctl_color = swatch;
         aSetting.ctl_text = label;
+
+        panel->Bind( wxEVT_LEFT_DOWN, &APPEARANCE_PANEL::onLayerClick, this );
+        indicator->Bind( wxEVT_LEFT_DOWN, &APPEARANCE_PANEL::onLayerClick, this );
+        swatch->Bind( wxEVT_LEFT_DOWN, &APPEARANCE_PANEL::onLayerClick, this );
+        label->Bind( wxEVT_LEFT_DOWN, &APPEARANCE_PANEL::onLayerClick, this );
 
         m_layer_settings.emplace_back( aSetting );
     };
@@ -248,7 +255,7 @@ void APPEARANCE_PANEL::UpdateLayers()
     auto frame = static_cast<PCB_BASE_FRAME*>( GetParent() );
     BOARD* board = frame->GetBoard();
     LSET visible = board->GetVisibleLayers();
-    PCB_LAYER_ID current_layer = board->GetLayer();
+    PCB_LAYER_ID current_layer = frame->GetActiveLayer();
 
     for( APPEARANCE_SETTING& setting : m_layer_settings )
     {
@@ -281,6 +288,22 @@ void APPEARANCE_PANEL::UpdateLayers()
             setting.ctl_color->SetSwatchColor( color, false );
         }
     }
+}
+
+
+void APPEARANCE_PANEL::onLayerClick( wxMouseEvent& aEvent )
+{
+    auto frame = static_cast<PCB_BASE_FRAME*>( GetParent() );
+    auto eventSource = static_cast<wxWindow*>( aEvent.GetEventObject() );
+
+    PCB_LAYER_ID layer = ToLAYER_ID( eventSource->GetId() );
+
+#ifdef NOTYET
+    if( m_fp_editor_mode && LSET::ForbiddenFootprintLayers().test( layer ) )
+        return false;
+#endif
+
+    frame->SetActiveLayer( layer );
 }
 
 
