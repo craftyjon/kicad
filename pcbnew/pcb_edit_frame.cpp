@@ -36,7 +36,7 @@
 #include <tools/drc.h>
 #include <layer_widget.h>
 #include <pcb_layer_widget.h>
-#include <common/widgets/appearance_panel.h>
+#include <widgets/appearance_panel.h>
 #include <config_params.h>
 #include <footprint_edit_frame.h>
 #include <dialog_helpers.h>
@@ -658,6 +658,7 @@ void PCB_EDIT_FRAME::onBoardLoaded()
     // Re-create layers manager based on layer info in board
     ReFillLayerWidget();
     ReCreateLayerBox();
+    m_appearance_panel->Rebuild();
 
     // Sync layer and item visibility
     syncLayerVisibilities();
@@ -683,6 +684,7 @@ void PCB_EDIT_FRAME::syncLayerWidgetLayer()
 {
     m_Layers->SelectLayer( GetActiveLayer() );
     m_Layers->OnLayerSelected();
+    m_appearance_panel->UpdateLayers();
 }
 
 
@@ -696,6 +698,7 @@ void PCB_EDIT_FRAME::syncLayerVisibilities()
 {
     m_Layers->SyncLayerVisibilities();
     GetCanvas()->SyncLayersVisibility( m_Pcb );
+    m_appearance_panel->UpdateLayers();
 }
 
 
@@ -748,6 +751,7 @@ void PCB_EDIT_FRAME::ShowChangedLanguage()
     m_Layers->SetLayersManagerTabsText();
     ReFillLayerWidget();
     // m_Layers->ReFillRender();  // syncRenderStates() does this
+    m_appearance_panel->Rebuild();
 
     // upate the layer widget to match board visibility states, both layers and render columns.
     syncLayerVisibilities();
@@ -837,6 +841,7 @@ void PCB_EDIT_FRAME::UpdateUserInterface()
     m_Layers->Freeze();
     ReFillLayerWidget();
     // m_Layers->ReFillRender();  // syncRenderStates() does this
+    m_appearance_panel->Rebuild();
 
     // upate the layer widget to match board visibility states, both layers and render columns.
     syncLayerVisibilities();
