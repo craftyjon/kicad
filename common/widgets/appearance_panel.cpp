@@ -24,6 +24,7 @@
 #include <class_board.h>
 #include <pcb_base_frame.h>
 #include <pcb_display_options.h>
+#include <pcb_painter.h>
 #include <tool/tool_manager.h>
 #include <tools/pcb_actions.h>
 #include <view/view.h>
@@ -101,6 +102,14 @@ APPEARANCE_PANEL::APPEARANCE_PANEL( PCB_BASE_FRAME* aParent, wxWindow* aFocusOwn
 
     m_btn_layers_off->Bind( wxEVT_RADIOBUTTON, [=] ( wxCommandEvent& ) {
         update_layer_display( PCB_DISPLAY_OPTIONS::LAYERS_OFF );
+    } );
+
+    m_slider_all_layers->Bind( wxEVT_SCROLL_CHANGED, [=] ( wxCommandEvent& aEvent ) {
+        onLayersOpacityChanged( aEvent.GetInt() / 100.0f );
+    } );
+
+    m_slider_all_layers->Bind( wxEVT_SCROLL_THUMBTRACK, [=] ( wxScrollEvent& aEvent ) {
+        onLayersOpacityChanged( aEvent.GetPosition() / 100.0f );
     } );
 
     Rebuild();
@@ -298,6 +307,10 @@ void APPEARANCE_PANEL::rebuildLayers()
     }
 
     m_layers_outer_sizer->Layout();
+
+    // Grab the global opacity slider value from the F_Cu layer arbitrarily
+    float opacity = m_frame->Settings().Colors().GetLayerColor( F_Cu ).a;
+    m_slider_all_layers->SetValue( 100 * opacity );
 }
 
 
@@ -375,6 +388,34 @@ void APPEARANCE_PANEL::onLayerVisibilityChanged( int aLayer, bool isVisible, boo
 
     if( isFinal )
         m_frame->GetCanvas()->Refresh();
+}
+
+
+void APPEARANCE_PANEL::onLayersOpacityChanged( float aOpacity )
+{
+    KIGFX::VIEW* view = m_frame->GetGalCanvas()->GetView();
+
+    for( APPEARANCE_SETTING& setting : m_layer_settings )
+    {
+        LAYER_NUM layer = setting.id;
+
+        COLOR4D color = m_frame->Settings().Colors().GetLayerColor( layer );
+
+        color.a = aOpacity;
+
+        setting.color = color;
+        m_frame->Settings().Colors().SetLayerColor( layer, color );
+
+        // Swatch should always hide the opacity
+        color.a = 1.0;
+        setting.ctl_color->SetSwatchColor( color, false );
+
+        view->GetPainter()->GetSettings()->ImportLegacyColors( &m_frame->Settings().Colors() );
+        view->UpdateLayerColor( layer );
+        view->UpdateLayerColor( GetNetnameLayer( layer ) );
+    }
+
+    m_frame->GetCanvas()->Refresh();
 }
 
 
