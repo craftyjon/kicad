@@ -247,7 +247,10 @@ public:
 
 private:
 
-    std::unordered_set<SCH_ITEM*> m_items;
+    std::vector<SCH_ITEM*> m_items;
+
+    // Cache to lookup items by sheet
+    std::vector<std::vector<SCH_ITEM*>> m_items_by_sheet;
 
     // The owner of all CONNECTION_SUBGRAPH objects
     std::vector<CONNECTION_SUBGRAPH*> m_subgraphs;

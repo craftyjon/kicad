@@ -358,6 +358,7 @@ void CONNECTION_GRAPH::Reset()
         delete subgraph;
 
     m_items.clear();
+    m_items_by_sheet.clear();
     m_subgraphs.clear();
     m_driver_subgraphs.clear();
     m_sheet_to_subgraphs_map.clear();
@@ -439,6 +440,7 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
                                                std::vector<SCH_ITEM*> aItemList )
 {
     std::unordered_map< wxPoint, std::vector<SCH_ITEM*> > connection_map;
+    std::vector<SCH_ITEM*> this_sheet_items;
 
     for( auto item : aItemList )
     {
@@ -459,7 +461,8 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
                 pin.Connection( aSheet )->Reset();
 
                 connection_map[ pin.GetTextPos() ].push_back( &pin );
-                m_items.insert( &pin );
+                m_items.emplace_back( &pin );
+                this_sheet_items.emplace_back( &pin );
             }
         }
         else if( item->Type() == SCH_COMPONENT_T )
@@ -486,12 +489,15 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
                     m_invisible_power_pins.emplace_back( std::make_pair( aSheet, &pin ) );
 
                 connection_map[ pos ].push_back( &pin );
-                m_items.insert( &pin );
+                m_items.emplace_back( &pin );
+                this_sheet_items.emplace_back( &pin );
             }
         }
         else
         {
-            m_items.insert( item );
+            m_items.emplace_back( item );
+            this_sheet_items.emplace_back( item );
+
             auto conn = item->InitializeConnection( aSheet );
 
             // Set bus/net property here so that the propagation code uses it
@@ -522,6 +528,8 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
 
         item->SetConnectivityDirty( false );
     }
+
+    m_items_by_sheet.emplace_back( this_sheet_items );
 
     for( const auto& it : connection_map )
     {
@@ -651,65 +659,92 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
     // Build subgraphs from items (on a per-sheet basis)
 
-    for( SCH_ITEM* item : m_items )
-    {
-        for( const auto& it : item->m_connection_map )
+    size_t parallelThreadCount = std::min<size_t>( std::thread::hardware_concurrency(),
+                                                   ( m_items_by_sheet.size() + 3 ) / 4 );
+
+    std::atomic<int> nextCode( 1 );
+    std::atomic<size_t> nextSheet( 0 );
+    std::vector<std::future<std::vector<CONNECTION_SUBGRAPH*>>> built( parallelThreadCount );
+
+    auto builder_lambda = [&] () -> std::vector<CONNECTION_SUBGRAPH*> {
+        std::vector<CONNECTION_SUBGRAPH*> subgraphs;
+
+        for( size_t idx = nextSheet++; idx < m_items_by_sheet.size(); idx = nextSheet++ )
         {
-            const auto sheet = it.first;
-            auto connection = it.second;
-
-            if( connection->SubgraphCode() == 0 )
+            for( SCH_ITEM* item : m_items_by_sheet[idx] )
             {
-                auto subgraph = new CONNECTION_SUBGRAPH( m_frame );
-
-                subgraph->m_code = m_last_subgraph_code++;
-                subgraph->m_sheet = sheet;
-
-                subgraph->AddItem( item );
-
-                connection->SetSubgraphCode( subgraph->m_code );
-
-                std::list<SCH_ITEM*> members;
-
-                auto get_items = [ &sheet ] ( SCH_ITEM* aItem ) -> bool
-                    {
-                      auto* conn = aItem->Connection( sheet );
-
-                      if( !conn )
-                          conn = aItem->InitializeConnection( sheet );
-
-                      return ( conn->SubgraphCode() == 0 );
-                    };
-
-                std::copy_if( item->ConnectedItems().begin(),
-                              item->ConnectedItems().end(),
-                              std::back_inserter( members ), get_items );
-
-                for( auto connected_item : members )
+                for( const auto& it : item->m_connection_map )
                 {
-                    if( connected_item->Type() == SCH_NO_CONNECT_T )
-                        subgraph->m_no_connect = connected_item;
+                    const auto sheet = it.first;
+                    auto connection = it.second;
 
-                    auto connected_conn = connected_item->Connection( sheet );
-
-                    wxASSERT( connected_conn );
-
-                    if( connected_conn->SubgraphCode() == 0 )
+                    if( connection->SubgraphCode() == 0 )
                     {
-                        connected_conn->SetSubgraphCode( subgraph->m_code );
-                        subgraph->AddItem( connected_item );
+                        auto subgraph = new CONNECTION_SUBGRAPH( m_frame );
 
-                        std::copy_if( connected_item->ConnectedItems().begin(),
-                                      connected_item->ConnectedItems().end(),
-                                      std::back_inserter( members ), get_items );
+                        subgraph->m_code = nextCode++;
+                        subgraph->m_sheet = sheet;
+
+                        subgraph->AddItem( item );
+
+                        connection->SetSubgraphCode( subgraph->m_code );
+
+                        std::list<SCH_ITEM*> members;
+
+                        auto get_items = [&sheet]( SCH_ITEM* aItem ) -> bool {
+                            auto* conn = aItem->Connection( sheet );
+
+                            if( !conn )
+                                conn = aItem->InitializeConnection( sheet );
+
+                            return ( conn->SubgraphCode() == 0 );
+                        };
+
+                        std::copy_if( item->ConnectedItems().begin(), item->ConnectedItems().end(),
+                                std::back_inserter( members ), get_items );
+
+                        for( auto connected_item : members )
+                        {
+                            auto connected_conn = connected_item->Connection( sheet );
+
+                            if( connected_conn->SubgraphCode() == 0 )
+                            {
+                                connected_conn->SetSubgraphCode( subgraph->m_code );
+                                subgraph->AddItem( connected_item );
+
+                                std::copy_if( connected_item->ConnectedItems().begin(),
+                                        connected_item->ConnectedItems().end(),
+                                        std::back_inserter( members ), get_items );
+                            }
+                        }
+
+                        subgraph->m_dirty = true;
+                        subgraphs.emplace_back( subgraph );
                     }
                 }
-
-                subgraph->m_dirty = true;
-                m_subgraphs.push_back( subgraph );
             }
         }
+
+        return subgraphs;
+    };
+
+    if( parallelThreadCount == 1 )
+        m_subgraphs = builder_lambda();
+    else
+    {
+        for( size_t ii = 0; ii < parallelThreadCount; ++ii )
+            built[ii] = std::async( std::launch::async, builder_lambda );
+
+        // Finalize the threads
+        for( size_t ii = 0; ii < parallelThreadCount; ++ii )
+        {
+            built[ii].wait();
+            std::vector<CONNECTION_SUBGRAPH*> partial = built[ii].get();
+            m_subgraphs.insert( m_subgraphs.end(), partial.begin(), partial.end() );
+        }
     }
+
+    m_last_subgraph_code = nextCode;
 
     /**
      * TODO(JE)
@@ -734,7 +769,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
     // Resolve drivers for subgraphs and propagate connectivity info
 
     // We don't want to spin up a new thread for fewer than 8 nets (overhead costs)
-    size_t parallelThreadCount = std::min<size_t>( std::thread::hardware_concurrency(),
+    parallelThreadCount = std::min<size_t>( std::thread::hardware_concurrency(),
             ( m_subgraphs.size() + 3 ) / 4 );
 
     std::atomic<size_t> nextSubgraph( 0 );
@@ -1077,6 +1112,8 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         // Also check the main driving connection
         connections_to_check.push_back( std::make_shared<SCH_CONNECTION>( *connection ) );
 
+        std::unordered_set<wxString> checked_names;
+
         auto add_connections_to_check = [&] ( CONNECTION_SUBGRAPH* aSubgraph ) {
             for( SCH_ITEM* possible_driver : aSubgraph->m_items )
             {
@@ -1098,7 +1135,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                             if( c->Type() != aSubgraph->m_driver_connection->Type() )
                                 continue;
 
-                            if( c->Name( true ) == aSubgraph->m_driver_connection->Name( true ) )
+                            if( checked_names.count( c->Name( true ) ) )
                                 continue;
 
                             connections_to_check.push_back( c );
@@ -1121,7 +1158,7 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                         if( c->Type() != aSubgraph->m_driver_connection->Type() )
                             continue;
 
-                        if( c->Name( true ) == aSubgraph->m_driver_connection->Name( true ) )
+                        if( checked_names.count( c->Name( true ) ) )
                             continue;
 
                         connections_to_check.push_back( c );
@@ -1155,6 +1192,9 @@ void CONNECTION_GRAPH::buildConnectionGraph()
             }
 
             wxString test_name = member->Name( true );
+
+            if( checked_names.count( test_name ) )
+                continue;
 
             for( auto candidate : candidate_subgraphs )
             {
@@ -1229,6 +1269,8 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                         add_connections_to_check( subgraph );
                     }
                 }
+
+                checked_names.insert( test_name );
             }
         }
     }
