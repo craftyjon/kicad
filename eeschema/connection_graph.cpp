@@ -645,6 +645,7 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
 
 void CONNECTION_GRAPH::buildConnectionGraph()
 {
+    PROF_COUNTER profiler;
     // Recache all bus aliases for later use
 
     SCH_SHEET_LIST all_sheets( g_RootSheet );
@@ -743,6 +744,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
             m_subgraphs.insert( m_subgraphs.end(), partial.begin(), partial.end() );
         }
     }
+
+    profiler.Stop();
+    wxLogTrace( "CONN_PROFILE", "   0 %0.4f ms", profiler.msecs() );
+    profiler.Start();
 
     m_last_subgraph_code = nextCode;
 
@@ -882,6 +887,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
             returns[ii].wait();
     }
 
+    profiler.Stop();
+    wxLogTrace( "CONN_PROFILE", "   1 %0.4f ms", profiler.msecs() );
+    profiler.Start();
+
     // Now discard any non-driven subgraphs from further consideration
 
     std::copy_if( m_subgraphs.begin(), m_subgraphs.end(), std::back_inserter( m_driver_subgraphs ),
@@ -933,6 +942,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
             }
         }
     }
+
+    profiler.Stop();
+    wxLogTrace( "CONN_PROFILE", "   2 %0.4f ms", profiler.msecs() );
+    profiler.Start();
 
     // Generate subgraphs for invisible power pins.  These will be merged with other subgraphs
     // on the same sheet in the next loop.
@@ -994,6 +1007,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
 
     for( auto it : invisible_pin_subgraphs )
         it.second->UpdateItemConnections();
+
+    profiler.Stop();
+    wxLogTrace( "CONN_PROFILE", "   3 %0.4f ms", profiler.msecs() );
+    profiler.Start();
 
     // Here we do all the local (sheet) processing of each subgraph, including assigning net
     // codes, merging subgraphs together that use label connections, etc.
@@ -1275,6 +1292,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         }
     }
 
+    profiler.Stop();
+    wxLogTrace( "CONN_PROFILE", "   4 %0.4f ms", profiler.msecs() );
+    profiler.Start();
+
     // Update any subgraph that was invalidated above
     for( auto subgraph : invalidated_subgraphs )
     {
@@ -1312,6 +1333,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
     m_sheet_to_subgraphs_map.clear();
     for( auto subgraph : m_driver_subgraphs )
         m_sheet_to_subgraphs_map[ subgraph->m_sheet ].emplace_back( subgraph );
+
+    profiler.Stop();
+    wxLogTrace( "CONN_PROFILE", "   5 %0.4f ms", profiler.msecs() );
+    profiler.Start();
 
     // Next time through the subgraphs, we do some post-processing to handle things like
     // connecting bus members to their neighboring subgraphs, and then propagate connections
@@ -1362,6 +1387,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         // This call will handle descending the hierarchy and updating child subgraphs
         propagateToNeighbors( subgraph );
     }
+
+    profiler.Stop();
+    wxLogTrace( "CONN_PROFILE", "   6 %0.4f ms", profiler.msecs() );
+    profiler.Start();
 
     // Handle buses that have been linked together somewhere by member (net) connections.
     // This feels a bit hacky, perhaps this algorithm should be revisited in the future.
@@ -1425,6 +1454,10 @@ void CONNECTION_GRAPH::buildConnectionGraph()
         }
     }
 
+    profiler.Stop();
+    wxLogTrace( "CONN_PROFILE", "   7 %0.4f ms", profiler.msecs() );
+    profiler.Start();
+
     m_net_code_to_subgraphs_map.clear();
 
     for( auto subgraph : m_driver_subgraphs )
@@ -1448,6 +1481,9 @@ void CONNECTION_GRAPH::buildConnectionGraph()
                                  [&] ( const CONNECTION_SUBGRAPH* sg ) {
                                          return sg->m_absorbed;
                                      } ), m_subgraphs.end() );
+
+    profiler.Stop();
+    wxLogTrace( "CONN_PROFILE", "   8 %0.4f ms", profiler.msecs() );
 }
 
 
