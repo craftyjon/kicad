@@ -539,7 +539,7 @@ std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet
                 pin.ConnectedItems().clear();
                 pin.Connection( aSheet )->Reset();
 
-                connection_map[ pin.GetTextPos() ].push_back( &pin );
+                connection_map[ pin.GetTextPos() ].emplace_back( &pin );
                 this_sheet_items.emplace_back( &pin );
             }
         }
@@ -561,7 +561,7 @@ std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet
                 pin.GetDefaultNetName( aSheet );
                 pin.ConnectedItems().clear();
 
-                connection_map[ pos ].push_back( &pin );
+                connection_map[ pos ].emplace_back( &pin );
                 this_sheet_items.emplace_back( &pin );
             }
         }
@@ -576,7 +576,7 @@ std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet
             {
             case SCH_LINE_T:
                 conn->SetType( item->GetLayer() == LAYER_BUS ? CONNECTION_BUS : CONNECTION_NET );
-                all_lines.push_back( static_cast<SCH_LINE*>( item ) );
+                all_lines.emplace_back( static_cast<SCH_LINE*>( item ) );
                 break;
 
             case SCH_BUS_BUS_ENTRY_T:
@@ -591,7 +591,7 @@ std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet
             case SCH_LABEL_T:
             case SCH_HIER_LABEL_T:
             case SCH_GLOBAL_LABEL_T:
-                all_labels.push_back( static_cast<SCH_TEXT*>( item ) );
+                all_labels.emplace_back( static_cast<SCH_TEXT*>( item ) );
                 break;
 
             default:
@@ -600,7 +600,7 @@ std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet
 
             for( auto point : points )
             {
-                connection_map[ point ].push_back( item );
+                connection_map[ point ].emplace_back( item );
             }
         }
 
@@ -612,10 +612,17 @@ std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet
     {
         wxPoint pos = label->GetPosition();
 
+        // If the label's position already has more than one connection, we can skip this, since
+        // there is guaranteed to be no line segment needing hit testing in this case, because
+        // any such segment would have been broken in two by the line drawing code.
+
+        if( connection_map[ pos ].size() > 1 )
+            continue;
+
         for( SCH_LINE* line : all_lines )
         {
             if( IsPointOnSegment( line->GetStartPoint(), line->GetEndPoint(), pos ) )
-                connection_map[ pos ].push_back( line );
+                connection_map[ pos ].emplace_back( line );
         }
     }
 
