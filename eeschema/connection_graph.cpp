@@ -18,17 +18,17 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <list>
-#include <thread>
 #include <algorithm>
 #include <future>
-#include <vector>
+#include <list>
+#include <thread>
 #include <unordered_map>
-#include <profile.h>
+#include <vector>
 
 #include <advanced_config.h>
 #include <common.h>
 #include <erc.h>
+#include <profile.h>
 #include <sch_edit_frame.h>
 #include <sch_bus_entry.h>
 #include <sch_component.h>
@@ -384,22 +384,7 @@ void CONNECTION_GRAPH::Recalculate( SCH_SHEET_LIST aSheetList, bool aUncondition
     if( aUnconditional )
         Reset();
 
-    for( const auto& sheet : aSheetList )
-    {
-        std::vector<SCH_ITEM*> items;
-
-        for( auto item = sheet.LastScreen()->GetDrawItems();
-             item; item = item->Next() )
-        {
-            if( item->IsConnectable() &&
-                ( aUnconditional || item->IsConnectivityDirty() ) )
-            {
-                items.push_back( item );
-            }
-        }
-
-        updateItemConnectivity( sheet, items );
-    }
+    updateItems( aSheetList, aUnconditional );
 
     update_items.Stop();
     wxLogTrace( "CONN_PROFILE", "UpdateItemConnectivity() %0.4f ms", update_items.msecs() );
@@ -427,8 +412,108 @@ void CONNECTION_GRAPH::Recalculate( SCH_SHEET_LIST aSheetList, bool aUncondition
 }
 
 
-void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
-                                               std::vector<SCH_ITEM*> aItemList )
+void CONNECTION_GRAPH::updateItems( SCH_SHEET_LIST aSheetList, bool aUnconditional )
+{
+    size_t parallelThreadCount = std::min<size_t>( std::thread::hardware_concurrency(),
+                                                   ( aSheetList.size() + 3 ) / 4 );
+
+    std::atomic<size_t> nextSheet( 0 );
+    std::vector<std::future<std::vector<SCH_ITEM*>>> sheet_items( parallelThreadCount );
+
+    std::mutex this_mutex;
+
+    // In a hierarchical design, more than one sheet path can point to the same underlying
+    // objects which will all be on the same SCH_SCREEN.  So, we need to maintain an atomic
+    // list of which screens are being considered, and block a thread that tries to consider
+    // the same screen another is already considering.
+
+    std::unordered_set<SCH_SCREEN*> active_screens;
+    std::mutex screen_mutex;
+
+    active_screens.reserve( aSheetList.size() );
+
+    auto update_lambda = [&] () -> std::vector<SCH_ITEM*> {
+        std::vector<SCH_ITEM*> thread_items;
+
+        for( size_t idx = nextSheet++; idx < aSheetList.size(); idx = nextSheet++ )
+        {
+            SCH_SHEET_PATH sheet = aSheetList[idx];
+            SCH_SCREEN* screen = sheet.LastScreen();
+
+            bool can_continue = false;
+
+            while( !can_continue )
+            {
+                if( screen_mutex.try_lock() )
+                {
+                    can_continue = !active_screens.count( screen );
+
+                    if( can_continue )
+                        active_screens.insert( screen );
+
+                    screen_mutex.unlock();
+                }
+            }
+
+            std::vector<SCH_ITEM*> this_sheet_items;
+
+            for( auto item = screen->GetDrawItems();
+                 item; item = item->Next() )
+            {
+                if( item->IsConnectable() &&
+                    ( aUnconditional || item->IsConnectivityDirty() ) )
+                {
+                    this_sheet_items.emplace_back( item );
+                }
+            }
+
+            std::vector<SCH_ITEM*> result = updateSheetItems( sheet, this_sheet_items );
+
+            screen_mutex.lock();
+            active_screens.erase( sheet.LastScreen() );
+            screen_mutex.unlock();
+
+            thread_items.insert( thread_items.end(), result.begin(), result.end() );
+
+            std::lock_guard<std::mutex> guard( this_mutex );
+            m_items_by_sheet.emplace_back( result );
+
+            for( SCH_ITEM* item : result )
+            {
+                if( item->Type() == SCH_PIN_T )
+                {
+                    auto pin = static_cast<SCH_PIN*>( item );
+
+                    // Invisible power pins need to be post-processed later
+                    if( pin->IsPowerConnection() && !pin->IsVisible() )
+                        m_invisible_power_pins.emplace_back( std::make_pair( sheet, pin ) );
+                }
+            }
+        }
+
+        return thread_items;
+    };
+
+    if( parallelThreadCount == 1 )
+        m_items = update_lambda();
+    else
+    {
+        for( size_t ii = 0; ii < parallelThreadCount; ++ii )
+            sheet_items[ii] = std::async( std::launch::async, update_lambda );
+
+        // Finalize the threads
+        for( size_t ii = 0; ii < parallelThreadCount; ++ii )
+        {
+            sheet_items[ii].wait();
+            std::vector<SCH_ITEM*> partial = sheet_items[ii].get();
+            m_items.insert( m_items.end(), partial.begin(), partial.end() );
+        }
+    }
+}
+
+
+std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet,
+                                                           std::vector<SCH_ITEM*> aItemList )
 {
     std::unordered_map< wxPoint, std::vector<SCH_ITEM*> > connection_map;
     std::vector<SCH_ITEM*> this_sheet_items;
@@ -455,7 +540,6 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
                 pin.Connection( aSheet )->Reset();
 
                 connection_map[ pin.GetTextPos() ].push_back( &pin );
-                m_items.emplace_back( &pin );
                 this_sheet_items.emplace_back( &pin );
             }
         }
@@ -477,19 +561,12 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
                 pin.GetDefaultNetName( aSheet );
                 pin.ConnectedItems().clear();
 
-                // Invisible power pins need to be post-processed later
-
-                if( pin.IsPowerConnection() && !pin.IsVisible() )
-                    m_invisible_power_pins.emplace_back( std::make_pair( aSheet, &pin ) );
-
                 connection_map[ pos ].push_back( &pin );
-                m_items.emplace_back( &pin );
                 this_sheet_items.emplace_back( &pin );
             }
         }
         else
         {
-            m_items.emplace_back( item );
             this_sheet_items.emplace_back( item );
 
             auto conn = item->InitializeConnection( aSheet );
@@ -529,8 +606,6 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
 
         item->SetConnectivityDirty( false );
     }
-
-    m_items_by_sheet.emplace_back( this_sheet_items );
 
     // For labels, we need to scan all lines to hit test them
     for( SCH_TEXT* label : all_labels )
@@ -645,13 +720,15 @@ void CONNECTION_GRAPH::updateItemConnectivity( SCH_SHEET_PATH aSheet,
             }
         }
     }
+
+    return this_sheet_items;
 }
 
 
 void CONNECTION_GRAPH::updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, bool aDangling )
 {
     // Assumption: aPoint will always be a valid connection point of aItem, because this
-    // should only be called from updateItemConnectivity which grabs the connection points
+    // should only be called from updateSheetItems which grabs the connection points
 
     switch( aItem->Type() )
     {

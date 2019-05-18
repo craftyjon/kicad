@@ -290,8 +290,14 @@ private:
     SCH_EDIT_FRAME* m_frame;
 
     /**
+     * Updates the items on every sheet on the given list
+     * @see updateSheetItems
+     */
+    void updateItems( SCH_SHEET_LIST aSheetList, bool aUnconditional );
+
+    /**
      * Updates the graphical connectivity between items (i.e. where they touch)
-     * The items passed in must be on the same sheet.
+     * for a given hierarchical sheet
      *
      * In the first phase, all items in aItemList have their connections
      * initialized for the given sheet (since they may have connections on more
@@ -311,13 +317,15 @@ private:
      * checks to ensure that the items should actually connect, the items are
      * linked together using ConnectedItems().
      *
-     * As a side effect, items are loaded into m_items for BuildConnectionGraph()
+     * Items that are connectable will have their dangling state updated by
+     * this method, and will be appended to the return vector.
      *
      * @param aSheet is the path to the sheet of all items in the list
      * @param aItemList is a list of items to consider
+     * @return a list of items that are relevant to connectivity
      */
-    void updateItemConnectivity( SCH_SHEET_PATH aSheet,
-                                 std::vector<SCH_ITEM*> aItemList );
+    std::vector<SCH_ITEM*> updateSheetItems( SCH_SHEET_PATH aSheet,
+                                             std::vector<SCH_ITEM*> aItemList );
 
     /**
      * Updates the dangling state of an item at a certain point
