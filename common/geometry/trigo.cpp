@@ -39,15 +39,17 @@
 bool IsPointOnSegment( const wxPoint& aSegStart, const wxPoint& aSegEnd,
                        const wxPoint& aTestPoint )
 {
-    wxPoint vectSeg   = aSegEnd - aSegStart;    // Vector from S1 to S2
-    wxPoint vectPoint = aTestPoint - aSegStart; // Vector from S1 to P
+    int v_seg_x = aSegEnd.x - aSegStart.x;
+    int v_seg_y = aSegEnd.y - aSegStart.y;
+    int v_point_x = aTestPoint.x - aSegStart.x;
+    int v_point_y = aTestPoint.y - aSegStart.y;
 
     // Use long long here to avoid overflow in calculations
-    if( (long long) vectSeg.x * vectPoint.y - (long long) vectSeg.y * vectPoint.x )
+    if( (long long) v_seg_x * v_point_y - (long long) v_seg_y * v_point_x )
         return false;        /* Cross product non-zero, vectors not parallel */
 
-    if( ( (long long) vectSeg.x * vectPoint.x + (long long) vectSeg.y * vectPoint.y ) <
-        ( (long long) vectPoint.x * vectPoint.x + (long long) vectPoint.y * vectPoint.y ) )
+    if( ( (long long) v_seg_x * v_point_x + (long long) v_seg_y * v_point_y ) <
+        ( (long long) v_point_x * v_point_x + (long long) v_point_y * v_point_y ) )
         return false;          /* Point not on segment */
 
     return true;
