@@ -1383,10 +1383,10 @@ void SCH_PAINTER::draw( SCH_BUS_ENTRY_BASE *aEntry, int aLayer )
     // Draw dangling symbols:
     m_gal->SetLineWidth ( 1.0 );
 
-    if( aEntry->IsDanglingStart() )
+    if( aEntry->IsStartDangling() )
         m_gal->DrawCircle( pos, TARGET_BUSENTRY_RADIUS );
 
-    if( aEntry->IsDanglingEnd() )
+    if( aEntry->IsEndDangling() )
         m_gal->DrawCircle( endPos, TARGET_BUSENTRY_RADIUS );
 }
 

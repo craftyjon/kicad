@@ -48,7 +48,7 @@ SCH_BUS_ENTRY_BASE::SCH_BUS_ENTRY_BASE( KICAD_T aType, const wxPoint& pos, char 
     if( shape == '/' )
         m_size.y = -100;
 
-    m_isDanglingStart = m_isDanglingEnd = true;
+    m_startIsDangling = m_endIsDangling = true;
 }
 
 
@@ -168,7 +168,7 @@ void SCH_BUS_ENTRY_BASE::Rotate( wxPoint aPosition )
 
 bool SCH_BUS_ENTRY_BASE::IsDangling() const
 {
-    return m_isDanglingStart || m_isDanglingEnd;
+    return m_startIsDangling || m_endIsDangling;
 }
 
 

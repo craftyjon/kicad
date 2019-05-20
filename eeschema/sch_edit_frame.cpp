@@ -1094,6 +1094,13 @@ void SCH_EDIT_FRAME::RecalculateConnections( bool aDoCleanup )
     wxLogTrace( "CONN_PROFILE", "SchematicCleanUp() %0.4f ms", timer.msecs() );
 
     g_ConnectionGraph->Recalculate( list, true );
+
+    KIGFX::VIEW* view = GetCanvas()->GetView();
+
+    for( SCH_ITEM* item : g_ConnectionGraph->GetItemsNeedingRepaint() )
+        view->Update( item, KIGFX::REPAINT );
+
+    GetCanvas()->Refresh();
 }
 
 

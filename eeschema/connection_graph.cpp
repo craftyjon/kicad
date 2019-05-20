@@ -358,6 +358,7 @@ void CONNECTION_GRAPH::Reset()
         delete subgraph;
 
     m_items.clear();
+    m_items_needing_repaint.clear();
     m_items_by_sheet.clear();
     m_subgraphs.clear();
     m_driver_subgraphs.clear();
@@ -467,18 +468,22 @@ void CONNECTION_GRAPH::updateItems( SCH_SHEET_LIST aSheetList, bool aUncondition
                 }
             }
 
-            std::vector<SCH_ITEM*> result = updateSheetItems( sheet, this_sheet_items );
+            UPDATED_ITEMS_T result = updateSheetItems( sheet, this_sheet_items );
 
             screen_mutex.lock();
             active_screens.erase( sheet.LastScreen() );
             screen_mutex.unlock();
 
-            thread_items.insert( thread_items.end(), result.begin(), result.end() );
+            thread_items.insert( thread_items.end(),
+                    result.connected.begin(), result.connected.end() );
 
             std::lock_guard<std::mutex> guard( this_mutex );
-            m_items_by_sheet.emplace_back( result );
+            m_items_by_sheet.emplace_back( result.connected );
 
-            for( SCH_ITEM* item : result )
+            m_items_needing_repaint.insert( m_items_needing_repaint.end(),
+                    result.dangling_changed.begin(), result.dangling_changed.end() );
+
+            for( SCH_ITEM* item : result.connected )
             {
                 if( item->Type() == SCH_PIN_T )
                 {
@@ -512,11 +517,11 @@ void CONNECTION_GRAPH::updateItems( SCH_SHEET_LIST aSheetList, bool aUncondition
 }
 
 
-std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet,
+CONNECTION_GRAPH::UPDATED_ITEMS_T CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet,
                                                            std::vector<SCH_ITEM*> aItemList )
 {
     std::unordered_map< wxPoint, std::vector<SCH_ITEM*> > connection_map;
-    std::vector<SCH_ITEM*> this_sheet_items;
+    CONNECTION_GRAPH::UPDATED_ITEMS_T ret;
 
     std::vector<SCH_TEXT*> all_labels;
     std::vector<SCH_LINE*> all_lines;
@@ -540,7 +545,7 @@ std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet
                 pin.Connection( aSheet )->Reset();
 
                 connection_map[ pin.GetTextPos() ].emplace_back( &pin );
-                this_sheet_items.emplace_back( &pin );
+                ret.connected.emplace_back( &pin );
             }
         }
         else if( item->Type() == SCH_COMPONENT_T )
@@ -562,12 +567,12 @@ std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet
                 pin.ConnectedItems().clear();
 
                 connection_map[ pos ].emplace_back( &pin );
-                this_sheet_items.emplace_back( &pin );
+                ret.connected.emplace_back( &pin );
             }
         }
         else
         {
-            this_sheet_items.emplace_back( item );
+            ret.connected.emplace_back( item );
 
             auto conn = item->InitializeConnection( aSheet );
 
@@ -636,7 +641,11 @@ std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet
             auto connected_item = *primary_it;
 
             // Update the dangling state for the item
-            updateDanglingState( connected_item, pos, ( connection_vec.size() == 1 ) );
+            bool dangling = ( connection_vec.size() == 1 );
+            bool changed = updateDanglingState( connected_item, pos, dangling );
+
+            if( changed )
+                ret.dangling_changed.emplace_back( connected_item );
 
             // Bus entries are special: they can have connection points in the
             // middle of a wire segment, because the junction algo doesn't split
@@ -728,12 +737,14 @@ std::vector<SCH_ITEM*> CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_PATH aSheet
         }
     }
 
-    return this_sheet_items;
+    return ret;
 }
 
 
-void CONNECTION_GRAPH::updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, bool aDangling )
+bool CONNECTION_GRAPH::updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, bool aDangling )
 {
+    bool changed = false;
+
     // Assumption: aPoint will always be a valid connection point of aItem, because this
     // should only be called from updateSheetItems which grabs the connection points
 
@@ -741,13 +752,17 @@ void CONNECTION_GRAPH::updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, boo
     {
     case SCH_PIN_T:
     {
-        static_cast<SCH_PIN*>( aItem )->SetIsDangling( aDangling );
+        auto pin = static_cast<SCH_PIN*>( aItem );
+        changed = ( pin->IsDangling() != aDangling );
+        pin->SetIsDangling( aDangling );
         break;
     }
 
     case SCH_SHEET_PIN_T:
     {
-        static_cast<SCH_SHEET_PIN*>( aItem )->SetIsDangling( aDangling );
+        auto sheet_pin = static_cast<SCH_SHEET_PIN*>( aItem );
+        changed = ( sheet_pin->IsDangling() != aDangling );
+        sheet_pin->SetIsDangling( aDangling );
         break;
     }
 
@@ -755,7 +770,9 @@ void CONNECTION_GRAPH::updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, boo
     case SCH_GLOBAL_LABEL_T:
     case SCH_HIER_LABEL_T:
     {
-        static_cast<SCH_TEXT*>( aItem )->SetIsDangling( aDangling );
+        auto text = static_cast<SCH_TEXT*>( aItem );
+        changed = ( text->IsDangling() != aDangling );
+        text->SetIsDangling( aDangling );
         break;
     }
 
@@ -764,9 +781,15 @@ void CONNECTION_GRAPH::updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, boo
         auto line = static_cast<SCH_LINE*>( aItem );
 
         if( aPoint == line->GetStartPoint() )
+        {
+            changed = ( line->IsStartDangling() != aDangling );
             line->SetStartDangling( aDangling );
+        }
         else
+        {
+            changed = ( line->IsEndDangling() != aDangling );
             line->SetEndDangling( aDangling );
+        }
 
         break;
     }
@@ -777,9 +800,15 @@ void CONNECTION_GRAPH::updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, boo
         auto entry = static_cast<SCH_BUS_ENTRY_BASE*>( aItem );
 
         if( aPoint == entry->GetPosition() )
+        {
+            changed = ( entry->IsStartDangling() != aDangling );
             entry->SetStartDangling( aDangling );
+        }
         else
+        {
+            changed = ( entry->IsEndDangling() != aDangling );
             entry->SetEndDangling( aDangling );
+        }
 
         break;
     }
@@ -788,7 +817,7 @@ void CONNECTION_GRAPH::updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, boo
         break;
     }
 
-    // TODO(JE) Need to call VIEW::Update( item, KIGFX::REPAINT ) if the state changed
+    return changed;
 }
 
 

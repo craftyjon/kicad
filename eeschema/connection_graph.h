@@ -212,6 +212,12 @@ public:
     void Recalculate( SCH_SHEET_LIST aSheetList, bool aUnconditional = false );
 
     /**
+     * Returns a list of items that need repainting after recalculation because their dangling
+     * state has changed.
+     */
+    std::vector<SCH_ITEM*> GetItemsNeedingRepaint() { return m_items_needing_repaint; }
+
+    /**
      * Returns a bus alias pointer for the given name if it exists (from cache)
      *
      * CONNECTION_GRAPH caches these, they are owned by the SCH_SCREEN that
@@ -251,6 +257,9 @@ private:
 
     // Cache to lookup items by sheet
     std::vector<std::vector<SCH_ITEM*>> m_items_by_sheet;
+
+    // Items that have changed dangling state since the last update
+    std::vector<SCH_ITEM*> m_items_needing_repaint;
 
     // The owner of all CONNECTION_SUBGRAPH objects
     std::vector<CONNECTION_SUBGRAPH*> m_subgraphs;
@@ -295,6 +304,11 @@ private:
      */
     void updateItems( SCH_SHEET_LIST aSheetList, bool aUnconditional );
 
+    typedef struct {
+        std::vector<SCH_ITEM*> connected;        ///< Items that are now in the connection graph
+        std::vector<SCH_ITEM*> dangling_changed; ///< Items that need to be repainted
+    } UPDATED_ITEMS_T;
+
     /**
      * Updates the graphical connectivity between items (i.e. where they touch)
      * for a given hierarchical sheet
@@ -323,9 +337,10 @@ private:
      * @param aSheet is the path to the sheet of all items in the list
      * @param aItemList is a list of items to consider
      * @return a list of items that are relevant to connectivity
+     * @see UPDATED_ITEMS_T
      */
-    std::vector<SCH_ITEM*> updateSheetItems( SCH_SHEET_PATH aSheet,
-                                             std::vector<SCH_ITEM*> aItemList );
+    UPDATED_ITEMS_T updateSheetItems( SCH_SHEET_PATH aSheet,
+                                      std::vector<SCH_ITEM*> aItemList );
 
     /**
      * Updates the dangling state of an item at a certain point
@@ -333,8 +348,9 @@ private:
      * @param aItem is the item to update
      * @param aPoint is the point being updated
      * @param aDangling is true if the item's connection at aPoint is open (dangling)
+     * @return true if the state changed from the previous state
      */
-    void updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, bool aDangling );
+    bool updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, bool aDangling );
 
     /**
      * Generates the connection graph (after all item connectivity has been updated)
