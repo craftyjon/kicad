@@ -612,7 +612,6 @@ int SCH_DRAWING_TOOLS::doSingleClickPlace( KICAD_T aType )
                 m_frame->SaveCopyForRepeatItem( item );
 
                 m_frame->SchematicCleanUp();
-                m_frame->TestDanglingEnds();
                 m_frame->OnModify();
             }
         }

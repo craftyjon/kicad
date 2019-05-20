@@ -365,8 +365,6 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         NormalizeSchematicOnFirstLoad( true );
         GetScreen()->ClearUndoORRedoList( GetScreen()->m_UndoList, 1 );
 
-        GetScreen()->TestDanglingEnds();    // Only perform the dangling end test on root sheet.
-
         // Migrate conflicting bus definitions
         // TODO(JE) This should only run once based on schematic file version
         if( g_ConnectionGraph->GetBusesNeedingMigration().size() > 0 )
@@ -642,8 +640,6 @@ bool SCH_EDIT_FRAME::AppendSchematic()
     // Must be done after updating the symbol links as we need to know about multi-unit parts.
     // screens.ClearAnnotation();
 
-    screens.TestDanglingEnds();
-
     GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId );
     m_toolManager->RunAction( ACTIONS::zoomFitScreen, true );
     SetSheetNumberAndCount();
@@ -863,8 +859,7 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType )
             }
 
             GetScreen()->ClearUndoORRedoList( GetScreen()->m_UndoList, 1 );
-            // Only perform the dangling end test on root sheet.
-            GetScreen()->TestDanglingEnds();
+
             RecalculateConnections();
 
             GetScreen()->SetGrid( ID_POPUP_GRID_LEVEL_1000 + m_LastGridSizeId );

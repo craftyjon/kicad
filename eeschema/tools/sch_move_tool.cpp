@@ -230,6 +230,8 @@ int SCH_MOVE_TOOL::Main( const TOOL_EVENT& aEvent )
                 }
                 else
                 {
+                    // TODO(JE) decide what to do here
+#if 0
                     // Mark the edges of the block with dangling flags for a move.
                     //
                     std::vector<DANGLING_END_ITEM> internalPoints;
@@ -239,6 +241,7 @@ int SCH_MOVE_TOOL::Main( const TOOL_EVENT& aEvent )
 
                     for( EDA_ITEM* item : selection )
                         static_cast<SCH_ITEM*>( item )->UpdateDanglingState( internalPoints );
+#endif
                 }
                 // Generic setup
                 //
@@ -456,7 +459,6 @@ int SCH_MOVE_TOOL::Main( const TOOL_EVENT& aEvent )
     {
         addJunctionsIfNeeded( selection );
         m_frame->SchematicCleanUp();
-        m_frame->TestDanglingEnds();
 
         if( unselect )
             m_toolMgr->RunAction( EE_ACTIONS::clearSelection, true );

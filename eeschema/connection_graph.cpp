@@ -2055,17 +2055,6 @@ int CONNECTION_GRAPH::RunERC( const ERC_SETTINGS& aSettings, bool aCreateMarkers
         // Graph is supposed to be up-to-date before calling RunERC()
         wxASSERT( !subgraph->m_dirty );
 
-        /**
-         * NOTE:
-         *
-         * We could check that labels attached to bus subgraphs follow the
-         * proper format (i.e. actually define a bus).
-         *
-         * This check doesn't need to be here right now because labels
-         * won't actually be connected to bus wires if they aren't in the right
-         * format due to their TestDanglingEnds() implementation.
-         */
-
         if( aSettings.check_bus_driver_conflicts &&
             !subgraph->ResolveDrivers( aCreateMarkers ) )
             error_count++;

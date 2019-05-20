@@ -55,27 +55,6 @@ void SCH_EDIT_FRAME::GetSchematicConnections( std::vector< wxPoint >& aConnectio
 }
 
 
-bool SCH_EDIT_FRAME::TestDanglingEnds()
-{
-    std::vector<DANGLING_END_ITEM> endPoints;
-    bool hasStateChanged = false;
-
-    for( SCH_ITEM* item = GetScreen()->GetDrawList().begin(); item; item = item->Next() )
-        item->GetEndPoints( endPoints );
-
-    for( SCH_ITEM* item = GetScreen()->GetDrawList().begin(); item; item = item->Next() )
-    {
-        if( item->UpdateDanglingState( endPoints ) )
-        {
-            GetCanvas()->GetView()->Update( item, KIGFX::REPAINT );
-            hasStateChanged = true;
-        }
-    }
-
-    return hasStateChanged;
-}
-
-
 bool SCH_EDIT_FRAME::TrimWire( const wxPoint& aStart, const wxPoint& aEnd )
 {
     SCH_LINE* line;
@@ -434,7 +413,6 @@ SCH_JUNCTION* SCH_EDIT_FRAME::AddJunction( const wxPoint& aPos, bool aUndoAppend
     {
         m_toolManager->PostEvent( EVENTS::SelectedItemsModified );
 
-        TestDanglingEnds();
         OnModify();
 
         auto view = GetCanvas()->GetView();

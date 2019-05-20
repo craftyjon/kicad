@@ -234,8 +234,6 @@ void SCH_EDIT_FRAME::SelectUnit( SCH_COMPONENT* aComponent, int aUnit )
         if( m_autoplaceFields )
             aComponent->AutoAutoplaceFields( GetScreen() );
 
-        TestDanglingEnds();
-
         RefreshItem( aComponent );
         OnModify();
     }
@@ -278,7 +276,6 @@ void SCH_EDIT_FRAME::ConvertPart( SCH_COMPONENT* aComponent )
         // The alternate symbol may cause a change in the connection status so test the
         // connections so the connection indicators are drawn correctly.
         aComponent->UpdatePins();
-        TestDanglingEnds();
         aComponent->ClearFlags();
         aComponent->SetFlags( savedFlags );   // Restore m_Flags (modified by SetConvert())
 

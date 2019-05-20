@@ -1039,8 +1039,6 @@ void SCH_EDIT_FRAME::AddItemToScreenAndUndoList( SCH_ITEM* aItem, bool aUndoAppe
             if( screen->IsJunctionNeeded( *i, true ) )
                 AddJunction( *i, true, false );
         }
-
-        TestDanglingEnds();
     }
 
     GetCanvas()->Refresh();

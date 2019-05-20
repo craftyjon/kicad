@@ -983,7 +983,6 @@ void SCH_WIRE_BUS_TOOL::finishSegments()
     if( m_busUnfold.in_progress )
         m_busUnfold = {};
 
-    m_frame->TestDanglingEnds();
     m_toolMgr->PostEvent( EVENTS::SelectedItemsModified );
 
     m_frame->OnModify();

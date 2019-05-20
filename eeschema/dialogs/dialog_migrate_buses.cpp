@@ -179,7 +179,6 @@ void DIALOG_MIGRATE_BUSES::onItemSelected( wxListEvent& aEvent )
         sheet.LastScreen()->SetZoom( m_frame->GetScreen()->GetZoom() );
         *g_CurrentSheet = sheet;
         g_CurrentSheet->UpdateAllScreenReferences();
-        sheet.LastScreen()->TestDanglingEnds();
     }
 
     auto pos = driver->GetPosition();

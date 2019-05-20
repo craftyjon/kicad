@@ -369,8 +369,6 @@ void SCH_EDIT_FRAME::RollbackSchematicFromUndo()
 
     SetSheetNumberAndCount();
 
-    TestDanglingEnds();
-
     SyncView();
     GetCanvas()->Refresh();
 }

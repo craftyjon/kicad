@@ -173,4 +173,3 @@ SCH_ITEM* SCH_EDIT_FRAME::FindComponentAndItem( const wxString& aReference,
 
     return item;
 }
-

@@ -314,7 +314,6 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_EXPRESS& mail )
     {
         SCH_SCREENS schematic;
         schematic.UpdateSymbolLinks();
-        schematic.TestDanglingEnds();
 
         GetCanvas()->GetView()->UpdateAllItems( KIGFX::ALL );
         GetCanvas()->Refresh();

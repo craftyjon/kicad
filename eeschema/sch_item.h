@@ -272,21 +272,6 @@ public:
      */
     virtual void GetEndPoints( std::vector< DANGLING_END_ITEM >& aItemList ) {}
 
-    /**
-     * Function IsDanglingStateChanged
-     * tests the schematic item to \a aItemList to check if it's dangling state has changed.
-     *
-     * Note that the return value only true when the state of the test has changed.  Use
-     * the IsDangling() method to get the current dangling state of the item.  Some of
-     * the schematic objects cannot be tested for a dangling state, the default method
-     * always returns false.  Only override the method if the item can be tested for a
-     * dangling state.
-     *
-     * @param aItemList - List of items to test item against.
-     * @return True if the dangling state has changed from it's current setting.
-     */
-    virtual bool UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemList ) { return false; }
-
     virtual bool IsDangling() const { return false; }
 
     virtual bool CanConnect( const SCH_ITEM* aItem ) const { return m_Layer == aItem->GetLayer(); }

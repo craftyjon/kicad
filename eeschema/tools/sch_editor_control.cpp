@@ -382,7 +382,6 @@ int SCH_EDITOR_CONTROL::FindNext( const TOOL_EVENT& aEvent )
                 g_CurrentSheet->UpdateAllScreenReferences();
 
                 screen->SetZoom( m_frame->GetScreen()->GetZoom() );
-                screen->TestDanglingEnds();
 
                 m_frame->SetScreen( screen );
                 UpdateFind( ACTIONS::updateFind.MakeEvent() );
@@ -823,7 +822,6 @@ int SCH_EDITOR_CONTROL::Undo( const TOOL_EVENT& aEvent )
     m_frame->GetScreen()->PushCommandToRedoList( List );
 
     m_frame->SetSheetNumberAndCount();
-    m_frame->TestDanglingEnds();
 
     m_frame->SyncView();
     m_frame->GetCanvas()->Refresh();
@@ -852,8 +850,6 @@ int SCH_EDITOR_CONTROL::Redo( const TOOL_EVENT& aEvent )
     m_frame->GetScreen()->PushCommandToUndoList( List );
 
     m_frame->SetSheetNumberAndCount();
-
-    m_frame->TestDanglingEnds();
 
     m_frame->SyncView();
     m_frame->GetCanvas()->Refresh();

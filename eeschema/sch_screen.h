@@ -256,12 +256,6 @@ public:
     bool CheckIfOnDrawList( SCH_ITEM* st );
 
     /**
-     * Test all of the connectable objects in the schematic for unused connection points.
-     * @return True if any connection state changes were made.
-     */
-    bool TestDanglingEnds();
-
-    /**
      * Replace all of the wires, buses, and junctions in the screen with \a aWireList.
      *
      * @param aWireList List of wires to replace the existing wires with.
@@ -552,8 +546,6 @@ public:
      * - whenever the symbol library table is modified.
      */
     void UpdateSymbolLinks( bool aForce = false );
-
-    void TestDanglingEnds();
 
     /**
      * Test all of the schematic symbols to see if all #LIB_ID objects library nickname is not
