@@ -639,13 +639,8 @@ CONNECTION_GRAPH::UPDATED_ITEMS_T CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_
         for( auto primary_it = connection_vec.begin(); primary_it != connection_vec.end(); primary_it++ )
         {
             auto connected_item = *primary_it;
-
-            // Update the dangling state for the item
-            bool dangling = ( connection_vec.size() == 1 );
-            bool changed = updateDanglingState( connected_item, pos, dangling );
-
-            if( changed )
-                ret.dangling_changed.emplace_back( connected_item );
+            bool dangling_changed = false;
+            bool bus_entry_handled = false;
 
             // Bus entries are special: they can have connection points in the
             // middle of a wire segment, because the junction algo doesn't split
@@ -668,12 +663,17 @@ CONNECTION_GRAPH::UPDATED_ITEMS_T CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_
                     {
                         auto bus_entry = static_cast<SCH_BUS_WIRE_ENTRY*>( connected_item );
                         bus_entry->m_connected_bus_item = bus;
+
+                        dangling_changed = updateDanglingState( connected_item, pos, false );
+                        bus_entry_handled = true;
+
+                        if( dangling_changed )
+                            ret.dangling_changed.emplace_back( connected_item );
                     }
                 }
             }
-
             // Bus-to-bus entries are treated just like bus wires
-            if( connected_item->Type() == SCH_BUS_BUS_ENTRY_T )
+            else if( connected_item->Type() == SCH_BUS_BUS_ENTRY_T )
             {
                 if( connection_vec.size() < 2 )
                 {
@@ -691,8 +691,24 @@ CONNECTION_GRAPH::UPDATED_ITEMS_T CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_
 
                         bus_entry->ConnectedItems().insert( bus );
                         bus->ConnectedItems().insert( bus_entry );
+
+                        dangling_changed = updateDanglingState( connected_item, pos, false );
+                        bus_entry_handled = true;
+
+                        if( dangling_changed )
+                            ret.dangling_changed.emplace_back( connected_item );
                     }
                 }
+            }
+
+            // This will handle the wire side of a bus-wire entry, and all other items
+            if( !bus_entry_handled )
+            {
+                bool dangling = ( connection_vec.size() == 1 );
+                dangling_changed = updateDanglingState( connected_item, pos, dangling );
+
+                if( dangling_changed )
+                    ret.dangling_changed.emplace_back( connected_item );
             }
 
             for( auto test_it = primary_it + 1; test_it != connection_vec.end(); test_it++ )
