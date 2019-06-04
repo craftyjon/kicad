@@ -320,6 +320,17 @@ void SCH_TEXT::Print( wxDC* DC, const wxPoint& aOffset )
 }
 
 
+bool SCH_TEXT::UpdateDanglingState( const wxPoint& aPoint, bool aDangling )
+{
+    if( aPoint != GetTextPos() )
+        return false;
+
+    bool changed = ( IsDangling() != aDangling );
+    SetIsDangling( aDangling );
+    return changed;
+}
+
+
 void SCH_TEXT::GetConnectionPoints( std::vector< wxPoint >& aPoints ) const
 {
     // Normal text labels do not have connection points.  All others do.

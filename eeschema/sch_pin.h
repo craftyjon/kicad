@@ -81,6 +81,8 @@ public:
     bool IsDangling() const override { return m_isDangling; }
     void SetIsDangling( bool isDangling ) { m_isDangling = isDangling; }
 
+    bool UpdateDanglingState( const wxPoint& aPoint, bool aDangling ) override;
+
     /// Returns the pin's position in global coordinates
     wxPoint GetTransformedPosition() const;
 

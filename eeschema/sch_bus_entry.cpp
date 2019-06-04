@@ -172,6 +172,25 @@ bool SCH_BUS_ENTRY_BASE::IsDangling() const
 }
 
 
+bool SCH_BUS_ENTRY_BASE::UpdateDanglingState( const wxPoint& aPoint, bool aDangling )
+{
+    bool changed = false;
+
+    if( aPoint == GetPosition() )
+    {
+        changed = ( IsStartDangling() != aDangling );
+        SetStartDangling( aDangling );
+    }
+    else if( aPoint == m_End() )
+    {
+        changed = ( IsEndDangling() != aDangling );
+        SetEndDangling( aDangling );
+    }
+
+    return changed;
+}
+
+
 void SCH_BUS_ENTRY_BASE::GetConnectionPoints( std::vector< wxPoint >& aPoints ) const
 {
     aPoints.push_back( m_pos );

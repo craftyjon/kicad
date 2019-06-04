@@ -664,7 +664,7 @@ CONNECTION_GRAPH::UPDATED_ITEMS_T CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_
                         auto bus_entry = static_cast<SCH_BUS_WIRE_ENTRY*>( connected_item );
                         bus_entry->m_connected_bus_item = bus;
 
-                        dangling_changed = updateDanglingState( connected_item, pos, false );
+                        dangling_changed = bus_entry->UpdateDanglingState( pos, false );
                         bus_entry_handled = true;
 
                         if( dangling_changed )
@@ -692,7 +692,7 @@ CONNECTION_GRAPH::UPDATED_ITEMS_T CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_
                         bus_entry->ConnectedItems().insert( bus );
                         bus->ConnectedItems().insert( bus_entry );
 
-                        dangling_changed = updateDanglingState( connected_item, pos, false );
+                        dangling_changed = bus_entry->UpdateDanglingState( pos, false );
                         bus_entry_handled = true;
 
                         if( dangling_changed )
@@ -705,7 +705,7 @@ CONNECTION_GRAPH::UPDATED_ITEMS_T CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_
             if( !bus_entry_handled )
             {
                 bool dangling = ( connection_vec.size() == 1 );
-                dangling_changed = updateDanglingState( connected_item, pos, dangling );
+                dangling_changed = connected_item->UpdateDanglingState( pos, dangling );
 
                 if( dangling_changed )
                     ret.dangling_changed.emplace_back( connected_item );
@@ -754,86 +754,6 @@ CONNECTION_GRAPH::UPDATED_ITEMS_T CONNECTION_GRAPH::updateSheetItems( SCH_SHEET_
     }
 
     return ret;
-}
-
-
-bool CONNECTION_GRAPH::updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, bool aDangling )
-{
-    bool changed = false;
-
-    // Assumption: aPoint will always be a valid connection point of aItem, because this
-    // should only be called from updateSheetItems which grabs the connection points
-
-    switch( aItem->Type() )
-    {
-    case SCH_PIN_T:
-    {
-        auto pin = static_cast<SCH_PIN*>( aItem );
-        changed = ( pin->IsDangling() != aDangling );
-        pin->SetIsDangling( aDangling );
-        break;
-    }
-
-    case SCH_SHEET_PIN_T:
-    {
-        auto sheet_pin = static_cast<SCH_SHEET_PIN*>( aItem );
-        changed = ( sheet_pin->IsDangling() != aDangling );
-        sheet_pin->SetIsDangling( aDangling );
-        break;
-    }
-
-    case SCH_LABEL_T:
-    case SCH_GLOBAL_LABEL_T:
-    case SCH_HIER_LABEL_T:
-    {
-        auto text = static_cast<SCH_TEXT*>( aItem );
-        changed = ( text->IsDangling() != aDangling );
-        text->SetIsDangling( aDangling );
-        break;
-    }
-
-    case SCH_LINE_T:
-    {
-        auto line = static_cast<SCH_LINE*>( aItem );
-
-        if( aPoint == line->GetStartPoint() )
-        {
-            changed = ( line->IsStartDangling() != aDangling );
-            line->SetStartDangling( aDangling );
-        }
-        else
-        {
-            changed = ( line->IsEndDangling() != aDangling );
-            line->SetEndDangling( aDangling );
-        }
-
-        break;
-    }
-
-    case SCH_BUS_BUS_ENTRY_T:
-    case SCH_BUS_WIRE_ENTRY_T:
-    {
-        auto entry = static_cast<SCH_BUS_ENTRY_BASE*>( aItem );
-
-        if( aPoint == entry->GetPosition() )
-        {
-            changed = ( entry->IsStartDangling() != aDangling );
-            entry->SetStartDangling( aDangling );
-        }
-        else
-        {
-            changed = ( entry->IsEndDangling() != aDangling );
-            entry->SetEndDangling( aDangling );
-        }
-
-        break;
-    }
-
-    default:
-        break;
-    }
-
-    return changed;
 }
 
 

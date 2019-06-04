@@ -293,6 +293,14 @@ public:
     virtual void GetConnectionPoints( std::vector< wxPoint >& aPoints ) const { }
 
     /**
+     * Updates whether or not this item's connection point at aPoint is dangling
+     * @param aPoint is the point to update: has no impact if aPoint isn't a connection point
+     * @param aDangling is the new state to set
+     * @return true if the new state is different from the old state
+     */
+    virtual bool UpdateDanglingState( const wxPoint& aPoint, bool aDangling ) { return false; }
+
+    /**
      * Function ClearConnections
      * clears all of the connection items from the list.
      *

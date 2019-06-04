@@ -176,6 +176,8 @@ public:
 
     void SetEndDangling( bool aIsDangling ) { m_endIsDangling = aIsDangling; }
 
+    bool UpdateDanglingState( const wxPoint& aPoint, bool aDangling ) override;
+
     bool IsConnectable() const override;
 
     void GetConnectionPoints( std::vector< wxPoint >& aPoints ) const override;

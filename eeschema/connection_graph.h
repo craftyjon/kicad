@@ -343,16 +343,6 @@ private:
                                       std::vector<SCH_ITEM*> aItemList );
 
     /**
-     * Updates the dangling state of an item at a certain point
-     *
-     * @param aItem is the item to update
-     * @param aPoint is the point being updated
-     * @param aDangling is true if the item's connection at aPoint is open (dangling)
-     * @return true if the state changed from the previous state
-     */
-    bool updateDanglingState( SCH_ITEM* aItem, wxPoint aPoint, bool aDangling );
-
-    /**
      * Generates the connection graph (after all item connectivity has been updated)
      *
      * In the first phase, the algorithm iterates over all items, and then over

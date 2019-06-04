@@ -173,6 +173,8 @@ public:
     bool IsDangling() const override { return m_isDangling; }
     void SetIsDangling( bool aIsDangling ) { m_isDangling = aIsDangling; }
 
+    bool UpdateDanglingState( const wxPoint& aPoint, bool aDangling ) override;
+
     void GetConnectionPoints( std::vector< wxPoint >& aPoints ) const override;
 
     bool CanIncrementLabel() const override { return true; }

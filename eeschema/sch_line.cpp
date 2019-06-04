@@ -507,6 +507,25 @@ EDA_ITEM* SCH_LINE::MergeOverlap( SCH_LINE* aLine )
 }
 
 
+bool SCH_LINE::UpdateDanglingState( const wxPoint& aPoint, bool aDangling )
+{
+    bool changed = false;
+
+    if( aPoint == GetStartPoint() )
+    {
+        changed = ( IsStartDangling() != aDangling );
+        SetStartDangling( aDangling );
+    }
+    else if( aPoint == GetEndPoint() )
+    {
+        changed = ( IsEndDangling() != aDangling );
+        SetEndDangling( aDangling );
+    }
+
+    return changed;
+}
+
+
 bool SCH_LINE::IsConnectable() const
 {
     if( m_Layer == LAYER_WIRE || m_Layer == LAYER_BUS )

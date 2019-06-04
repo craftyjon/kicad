@@ -104,6 +104,8 @@ public:
 
     bool IsDangling() const override;
 
+    bool UpdateDanglingState( const wxPoint& aPoint, bool aDangling ) override;
+
     bool IsConnectable() const override { return true; }
 
     void GetConnectionPoints( std::vector< wxPoint >& aPoints ) const override;

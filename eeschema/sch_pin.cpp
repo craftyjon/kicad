@@ -140,4 +140,12 @@ bool SCH_PIN::HitTest( const wxPoint& aPosition, int aAccuracy ) const
 }
 
 
+bool SCH_PIN::UpdateDanglingState( const wxPoint& aPoint, bool aDangling )
+{
+    if( aPoint != GetTransformedPosition() )
+        return false;
 
+    bool changed = ( IsDangling() != aDangling );
+    SetIsDangling( aDangling );
+    return changed;
+}
