@@ -471,7 +471,8 @@ TOOL_ACTION ACTIONS::highContrastModeToggle( "common.Control.highContrastModeTog
 
 TOOL_ACTION ACTIONS::highContrastMode( "common.Control.highContrastMode",
         AS_GLOBAL, 0, "",
-        "", "" );
+        _( "High Contrast Mode" ), _( "Use high contrast display mode" ),
+        contrast_mode_xpm );
 
 TOOL_ACTION ACTIONS::selectionTool( "common.InteractiveSelection.selectionTool",
         AS_GLOBAL, 0, "", 
