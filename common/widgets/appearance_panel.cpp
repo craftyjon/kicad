@@ -397,7 +397,7 @@ void APPEARANCE_PANEL::onLayerVisibilityChanged( int aLayer, bool isVisible, boo
 
 void APPEARANCE_PANEL::onLayersOpacityChanged( float aOpacity )
 {
-    KIGFX::VIEW* view = m_frame->GetGalCanvas()->GetView();
+    KIGFX::VIEW* view = m_frame->GetCanvas()->GetView();
 
     for( APPEARANCE_SETTING& setting : m_layer_settings )
     {
@@ -419,7 +419,7 @@ void APPEARANCE_PANEL::onLayersOpacityChanged( float aOpacity )
         view->UpdateLayerColor( GetNetnameLayer( layer ) );
     }
 
-    m_frame->GetGalCanvas()->Refresh();
+    m_frame->GetCanvas()->Refresh();
 }
 
 
